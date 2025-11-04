@@ -1,0 +1,6 @@
+* { box-sizing: border-box; }
+html, body, #root { height: 100%; margin: 0; }
+img { max-width: 100%; display: block; }
+button { cursor: pointer; }
+.center { display: grid; place-items: center; padding: 3rem; }
+

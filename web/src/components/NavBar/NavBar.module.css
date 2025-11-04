@@ -1,0 +1,8 @@
+.header { position: sticky; top: 0; backdrop-filter: blur(6px); padding: 0.75rem 1.5rem; z-index: 50; }
+.brand { font-weight: 800; letter-spacing: 0.08em; color: var(--color-text); text-decoration: none; }
+.nav { display: flex; gap: 1rem; }
+.nav a { color: var(--color-text); text-decoration: none; opacity: 0.8; }
+.nav a.active { opacity: 1; color: var(--accent); }
+.modes { margin-top: 0.5rem; display: flex; align-items: center; gap: 0.5rem; }
+.sep { opacity: 0.4; }
+

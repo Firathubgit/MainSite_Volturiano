@@ -1,0 +1,10 @@
+:root {
+  --color-bg: #0b0b0c;
+  --color-text: #e6e6ea;
+  --accent: #ffd24a;
+  --radius: 10px;
+}
+
+html[data-theme="sport"] { --accent: #ff3b3b; }
+html[data-theme="luxury"] { --accent: #caa76b; }
+

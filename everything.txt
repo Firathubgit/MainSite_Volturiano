@@ -1,0 +1,373 @@
+VOLTURIANO SuperSystem Blueprint (Everything)
+
+Version: initial
+Scope: This single file captures the persistent intent, rationale, and operating
+principles for the entire VOLTURIANO Website + Configurator program. It
+consolidates architecture, conventions, security, performance strategies,
+workflows, schemas, asset contracts, extensibility, how‑to guides, and roadmap
+into one human‑readable source of truth for future engineers and stakeholders.
+
+--------------------------------------------------------------------
+1) Mission & Non‑Negotiables
+--------------------------------------------------------------------
+- Build a premium, investor‑grade, future‑proof website and configurator that
+  feels like a digital atelier: “commission, not purchase”.
+- Stack: React + Vite (JS), React Three Fiber + Drei (optional 3D), CSS Modules,
+  i18next, Zustand, Framer Motion. Backend: Supabase (Postgres, Auth, Storage,
+  Edge Functions) and Stripe via Edge Functions only.
+- Dual visualization engine: 2D layered images (primary realism + reach) and
+  optional real‑time 3D (immersive mode, AR/VR readiness).
+- Data‑driven everything: manifests for assets, SQL for compatibility rules,
+  i18n JSON for copy, flagged features for progressive rollout.
+- Performance and reliability first: instant UI feedback, lazy loading,
+  demand‑driven 3D rendering, CDN delivery, RLS security, idempotent webhooks.
+
+Why this stack
+- React/Vite = ergonomics + fast HMR + small production bundles.
+- R3F lets us keep 3D within the React mental model and Suspense.
+- Supabase consolidates DB/Auth/Storage/Edge in one place with RLS.
+- Stripe Checkout/Webhooks move PCI scope to Stripe and simplify payments.
+- CSS Modules keep CSS simple and scoped; design tokens via CSS variables enable
+  Base/Sport/Luxury themes without a framework dependency.
+
+
+--------------------------------------------------------------------
+2) Target Folder Layout (conceptual)
+--------------------------------------------------------------------
+web/
+  public/
+  src/
+    app/            providers, router, i18n init, error boundaries
+    pages/          route entries
+    components/     shared UI
+    features/       vertical slices (models, configurator, account, world, ai)
+    stores/         Zustand stores (config, user, ui)
+    viewers/
+      two-d/        layered image engine
+      three-d/      R3F scene, materials, shaders
+    i18n/           locale files per namespace
+    styles/         reset.css, variables.css, base.css, utilities.css
+    lib/            api clients, helpers
+
+supabase/
+  migrations/       SQL migrations (declarative)
+  functions/        Edge Functions (stripe, admin RPC)
+
+docs/               authoritative docs (architecture, security, how‑to, etc.)
+.cursor/rules/      Cursor‑aware active rules (architecture, conventions, etc.)
+
+
+--------------------------------------------------------------------
+3) Frontend Architecture & Conventions
+--------------------------------------------------------------------
+App shell
+- React Router + Suspense boundaries; providers for i18n and stores; global
+  error boundary with branded fallback.
+
+State management
+- Zustand for minimal boilerplate and fine‑grained subscriptions. Stores:
+  - configStore: selected vehicle/options, derived price, config code.
+  - userStore: auth session, saved configs list.
+  - uiStore: viewer mode, environment, audio mute, prefers‑reduced‑motion.
+
+Visualization engines
+- 2D layered images (primary):
+  - Transparent per‑part layers (body, wheels, calipers, etc.) for each angle.
+  - Manifests map (model, angle, option variant) => asset URL.
+  - Hover prefetch for color swatches; fade transitions; instant swaps.
+  - Universal device support and photorealism.
+
+- 3D (optional) with R3F:
+  - GLB with Draco meshes and KTX2 textures, HDRI IBL, soft/contact shadows.
+  - frameloop="demand" to render only on change; LOD via drei <Detailed>.
+  - Car‑paint material via MeshPhysicalMaterial or custom shader as needed.
+  - Used for “cinematic” moments, interior, close‑ups, and future AR/VR.
+
+Styling
+- CSS Modules + PostCSS; global tokens in :root (colors, spacing, motion,
+  shadows, z‑layers). Themes: base/sport/luxury via [data-theme] overrides.
+- Accessibility: semantic HTML, focus‑visible, ARIA patterns, prefers‑reduced‑
+  motion respected; alt text from i18n.
+
+Animation & Audio
+- Framer Motion for UI; optional GSAP for scroll scenes; use transform/opacity.
+- Subtle UI sounds; always gated by user interaction + mute toggle.
+
+Internationalization
+- i18next + react‑i18next; namespaces per feature (common, nav, models,
+  configurator, account, world, investor). All copy in JSON, never hardcoded.
+
+Coding conventions
+- Functional components, hooks; small composable pieces; JSDoc for shared
+  helpers; kebab-case files; PascalCase components; use‑ prefix for hooks.
+
+
+--------------------------------------------------------------------
+4) Backend (Supabase) Architecture
+--------------------------------------------------------------------
+Core tables
+- vehicles(id, name, base_price, description, performance_specs jsonb,
+  segment, drivetrain, subbrand)
+- option_groups(id, name, display_order)
+- options(id, group_id -> option_groups, name, ui_control_type)
+- option_values(id, option_id -> options, name, price_delta, image_url,
+  material_id)
+- materials(id, name, properties jsonb)
+- compatibility_rules(id, rule_type enum('requires','incompatible'),
+  primary_option_value_id, secondary_option_value_id)
+- user_configurations(id, user_id, vehicle_id, name, selected_options jsonb,
+  config_code unique)
+- orders(id, user_id, configuration_id, status, stripe_session_id)
+
+Why JSONB for selected_options
+- Flexibility as option sets evolve; relational tables handle constraints,
+  while JSONB stores the chosen mapping option_id => option_value_id compactly.
+
+Security
+- RLS enabled by default. user_configurations accessible only to owner.
+- Admin: role claim grants elevated RPC/Edge access; UI guarded.
+- Public buckets: read‑only assets. Private: signed URLs with short TTL.
+
+Edge Functions (server‑only logic)
+- create-checkout-session: compute price server‑side from DB, create Stripe
+  session, return id. Uses service keys; never expose to client.
+- stripe-webhook: verify signature, record order, mark configuration as paid;
+  idempotent and auditable logs.
+
+Environments & migrations
+- Local via Supabase CLI; staging and production projects. Declarative SQL
+  migrations under /supabase/migrations. CI deploys develop -> staging, main ->
+  production.
+
+
+--------------------------------------------------------------------
+5) Asset Pipeline & Manifests
+--------------------------------------------------------------------
+2D layers manifest (per model)
+{
+  "modelId": "temerario",
+  "angles": ["front-3q", "side", "rear-3q"],
+  "layers": [
+    { "id": "body", "variants": { "nero": ".../body/nero/front-3q.webp" } },
+    { "id": "wheels", "variants": { "forged-21": ".../wheels/forged-21/front-3q.webp" } },
+    { "id": "calipers", "variants": { "red": ".../calipers/red/front-3q.webp" } }
+  ]
+}
+
+3D manifest (per model)
+{
+  "modelId": "temerario",
+  "glb": ".../models/temerario.glb",
+  "materials": { "paint": { "nero": { "baseColor": "#111", "clearcoat": 1.0 } } },
+  "env": ["studio.hdr", "city.hdr"]
+}
+
+Practices
+- Immutable, hashed filenames; CDN caching; prefetch on hover; progressive
+  image loading. GLB + Draco + KTX2; HDRI environments; LOD where useful.
+
+
+--------------------------------------------------------------------
+6) Performance Doctrine
+--------------------------------------------------------------------
+- Perceived speed wins: instant feedback, optimistic UI, hover prefetch.
+- Code split by route and heavy features; lazy‑load viewer; demand frameloop.
+- Budgets: small initial JS (<~200kb gzip target for shell), fast LCP (<2.5s on
+  mid‑tier device), stable CLS, smooth viewer FPS.
+- Autoscale quality: reduce 3D quality on low‑end devices; always offer 2D.
+
+
+--------------------------------------------------------------------
+7) Security & Privacy Baseline
+--------------------------------------------------------------------
+- Secrets are never committed. Client uses only anon key. Service role and
+  Stripe secrets live in Edge environment.
+- RLS everywhere; policies precede exposure. CSP, Referrer‑Policy,
+  Permissions‑Policy, HSTS in production. Input sanitization on any custom
+  endpoints.
+
+
+--------------------------------------------------------------------
+8) Extensibility & Feature Flags
+--------------------------------------------------------------------
+Principles
+- Feature‑sliced folders; each slice exposes a tiny public API index.
+- Viewers implement a common interface to swap 2D/3D.
+- Behavior is manifest‑ and flag‑driven; business logic belongs to DB.
+
+Flags (env)
+- ENABLE_R3F_MODE, ENABLE_AR, ENABLE_WORLD, ENABLE_INVEST, ENABLE_AI_HELPER.
+
+Why flags
+- Allow staged rollouts, A/B evaluations, and device‑capability gating without
+  code changes.
+
+
+--------------------------------------------------------------------
+9) AI Helper (Concierge)
+--------------------------------------------------------------------
+Purpose
+- Branded FAQ + guided assistant; language‑aware; conservative and non‑
+  speculative. Escalates to human for sensitive topics.
+
+Implementation
+- Frontend widget under features/ai with prequestion templates per locale.
+- Edge Function proxy to LLM; rate limiting; minimal, non‑PII telemetry.
+- Prompts reflect brand voice and reference canonical docs.
+
+
+--------------------------------------------------------------------
+10) VOLTURIANO WORLD & Investor Micro‑site
+--------------------------------------------------------------------
+- WORLD: experiential section for technology, connectivity, ownership services;
+  animated showcase with responsive cards.
+- Investor: discreet link; static content at first; can host pitch deck and
+  metrics later; feature‑flag controlled.
+
+
+--------------------------------------------------------------------
+11) UX: Breadcrumbs & Journeys
+--------------------------------------------------------------------
+Trail
+- Home / Models / <Model> / <Trim> / Configure / Summary
+
+Rules
+- Always clickable back; preserve partial selections; on deep link via config
+  code, reconstruct full trail.
+
+
+--------------------------------------------------------------------
+12) Data Taxonomy & Filtering
+--------------------------------------------------------------------
+- vehicles fields: segment (coupe/roadster/suv/concept), drivetrain (ice/phev/
+  bev), subbrand (base/sport/luxury), year, generation.
+- tags (m2m): performance, track, grand‑tourer, concept, limited‑series.
+- Index on (segment, subbrand) for fast filtering.
+
+
+--------------------------------------------------------------------
+13) Compatibility Rules (SQL)
+--------------------------------------------------------------------
+Table
+- compatibility_rules(id, rule_type enum('requires','incompatible'),
+  primary_option_value_id, secondary_option_value_id)
+
+Semantics
+- requires: choosing primary implies secondary must be active (auto‑select or
+  enable‑only with message).
+- incompatible: choosing primary disables secondary; UI shows reason.
+
+UI contract
+- On selection change, fetch rules for the affected value ids and update the UI
+  availability; messages stored in i18n (e.g., configurator.rules.* keys).
+
+
+--------------------------------------------------------------------
+14) Workflows & CI/CD
+--------------------------------------------------------------------
+Branches
+- main (production), develop (staging), feature/*.
+
+Pipeline
+- Build, lint on PR; deploy develop -> staging; main -> production. Lighthouse
+  CI for budgets; run db migrations before app deploy.
+
+Local dev
+- Supabase CLI for a local stack; ENV via .env.local (client) and
+  function‑specific secrets for Edge.
+
+
+--------------------------------------------------------------------
+15) Environment Variables
+--------------------------------------------------------------------
+Client (public, prefixed VITE_)
+- VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY, VITE_ENABLE_* flags.
+
+Edge Functions (server)
+- SUPABASE_SERVICE_ROLE_KEY, STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET.
+
+
+--------------------------------------------------------------------
+16) How‑To Quick Guides
+--------------------------------------------------------------------
+Add a vehicle
+1) DB: insert vehicles; create option_groups/options; add option_values; define
+   compatibility_rules.
+2) Assets: upload 2D layers (+ optional GLB); update manifest JSON; commit.
+3) i18n: add model/option labels + rule reasons.
+4) App: add to models carousel; enable flags if soft‑launch.
+5) QA: 2D angles ok, instant swaps, price sums, rules behave, config save/load.
+
+Add an option/variant
+1) DB: insert option_values (+ rules if needed).
+2) Assets: upload new layers for all angles; update manifest; 3D materials.
+3) i18n: labels + rule texts. 4) Verify visual swap, price, rules.
+
+Upload assets
+- Hash filenames; upload to images/models/hdri buckets; set permissions; update
+  manifest with exact URLs and commit.
+
+Enable 3D for a model
+- Set VITE_ENABLE_R3F_MODE=true; upload GLB + KTX2; update manifest 3D section;
+  add HDRIs; test FPS and parity with 2D.
+
+Add a language
+- Create /web/src/i18n/<locale> with core namespaces; register in init and
+  switcher; screenshot key flows for PR.
+
+
+--------------------------------------------------------------------
+17) Ultimate Configurator Feature Set (condensed)
+--------------------------------------------------------------------
+- Cinematic landing; model carousel; 3‑mode subbrand selector (base/sport/
+  luxury). Dual viewer; interior planned. Instant updates; detail zoom; sound
+  design. Save/share with config code; optional PDF export later.
+- Options breadth: paint (standard/performance/bespoke), wheels/sizes/finishes,
+  calipers, interior materials/stitching, packages. Price updates in real time.
+- VOLTURIANO WORLD showcase; investor micro link.
+- Tech: React + Vite, Zustand, Framer Motion, R3F/Drei, i18next, CSS Modules,
+  Supabase, Stripe.
+- Perf: code split, viewer lazy, hover prefetch, LOD, KTX2/Draco, CDN.
+- Security: RLS, secrets in Edge, Stripe webhook verify, signed URLs.
+
+
+--------------------------------------------------------------------
+18) Long‑Term Vision
+--------------------------------------------------------------------
+- AR placement, VR showroom, remote co‑configuration, compare mode, designer
+  “Collections”, PDF brochures, CMS‑driven marketing pages, multi‑tenant orgs,
+  pixel‑streaming viewer backend, PWA offline cache for last session assets.
+
+
+--------------------------------------------------------------------
+19) Operating Principles (for future maintainers)
+--------------------------------------------------------------------
+- Favor data/config over code: manifests, flags, SQL rules, i18n JSON.
+- Keep optionality: 2D always available, 3D opt‑in; features behind flags.
+- Guard performance and accessibility with CI gates and manual checks.
+- Prefer server‑side truth for anything that affects money or validity.
+- Document small “why” context near rules; link to docs; avoid tribal knowledge.
+
+
+--------------------------------------------------------------------
+20) Quick Reference Links (in repo)
+--------------------------------------------------------------------
+- .cursor/rules/: architecture, conventions, workflow, security, i18n,
+  performance, extensibility, ai-helper, style-system, testing-observability,
+  feature-flags.
+- docs/architecture/: overview, frontend, backend, folder-structure,
+  extensibility.
+- docs/performance/asset-pipeline.md
+- docs/data/: asset-manifest.md, compatibility-rules.md, taxonomy.md
+- docs/env/variables.md
+- docs/ux/breadcrumbs.md
+- docs/style/guide.md
+- docs/ai/assistant.md
+- docs/operations/observability.md, docs/quality/testing.md
+- docs/how-to/: add-vehicle.md, add-option.md, upload-assets.md, enable-3d.md,
+  add-language.md
+- docs/roadmap.md, docs/checklists/ultimate-configurator.md, docs/future/vision.md
+
+
+End of file
+

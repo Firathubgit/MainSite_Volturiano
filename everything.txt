@@ -370,4 +370,168 @@ Add a language
 
 
 End of file
+ 
+ 
+--------------------------------------------------------------------
+21) Start Animation (Intro) System
+--------------------------------------------------------------------
+Purpose
+- A cinematic intro shown only on the first visit to the Home route per browser
+  session. It introduces VOLTURIANO’s visual language with a fast image shuffle,
+  a brief “enlarge” emphasis, a stacked cone reveal, then a compact spread and
+  a top-to-bottom fade-out before handing control to the site.
 
+Files
+- web/src/pages/Start/IndexGate.jsx        (gates whether to show the intro)
+- web/src/pages/Start/StartAnim.jsx        (animation logic + timeline)
+- web/src/pages/Start/StartAnim.module.css (scoped styles)
+
+Routing & Gating
+- The app shell (web/src/app/App.jsx) routes "/" to IndexGate.
+- IndexGate checks sessionStorage.startPlayed:
+  - If missing: navigate to "/start" (StartAnim).
+  - If present: render Home directly.
+- StartAnim sets sessionStorage.startPlayed = "1" on completion, then navigates
+  back to "/". Subpages (e.g., /models, /configurator) never invoke the intro.
+
+Asset Loading (Vite glob)
+- StartAnim auto-loads local images from "web/src/assets/start/*.{png,jpg,jpeg,webp,avif}"
+  using import.meta.glob({ eager: true, as: 'url' }). Filenames are sorted to
+  stabilize order. If the folder is empty, Unsplash placeholders are used.
+- Six images are used; if more exist, the first 6 are taken.
+
+Color & Theme
+- Dark palette:
+  - #111111 Night
+  - #1F1F1F Eerie Black
+  - #303030 Jet
+  - #3A3A3A Jet
+  - #E10600 Chili Red
+  - #FF4520 Coquelicot
+- CSS is modular and localized under StartAnim.module.css; global tokens are in
+  web/src/styles/variables.css.
+
+Timeline (Framer Motion)
+- Constants (StartAnim.jsx):
+  - SHUFFLE_MS = 200 (5 Hz shuffle)
+  - MOVE_DURATION = 0.5s (bottom-center -> center)
+  - SHUFFLE_TOTAL_MS = 3000 (total shuffle time)
+  - ENLARGE_MS = 450ms (pop emphasis between shuffle and stack)
+  - TOP_STACK_SCALE = 1.35 (keep top card enlarged in stack/spread)
+  - FADE_ITEM_DELAY = 0.05s (cascade)
+  - FADE_ITEM_DURATION = 0.15s
+  - SPREAD_OFFSET = 30px (overall Y offset for spread)
+  - ENLARGE_Y = -6px (stabilized Y so no “tick” when transitioning)
+- Phases:
+  1) move: single card rises from bottom center to center (0.5s).
+  2) shuffle: single card shuffles image content at 5 Hz (to 3.0s total).
+  3) enlarge: card scales to 1.35x for 450ms; Y remains ENLARGE_Y to avoid drift.
+  4) stack: morph into a stacked cone (top card keeps 1.35x instantly).
+  5) spread: vertical spacing expands slightly (size-aware, compact overall).
+  6) hold: brief dwell, then
+  7) fade: cards fade top-to-bottom (staggered), then overlay fades and route
+     navigates back to "/".
+- The timeline is implemented with a few setTimeout checkpoints; all clean up on
+  unmount. Shuffle uses setInterval, cleared at the correct boundary.
+
+Stack Geometry & Spacing
+- Six items with per-depth max scale:
+  MAX_SCALES = [1, 0.85, 0.7, 0.55, 0.4, 0.25]
+- During “stack” the top element remains enlarged (TOP_STACK_SCALE) to match the
+  preceding “enlarge” phase (no shrink/flicker).
+- Stacked vertical offsets are accumulated and size-aware (tighter as items get
+  smaller). Spread spacing also scales with size and depth and is tuned to keep
+  the group compact and near center.
+
+Side Text Ornaments (no gradients)
+- Minimal copy lines are displayed on left/right during the intro:
+  LEFT:  "VISION BUILT"
+  RIGHT: "MODERN SPEED"
+- These gently animate opacity/position across phases and fully fade during the
+  final cascade.
+
+Implementation Notes
+- The stage is sized to 70vh and centers content with a transparent background.
+- Card sizes are 140x140px (scaled per phase). The module CSS avoids any box
+  shadow or “plates” behind the cards to keep the scene clean and dark.
+- Accessibility: images include alt="intro"; prefers-reduced-motion can be used
+  in the future to skip animations and directly continue to Home.
+
+Operational Tips
+- To preview the intro again: remove sessionStorage.startPlayed in DevTools or
+  open a new window/private tab; or navigate directly to "/start".
+- To change the side text, update the two strings in StartAnim.jsx (labels only).
+- To supply brand images, drop exactly 5–6 files into web/src/assets/start/.
+
+
+--------------------------------------------------------------------
+22) Current Route Map (web)
+--------------------------------------------------------------------
+- "/":           IndexGate (decides between StartAnim or Home)
+- "/start":      StartAnim (intro overlay)
+- "/models":     Models page
+- "/configurator": Configurator page
+- Conditional:   "/world" and "/investor" (via VITE_ENABLE_WORLD / VITE_ENABLE_INVEST)
+- "*" → Redirect to "/"
+
+
+--------------------------------------------------------------------
+23) Build & Dev Quickstart
+--------------------------------------------------------------------
+Scripts (web/package.json)
+- "dev":     vite
+- "build":   vite build
+- "preview": vite preview
+
+Dependencies (key)
+- react, react-dom, react-router-dom
+- framer-motion (animation)
+- zustand (state)
+- i18next + react-i18next (i18n)
+- three, @react-three/fiber, @react-three/drei (optional 3D)
+- @supabase/supabase-js (client)
+
+Environment flags
+- VITE_ENABLE_WORLD, VITE_ENABLE_INVEST control optional routes.
+
+
+--------------------------------------------------------------------
+24) i18n & Copy Strategy (in-use now)
+--------------------------------------------------------------------
+- Base namespaces live under web/src/i18n/<locale>/ (e.g., en/common.json).
+- Avoid hardcoding strings in components; prefer i18n keys. The intro ornament
+  texts can also be moved to i18n for localization later.
+
+
+--------------------------------------------------------------------
+25) Future Enhancements (Intro)
+--------------------------------------------------------------------
+- Add a “skip” affordance respecting prefers-reduced-motion.
+- Parameterize timeline via environment for experimentation.
+- Optional soundtrack gated behind user interaction/mute toggle.
+- Provide theme variants (base/sport/luxury) that subtly alter the stacked
+  spacing/scale profile or side text to match brand mode.
+
+
+--------------------------------------------------------------------
+26) UI Polish & Transition System (2025-11-08)
+--------------------------------------------------------------------
+- Added a reusable `PageTransition` component (Framer Motion) and wrapped every
+  post-start page so that each route fades in smoothly after the intro fade-out.
+- Updated `NavBar` to a fixed, glassy overlay with scroll-based opacity, a
+  centered Tornado sigil (clickable except when already on `/`), and a
+  three-column layout to keep brand, logo, and nav balanced.
+- Showroom landing refinements:
+  - Replaced text arrows with branded hexagon icons, tightened spacing, ensured
+    CTAs sit on the top layer, and restyled buttons with a stealth body plus
+    accent edge.
+  - Guaranteed side cars are dim previews only; main car animates in the center.
+- Home hero now defaults to a static background image (video layer optional via
+  `ENABLE_HERO_VIDEO`) and participates in the page fade-in.
+- Global layout: removed vertical padding from `<main>` so the hero image sits
+  flush beneath the floating navbar.
+- Action items:
+  - Consider exporting `PageTransition` variants (e.g., slide, scale) for future
+    cinematic sections.
+  - Extend the glass header to mobile navigation once the responsive menu lands.
+  - Capture these UI conventions in the design system docs + `.cursor` rules.

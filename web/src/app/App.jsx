@@ -7,6 +7,8 @@ const Models = lazy(() => import('../pages/Models/Models'));
 const Configurator = lazy(() => import('../pages/Configurator/Configurator'));
 const World = lazy(() => import('../pages/World/World'));
 const Investor = lazy(() => import('../pages/Investor/Investor'));
+const StartAnim = lazy(() => import('../pages/Start/StartAnim'));
+const IndexGate = lazy(() => import('../pages/Start/IndexGate'));
 
 export default function App() {
   return (
@@ -15,7 +17,8 @@ export default function App() {
       <main>
         <Suspense fallback={<div className="center">Loading…</div>}>
           <Routes>
-            <Route path="/" element={<Home />} />
+            <Route path="/" element={<IndexGate />} />
+            <Route path="/start" element={<StartAnim />} />
             <Route path="/models" element={<Models />} />
             <Route path="/configurator" element={<Configurator />} />
             {import.meta.env.VITE_ENABLE_WORLD === 'true' && (

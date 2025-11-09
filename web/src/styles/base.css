@@ -2,7 +2,8 @@ body {
   background: var(--color-bg);
   color: var(--color-text);
   font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+  overflow-x: hidden; /* prevent horizontal leaking when full-bleed sections are used */
 }
-main { max-width: 1440px; margin: 0 auto; padding: 1rem 1.5rem; }
+main { max-width: 1440px; margin: 0 auto; padding: 0 1.5rem; }
 .accent { color: var(--accent); }
 

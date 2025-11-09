@@ -1,0 +1,50 @@
+.hero {
+  position: relative;
+  width: 100vw;                         /* edge-to-edge */
+  margin-left: calc(50% - 50vw);        /* break out of centered container */
+  margin-right: calc(50% - 50vw);       /* prevent right-side overflow */
+  min-height: 100vh;             /* user-preferred height that fits under OS bars */
+  border-radius: 0;                     /* no rounding on fullscreen */
+  overflow: hidden;
+  display: grid;
+  place-items: center;
+  background: #111111;
+}
+
+.video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  opacity: 1;
+  transition: opacity 600ms ease;
+}
+
+.videoHidden { opacity: 0; }
+.videoVisible { opacity: 1; }
+
+.copy {
+  position: relative;
+  z-index: 1;
+  text-align: center;
+  color: #e6e6ea;
+  padding: 0 1rem;
+}
+
+.title {
+  font-size: clamp(32px, 6vw, 84px);
+  line-height: 1;
+  letter-spacing: 0.06em;
+  font-weight: 800;
+}
+
+.subtitle {
+  margin-top: 8px;
+  font-size: clamp(12px, 1.6vw, 18px);
+  opacity: 0.75;
+  letter-spacing: 0.08em;
+}
+
+

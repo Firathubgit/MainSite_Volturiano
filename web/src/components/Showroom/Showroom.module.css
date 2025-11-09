@@ -1,0 +1,219 @@
+ .container {
+  position: relative;
+  width: 100vw;
+  margin-left: calc(50% - 50vw);
+  margin-right: calc(50% - 50vw);
+  background: #111111;
+  color: #e6e6ea;
+  overflow: hidden;
+  padding: 64px 20px;
+}
+
+.stage {
+  position: relative;
+  max-width: 1400px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-rows: auto auto;
+  gap: 8px; /* bring header closer to the cars */
+  z-index: 0; /* establish stacking context */
+}
+
+.header {
+  text-align: center;
+  margin-bottom: -140px; /* tighter header-to-car spacing */
+}
+
+.title {
+  font-weight: 800;
+  letter-spacing: .08em;
+  font-size: clamp(22px, 4.8vw, 54px); /* ~20% smaller */
+  line-height: 1;
+}
+
+.subtitle {
+  opacity: .7;
+  margin-top: 2px;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  font-size: 10px; /* slightly smaller */
+}
+
+.track {
+  position: relative;
+  height: min(46vh, 450px); /* ~20% smaller height */
+  margin-top: -3vh; /* lift the cars up a bit */
+  margin-bottom: 150px; /* create space for CTAs below the car */
+  z-index: 1; /* cars below CTAs and arrows */
+}
+
+.slide {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: end center; /* anchor to baseline */
+  pointer-events: none; /* never block clicks to CTAs/nav below */
+}
+
+.image {
+  max-width: 72%;  /* ~20% smaller visual scale */
+  max-height: 72%;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+}
+
+.active { opacity: 1; filter: drop-shadow(0 20px 60px rgba(0,0,0,.7)); }
+
+.badge {
+  position: absolute;
+  bottom: 16px;
+  right: 16px;
+  background: rgba(0,0,0,.6);
+  border: 1px solid rgba(255,255,255,.12);
+  color: #fff;
+  padding: 6px 10px;
+  border-radius: 999px;
+  letter-spacing: .12em;
+  font-size: 11px;
+  text-transform: uppercase;
+}
+
+.nav {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  pointer-events: none;
+  z-index: 9; /* arrows above cars */
+}
+
+.btn {
+  pointer-events: auto;
+  background: transparent;
+  border: none;
+  padding: 0;
+  width: 72px;
+  height: 72px;
+  display: block;
+  line-height: 0;
+  cursor: pointer;
+  opacity: .85;
+  transition: transform 160ms ease, filter 160ms ease, opacity 160ms ease;
+}
+.btn:hover,
+.btn:focus-visible {
+  opacity: 1;
+  transform: scale(1.08);
+  filter: drop-shadow(0 0 10px rgba(255,255,255,.45)) brightness(1.15);
+  outline: none;
+}
+.btn:active { transform: scale(1.02); }
+
+.btnIcon {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+  pointer-events: none;
+}
+
+.cta {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  margin-top: 28px; /* more breathing room from the car */
+  position: relative;
+  z-index: 10;            /* ensure CTAs sit above any overlapping layers */
+  pointer-events: auto;
+}
+
+.primary, .secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 14px;
+  padding: 14px 24px;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
+  text-align: center;
+  text-decoration: none;
+  transition: transform 160ms ease, filter 160ms ease, box-shadow 160ms ease, opacity 160ms ease;
+  position: relative;
+  overflow: hidden; /* for shine sweep */
+  min-width: 220px;
+  color: #ffffff;
+  /* Stealth body with accent border */
+  background:
+    linear-gradient(180deg, #1F1F1F 0%, #303030 100%) padding-box,
+    linear-gradient(135deg, var(--accent-start), var(--accent-end)) border-box;
+  border: 2px solid transparent;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.06), 0 10px 28px rgba(0,0,0,.45);
+}
+
+/* Primary = Orange edge */
+.primary { --accent-start:#FF4520; --accent-end:#E10600; }
+.primary:hover,
+.primary:focus-visible {
+  filter: brightness(1.08);
+  transform: translateY(-1px);
+  box-shadow: 0 12px 34px rgba(255,69,32,.18), 0 0 0 3px rgba(255,69,32,.12);
+  outline: none;
+}
+.primary:active { transform: translateY(0); }
+
+/* Secondary = Red edge */
+.secondary { --accent-start:#E10600; --accent-end:#FF4520; }
+.secondary:hover,
+.secondary:focus-visible {
+  filter: brightness(1.08);
+  transform: translateY(-1px);
+  box-shadow: 0 12px 34px rgba(225,6,0,.18), 0 0 0 3px rgba(225,6,0,.12);
+  outline: none;
+}
+.secondary:active { transform: translateY(0); }
+
+/* shared shine sweep */
+.primary::after,
+.secondary::after {
+  content: "";
+  position: absolute;
+  top: 0; left: -120%;
+  width: 120%; height: 100%;
+  background: linear-gradient(120deg, transparent 0%, rgba(255,255,255,.18) 40%, rgba(255,255,255,.18) 60%, transparent 100%);
+  transform: skewX(-20deg);
+  transition: left 420ms ease;
+  pointer-events: none;
+}
+.primary:hover::after,
+.secondary:hover::after { left: 120%; }
+
+/* mobile stacking for CTAs */
+@media (max-width: 700px) {
+  .cta { flex-direction: column; }
+  .primary, .secondary { width: 100%; max-width: 360px; text-align: center; }
+}
+
+.dots {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  margin-top: 16px;
+  position: relative;
+  z-index: 5;
+}
+.dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: rgba(255,255,255,.25);
+  border: none;
+}
+.dotActive { background: #e6e6ea; }
+
+.visuallyHidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(1px,1px,1px,1px); white-space: nowrap; }
+
+
+

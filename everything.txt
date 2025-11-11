@@ -583,37 +583,17 @@ Implementation Gaps (mapped to backlog)
 --------------------------------------------------------------------
 28) Strategic Backlog (Comprehensive TODO)
 --------------------------------------------------------------------
+# TODO Backlog usage
+- Each item ends with `| Status: ______`. Replace the underscores with notes like `In progress` or `Done` as work advances.
+- Keep bullets immutable; append clarifications on new lines if scope evolves.
+
 Supabase Platform
-- Finalize multi-tenant ERD covering vehicles, option groups, compatibility rules, user configurations, orders, support tickets, and AI transcripts; link design doc. | Status: ______
-- Author declarative SQL migrations for every table plus demo data seeds and automated rollback scripts. | Status: ______
-- Implement comprehensive row-level security policies and document proofs for each access path. | Status: ______
-- Build Supabase Edge function to compute configurator pricing server-side with Stripe signature validation. | Status: ______
-- Configure database branching workflow with migration promotion gates (dev → staging → prod). | Status: ______
-- Establish PITR (point-in-time recovery) snapshots and disaster recovery runbooks. | Status: ______
-- Create storage buckets for layered assets, GLBs, HDRIs, and marketing media with read policies per namespace. | Status: ______
-- Implement signed URL helper service enforcing short TTLs and optional IP allow lists. | Status: ______
-- Add Supabase Row Level Auditing via triggers logging writes to audit_log table. | Status: ______
-- Integrate background jobs (cron) for pruning expired signed URLs and archival records. | Status: ______
-- Design configuration code shortlink service stored in Supabase with vanity codes. | Status: ______
-- Implement Supabase functions for garage analytics (most saved models, options). | Status: ______
-- Add webhook listener table capturing Stripe events with retry metadata. | Status: ______
-- Define Supabase function to clone configuration templates for limited campaigns. | Status: ______
-- Implement Supabase function to hydrate staging datasets from production snapshots with anonymization. | Status: ______
-- Set up Supabase tests (pgTAP) covering constraints, RLS, and stored procedures. | Status: ______
-- Introduce Supabase vector store for AI assistant knowledge embeddings. | Status: ______
-- Configure custom domains and caching rules for Supabase storage CDN delivery. | Status: ______
-- Automate schema documentation export into docs/architecture via Supabase information_schema queries. | Status: ______
-- Define event-driven Supabase function that sends Slack alerts for critical order state changes. | Status: ______
-- Create Edge function for locale detection storing preference in user profile. | Status: ______
-- Implement daily backups of storage buckets to cold storage with checksum verification. | Status: ______
-- Establish Supabase monitoring of slow queries and tune indexes for configurator workloads. | Status: ______
-- Develop Supabase RPC endpoint returning personalized recommendations by combining configs + telemetry. | Status: ______
-- Add migration validation pipeline ensuring PRs include schema diagrams and risk assessment. | Status: ______
-- Implement Supabase secrets rotation procedure and automation reminders. | Status: ______
-- Provide Supabase analytics schema for marketing (page impressions, funnel metrics) joined with auth IDs. | Status: ______
-- Build Supabase view consolidating user, garage, orders, and support ticket health score. | Status: ______
-- Document Supabase multi-region strategy with failover testing schedule. | Status: ______
-- Add Supabase function to record configuration share events with hashed recipient emails. | Status: ______
+- Stand up minimal schema for users, vehicles, configurations, and orders using Supabase migrations. | Status: ______
+- Seed demo data and placeholder assets so configurator and garage screens load quickly. | Status: ______
+- Apply simple row-level security so users only see their own records plus an admin bypass. | Status: ______
+- Publish one RPC that returns configuration totals (base + selected options) for the UI. | Status: ______
+- Configure a storage bucket for renders and gate access behind signed URLs. | Status: ______
+- Document how to run migrations, seeds, and storage setup locally in `README`. | Status: ______
 
 Account & My Garage
 - Build My Garage UI showing saved builds, purchases, prototypes, and wishlist lanes synced to Supabase. | Status: ______
@@ -621,188 +601,78 @@ Account & My Garage
 - Implement “Save to Garage” CTA capturing snapshots plus diff logs for iteration history. | Status: ______
 - Support cart vs. owned vs. archived states with Stripe webhook-driven transitions. | Status: ______
 - Allow configuring goal tags (track, grand tour, concept) stored per configuration. | Status: ______
-- Expose quick actions (duplicate, rename, share, delete) with optimistic updates and rollback. | Status: ______
+- Expose quick actions (rename, share, delete) with optimistic updates and rollback. | Status: ______
 - Implement deep link “Open in configurator” loading exact vehicle/options revision. | Status: ______
-- Add collaborative access (invite designer) with role-based permissions. | Status: ______
-- Integrate Supabase real-time subscriptions so garage updates appear live across devices. | Status: ______
-- Provide timeline view of configuration milestones (created, tuned, ordered, delivered). | Status: ______
+- Provide timeline view of configuration milestones (created, tuned, ordered, delivered) though offline 3 mouth once a mounth updates thats not real. | Status: ______
 - Enable filtering and sorting by model, status, build date, price tier, and tags. | Status: ______
-- Surface recommendations based on saved builds (other owners also added...). | Status: ______
-- Implement notes and inspiration gallery per configuration stored in Supabase storage. | Status: ______
 - Provide export to PDF spec sheet with optional watermark and QR code. | Status: ______
-- Offer insurance-ready documentation bundle once vehicle is owned. | Status: ______
-- Build integration for scheduling concierge test drives tied to garage entries. | Status: ______
-- Implement offline-ready cache that syncs with Supabase once reconnected. | Status: ______
-- Add telemetry logging to track configuration evolution for analytics. | Status: ______
-- Provide “Convert to order” CTA launching Stripe Checkout prefilled from garage. | Status: ______
-- Surface AI-generated highlights summarizing build differentiators. | Status: ______
-- Implement pinned configurations and quick compare tool. | Status: ______
-- Create seasonal showcase mode curated by brand designers (flag in Supabase). | Status: ______
-- Build event-driven notifications when new options become available for saved model. | Status: ______
-- Add ability to attach custom assets (renders, sketches) per configuration. | Status: ______
-- Integrate trade-in eligibility checks and store results per garage entry. | Status: ______
-- Provide loyalty benefits tracker linked to owned vehicles. | Status: ______
-- Implement secure sharing link with expiration and view analytics. | Status: ______
-- Build concierge chat entry point contextualized to selected configuration. | Status: ______
-- Add VR/AR session log column noting immersive experiences taken per configuration. | Status: ______
-- Document governance guidelines for garage data retention and pruning. | Status: ______
+- Build integration for scheduling test drives | Status: ______
+- Create showcase mode (in winter place or summer beach). | Status: ______
+- Build event-driven notifications when new car launches. | Status: ______
 
 Configurator 2D Pipeline
 - Create manifest authoring tool to manage layer dependencies and variants. | Status: ______
-- Implement smart prefetch prioritized by popularity and user history. | Status: ______
-- Add adaptive image quality scaling based on connection speed. | Status: ______
+- Add adaptive image quality scaling based on viewport size. | Status: ______
 - Wire compatibility rules with detailed resolution messaging and automatic adjustments. | Status: ______
 - Build pricing panel updating totals, taxes, incentives, and finance projections. | Status: ______
 - Implement reversible undo/redo stack for option changes. | Status: ______
-- Provide quick compare snapshots across configurations within session. | Status: ______
-- Enable real-time collaboration ghost cursors (view-only) for advisors. | Status: ______
-- Integrate tactile feedback cues (if device supports haptics). | Status: ______
-- Implement accessibility mode with high-contrast layers and text alternatives. | Status: ______
-- Add annotation overlay so designers can leave comments on renders. | Status: ______
-- Provide camera angle transitions with smooth fades and parallax depth. | Status: ______
+- Provide quick compare snapshots across two configured draft cars through car render image system. | Status: ______
+- Provide camera angle transitions with smooth fades and parallax depth | Status: ______
 - Implement variant availability alerts when inventory thresholds change (Supabase feed). | Status: ______
-- Store user preferred angle/order per model in Supabase profile. | Status: ______
 - Add AR preview trigger link using stored manifest data. | Status: ______
-- Support staged rollouts for new options via feature flags tied to Supabase tables. | Status: ______
-- Build configuration diff visualizer showing what's changed between saves. | Status: ______
-- Implement energy/CO2 estimation panel fed by Supabase telemetry. | Status: ______
-- Add option bundles and curated “launch specs” surfaced dynamically. | Status: ______
-- Provide translation hooks for option descriptions per locale. | Status: ______
+- Add Let users pick pre-made configurations instead of starting from scratch. “Performance Pack”, “Winter Pack”, or full Launch Edition | Status: ______
 - Offer “studio lighting” filter switching background assets. | Status: ______
 - Integrate wishlist overlay enabling quick add to garage. | Status: ______
-- Implement analytics capture for hover dwell time per option tile. | Status: ______
-- Build fallback pipeline for when Supabase assets fail (cached CDN copy). | Status: ______
-- Add watermark rendering for pre-release builds. | Status: ______
-- Implement security watermark per session with hashed user ID overlay. | Status: ______
-- Provide export-to-social presets with brand guidelines. | Status: ______
-- Create service to calculate build time estimates per option set. | Status: ______
-- Document end-to-end pipeline from asset upload to manifest publish. | Status: ______
-- Integrate voice command support for option selection. | Status: ______
+- Add watermark rendering on renderd images. | Status: ______
 
 Configurator 3D Pipeline
 - Stand up high-fidelity React Three Fiber scene with dynamic LOD switching. | Status: ______
 - Implement GLB streaming with Draco + KTX2 decoding and caching strategy. | Status: ______
-- Provide interior/exterior toggles with camera fly-through paths. | Status: ______
+- Provide interior/exterior toggles | Status: ______
 - Add multi-light studio presets (track, night city, gallery) stored in Supabase. | Status: ______
 - Integrate physics-based paint shader with flake, clearcoat, and polarization controls. | Status: ______
 - Support animated parts (doors, spoiler, aero) with timeline scrubbing. | Status: ______
 - Implement volumetric lighting and fog effects (toggle-able). | Status: ______
 - Add configurable background stage with HDRI rotation and blur intensity. | Status: ______
-- Allow user-defined camera bookmarks stored per configuration. | Status: ______
 - Provide XR mode (WebXR) for immersive showroom. | Status: ______
-- Implement path-traced render export (server-side job) for hero shots. | Status: ______
+- Implement render export for hero shots. | Status: ______
 - Integrate tactile sound design triggered by interactions (muted by default). | Status: ______
-- Provide thermal/CFD overlay modes for engineering storytelling. | Status: ______
 - Add wheel rotation and brake animation when previewing performance packages. | Status: ______
-- Implement multi-car lineups for color comparison in 3D space. | Status: ______
-- Support real-time collaboration with synchronized camera states. | Status: ______
-- Include telemetry overlay (speed, aero load) for animated simulations. | Status: ______
 - Build 3D asset validation tool verifying scale, materials, and naming. | Status: ______
-- Integrate AI-driven lighting suggestions for best presentation. | Status: ______
-- Provide export to USDZ/GLB for AR kit sharing. | Status: ______
-- Implement GPU resource budgeting and dynamic resolution scaling. | Status: ______
-- Add photo mode with depth of field, filters, and framing guides. | Status: ______
-- Support seat/interior adjustments with context-sensitive animations. | Status: ______
 - Integrate interior ambient lighting customization with color picker. | Status: ______
 - Provide scenario-based presets (track day, alpine touring) altering props and lighting. | Status: ______
-- Build metrics collection for frame time, GPU usage, error tracking. | Status: ______
-- Document asset pipeline from DCC export to in-app deployment. | Status: ______
-- Implement rollback system for 3D assets with Supabase version history. | Status: ______
-- Create 3D QA checklist including unit tests for camera bounds and collisions. | Status: ______
-- Develop training content for concierges to guide clients through 3D viewer. | Status: ______
 
 Account Settings & Profile
-- Build profile editor covering personal info, locale, communication preferences, and concierge tier. | Status: ______
+- Build profile editor covering personal info, language preferences. | Status: ______
 - Implement password, email, and MFA enrollment flows via Supabase Auth. | Status: ______
-- Provide session management with device metadata and revoke controls. | Status: ______
-- Offer GDPR/CCPA export and deletion workflows with audit entries. | Status: ______
 - Add biometric login support (WebAuthn) for returning users. | Status: ______
 - Expose notification preferences (marketing, events, alerts) synced with messaging provider. | Status: ______
 - Surface vehicle ownership history with VIN, delivery milestones, and service plan. | Status: ______
 - Integrate address book for shipping, billing, and experience destinations. | Status: ______
 - Provide connected services toggle (Apple/Google sign-in, car OS, Alexa). | Status: ______
-- Implement concierge contact scheduling and preferences section. | Status: ______
 - Add payment method vault management and invoice history. | Status: ______
-- Build loyalty status view with achievements and rewards catalog. | Status: ______
+- Build loyalty status view with achievements (Achivement page). | Status: ______
 - Enable document vault for NDAs, contracts, specs with secure download. | Status: ______
-- Provide data-sharing consent management with audit log. | Status: ______
-- Offer personalization controls (theme, hero variant, motion preferences). | Status: ______
 - Integrate profile completeness meter guiding onboarding actions. | Status: ______
-- Allow linking household/fleet accounts with shared permissions. | Status: ______
-- Build API token management for third-party integrations. | Status: ______
-- Implement activity log showing security events, login attempts, settings changes. | Status: ______
-- Provide in-app messaging inbox for concierge communication history. | Status: ______
-- Add invitation management for co-owners and secondary drivers. | Status: ______
+- Allow linking (Apple/Google). | Status: ______
 - Surface upcoming events, track days, or lifestyle experiences tied to account. | Status: ______
 - Implement service appointment booking and reminders. | Status: ______
-- Provide digital key provisioning controls for compatible vehicles. | Status: ______
+- Provide digital car key provisioning controls for compatible vehicles. | Status: ______
 - Add charity/impact preference tracking aligned with brand initiatives. | Status: ______
-- Integrate language pack selection and fallback order editing. | Status: ______
-- Offer security checklist with recommendations (enable MFA, review sessions). | Status: ______
-- Document retention policies and allow user to opt into beta features. | Status: ______
-- Add preference sync to in-car systems via secure API. | Status: ______
-- Provide archive/export history viewer for previously requested data packages. | Status: ______
+- Add preference sync to in-car systems via secure API (Fake ofcouese no car yet, no supabase only frontend fakeness). | Status: ______
 
 AI Assistant & Support
-- Implement concierge chat widget with conversation context (page, configuration, locale). | Status: ______
-- Integrate Supabase vector embeddings for knowledge base retrieval augmented generation. | Status: ______
+- Implement chat widget with brand context (volturiano trained). | Status: ______
 - Provide voice input/output support with multi-language responses. | Status: ______
-- Build escalation flow to human concierge with transcript handoff and SLA tracking. | Status: ______
-- Capture analytics (response quality, resolution time, satisfaction) in Supabase. | Status: ______
-- Implement proactive outreach suggestions based on user behavior triggers. | Status: ______
-- Add ability to summon assistant via command palette. | Status: ______
-- Provide image/video upload for clients sharing inspiration; route through moderation. | Status: ______
-- Integrate appointment scheduling (test drive, concierge call) directly from chat. | Status: ______
-- Offer configuration walkthroughs generated dynamically by AI. | Status: ______
-- Implement translation layer so assistant matches selected locale perfectly. | Status: ______
-- Allow assistant to trigger Supabase mutations (save to garage, request info) with scoped permissions. | Status: ______
-- Build knowledge authoring CMS feeding into embeddings pipeline. | Status: ______
-- Provide session summary emails capturing chat outcomes and next steps. | Status: ______
-- Add sentiment detection to prioritize human follow-up. | Status: ______
-- Integrate AR assistant mode giving overlay guidance in 3D viewer. | Status: ______
-- Create concierge dashboard showing live chat queue and metrics. | Status: ______
-- Implement privacy guardrails (redaction, PII detection) before logging transcripts. | Status: ______
-- Add offline queueing when Edge function is unreachable. | Status: ______
-- Support multi-user conversations (client + designer + assistant). | Status: ______
-- Provide knowledge freshness indicators and content review workflow. | Status: ______
+- Build human handoff support, call my number basically | Status: ______
+- Integrate redirect to page support based on need (client want to testdrive, redirected to testdrive page) | Status: ______
+- Implement translation layer so assistant matches selected language perfectly. | Status: ______
 - Enable assistant to surface finance options, inventory alerts, and experience invites. | Status: ______
-- Build compliance logging for AI prompts/responses per region. | Status: ______
-- Integrate video call escalation with calendar synchronization. | Status: ______
-- Offer concierge “white glove” script generator per event. | Status: ______
-- Implement live translation bridging multilingual participants. | Status: ______
-- Provide accessibility features (screen reader mode, large text) in chat UI. | Status: ______
-- Add push notification pipeline for asynchronous responses. | Status: ______
-- Document ethical guidelines and fallback behavior for AI assistant. | Status: ______
-- Create testing harness for assistant scenarios with golden transcripts. | Status: ______
 
 Operations & Observability
-- Instrument frontend and Edge functions with structured logging keyed by correlation IDs. | Status: ______
-- Build Grafana/Metabase dashboards for performance, auth health, garage usage. | Status: ______
-- Configure alerting (Slack/SMS) for latency, error spikes, payment failures. | Status: ______
-- Establish synthetic monitoring hitting critical routes and Edge endpoints. | Status: ______
-- Implement chaos testing drills for Supabase outages and degraded assets. | Status: ______
-- Create runbooks for incident response, escalation, and communication templates. | Status: ______
-- Automate Lighthouse CI and Web Vitals monitoring per release. | Status: ______
-- Track CDN cache hit ratios and asset invalidation workflows. | Status: ______
-- Add real user monitoring capturing FPS, LCP, CLS across devices. | Status: ______
-- Establish security scanning (SAST/DAST) and dependency vulnerability alerts. | Status: ______
-- Implement feature flag telemetry to measure adoption and guardrails. | Status: ______
-- Provide infrastructure cost dashboards (Supabase, CDN, Stripe fees). | Status: ______
-- Build data governance registry noting owners, retention, classification. | Status: ______
-- Automate backups verification and quarterly restore testing. | Status: ______
-- Set up compliance audit trails for financial and privacy controls. | Status: ______
-- Create capacity planning models for Supabase throughput and storage growth. | Status: ______
-- Implement release checklist automation (migrations, assets, feature toggles). | Status: ______
-- Add end-to-end test suite with nightly runs covering configurator flows. | Status: ______
-- Establish staging smoke tests triggered on deploy. | Status: ______
-- Instrument AI assistant with fallback monitoring (Edge errors, latency). | Status: ______
-- Provide analytics warehouse synced to Supabase via ETL for BI. | Status: ______
-- Integrate error budget policy for SLOs per subsystem. | Status: ______
-- Build customer experience scorecards combining telemetry and feedback. | Status: ______
-- Document hotfix protocol and rollback automation. | Status: ______
-- Implement environment secret rotation reminders with evidence tracking. | Status: ______
-- Add on-call schedule integration with PagerDuty/Opsgenie. | Status: ______
-- Provide monthly executive dashboards summarizing KPIs and roadmap status. | Status: ______
-- Create penetration testing schedule and remediation workflow. | Status: ______
-- Implement automated screenshot regression testing for key pages. | Status: ______
-- Maintain knowledge base of past incidents and lessons learned. | Status: ______
+- Add a lightweight logging wrapper with request IDs around Supabase and Edge calls. | Status: ______
+- Pipe client and Edge errors into a single monitoring tool (e.g. Sentry) with staging/prod separation. | Status: ______
+- Publish a `/health` endpoint and attach a basic uptime monitor hitting it every 5 minutes. | Status: ______
+- Write a short runbook covering deploy steps, rollback, and support contacts. | Status: ______
+- Track a launch checklist (lint, build, Supabase migrations) and commit it to the repo. | Status: ______
+- Schedule a weekly manual review of signups, saved configs, and key errors exported from Supabase. | Status: ______

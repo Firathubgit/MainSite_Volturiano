@@ -6,6 +6,23 @@
   "investor": "Investor",
   "base": "Base",
   "sport": "Sport",
-  "luxury": "Luxury"
+  "luxury": "Luxury",
+  "drawer": {
+    "models": "Models",
+    "world": "Volturiano World",
+    "configurator": "Start configuring",
+    "account": "Account",
+    "language": "Language"
+  },
+  "languageNames": {
+    "en": "English",
+    "sv": "Swedish"
+  },
+  "aria": {
+    "openNavigation": "Open navigation",
+    "closeNavigation": "Close navigation",
+    "home": "Volturiano home",
+    "account": "Account"
+  }
 }
 

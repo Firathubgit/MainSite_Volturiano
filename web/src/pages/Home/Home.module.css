@@ -27,10 +27,11 @@
 
 .copy {
   position: relative;
-  z-index: 1;
-  text-align: center;
+  z-index: 4;
   color: #e6e6ea;
-  padding: 0 1rem;
+  padding: 0;
+  text-align: left;
+  max-width: 460px;
 }
 
 .title {
@@ -46,5 +47,41 @@
   opacity: 0.75;
   letter-spacing: 0.08em;
 }
+
+.body {
+  margin-top: clamp(16px, 3vw, 32px);
+  max-width: 420px;
+  color: rgba(230, 230, 234, 0.65);
+  font-size: clamp(14px, 1.4vw, 18px);
+  line-height: 1.6;
+}
+
+.heroContent {
+  position: relative;
+  z-index: 3;
+  width: min(640px, 92vw);
+  margin: 0 auto;
+  display: grid;
+  gap: clamp(18px, 4vw, 36px);
+  justify-items: start;
+}
+
+@media (max-width: 960px) {
+  .heroContent {
+    justify-items: center;
+  }
+
+  .copy {
+    text-align: center;
+    padding: 0;
+  }
+
+  .body {
+    margin-left: auto;
+    margin-right: auto;
+    max-width: 520px;
+  }
+}
+
 
 

@@ -2,18 +2,27 @@ import { useEffect, useState } from 'react';
 import { showroomLocal } from './showroomData';
 import { supabase } from '../../lib/supabaseClient';
 
+function normaliseStatus(status) {
+  return (status ?? '').toString().toLowerCase().replace(/[\s_]+/g, '-');
+}
+
 function mapVehicle(row) {
+  const status = normaliseStatus(row.status);
+  const defaultPrimaryKey = status === 'available' ? 'showroom:cta.explore' : 'showroom:cta.waitlist';
+  const defaultSecondaryKey = status === 'available' ? 'showroom:cta.configure' : null;
   return {
     id: row.id,
     slug: row.slug,
     name: row.name,
-    status: row.status,
+    status,
     image: row.hero_image_url,
     cta: {
-      primaryLabel: row.primary_label ?? (row.status === 'available' ? 'Explore the model' : 'Join waitlist'),
+      primaryLabelKey: defaultPrimaryKey,
+      primaryLabel: row.primary_label ?? null,
       primaryTo: row.primary_to ?? '/models',
-      secondaryLabel: row.secondary_label ?? (row.status === 'available' ? 'Configure now' : null),
-      secondaryTo: row.secondary_to ?? (row.status === 'available' ? '/configurator' : null)
+      secondaryLabelKey: defaultSecondaryKey,
+      secondaryLabel: row.secondary_label ?? null,
+      secondaryTo: row.secondary_to ?? (status === 'available' ? '/configurator' : null)
     },
     sortOrder: row.sort_order ?? 9999
   };
@@ -29,7 +38,7 @@ export function useShowroomData() {
     async function load() {
       if (!supabase) return;
       const { data, error } = await supabase
-        .from('vehicles')
+        .from('vehicles_catalog')
         .select('id, slug, name, status, hero_image_url, primary_label, primary_to, secondary_label, secondary_to, sort_order')
         .order('sort_order', { ascending: true });
       if (!mounted) return;

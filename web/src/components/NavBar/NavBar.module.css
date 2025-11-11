@@ -25,6 +25,27 @@
   justify-content: flex-start;
 }
 
+.menuButton {
+  background: transparent;
+  border: none;
+  padding: 6px;
+  cursor: pointer;
+  transition: transform 160ms ease, filter 160ms ease;
+}
+
+.menuButton:hover,
+.menuButton:focus-visible {
+  transform: translateY(-1px);
+  filter: drop-shadow(0 8px 18px rgba(0, 0, 0, 0.45)) brightness(1.08);
+  outline: none;
+}
+
+.menuIcon {
+  width: 40px;
+  height: 40px;
+  display: block;
+}
+
 .center {
   display: flex;
   align-items: center;
@@ -35,13 +56,6 @@
   display: flex;
   align-items: center;
   justify-content: flex-end;
-}
-
-.brand {
-  font-weight: 800;
-  letter-spacing: 0.08em;
-  color: var(--color-text);
-  text-decoration: none;
 }
 
 .logo {
@@ -66,9 +80,31 @@
   display: block;
 }
 
-.nav { display: flex; gap: 1rem; }
-.nav a { color: var(--color-text); text-decoration: none; opacity: 0.8; }
-.nav a.active { opacity: 1; color: var(--accent); }
-.modes { margin-top: 0.5rem; display: flex; align-items: center; gap: 0.5rem; }
-.sep { opacity: 0.4; }
+.account {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.accountButton {
+  background: transparent;
+  border: none;
+  padding: 6px;
+  cursor: pointer;
+  transition: transform 160ms ease, filter 160ms ease;
+}
+
+.accountButton:hover,
+.accountButton:focus-visible {
+  transform: translateY(-1px);
+  filter: drop-shadow(0 8px 18px rgba(0, 0, 0, 0.45)) brightness(1.08);
+  outline: none;
+}
+
+.accountIcon {
+  width: 30px;
+  height: 30px;
+  display: block;
+}
 

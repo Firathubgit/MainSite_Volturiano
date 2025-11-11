@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useTranslation } from 'react-i18next';
 import styles from './StartAnim.module.css';
 
 // Load any images placed in src/assets/start using Vite's glob import
@@ -35,6 +36,7 @@ const ENLARGE_Y = -6; // keep Y consistent across phases to avoid a visible tick
 
 export default function StartAnim() {
   const navigate = useNavigate();
+  const { t: tStart } = useTranslation('start');
   const [index, setIndex] = useState(0);
   const [phase, setPhase] = useState('move'); // move -> shuffle -> stack -> spread -> fade
   const [overlayOpacity, setOverlayOpacity] = useState(1);
@@ -161,7 +163,7 @@ export default function StartAnim() {
             }
             transition={{ duration: 0.5, ease: 'easeOut' }}
           >
-            VISION BUILT
+            {tStart('leftTag')}
           </motion.div>
           <motion.div
             className={`${styles.sideText} ${styles.rightText}`}
@@ -175,7 +177,7 @@ export default function StartAnim() {
             }
             transition={{ duration: 0.5, ease: 'easeOut' }}
           >
-            MODERN SPEED
+            {tStart('rightTag')}
           </motion.div>
           
           {/* Single shuffling card that moves from bottom-center to center */}

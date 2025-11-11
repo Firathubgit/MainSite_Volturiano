@@ -1,0 +1,57 @@
+{
+  "menu": {
+    "enter": "Enter Volturiano",
+    "guestSubtitle": "Choose how you want to continue",
+    "garage": "My Garage",
+    "settings": "Account settings",
+    "signOut": "Sign out",
+    "signingOut": "Signing out…",
+    "signIn": "Sign in",
+    "signUp": "Create account",
+    "ariaLabel": "Account menu"
+  },
+  "login": {
+    "title": "Welcome back",
+    "subtitle": "Sign in to access your Volturiano experience.",
+    "email": "Email",
+    "password": "Password",
+    "submit": "Sign in",
+    "submitting": "Signing in…",
+    "forgotPrefix": "Forgot your password?",
+    "forgotLink": "Reset it",
+    "signupPrefix": "Need an account?",
+    "signupLink": "Create one"
+  },
+  "signup": {
+    "title": "Create account",
+    "subtitle": "Join the Volturiano ecosystem to save configurations and unlock premium services.",
+    "name": "Full name",
+    "namePlaceholder": "Optional",
+    "email": "Email",
+    "password": "Password",
+    "submit": "Sign up",
+    "submitting": "Creating account…",
+    "success": "Check your inbox to confirm your email before signing in.",
+    "signinPrefix": "Already registered?",
+    "signinLink": "Sign in"
+  },
+  "forgot": {
+    "title": "Reset password",
+    "subtitle": "Enter your account email and we will send you a secure reset link.",
+    "email": "Email",
+    "submit": "Send reset link",
+    "submitting": "Sending…",
+    "success": "Check your email for a link to reset your password.",
+    "return": "Return to sign in"
+  },
+  "garage": {
+    "title": "My Garage",
+    "subtitle": "Saved configurations will appear here. Connect your account through the configurator to curate your personal Volturiano lineup."
+  },
+  "profile": {
+    "title": "Account settings",
+    "subtitlePrimary": "Manage your personal details, locale preferences, and communication settings.",
+    "subtitleSecondary": "This section is under active development. In the meantime, contact support for any account changes."
+  }
+}
+

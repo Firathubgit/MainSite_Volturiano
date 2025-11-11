@@ -1,34 +1,46 @@
 ---
 title: Planned Folder Layout
 description: Target layout to keep code modular and scalable.
-status: draft
+status: active
 ---
 
-Top-level (planned)
-- web/               # React + Vite app
-  - public/
+Current Layout (web/)
+- app/ — top-level shell, providers, layout.
+- components/ — shared presentation components (migrate toward feature slices).
+- pages/ — route-level components (bridge while features are modularized).
+- viewers/ — `two-d/` and `three-d/` implementations behind a shared contract.
+- stores/ — Zustand stores (config, ui, user).
+- i18n/ — locale JSON namespaces.
+- lib/ — Supabase client, utilities.
+- styles/ — reset, variables, base, utilities.
+
+Target Layout (incremental refactor)
   - src/
-    - app/           # shell, routing, providers, i18n init
-    - components/    # shared UI
-    - features/      # vertical slices (configurator, models, account, world, ai)
-    - pages/         # route components (if using file-based router, map accordingly)
-    - stores/        # Zustand stores (config, user, ui)
+  - app/ (router, providers, layout primitives)
+  - features/
+    - configurator/ (UI, hooks, manifests, tests)
+    - models/
+    - account/
+    - world/
+    - ai/
+  - shared/
+    - components/
+    - hooks/
+    - utils/
     - viewers/
-      - two-d/       # layered image viewer
-      - three-d/     # R3F scene, materials, shaders
-    - i18n/          # locale files (namespaces per feature)
-    - lib/           # api clients, util helpers
+    - two-d/
+    - three-d/
     - styles/
+  - i18n/
+  - lib/
+
+Backend & Ops
 - supabase/
-  - migrations/      # SQL migrations
-  - functions/       # Edge Functions (stripe, admin tasks)
-- docs/              # you are here
-- assets/            # small dev assets; production assets -> Supabase Storage
+  - migrations/ — SQL files generated via Supabase CLI.
+  - functions/ — Edge Functions (Stripe, admin, utilities).
+- scripts/ — automation (asset validation, cache purge).
 
 Notes
-- Keep feature-first structure. Configurator logic and UI live under features/configurator.
-- Large binaries live in Storage; reference via URLs/manifests committed to the repo.
-
-Context
-- Feature-first layout mirrors how users experience the product and simplifies code ownership. Storing only manifests in git keeps the repo small while enabling atomic asset updates via CDN.
+- Large binary assets stay out of git; track via docs/data manifests and store in Supabase Storage.
+- Feature-first organization aligns code ownership with business domains and keeps optional modules (World, AI, Investor) pluggable.
 

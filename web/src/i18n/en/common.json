@@ -1,6 +1,12 @@
 {
   "brand": "VOLTURIANO",
   "loading": "Loading…",
-  "startCommission": "Begin Your Commission"
+  "startCommission": "Begin Your Commission",
+  "close": "Close",
+  "language": "Language",
+  "account": "Account",
+  "previous": "Previous",
+  "next": "Next",
+  "selectLanguage": "Select language"
 }
 

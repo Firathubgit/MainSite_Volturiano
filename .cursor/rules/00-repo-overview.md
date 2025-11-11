@@ -14,6 +14,8 @@ Core Principles
 - Commission-first UX; immersive visuals; dual visualization engine (2D layered images + optional real-time 3D).
 - Modular, data-driven configuration via Supabase; strict RLS security; serverless functions for secrets.
 - Internationalization from day one; animation-first UI; accessibility, performance, and responsiveness.
+- Accounts & personalization: Supabase Auth (email/password + future OAuth), user profiles, garage, and admin role baked into schema.
+- Reference: `docs/README.md` for entry points into deeper documentation.
 
 Why this stack (context)
 - React/Vite keeps the app lean and fast to iterate; R3F unlocks high-fidelity 3D without leaving React’s mental model; Supabase consolidates auth, DB, storage, and edge logic to reduce glue code and centralize security; Stripe provides enterprise-grade payments and webhooks.

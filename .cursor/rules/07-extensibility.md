@@ -11,6 +11,7 @@ Principles
 - Data-driven viewers using manifest JSON (no hardcoded asset paths).
 - Capability flags via env + feature flags (e.g., ENABLE_R3F_MODE, ENABLE_AR).
 - Keep business rules in DB (compatibility_rules) not in UI when possible.
+- Reference: `docs/architecture/folder-structure.md` for current vs target layout.
 
 Pluggable Modules
 - viewers: two-d and three-d are swappable implementations behind a common interface.

@@ -1,0 +1,10 @@
+{
+  "subtitle": "Commission your vision",
+  "body": "Move your pointer anywhere on the stage to reveal fleeting glimpses of the design lab’s latest vision. Each spotlight fades within a breath—just enough time to take in the detail.",
+  "hint": "Move your pointer across the board",
+  "aria": {
+    "panel": "Interactive media board",
+    "full": "Interactive hero canvas"
+  }
+}
+

@@ -10,6 +10,7 @@ Read next:
 - Architecture overview: ./architecture/overview.md
 - Planned folder layout: ./architecture/folder-structure.md
 - Extensibility: ./architecture/extensibility.md
+- Auth & accounts: ./architecture/auth.md
 - Performance & assets: ./performance/asset-pipeline.md
 - Security & environments: ./security/security-policies.md
 - Internationalization: ./i18n/guide.md

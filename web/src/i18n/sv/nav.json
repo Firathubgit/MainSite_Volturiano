@@ -1,0 +1,28 @@
+{
+  "home": "Hem",
+  "models": "Modeller",
+  "configurator": "Konfigurator",
+  "world": "World",
+  "investor": "Investerare",
+  "base": "Bas",
+  "sport": "Sport",
+  "luxury": "Lyx",
+  "drawer": {
+    "models": "Modeller",
+    "world": "Volturiano World",
+    "configurator": "Börja konfigurera",
+    "account": "Konto",
+    "language": "Språk"
+  },
+  "languageNames": {
+    "en": "Engelska",
+    "sv": "Svenska"
+  },
+  "aria": {
+    "openNavigation": "Öppna navigering",
+    "closeNavigation": "Stäng navigering",
+    "home": "Volturianos startsida",
+    "account": "Konto"
+  }
+}
+

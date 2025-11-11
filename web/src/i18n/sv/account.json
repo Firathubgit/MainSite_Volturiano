@@ -1,0 +1,57 @@
+{
+  "menu": {
+    "enter": "Gå in i Volturiano",
+    "guestSubtitle": "Välj hur du vill fortsätta",
+    "garage": "Mitt garage",
+    "settings": "Kontoinställningar",
+    "signOut": "Logga ut",
+    "signingOut": "Loggar ut…",
+    "signIn": "Logga in",
+    "signUp": "Skapa konto",
+    "ariaLabel": "Kontomeny"
+  },
+  "login": {
+    "title": "Välkommen tillbaka",
+    "subtitle": "Logga in för att komma åt din Volturiano-upplevelse.",
+    "email": "E-post",
+    "password": "Lösenord",
+    "submit": "Logga in",
+    "submitting": "Loggar in…",
+    "forgotPrefix": "Glömt lösenordet?",
+    "forgotLink": "Återställ det",
+    "signupPrefix": "Behöver du ett konto?",
+    "signupLink": "Skapa ett"
+  },
+  "signup": {
+    "title": "Skapa konto",
+    "subtitle": "Gå med i Volturiano-ekosystemet för att spara konfigurationer och låsa upp premiumtjänster.",
+    "name": "Fullständigt namn",
+    "namePlaceholder": "Valfritt",
+    "email": "E-post",
+    "password": "Lösenord",
+    "submit": "Registrera dig",
+    "submitting": "Skapar konto…",
+    "success": "Kontrollera din inkorg och bekräfta e-postadressen innan du loggar in.",
+    "signinPrefix": "Redan registrerad?",
+    "signinLink": "Logga in"
+  },
+  "forgot": {
+    "title": "Återställ lösenord",
+    "subtitle": "Ange din kontoadress så skickar vi en säker återställningslänk.",
+    "email": "E-post",
+    "submit": "Skicka återställningslänk",
+    "submitting": "Skickar…",
+    "success": "Kontrollera din e-post för en länk för att återställa lösenordet.",
+    "return": "Tillbaka till inloggning"
+  },
+  "garage": {
+    "title": "Mitt garage",
+    "subtitle": "Sparade konfigurationer visas här. Koppla kontot via konfiguratorn för att kurera din personliga Volturiano-uppställning."
+  },
+  "profile": {
+    "title": "Kontoinställningar",
+    "subtitlePrimary": "Hantera personuppgifter, språkpreferenser och kommunikationsinställningar.",
+    "subtitleSecondary": "Detta avsnitt är under utveckling. Kontakta supporten för omedelbara kontoändringar."
+  }
+}
+

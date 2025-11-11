@@ -1,14 +1,26 @@
-import React, { useEffect, useState } from 'react';
-import { Link, NavLink, useLocation } from 'react-router-dom';
-import s from './NavBar.module.css';
+import React, { useEffect, useRef, useState } from 'react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import s from './NavBar.module.css';
 import tornadoLogo from '../../assets/Logo/TornadoLogo.png';
+import accountIcon from '../../assets/Logo/LoginAccountIcon.png';
+import hamburgerIcon from '../../assets/Logo/HamburgerIcon.png';
+import { useUserStore } from '../../stores/userStore';
+import { useUiStore } from '../../stores/uiStore';
+import AccountMenu from '../../features/account/components/AccountMenu';
 
 export function NavBar() {
-  const { t } = useTranslation('nav');
   const location = useLocation();
+  const navigate = useNavigate();
+  const { t } = useTranslation(['nav', 'common']);
   const [opacity, setOpacity] = useState(1);
   const isHome = location.pathname === '/';
+  const session = useUserStore((state) => state.session);
+  const toggleAccountMenu = useUiStore((state) => state.toggleAccountMenu);
+  const closeAccountMenu = useUiStore((state) => state.closeAccountMenu);
+  const toggleNavMenu = useUiStore((state) => state.toggleNavMenu);
+  const accountMenuOpen = useUiStore((state) => state.accountMenuOpen);
+  const accountButtonRef = useRef(null);
 
   useEffect(() => {
     function onScroll() {
@@ -22,48 +34,58 @@ export function NavBar() {
     return () => window.removeEventListener('scroll', onScroll);
   }, []);
 
+  useEffect(() => {
+    closeAccountMenu();
+  }, [location.pathname, closeAccountMenu]);
+
+  const handleAccountClick = () => {
+    toggleAccountMenu();
+  };
+
   return (
     <header className={s.header} style={{ opacity }}>
       <div className={s.container}>
         <div className={s.left}>
-          <Link to="/" className={s.brand}>VOLTURIANO</Link>
+          <button
+            type="button"
+            className={s.menuButton}
+            aria-label={t('nav:aria.openNavigation')}
+            onClick={toggleNavMenu}
+          >
+            <img src={hamburgerIcon} alt="" className={s.menuIcon} />
+          </button>
         </div>
 
         {/* Center logo: clickable unless on home */}
         <div className={s.center}>
           {isHome ? (
-            <div className={s.logo} aria-label="Volturiano home">
-              <img src={tornadoLogo} alt="Volturiano" className={s.logoImg} />
+            <div className={s.logo} aria-label={t('nav:aria.home')}>
+              <img src={tornadoLogo} alt={t('common:brand')} className={s.logoImg} />
             </div>
           ) : (
-            <Link to="/" className={s.logo} aria-label="Volturiano home">
-              <img src={tornadoLogo} alt="Volturiano" className={s.logoImg} />
+            <Link to="/" className={s.logo} aria-label={t('nav:aria.home')}>
+              <img src={tornadoLogo} alt={t('common:brand')} className={s.logoImg} />
             </Link>
           )}
         </div>
 
         <div className={s.right}>
-          <nav className={s.nav} aria-label="Primary">
-            <NavLink to="/">{t('home')}</NavLink>
-            <NavLink to="/models">{t('models')}</NavLink>
-            <NavLink to="/configurator">{t('configurator')}</NavLink>
-            {import.meta.env.VITE_ENABLE_WORLD === 'true' && (
-              <NavLink to="/world">{t('world')}</NavLink>
-            )}
-            {import.meta.env.VITE_ENABLE_INVEST === 'true' && (
-              <NavLink to="/investor">{t('investor')}</NavLink>
-            )}
-          </nav>
+          <div className={s.account}>
+            <button
+              ref={accountButtonRef}
+              type="button"
+              className={s.accountButton}
+              onClick={handleAccountClick}
+              aria-haspopup="menu"
+              aria-expanded={accountMenuOpen}
+            >
+              <img src={accountIcon} alt={t('common:account')} className={s.accountIcon} />
+            </button>
+            <AccountMenu anchorRef={accountButtonRef} />
+          </div>
         </div>
       </div>
 
-      <div className={s.modes} role="tablist" aria-label="Subbrands">
-        <button role="tab" data-theme="base">{t('base')}</button>
-        <span className={s.sep}>|</span>
-        <button role="tab" data-theme="sport">{t('sport')}</button>
-        <span className={s.sep}>|</span>
-        <button role="tab" data-theme="luxury">{t('luxury')}</button>
-      </div>
     </header>
   );
 }

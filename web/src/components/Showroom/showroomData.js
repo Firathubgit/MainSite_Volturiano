@@ -11,8 +11,10 @@ export const showroomLocal = [
     status: 'available',
     image: mainCar,
     cta: {
+      primaryLabelKey: 'showroom:cta.explore',
       primaryLabel: 'Explore the model',
       primaryTo: '/models',
+      secondaryLabelKey: 'showroom:cta.configure',
       secondaryLabel: 'Configure now',
       secondaryTo: '/configurator'
     },
@@ -22,9 +24,10 @@ export const showroomLocal = [
     id: 'volturiano-long',
     slug: 'volturiano-long',
     name: 'Volturiano Long',
-    status: 'coming_soon',
+    status: 'coming-soon',
     image: longCar,
     cta: {
+      primaryLabelKey: 'showroom:cta.waitlist',
       primaryLabel: 'Join waitlist',
       primaryTo: '/models'
     },
@@ -34,9 +37,10 @@ export const showroomLocal = [
     id: 'volturiano-suv',
     slug: 'volturiano-suv',
     name: 'Volturiano SUV',
-    status: 'coming_soon',
+    status: 'coming-soon',
     image: suvCar,
     cta: {
+      primaryLabelKey: 'showroom:cta.waitlist',
       primaryLabel: 'Join waitlist',
       primaryTo: '/models'
     },

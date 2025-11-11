@@ -13,6 +13,7 @@ General
 2D Primary Mode
 - Layered transparent images per angle/part; serve WebP/AVIF when possible.
 - Preload next-likely frames; prefetch swatch on-hover for instant color swap.
+- Keep manifests in sync with Storage (see docs/data/asset-manifest.md) to avoid 404s.
 
 3D Optional Mode (R3F)
 - Load GLB via Suspense; set frameloop="demand"; use LOD with drei <Detailed>.
@@ -23,6 +24,7 @@ Audio & Media
 
 Monitoring
 - Track TTI, CLS, LCP, FPS for viewer interactions; block merges on regressions.
+- Record perf results in PR description when touching viewers.
 
 Context
 - Prioritize perceived speed: instant UI feedback (optimistic UI, prefetch on-hover) consistently feels faster than raw bandwidth gains. Auto step down 3D quality on low-end devices; always allow a 2D fallback.

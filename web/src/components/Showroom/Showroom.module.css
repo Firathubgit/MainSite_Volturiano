@@ -47,6 +47,34 @@
   z-index: 1; /* cars below CTAs and arrows */
 }
 
+.peek {
+  position: absolute;
+  top: 45%;
+  width: 32%;
+  max-width: 420px;
+  height: auto;
+  pointer-events: none;
+  filter: grayscale(1);
+  opacity: 0.28;
+  transform: translateY(-50%);
+  z-index: 0;
+}
+
+.peekLeft {
+  left: -6%;
+}
+
+.peekRight {
+  right: -6%;
+}
+
+@media (max-width: 900px) {
+  .peek {
+    opacity: 0.18;
+    width: 36%;
+  }
+}
+
 .slide {
   position: absolute;
   inset: 0;
@@ -81,7 +109,10 @@
 
 .nav {
   position: absolute;
-  inset: 0;
+  top: 50%;
+  left: 6%;
+  right: 6%;
+  transform: translateY(-60%);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -123,7 +154,7 @@
   display: flex;
   gap: 12px;
   justify-content: center;
-  margin-top: 28px; /* more breathing room from the car */
+  margin-top: 138px; /* push CTAs lower */
   position: relative;
   z-index: 10;            /* ensure CTAs sit above any overlapping layers */
   pointer-events: auto;

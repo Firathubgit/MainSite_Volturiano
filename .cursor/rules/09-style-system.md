@@ -14,6 +14,7 @@ Structure
 - Global resets: styles/reset.css; base typography/layout: styles/base.css.
 - Component styles: Component.module.css colocated with component.
 - Utility classes (rare) live in styles/utilities.css for common patterns.
+- Reference: `docs/style/guide.md` for tokens, typography, and motion language.
 
 Practices
 - Prefer composition over deep nesting. Use logical properties (inline-start) for RTL support.

@@ -1,8 +1,11 @@
 :root {
   --color-bg: #0b0b0c;
   --color-text: #e6e6ea;
-  --accent: #ffd24a;
+  --accent: #1F1F1F;
   --radius: 10px;
+  --scrollbar-track: #111111;
+  --scrollbar-thumb: var(--accent);
+  --scrollbar-thumb-hover: color-mix(in srgb, var(--accent) 80%, #ffffff 20%);
 }
 
 html[data-theme="sport"] { --accent: #ff3b3b; }

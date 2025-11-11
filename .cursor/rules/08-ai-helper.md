@@ -8,6 +8,7 @@ labels: [ai, faq, chat]
 
 Scope
 - Acts as branded FAQ + guided concierge. No speculative claims; cite sources from /docs where relevant.
+- Reference: `docs/ai/assistant.md` for prompt architecture and tone.
 
 Architecture
 - Frontend widget under features/ai with prequestion templates and language-aware prompts.

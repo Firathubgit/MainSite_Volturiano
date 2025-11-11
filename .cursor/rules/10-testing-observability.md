@@ -9,6 +9,7 @@ labels: [testing, observability]
 Testing
 - Unit tests for pure utilities; component tests for critical UI (viewer shell, pricing).
 - Visual regression for key pages (future). Manual cross-browser matrix maintained in /docs/quality/testing.md.
+- Follow `docs/operations/observability.md` for logging/alerting setup.
 
 Observability
 - Frontend error tracking (e.g., Sentry) optional toggle. Edge Functions log to Supabase.

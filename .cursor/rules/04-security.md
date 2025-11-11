@@ -11,7 +11,9 @@ Secrets & Env
 - Client only uses Supabase anon key; service role keys live in Edge Functions.
 
 Auth & Authorization
-- Supabase Auth for accounts; one admin (role claim) with guarded UI and RPC.
+- Supabase Auth for accounts; sessions handled client-side via supabase-js; enable email confirmation before granting garage/checkout access.
+- Store role claim (`app_metadata.role`) for single admin; guard admin UI + RPC with SECURITY DEFINER and role checks.
+- Profiles table holds preferences; enforce `auth.uid()` ownership via RLS.
 - RLS enabled on all user data tables (e.g., user_configurations). Policies whitelist owner access; admin via role.
 
 Payments
@@ -28,4 +30,5 @@ Context
 
 Compliance & Data
 - Respect user locale and privacy; optional analytics must be anonymized and documented.
+- Provide delete/export pathways (Edge Function) to satisfy GDPR/CCPA requests; log deletions in `audit_logs`.
 

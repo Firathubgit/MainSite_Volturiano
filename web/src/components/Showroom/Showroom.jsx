@@ -90,7 +90,11 @@ export default function Showroom({ initialIndex = 0 }) {
   const prevItem = items[(index - 1 + count) % count] ?? null;
   const nextItem = items[(index + 1) % count] ?? null;
 
-  if (loading) return null;
+  // Don't render if no items at all (not even local fallback)
+  if (count === 0) return null;
+  
+  // Show loading state but still render with local data
+  // This ensures the component appears immediately
   if (!active) return null;
 
   return (

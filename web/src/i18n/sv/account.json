@@ -3,6 +3,7 @@
     "enter": "Gå in i Volturiano",
     "guestSubtitle": "Välj hur du vill fortsätta",
     "garage": "Mitt garage",
+    "volturianoWorld": "Volturiano World",
     "settings": "Kontoinställningar",
     "signOut": "Logga ut",
     "signingOut": "Loggar ut…",
@@ -46,7 +47,58 @@
   },
   "garage": {
     "title": "Mitt garage",
-    "subtitle": "Sparade konfigurationer visas här. Koppla kontot via konfiguratorn för att kurera din personliga Volturiano-uppställning."
+    "subtitle": "Sparade konfigurationer visas här. Koppla kontot via konfiguratorn för att kurera din personliga Volturiano-uppställning.",
+    "lanes": {
+      "savedBuilds": "Sparade byggen",
+      "purchases": "Köp",
+      "prototypes": "Prototyper",
+      "wishlist": "Önskelista"
+    },
+    "empty": {
+      "default": "Inga objekt ännu",
+      "saved": "Inga sparade byggen ännu. Skapa din första konfiguration i konfiguratorn.",
+      "purchased": "Inga köp ännu. Dina slutförda beställningar visas här.",
+      "prototype": "Inga prototyper ännu. Prototypbyggen visas här.",
+      "wishlist": "Din önskelista är tom. Lägg till konfigurationer du överväger."
+    },
+    "filters": {
+      "state": "Filtrera efter status",
+      "allStates": "Alla statusar",
+      "search": "Sök",
+      "searchPlaceholder": "Sök efter titel eller beskrivning...",
+      "dateRange": "Datumintervall",
+      "allTime": "All tid",
+      "last7Days": "Senaste 7 dagarna",
+      "last30Days": "Senaste 30 dagarna",
+      "last90Days": "Senaste 90 dagarna",
+      "lastYear": "Senaste året",
+      "dateField": "Filtrera efter",
+      "createdAt": "Skapad datum",
+      "updatedAt": "Uppdaterad datum",
+      "priceMin": "Minpris",
+      "priceMax": "Maxpris",
+      "priceMinPlaceholder": "Min (EUR)",
+      "priceMaxPlaceholder": "Max (EUR)"
+    },
+    "actions": {
+      "edit": "Redigera",
+      "delete": "Radera"
+    },
+    "save": {
+      "saveToGarage": "Spara till garage",
+      "saving": "Sparar...",
+      "saved": "Sparat!",
+      "error": "Fel",
+      "requiresLogin": "Vänligen logga in för att spara konfigurationer till ditt garage."
+    },
+    "confirmDelete": "Är du säker på att du vill radera detta objekt?",
+    "error": {
+      "loadFailed": "Kunde inte ladda garage-objekt"
+    }
+  },
+  "volturianoWorld": {
+    "title": "Volturiano World",
+    "subtitle": "Volturiano World är platsen där ägare låser upp skräddarsydda verktyg och upplevelser för sina bilar. Inga bilar under ditt ägarskap ännu – försök igen en annan gång."
   },
   "profile": {
     "title": "Kontoinställningar",

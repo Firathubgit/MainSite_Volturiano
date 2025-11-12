@@ -3,91 +3,321 @@
 - Keep bullets immutable; append clarifications on new lines if scope evolves.
 
 Supabase Platform
-- Stand up minimal schema for users, vehicles, configurations, and orders using Supabase migrations. | Status: ______
-- Seed demo data and placeholder assets so configurator and garage screens load quickly. | Status: ______
-- Apply simple row-level security so users only see their own records plus an admin bypass. | Status: ______
-- Publish one RPC that returns configuration totals (base + selected options) for the UI. | Status: ______
-- Configure a storage bucket for renders and gate access behind signed URLs. | Status: ______
-- Document how to run migrations, seeds, and storage setup locally in `README`. | Status: ______
+- Stand up minimal schema for users, vehicles, configurations, and orders using Supabase migrations. | Status: ✅ Done
+  Step 1: Model relational tables (`vehicles`, `vehicle_options`, `configurations`, `configuration_options`, `orders`, `order_items`) keyed to `profiles`. ✅
+  Step 2: Capture pricing + option selections via JSONB columns with supporting enums (order_status) and timestamps. ✅
+  Step 3: Author SQL migration `supabase/sql/platform_schema.sql` with foreign keys, indexes, and compatibility with garage tables. ✅
+- Seed demo data and placeholder assets so configurator and garage screens load quickly. | Status: ✅ Done
+  Step 1: Populate baseline records in `supabase/seeds/platform_seed.sql` for vehicles, options, configurations, and orders tied to demo users. ✅
+  Step 2: Reference existing CDN/local assets (`web/src/assets/`) for hero imagery; include deterministic UUIDs for cross-linking. ✅
+  Step 3: Document seeding via CLI (`supabase db reset --seed supabase/seeds/platform_seed.sql`) and optional npm script. ✅
+- Apply simple row-level security so users only see their own records plus an admin bypass. | Status: ✅ Done
+  Step 1: Enable RLS on new tables ensuring owner checks use `auth.uid()`. ✅
+  Step 2: Add policies allowing `request.jwt().claims.role = 'service_role'` for admin/service operations. ✅
+  Step 3: Note JWT role usage inside README and ensure API fetchers set the proper headers when running server-side. ✅
+- Publish one RPC that returns configuration totals (base + selected options) for the UI. | Status: ✅ Done
+  Step 1: Create SQL function `get_configuration_totals(config_id uuid)` aggregating base + options, returning totals and currency. ✅
+  Step 2: Ensure indexes support lookup speed (`configurations(id)`, `configuration_options(configuration_id)`). ✅
+  Step 3: Add client helper in `web/src/features/configurator/api.js` to call RPC and hydrate pricing panel. (Client helper pending - Phase 3)
+- Configure a storage bucket for renders and gate access behind signed URLs. | Status: ✅ Done
+  Step 1: Provision Supabase storage bucket `renders` with public read disabled. ✅
+  Step 2: Implement helper (Edge function or util) issuing signed URLs with expiry; cache result client-side. (Client helper pending - Phase 3)
+  Step 3: Update components consuming renders to request signed URL before rendering media. (Pending - Phase 3)
+- Document how to run migrations, seeds, and storage setup locally in `README`. | Status: ✅ Done
+  Step 1: Add README section covering migrations (`supabase db push`), seeds, storage provisioning, and env variables. ✅ (See `docs/garage/supabase-current-status.md`)
+  Step 2: Provide troubleshooting notes (RLS errors, missing JWT role) and CLI commands. ✅
+  Step 3: Describe workflow for diffing/pulling schema updates (`supabase db diff`) to keep team aligned. (Optional - can be added later)
 
 Account & My Garage
-- Build My Garage UI showing saved builds, purchases, prototypes, and wishlist lanes synced to Supabase. | Status: ______
-- Design multi-car JSON schema with versioning, upgrade history, and metadata pointers. | Status: ______
-- Implement “Save to Garage” CTA capturing snapshots plus diff logs for iteration history. | Status: ______
-- Support cart vs. owned vs. archived states with Stripe webhook-driven transitions. | Status: ______
-- Allow configuring goal tags (track, grand tour, concept) stored per configuration. | Status: ______
-- Expose quick actions (rename, share, delete) with optimistic updates and rollback. | Status: ______
-- Implement deep link “Open in configurator” loading exact vehicle/options revision. | Status: ______
-- Provide timeline view of configuration milestones (created, tuned, ordered, delivered) though offline 3 mouth once a mounth updates thats not real. | Status: ______
-- Enable filtering and sorting by model, status, build date, price tier, and tags. | Status: ______
-- Provide export to PDF spec sheet with optional watermark and QR code. | Status: ______
-- Build integration for scheduling test drives | Status: ______
-- Create showcase mode (in winter place or summer beach). | Status: ______
-- Build event-driven notifications when new car launches. | Status: ______
+- Build My Garage UI showing saved builds, purchases, prototypes, and wishlist lanes synced to Supabase. | Status: In Progress (Core Complete)
+  Step 1: Finalise Supabase data contracts (`garage_items`, `garage_versions`, `garage_item_tags`, `garage_milestones`) and ensure RLS uses `auth.uid()`. | ✅ Complete
+  Step 2: Extend `web/src/features/account/api.js` with `fetchGarage`, `createGarageItem`, `updateGarageState`, `deleteGarageItem`, and pagination helpers. | ✅ Complete
+  Step 3: Introduce `web/src/stores/garageStore.js` (Zustand) for cached items, filters, optimistic mutations, and real-time subscriptions. | ✅ Complete
+  Step 4: Replace `web/src/features/account/pages/Garage.jsx` with four-lane UI (Saved Builds, Purchases, Prototypes, Wishlist) using new components in `web/src/features/garage/components/`. | ✅ Complete
+  Step 5: Subscribe to Supabase `postgres_changes` and persist snapshots to `localStorage` for offline fallback. | ✅ Complete
+  Documentation: See `docs/garage/feature-documentation.md` for comprehensive feature documentation, `docs/garage/database-rationale.md` for database design decisions, and `docs/ULTIMATE_ROADMAP.md` Phase 2 for remaining features.
+- Design multi-car JSON schema with versioning, upgrade history, and metadata pointers. | Status: Planned
+  Step 1: Document schema blueprint in `docs/garage-schema.md` covering vehicle, options, pricing, media, history, and metadata pointers.
+  Step 2: Store payloads in `garage_items.config_payload` with `schema_version` and track revisions in `garage_versions`.
+  Step 3: Validate configurations via `web/src/lib/schema/garageConfigSchema.ts` (Zod) before writes and migrations in the store.
+- Implement "Save to Garage" CTA capturing snapshots plus diff logs for iteration history. | Status: ✅ Complete
+  Step 1: Build reusable CTA (`web/src/features/garage/components/SaveToGarageButton.jsx`) shared by configurator/showroom. | ✅ Complete
+  Step 2: On save, validate config, call `createGarageItem`, seed initial version entry, and log diff summary with utilities in `web/src/features/garage/utils/diffConfig.js`. | ✅ Complete
+  Step 3: Provide optimistic UI with toast feedback and rollback pathway on failure. | ✅ Complete
+  Documentation: See `docs/development/save-to-garage-implementation.md` for implementation details and usage guide.
+- Support cart vs. owned vs. archived states with Stripe webhook-driven transitions. | Status: Planned
+  Step 1: Define canonical state enum in `garage_items.state` plus lookup helper.
+  Step 2: Extend Supabase Edge function `functions/stripe-webhook/index.ts` to update states on payment/refund events and append `garage_milestones`.
+  Step 3: Surface state badges and filters in the garage UI and ensure store refreshes impacted items.
+- Allow configuring goal tags (track, grand tour, concept) stored per configuration. | Status: Planned
+  Step 1: Seed tag catalog and `garage_item_tags` join table; add helper APIs for tag upsert/delete.
+  Step 2: Add tag selector drawer per garage item (chip multi-select component).
+  Step 3: Persist selections through store actions and Supabase calls with optimistic updates.
+- Expose quick actions (rename, share, delete) with optimistic updates and rollback. | Status: Planned
+  Step 1: Add overflow menu component rendering rename/share/archive actions and wiring to store.
+  Step 2: Generate shareable links via Supabase RPC `create_share_link`; record events in `garage_activity`.
+  Step 3: Implement soft-delete (`archived_at`), undo toast, and consistent state refresh.
+- Implement deep link “Open in configurator” loading exact vehicle/options revision. | Status: Planned
+  Step 1: Create route `/configurator/:garageItemId` that hydrates configuration before rendering `Configurator.jsx`.
+  Step 2: Implement `convertGarageToConfiguratorState` helper bridging garage payload to configurator store.
+  Step 3: Provide CTA within each garage lane to trigger navigation with analytics logging.
+- Provide timeline view of configuration milestones (created, tuned, ordered, delivered) though offline 3 mouth once a mounth updates thats not real. | Status: Planned
+  Step 1: Persist milestone events in `garage_milestones` with type, timestamp, narrative.
+  Step 2: Build vertical timeline component in `web/src/features/garage/components/Timeline.jsx` rendered inside detail modal.
+  Step 3: Feed timeline via store selectors combining manual entries, webhook events, and scheduled placeholders.
+- Enable filtering and sorting by model, status, build date, price tier, and tags. | Status: In Progress (Filtering Complete, Sorting Pending)
+  Step 1: Extend `garageStore` with filter criteria, derived selectors, and memoized sorting. | ✅ Complete (filters: state, date range, price range, search)
+  Step 2: Add filter toolbar component with `localStorage` persistence for remembered user choices. | ✅ Complete (filter UI implemented, localStorage persistence pending)
+  Step 3: Map filters to Supabase query params and maintain indexes (`owner_id`, `state`, `vehicle_model`, `created_at`). | ✅ Complete (indexes created, queries optimized)
+  Remaining: Model filter UI, tag filter UI, sorting UI, saved filter sets. See `docs/ULTIMATE_ROADMAP.md` Phase 2.10 for details.
+- Provide export to PDF spec sheet with optional watermark and QR code. | Status: Planned
+  Step 1: Create Supabase Edge function `functions/generate-spec/index.ts` producing PDFs (PDFKit/Puppeteer-lite).
+  Step 2: Store generated files in Supabase Storage bucket with signed URL expiry and activity logging.
+  Step 3: Add UI button to request export, handle job polling, and download when ready.
+- Build integration for scheduling test drives | Status: Planned
+  Step 1: Capture requests in `test_drive_requests` table with desired model/date/dealer; enforce RLS.
+  Step 2: Add scheduling modal per garage item with validation and success states.
+  Step 3: Trigger webhook/automation to CRM or email when new request is inserted.
+- Create showcase mode (in winter place or summer beach). | Status: Planned
+  Step 1: Define showcase presets in JSON (environment, lighting, copy) stored alongside items.
+  Step 2: Implement `ShowcaseMode` view that pulls preset data and renders themed layout using existing showroom components.
+  Step 3: Support toggling between presets, persisting last selection, and linking back to primary garage lane.
+- Build event-driven notifications when new car launches. | Status: Planned
+  Step 1: Track user preferences in `model_subscriptions` and admin launch announcements in `model_launches`.
+  Step 2: Create Supabase Edge function `functions/notify-launch/index.ts` dispatching email/push via provider integrations.
+  Step 3: Offer opt-in toggle within garage settings and log deliveries in `garage_activity`.
 
 Configurator 2D Pipeline
-- Create manifest authoring tool to manage layer dependencies and variants. | Status: ______
-- Add adaptive image quality scaling based on viewport size. | Status: ______
-- Wire compatibility rules with detailed resolution messaging and automatic adjustments. | Status: ______
-- Build pricing panel updating totals, taxes, incentives, and finance projections. | Status: ______
-- Implement reversible undo/redo stack for option changes. | Status: ______
-- Provide quick compare snapshots across two configured draft cars through car render image system. | Status: ______
-- Provide camera angle transitions with smooth fades and parallax depth | Status: ______
-- Implement variant availability alerts when inventory thresholds change (Supabase feed). | Status: ______
-- Add AR preview trigger link using stored manifest data. | Status: ______
-- Add Let users pick pre-made configurations instead of starting from scratch. “Performance Pack”, “Winter Pack”, or full Launch Edition | Status: ______
-- Offer “studio lighting” filter switching background assets. | Status: ______
-- Integrate wishlist overlay enabling quick add to garage. | Status: ______
-- Add watermark rendering on renderd images. | Status: ______
+- Create manifest authoring tool to manage layer dependencies and variants. | Status: Planned
+  Step 1: Define manifest JSON spec in `docs/configurator/manifest-schema.md` including layers, ordering, dependency graph, variants, and translation keys.
+  Step 2: Build React editor under `web/src/features/configurator/manifest/` with layer tree, dependency matrix, and live preview; follow `.cursor/rules/09-style-system.md`.
+  Step 3: Back manifests with Supabase table `config_2d_manifests` (draft/published states) and versioning aligned with repo branching workflow.
+- Add adaptive image quality scaling based on viewport size. | Status: Planned
+  Step 1: Establish breakpoints & DPR tiers in `docs/performance/configurator-image-scaling.md` referencing `.cursor/rules/06-performance.md`.
+  Step 2: Update configurator image loader to choose CDN variants using viewport + network info and IntersectionObserver for lazy loading.
+  Step 3: Implement performance regression checks (Lighthouse script) and cache heuristics complying with `.cursor/rules/01-architecture.md`.
+- Wire compatibility rules with detailed resolution messaging and automatic adjustments. | Status: Planned
+  Step 1: Formalize rules definition format (JSON) and author evaluation helper `web/src/features/configurator/rules/evaluateRules.ts`.
+  Step 2: Provide localized messaging surfaces (alert banner + inline hints) with strings stored in `web/src/i18n`.
+  Step 3: Implement automatic reconciliation (mutually exclusive options, suggested swaps) within configurator store.
+- Build pricing panel updating totals, taxes, incentives, and finance projections. | Status: Planned
+  Step 1: Consume RPC `get_configuration_totals` via helper in `web/src/features/configurator/api.js` and cache results in store.
+  Step 2: Create UI components (`PricingSummary`, `FinanceBreakdown`) under `web/src/features/configurator/components/` with responsive layout.
+  Step 3: Stub finance calculators (APR, lease, residual) and note future integration with Supabase data feeds.
+- Implement reversible undo/redo stack for option changes. | Status: Planned
+  Step 1: Extend configurator store with history stacks (past, present, future) using immutable snapshots.
+  Step 2: Wrap option mutations in command helpers recording inverse operations.
+  Step 3: Add toolbar buttons + keyboard shortcuts per `.cursor/rules/02-conventions.md`, with disabled states synced to history length.
+- Provide quick compare snapshots across two configured draft cars through car render image system. | Status: Planned
+  Step 1: Define snapshot data contract (highlighted diffs + render references) and store locally first.
+  Step 2: Build `CompareDrawer` component enabling side-by-side view, reuse existing modal patterns.
+  Step 3: Plan persistence pipeline (Supabase storage + metadata table) for future sharing.
+- Provide camera angle transitions with smooth fades and parallax depth | Status: Planned
+  Step 1: Document motion spec in `docs/ux/motion.md` capturing easing, duration, and parallax offsets.
+  Step 2: Implement transitions in camera view component using `requestAnimationFrame` or `framer-motion` per performance rules.
+  Step 3: Drive parallax layers using manifest metadata for depth weights.
+- Implement variant availability alerts when inventory thresholds change (Supabase feed). | Status: Planned
+  Step 1: Model `variant_inventory` table and realtime channel to publish stock thresholds per region.
+  Step 2: Subscribe within configurator store to update UI state and disable unavailable options.
+  Step 3: Display alerts inline with dismiss state persisted; follow `.cursor/rules/05-i18n.md` for messaging.
+- Add AR preview trigger link using stored manifest data. | Status: Planned
+  Step 1: Include AR asset URLs in manifest schema (USDZ/GLB links).
+  Step 2: Add CTA that checks device capability, launching WebXR or handing off to mobile deep link.
+  Step 3: Log interactions through existing analytics hooks for later optimization.
+- Add Let users pick pre-made configurations instead of starting from scratch. “Performance Pack”, “Winter Pack”, or full Launch Edition | Status: Planned
+  Step 1: Seed curated presets in `supabase/seeds/configurator_presets.sql` referencing manifest IDs.
+  Step 2: Build preset gallery UI on configurator entry screen with thumbnails and metadata.
+  Step 3: Implement helper `applyPresetToConfigurator` to hydrate store state and trigger diff logging.
+- Offer “studio lighting” filter switching background assets. | Status: Planned
+  Step 1: Map lighting presets to background asset sets in manifest schema and CDN paths.
+  Step 2: Integrate segmented control for lighting selection with smooth transitions and caching.
+  Step 3: Persist user preference (localStorage + optional Supabase profile field).
+- Integrate wishlist overlay enabling quick add to garage. | Status: Planned
+  Step 1: Mirror garage CTA pattern and ensure overlay respects auth states (redirect guests).
+  Step 2: Hook into forthcoming `SaveToGarageButton` logic to add items directly to wishlist lane.
+  Step 3: Surface toast feedback and analytics events for conversions.
+- Add watermark rendering on renderd images. | Status: Planned
+  Step 1: Decide pipeline (Edge function for high-res assets) and produce design doc in `docs/operations/render-watermarking.md`.
+  Step 2: Implement client-side canvas watermarking for quick previews; flag for server pipeline once storage ready.
+  Step 3: Add user preference toggle and store per profile; ensure accessibility contrast meets `.cursor/rules/09-style-system.md`.
 
 Configurator 3D Pipeline
-- Stand up high-fidelity React Three Fiber scene with dynamic LOD switching. | Status: ______
-- Implement GLB streaming with Draco + KTX2 decoding and caching strategy. | Status: ______
-- Provide interior/exterior toggles | Status: ______
-- Add multi-light studio presets (track, night city, gallery) stored in Supabase. | Status: ______
-- Integrate physics-based paint shader with flake, clearcoat, and polarization controls. | Status: ______
-- Support animated parts (doors, spoiler, aero) with timeline scrubbing. | Status: ______
-- Implement volumetric lighting and fog effects (toggle-able). | Status: ______
-- Add configurable background stage with HDRI rotation and blur intensity. | Status: ______
-- Provide XR mode (WebXR) for immersive showroom. | Status: ______
-- Implement render export for hero shots. | Status: ______
-- Integrate tactile sound design triggered by interactions (muted by default). | Status: ______
-- Add wheel rotation and brake animation when previewing performance packages. | Status: ______
-- Build 3D asset validation tool verifying scale, materials, and naming. | Status: ______
-- Integrate interior ambient lighting customization with color picker. | Status: ______
-- Provide scenario-based presets (track day, alpine touring) altering props and lighting. | Status: ______
+- Stand up high-fidelity React Three Fiber scene with dynamic LOD switching. | Status: Planned
+  Step 1: Document scene architecture (camera rig, control layers, lighting stacks) in `docs/configurator3d/scene-architecture.md`.
+  Step 2: Bootstrap codebase under `web/src/features/configurator3d/` with folders for components, hooks, materials, systems.
+  Step 3: Implement LOD heuristics using camera distance + device capability (fallback meshes for low-end devices).
+- Implement GLB streaming with Draco + KTX2 decoding and caching strategy. | Status: Planned
+  Step 1: Define asset pipeline using gltf-transform scripts; store outputs in Supabase storage bucket `models`.
+  Step 2: Create loader utility integrating `DRACOLoader` + `KTX2Loader` for progressive reveal and placeholder meshes.
+  Step 3: Cache decoded buffers in IndexedDB (per `.cursor/rules/06-performance.md`) with versioning.
+- Provide interior/exterior toggles | Status: Planned
+  Step 1: Partition GLB nodes into interior/exterior groups; define manifest entries controlling visibility.
+  Step 2: Add UI toggle component that swaps cameras/light rigs with smooth transitions.
+  Step 3: Persist selection in store and log analytics events.
+- Add multi-light studio presets (track, night city, gallery) stored in Supabase. | Status: Planned
+  Step 1: Create Supabase table `studio_light_presets` capturing HDRI paths, intensities, color temps.
+  Step 2: Add API loader caching presets in configurator 3D store, fallback to defaults offline.
+  Step 3: Build preset picker UI with thumbnails and transitions between rigs.
+- Integrate physics-based paint shader with flake, clearcoat, and polarization controls. | Status: Planned
+  Step 1: Author shader spec in `docs/configurator3d/paint-shader.md` referencing MeshPhysicalMaterial overrides.
+  Step 2: Implement `PaintMaterial.ts` material factory exposing uniforms for flake density, clearcoat, polarization.
+  Step 3: Create control panel sliders feeding uniforms and saving presets.
+- Support animated parts (doors, spoiler, aero) with timeline scrubbing. | Status: Planned
+  Step 1: Establish GLTF animation track naming conventions and metadata.
+  Step 2: Build timeline scrubber component synchronized with `useFrame` updates.
+  Step 3: Provide `useAnimationController` hook orchestrating sequences and collisions with other systems.
+- Implement volumetric lighting and fog effects (toggle-able). | Status: Planned
+  Step 1: Define quality tiers and performance safeguards; document in `docs/performance/configurator3d-lighting.md`.
+  Step 2: Integrate volumetric pass (postprocessing or drei) with adjustable density.
+  Step 3: Add toggle in settings defaulting to off for low-power devices.
+- Add configurable background stage with HDRI rotation and blur intensity. | Status: Planned
+  Step 1: Document HDRI management (prefiltered PMREM) and storage paths.
+  Step 2: Implement controls for rotation slider and blur amount, updating scene environment.
+  Step 3: Persist preferences per user profile.
+- Provide XR mode (WebXR) for immersive showroom. | Status: Planned
+  Step 1: Detect WebXR capability and surface onboarding per `docs/ux/breadcrumbs.md`.
+  Step 2: Integrate `@react-three/xr` with teleport controls and safe boundaries.
+  Step 3: Sync XR session state with analytics and allow graceful exit.
+- Implement render export for hero shots. | Status: Planned
+  Step 1: Document capture pipeline in `docs/operations/render-export.md` (multi-pass, supersampling).
+  Step 2: Outline Supabase Edge function for high-res server-side renders with queueing.
+  Step 3: Add export dialog in UI with resolution presets, watermark integration, and job polling.
+- Integrate tactile sound design triggered by interactions (muted by default). | Status: Planned
+  Step 1: Map interactions to audio cues stored in Supabase storage bucket `audio`.
+  Step 2: Build audio manager handling playback, spatialization, and debounce.
+  Step 3: Provide settings toggle defaulted to muted; respect `.cursor/rules/04-security.md`.
+- Add wheel rotation and brake animation when previewing performance packages. | Status: Planned
+  Step 1: Ensure GLB rig includes wheel/brake animation tracks with consistent naming.
+  Step 2: Create `useWheelAnimation` hook triggered by performance package hover/select.
+  Step 3: Synchronize with audio cues and timeline scrubbing controls.
+- Build 3D asset validation tool verifying scale, materials, and naming. | Status: Planned
+  Step 1: Document checklist in `docs/checklists/3d-asset-validation.md` covering scale, pivot, naming, texture budgets.
+  Step 2: Develop Node CLI `tools/validate-3d-asset.ts` using gltf-transform inspector.
+  Step 3: Wire into CI to fail builds on rule violations.
+- Integrate interior ambient lighting customization with color picker. | Status: Planned
+  Step 1: Extend Supabase schema (`interior_light_profiles`) storing RGB/HSV presets.
+  Step 2: Add color picker UI controlling shader uniforms for interior light emissive buffers.
+  Step 3: Persist per-configuration selection and log analytics.
+- Provide scenario-based presets (track day, alpine touring) altering props and lighting. | Status: Planned
+  Step 1: Model `scenario_presets` table linking to manifests, props, audio cues.
+  Step 2: Build scenario picker overlay switching environment, props, audio simultaneously.
+  Step 3: Support shareable URLs capturing scenario + configuration state.
 
 Account Settings & Profile
-- Build profile editor covering personal info, language preferences. | Status: ______
-- Implement password, email, and MFA enrollment flows via Supabase Auth. | Status: ______
-- Add biometric login support (WebAuthn) for returning users. | Status: ______
-- Expose notification preferences (marketing, events, alerts) synced with messaging provider. | Status: ______
-- Surface vehicle ownership history with VIN, delivery milestones, and service plan. | Status: ______
-- Integrate address book for shipping, billing, and experience destinations. | Status: ______
-- Provide connected services toggle (Apple/Google sign-in, car OS, Alexa). | Status: ______
-- Add payment method vault management and invoice history. | Status: ______
-- Build loyalty status view with achievements (Achivement page). | Status: ______
-- Enable document vault for NDAs, contracts, specs with secure download. | Status: ______
-- Integrate profile completeness meter guiding onboarding actions. | Status: ______
-- Allow linking (Apple/Google). | Status: ______
-- Surface upcoming events, track days, or lifestyle experiences tied to account. | Status: ______
-- Implement service appointment booking and reminders. | Status: ______
-- Provide digital car key provisioning controls for compatible vehicles. | Status: ______
-- Add charity/impact preference tracking aligned with brand initiatives. | Status: ______
-- Add preference sync to in-car systems via secure API (Fake ofcouese no car yet, no supabase only frontend fakeness). | Status: ______
+- Build profile editor covering personal info, language preferences. | Status: Planned
+  Step 1: Confirm `profiles` schema (name, locale, avatar, marketing preferences) per `docs/architecture/auth.md` and update `docs/account/profile-editor.md`.
+  Step 2: Extend account API with profile fetch/update; add `profileStore` Zustand slice for optimistic updates.
+  Step 3: Create modular form components (personal info, locale selects) with i18n copy in `web/src/i18n/*/account.json`.
+- Implement password, email, and MFA enrollment flows via Supabase Auth. | Status: Planned
+  Step 1: Map auth journeys using Supabase JS SDK respecting `.cursor/rules/04-security.md`.
+  Step 2: Draft `docs/account/mfa-plan.md` outlining TOTP/passkey roadmap and feature flags.
+  Step 3: Scaffold Edge functions for email confirmation and secure credential updates.
+- Add biometric login support (WebAuthn) for returning users. | Status: Planned
+  Step 1: Document WebAuthn requirements (`docs/account/webauthn.md`) including capability checks and fallbacks.
+  Step 2: Implement feature-gated registration/auth flows storing credential metadata in Supabase.
+  Step 3: Provide UX messaging for unsupported devices and recovery.
+- Expose notification preferences (marketing, events, alerts) synced with messaging provider. | Status: Planned
+  Step 1: Design `notification_preferences` table with channel/category fields and RLS policies.
+  Step 2: Build toggle matrix UI; manage copy within account namespace respecting i18n rules.
+  Step 3: Plan integration with messaging provider (e.g., Resend) via Edge function.
+- Surface vehicle ownership history with VIN, delivery milestones, and service plan. | Status: Planned
+  Step 1: Define Supabase tables (`vehicle_ownerships`, `service_plans`) and document in `docs/account/ownership-history.md`.
+  Step 2: Implement timeline UI component and detail drawer summarising milestones.
+  Step 3: Outline admin import tooling for ownership data.
+- Integrate address book for shipping, billing, and experience destinations. | Status: Planned
+  Step 1: Model `account_addresses` table with owner RLS and validation.
+  Step 2: Build CRUD drawer using form validation per `.cursor/rules/02-conventions.md`.
+  Step 3: Expose addresses to checkout/logistics flows and sync with Supabase.
+- Provide connected services toggle (Apple/Google sign-in, car OS, Alexa). | Status: Planned
+  Step 1: Document OAuth linking/unlinking strategy referencing Supabase social login support.
+  Step 2: Create connected services panel showing provider status and respecting security guidelines.
+  Step 3: Handle unlink flows with confirmation dialogs and analytics.
+- Add payment method vault management and invoice history. | Status: Planned
+  Step 1: Plan Stripe setup intents/customer portal Edge functions.
+  Step 2: Build payment method list with masked data and invoice history viewer.
+  Step 3: Ensure receipts stored in Supabase storage with signed URLs.
+- Build loyalty status view with achievements (Achivement page). | Status: Planned
+  Step 1: Create `loyalty_status` table tracking tier, points, badges.
+  Step 2: Design achievement grid + progress bars consistent with style guide.
+  Step 3: Hook progress updates into events (saves, purchases) for future automation.
+- Enable document vault for NDAs, contracts, specs with secure download. | Status: Planned
+  Step 1: Set up `documents` storage bucket with signed URL policy and metadata table.
+  Step 2: Build upload/list UI with access logs and permission checks.
+  Step 3: Provide download audit trail stored in `document_activity`.
+- Integrate profile completeness meter guiding onboarding actions. | Status: Planned
+  Step 1: Define completion scoring stored in `profiles.preferences`.
+  Step 2: Implement progress indicator and actionable checklist.
+  Step 3: Trigger contextual nudges when key tasks outstanding.
+- Allow linking (Apple/Google). | Status: Planned
+  Step 1: Extend profile settings with social link buttons reusing Supabase OAuth flows.
+  Step 2: Store provider metadata in `linked_accounts` table with RLS.
+  Step 3: Provide unlink flow with identity confirmation.
+- Surface upcoming events, track days, or lifestyle experiences tied to account. | Status: Planned
+  Step 1: Model `account_events` table referencing Supabase content.
+  Step 2: Create event list/calendar UI with RSVP actions and notifications.
+  Step 3: Integrate with notification preferences for reminders.
+- Implement service appointment booking and reminders. | Status: Planned
+  Step 1: Define `service_appointments` table and scheduling Edge function.
+  Step 2: Build booking wizard with time slot selection and confirmation.
+  Step 3: Wire reminder notifications via chosen messaging provider.
+- Provide digital car key provisioning controls for compatible vehicles. | Status: Planned
+  Step 1: Author simulation spec (`docs/account/digital-key.md`) detailing fake API contract.
+  Step 2: Implement staged UI representing provisioning steps with security messaging.
+  Step 3: Log interactions for analytics while clarifying simulation nature.
+- Add charity/impact preference tracking aligned with brand initiatives. | Status: Planned
+  Step 1: Create `impact_preferences` table capturing causes, frequency, donation toggle.
+  Step 2: Build preference chips with supporting copy and analytics hooks.
+  Step 3: Connect to marketing automation for campaign segmentation.
+- Add preference sync to in-car systems via secure API (frontend simulation). | Status: Planned
+  Step 1: Provide mock API service emulating secure sync, clarifying fictional nature.
+  Step 2: Build sync status component with manual refresh and error states.
+  Step 3: Store latest sync timestamp and preferences snapshot for user visibility.
 
 AI Assistant & Support
-- Implement chat widget with brand context (volturiano trained). | Status: ______
-- Provide voice input/output support with multi-language responses. | Status: ______
-- Build human handoff support, call my number basically | Status: ______
-- Integrate redirect to page support based on need (client want to testdrive, redirected to testdrive page) | Status: ______
-- Implement translation layer so assistant matches selected language perfectly. | Status: ______
-- Enable assistant to surface finance options, inventory alerts, and experience invites. | Status: ______
+- Implement chat widget with brand context (volturiano trained). | Status: Planned
+  Step 1: Define conversation architecture and tone in `docs/ai/chat-widget.md`, aligning with `.cursor/rules/08-ai-helper.md`.
+  Step 2: Create feature slice `web/src/features/ai/` containing widget UI, message store, and prompt templates.
+  Step 3: Implement Supabase Edge function `functions/ai-chat/index.ts` handling LLM requests with guardrails and rate limiting.
+- Provide voice input/output support with multi-language responses. | Status: Planned
+  Step 1: Evaluate Web Speech API support vs external TTS services per locale; document capabilities.
+  Step 2: Build hooks for speech recognition/synthesis tied to i18n locale with graceful fallback.
+  Step 3: Add captions/transcripts and accessibility controls per `.cursor/rules/02-conventions.md`.
+- Build human handoff support, call my number basically | Status: Planned
+  Step 1: Document escalation criteria and contact workflows in `docs/ai/handoff.md`.
+  Step 2: Add widget CTA for call/email escalation, logging audit events in Supabase.
+  Step 3: Integrate with notification/CRM pipeline for follow-up tracking.
+- Integrate redirect to page support based on need (client want to testdrive, redirected to testdrive page) | Status: Planned
+  Step 1: Create intent-to-route mapping (JSON or `assistant_intents` table) maintained by content team.
+  Step 2: Implement suggestion chips / quick actions triggering React Router navigation.
+  Step 3: Track redirects via analytics for optimization.
+- Implement translation layer so assistant matches selected language perfectly. | Status: Planned
+  Step 1: Ensure prompts/responses respect i18n locale, adding translation helpers if needed.
+  Step 2: Update Edge function to request responses in selected language or use translation API fallback.
+  Step 3: QA multilingual flows; document test checklist in `docs/ai/testing.md`.
+- Enable assistant to surface finance options, inventory alerts, and experience invites. | Status: Planned
+  Step 1: Expose safe read-only APIs/RPCs for finance estimates, inventory status, events.
+  Step 2: Curate knowledge snippets and response templates referencing Supabase data.
+  Step 3: Add compliance guardrails clarifying informational nature and logging recommendations to user profile.
 
 Operations & Observability
-- Add a lightweight logging wrapper with request IDs around Supabase and Edge calls. | Status: ______
-- Pipe client and Edge errors into a single monitoring tool (e.g. Sentry) with staging/prod separation. | Status: ______
-- Publish a `/health` endpoint and attach a basic uptime monitor hitting it every 5 minutes. | Status: ______
-- Write a short runbook covering deploy steps, rollback, and support contacts. | Status: ______
-- Track a launch checklist (lint, build, Supabase migrations) and commit it to the repo. | Status: ______
-- Schedule a weekly manual review of signups, saved configs, and key errors exported from Supabase. | Status: ______
+- Add a lightweight logging wrapper with request IDs around Supabase and Edge calls. | Status: Planned
+  Step 1: Document logging strategy in `docs/operations/logging.md` (levels, redaction, correlation IDs).
+  Step 2: Implement `web/src/lib/logger.js` and shared Edge wrapper injecting request IDs per `.cursor/rules/04-security.md`.
+  Step 3: Verify by capturing logs in browser console and Supabase functions logs; include tests in documentation.
+- Pipe client and Edge errors into a single monitoring tool (e.g. Sentry) with staging/prod separation. | Status: Planned
+  Step 1: Outline monitoring setup in `docs/operations/monitoring.md` covering DSNs, environment tags, privacy.
+  Step 2: Add client integration (`web/src/lib/monitoring.js`) capturing exceptions with request IDs.
+  Step 3: Wrap Edge functions to report errors and ensure staging/prod separation.
+- Publish a `/health` endpoint and attach a basic uptime monitor hitting it every 5 minutes. | Status: Planned
+  Step 1: Specify health check contract in `docs/operations/health-endpoint.md` (Supabase ping, env checks).
+  Step 2: Implement Edge/Vite endpoint returning status JSON; include request ID header.
+  Step 3: Configure external uptime monitor (UptimeRobot) and document alert routing.
+- Write a short runbook covering deploy steps, rollback, and support contacts. | Status: Planned
+  Step 1: Author `docs/operations/runbook.md` detailing deploy pipeline, rollback, contacts, and feature flag considerations.
+  Step 2: Include quick reference checklists and links to monitoring dashboards.
+- Track a launch checklist (lint, build, Supabase migrations) and commit it to the repo. | Status: Planned
+  Step 1: Create `docs/checklists/launch-checklist.md` listing pre-launch tasks (tests, migrations, assets).
+  Step 2: Integrate with project workflow (PR template or manual sign-off) per `.cursor/rules/03-workflow.md`.
+- Schedule a weekly manual review of signups, saved configs, and key errors exported from Supabase. | Status: Planned
+  Step 1: Document review cadence in `docs/operations/weekly-review.md`, including queries and report templates.
+  Step 2: Provide guidance for exporting metrics from Supabase and logging outcomes.

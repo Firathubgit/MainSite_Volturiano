@@ -8,6 +8,7 @@ import hamburgerIcon from '../../assets/Logo/HamburgerIcon.png';
 import { useUserStore } from '../../stores/userStore';
 import { useUiStore } from '../../stores/uiStore';
 import AccountMenu from '../../features/account/components/AccountMenu';
+import { useRenderLogger } from '../../debug/useRenderLogger';
 
 export function NavBar() {
   const location = useLocation();
@@ -21,6 +22,8 @@ export function NavBar() {
   const toggleNavMenu = useUiStore((state) => state.toggleNavMenu);
   const accountMenuOpen = useUiStore((state) => state.accountMenuOpen);
   const accountButtonRef = useRef(null);
+  
+  useRenderLogger('NavBar', { pathname: location.pathname, isHome, hasSession: !!session, accountMenuOpen });
 
   useEffect(() => {
     function onScroll() {

@@ -354,7 +354,7 @@ Add a language
 --------------------------------------------------------------------
 - .cursor/rules/: architecture, conventions, workflow, security, i18n,
   performance, extensibility, ai-helper, style-system, testing-observability,
-  feature-flags.
+  feature-flags, garage-feature.
 - docs/architecture/: overview, frontend, backend, folder-structure,
   extensibility.
 - docs/performance/asset-pipeline.md
@@ -366,7 +366,46 @@ Add a language
 - docs/operations/observability.md, docs/quality/testing.md
 - docs/how-to/: add-vehicle.md, add-option.md, upload-assets.md, enable-3d.md,
   add-language.md
-- docs/roadmap.md, docs/checklists/ultimate-configurator.md, docs/future/vision.md
+- docs/roadmap.md, docs/ULTIMATE_ROADMAP.md (2000+ line comprehensive roadmap)
+- docs/checklists/ultimate-configurator.md, docs/future/vision.md
+- docs/garage/: feature-documentation.md, database-rationale.md, future-roadmap.md,
+  implementation-summary.md, supabase-setup.md, testing-guide.md
+- docs/development/: dev-loop-guide.md, context-preservation.md
+- docs/project-structure.md
+
+--------------------------------------------------------------------
+30) Documentation Index & Quick Start Guide
+--------------------------------------------------------------------
+
+For New Developers:
+1. Start Here: `docs/development/dev-loop-guide.md` - Complete setup and workflow guide
+2. Architecture: `docs/architecture/overview.md` - Understand system design
+3. Project Structure: `docs/project-structure.md` - Navigate the codebase
+4. Garage Feature: `docs/garage/feature-documentation.md` - Deep dive into garage
+5. Development Rules: `.cursor/rules/13-garage-feature.md` - Garage-specific patterns
+6. Roadmap: `docs/ULTIMATE_ROADMAP.md` - Project-wide plan
+
+For Architects:
+- `docs/architecture/` - Complete architecture documentation
+- `docs/garage/database-rationale.md` - Database design decisions
+- `docs/ULTIMATE_ROADMAP.md` - Strategic roadmap with dependencies
+
+For Operators:
+- `docs/operations/` - Operations and observability docs
+- `docs/operations/runbook.md` - Deployment and rollback procedures
+- `docs/operations/monitoring.md` - Monitoring setup
+
+For Feature Development:
+- Feature docs: `docs/[feature-name]/feature-documentation.md`
+- Development rules: `.cursor/rules/[number]-[feature].md`
+- Roadmap: `docs/ULTIMATE_ROADMAP.md` Phase [X]
+
+Documentation Philosophy:
+- Comprehensive: "Life or death for the universe" level of detail
+- Discoverable: Clear file names, organized structure, cross-referenced
+- Maintainable: Living docs, updated with code changes, monthly reviews
+- Accessible: Multiple entry points, by topic and by audience
+- Future-proof: Extension points documented, patterns established
 
 
 End of file
@@ -579,6 +618,94 @@ Internationalization Coverage
 
 Implementation Gaps (mapped to backlog)
 - Configurator logic, Supabase persistence, advanced showroom behaviors, account settings, AI concierge, and observability remain roadmap items captured in the backlog section below.
+
+--------------------------------------------------------------------
+29) Garage Feature - Comprehensive Documentation (2025-01-XX)
+--------------------------------------------------------------------
+The Garage feature has been comprehensively documented to provide ultimate context for future developers. All documentation follows a "life or death for the universe" level of detail and thoroughness.
+
+Core Documentation Files:
+- `docs/garage/feature-documentation.md` - Ultimate comprehensive feature documentation covering architecture, database design, API layer, state management, UI components, filtering, real-time sync, offline support, future extensibility, performance, security, testing, and known limitations. This is the primary reference for understanding the Garage feature.
+
+- `docs/garage/database-rationale.md` - Deep dive into database design decisions, table-by-table breakdown, index strategy, JSONB vs relational trade-offs, versioning system, soft delete pattern, RLS policies, foreign key relationships, migration strategy, and performance benchmarks. Essential reading for database architects and backend developers.
+
+- `docs/garage/future-roadmap.md` - Garage-specific feature roadmap detailing short-term (next 3 months), medium-term (3-6 months), and long-term (6+ months) planned features, integration points, and technical debt.
+
+- `docs/garage/implementation-summary.md` - Quick reference summary of what's been completed, file structure, architecture decisions, and next steps. Updated with links to comprehensive docs.
+
+- `docs/garage/supabase-setup.md` - Step-by-step Supabase setup guide with troubleshooting tips.
+
+- `docs/garage/testing-guide.md` - Testing guide for the garage feature.
+
+Development Rules:
+- `.cursor/rules/13-garage-feature.md` - Cursor-aware development rules for Garage feature including feature boundaries, code patterns, database patterns, component patterns, testing patterns, common pitfalls, extension points, performance guidelines, and security guidelines. This file ensures consistent development patterns and prevents common mistakes.
+
+Developer Guides:
+- `docs/development/dev-loop-guide.md` - Comprehensive step-by-step guide for daily development workflow including initial setup, daily workflow, feature development, database changes, API development, UI development, testing, code review, deployment, and troubleshooting. Enables new developers to contribute within 1 day.
+
+- `docs/development/context-preservation.md` - Guidelines for preserving knowledge and context including documentation standards, code comments, commit messages, PR descriptions, Architecture Decision Records (ADRs), and knowledge transfer processes. Ensures tribal knowledge doesn't get lost.
+
+Project Documentation:
+- `docs/project-structure.md` - Complete directory tree with file purposes, organization principles, naming conventions, import patterns, and future considerations. Makes the codebase navigable and understandable.
+
+Ultimate Roadmap:
+- `docs/ULTIMATE_ROADMAP.md` - Comprehensive 2000+ line strategic roadmap covering all 8 phases of development (Foundation, Supabase Platform, Garage, Configurator 2D, Configurator 3D, Account Settings, AI Assistant, Operations). Each phase includes detailed implementation steps, technical considerations, dependencies, timelines, success criteria, and architectural decisions. This is the master plan for the entire project.
+
+Current Garage Implementation Status:
+- ✅ Core UI Complete: Four-lane layout (Saved Builds, Purchases, Prototypes, Wishlist)
+- ✅ Filtering Complete: State, date range (created/updated), price range (min/max), search (title/description)
+- ✅ Real-time Sync: Supabase Realtime subscriptions working
+- ✅ Optimistic Updates: Immediate UI feedback with rollback on error
+- ✅ Offline Support: localStorage caching with 24h expiry
+- ✅ Internationalization: English and Swedish translations
+- ✅ Responsive Design: Mobile-friendly layout
+- ⏳ Pending: Edit functionality, version history UI, sharing, configurator integration, advanced features
+
+Architecture Highlights:
+- Feature-sliced architecture: Garage is self-contained
+- Zustand for state: Simple, performant, fine-grained subscriptions
+- Map data structure: O(1) lookups instead of O(n) array searches
+- Client-side search: Instant feedback, works offline
+- Server-side filters: Efficient queries for date/price
+- Soft delete pattern: Data recovery, referential integrity
+- RLS enforcement: Database-level security, explicit owner_id filters
+
+Database Design Philosophy:
+- User isolation: Every query scoped to authenticated user
+- JSONB flexibility: Schema evolution without migrations
+- Index optimization: Fast queries for common patterns
+- Soft deletes: Recoverability and analytics
+- Activity logging: Audit trail for all actions
+- Version history: Track configuration evolution
+
+Future-Proofing:
+- Extension points documented for adding filters, states, actions
+- Migration strategy for schema evolution
+- Client-side payload migrations via schema_version
+- Scalable architecture supports growth
+- Clear patterns for new developers to follow
+
+How Documentation is Organized:
+- By Feature: `docs/[feature-name]/` - Feature-specific docs
+- By Topic: `docs/architecture/`, `docs/development/`, `docs/operations/` - Cross-cutting concerns
+- By Audience: New devs → dev-loop-guide.md, Architects → architecture/, Operators → operations/
+- By Purpose: How-to guides, checklists, schemas, roadmaps
+
+Key Principles for Future Developers:
+1. Read `docs/development/dev-loop-guide.md` first for setup
+2. Read `docs/garage/feature-documentation.md` before working on garage
+3. Read `.cursor/rules/13-garage-feature.md` for development patterns
+4. Check `docs/ULTIMATE_ROADMAP.md` for project-wide context
+5. Update documentation when making changes
+6. Follow established patterns, don't reinvent
+7. Ask questions, document answers
+
+Documentation Maintenance:
+- Documentation is living: Update when code changes
+- Review monthly: Ensure accuracy and completeness
+- Link everything: Cross-reference related docs
+- Write for future you: Assume no memory of context
+- Make it discoverable: Clear file names and structure
 
 --------------------------------------------------------------------
 28) Strategic Backlog (Comprehensive TODO)

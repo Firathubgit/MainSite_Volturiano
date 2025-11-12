@@ -3,6 +3,7 @@
     "enter": "Enter Volturiano",
     "guestSubtitle": "Choose how you want to continue",
     "garage": "My Garage",
+    "volturianoWorld": "Volturiano World",
     "settings": "Account settings",
     "signOut": "Sign out",
     "signingOut": "Signing out…",
@@ -46,7 +47,58 @@
   },
   "garage": {
     "title": "My Garage",
-    "subtitle": "Saved configurations will appear here. Connect your account through the configurator to curate your personal Volturiano lineup."
+    "subtitle": "Saved configurations will appear here. Connect your account through the configurator to curate your personal Volturiano lineup.",
+    "lanes": {
+      "savedBuilds": "Saved Builds",
+      "purchases": "Purchases",
+      "prototypes": "Prototypes",
+      "wishlist": "Wishlist"
+    },
+    "empty": {
+      "default": "No items yet",
+      "saved": "No saved builds yet. Create your first configuration in the configurator.",
+      "purchased": "No purchases yet. Your completed orders will appear here.",
+      "prototype": "No prototypes yet. Prototype builds will appear here.",
+      "wishlist": "Your wishlist is empty. Add configurations you're considering."
+    },
+    "filters": {
+      "state": "Filter by state",
+      "allStates": "All states",
+      "search": "Search",
+      "searchPlaceholder": "Search by title or description...",
+      "dateRange": "Date range",
+      "allTime": "All time",
+      "last7Days": "Last 7 days",
+      "last30Days": "Last 30 days",
+      "last90Days": "Last 90 days",
+      "lastYear": "Last year",
+      "dateField": "Filter by",
+      "createdAt": "Created date",
+      "updatedAt": "Updated date",
+      "priceMin": "Min price",
+      "priceMax": "Max price",
+      "priceMinPlaceholder": "Min (EUR)",
+      "priceMaxPlaceholder": "Max (EUR)"
+    },
+    "actions": {
+      "edit": "Edit",
+      "delete": "Delete"
+    },
+    "save": {
+      "saveToGarage": "Save to Garage",
+      "saving": "Saving...",
+      "saved": "Saved!",
+      "error": "Error",
+      "requiresLogin": "Please sign in to save configurations to your garage."
+    },
+    "confirmDelete": "Are you sure you want to delete this item?",
+    "error": {
+      "loadFailed": "Failed to load garage items"
+    }
+  },
+  "volturianoWorld": {
+    "title": "Volturiano World",
+    "subtitle": "Volturiano World is where owners unlock tailored tools and experiences for their cars. No car yet under your ownership—try again another time."
   },
   "profile": {
     "title": "Account settings",

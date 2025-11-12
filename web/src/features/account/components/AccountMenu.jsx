@@ -5,6 +5,7 @@ import { useUiStore } from '../../../stores/uiStore';
 import { useUserStore } from '../../../stores/userStore';
 import { signOut } from '../api';
 import styles from './AccountMenu.module.css';
+import { useRenderLogger } from '../../../debug/useRenderLogger';
 
 export default function AccountMenu({ anchorRef }) {
   const menuRef = useRef(null);
@@ -16,6 +17,8 @@ export default function AccountMenu({ anchorRef }) {
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
   const { t } = useTranslation('account');
+  
+  useRenderLogger('AccountMenu', { open, hasSession: !!session, loading });
 
   useEffect(() => {
     if (!open) return undefined;
@@ -60,6 +63,11 @@ export default function AccountMenu({ anchorRef }) {
     navigate('/garage');
   };
 
+  const goToVolturianoWorld = () => {
+    closeMenu();
+    navigate('/account/world');
+  };
+
   const goToProfile = () => {
     closeMenu();
     navigate('/account/profile');
@@ -79,6 +87,13 @@ export default function AccountMenu({ anchorRef }) {
           <>
             <button type="button" onClick={goToGarage} className={styles.item}>
               {t('menu.garage')}
+            </button>
+            <button
+              type="button"
+              onClick={goToVolturianoWorld}
+              className={styles.item}
+            >
+              {t('menu.volturianoWorld')}
             </button>
             <button type="button" onClick={goToProfile} className={styles.item}>
               {t('menu.settings')}

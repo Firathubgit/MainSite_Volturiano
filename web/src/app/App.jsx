@@ -4,9 +4,12 @@ import { NavBar } from '../components/NavBar/NavBar';
 import { Route, Routes, Navigate } from 'react-router-dom';
 import { supabase } from '../lib/supabaseClient';
 import { useUserStore } from '../stores/userStore';
+import { useUiStore } from '../stores/uiStore';
 import { fetchProfile } from '../features/account/api';
 import RequireAuth from '../features/account/RequireAuth';
 import NavDrawer from '../components/NavDrawer/NavDrawer';
+import LoadingOverlay from '../components/LoadingOverlay/LoadingOverlay';
+import { useRenderLogger } from '../debug/useRenderLogger';
 
 const Home = lazy(() => import('../pages/Home/Home'));
 const Models = lazy(() => import('../pages/Models/Models'));
@@ -20,6 +23,16 @@ const Signup = lazy(() => import('../features/account/pages/Signup'));
 const ForgotPassword = lazy(() => import('../features/account/pages/ForgotPassword'));
 const Garage = lazy(() => import('../features/account/pages/Garage'));
 const Profile = lazy(() => import('../features/account/pages/Profile'));
+const VolturianoWorld = lazy(() => import('../features/account/pages/VolturianoWorld'));
+const LoadingOverlayTest = import.meta.env.DEV
+  ? lazy(() => import('../pages/Debug/LoadingOverlayTest'))
+  : null;
+const RenderLogger = import.meta.env.DEV
+  ? lazy(() => import('../pages/Debug/RenderLogger'))
+  : null;
+const TestSaveToGarage = import.meta.env.DEV
+  ? lazy(() => import('../pages/Debug/TestSaveToGarage'))
+  : null;
 
 export default function App() {
   const { t } = useTranslation('common');
@@ -27,6 +40,11 @@ export default function App() {
   const setProfile = useUserStore((state) => state.setProfile);
   const setStatus = useUserStore((state) => state.setStatus);
   const reset = useUserStore((state) => state.reset);
+  const status = useUserStore((state) => state.status);
+  const session = useUserStore((state) => state.session);
+  const forceOverlay = useUiStore((state) => state.forceOverlay);
+  
+  useRenderLogger('App', { status, hasSession: !!session, forceOverlay });
 
   useEffect(() => {
     if (import.meta.env.DEV) {
@@ -35,6 +53,13 @@ export default function App() {
         .catch((err) => {
           console.error('Failed to run Supabase debug check:', err);
         });
+      
+      // Phase 1 status check (optional - uncomment to auto-run)
+      // import('../debug/checkPhase1Status')
+      //   .then(({ checkPhase1Status }) => checkPhase1Status())
+      //   .catch((err) => {
+      //     console.error('Failed to run Phase 1 status check:', err);
+      //   });
     }
   }, []);
 
@@ -99,10 +124,13 @@ export default function App() {
 
   return (
     <div>
+      <LoadingOverlay
+        show={forceOverlay || (!session && (status === 'loading' || status === 'idle'))}
+      />
       <NavBar />
       <NavDrawer />
       <main>
-        <Suspense fallback={<div className="center">{t('loading')}</div>}>
+        <Suspense fallback={<LoadingOverlay />}>
           <Routes>
             <Route path="/" element={<IndexGate />} />
             <Route path="/start" element={<StartAnim />} />
@@ -126,6 +154,14 @@ export default function App() {
               )}
             />
             <Route
+              path="/account/world"
+              element={(
+                <RequireAuth>
+                  <VolturianoWorld />
+                </RequireAuth>
+              )}
+            />
+            <Route
               path="/account/profile"
               element={(
                 <RequireAuth>
@@ -133,6 +169,15 @@ export default function App() {
                 </RequireAuth>
               )}
             />
+            {import.meta.env.DEV && LoadingOverlayTest && (
+              <Route path="/debug/loading-overlay" element={<LoadingOverlayTest />} />
+            )}
+            {import.meta.env.DEV && RenderLogger && (
+              <Route path="/debug/render-logger" element={<RenderLogger />} />
+            )}
+            {import.meta.env.DEV && TestSaveToGarage && (
+              <Route path="/debug/test-save" element={<TestSaveToGarage />} />
+            )}
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </Suspense>

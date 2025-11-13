@@ -1,361 +1,498 @@
-/* Garage Layout */
-.garageLayout {
-  width: 100%;
-  max-width: 1400px;
-  margin: 0 auto;
-  padding: 120px 20px 80px;
+.garagePage {
+  display: flex;
+  gap: 72px;
   min-height: 100vh;
-  background: radial-gradient(circle at top, rgba(255, 69, 32, 0.12), transparent 40%),
-    #030303;
+  padding: 100px 50px 54px;
+  background: radial-gradient(circle at top, rgba(255, 69, 32, 0.22), transparent 45%), #030303;
   color: #f7f7f7;
+  box-sizing: border-box;
+  font-family: 'Inter', sans-serif;
 }
 
-/* Filters */
-.filters {
+.sidebar {
+  width: 140px;
+  flex-shrink: 0;
   display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 30px;
+}
+
+.sidebarFilterButton {
+  width: 40px;
+  height: 40px;
+  background: #00000000;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: left;
+  cursor: pointer;
+  transition: border-color 160ms ease, background 160ms ease, transform 160ms ease;
+}
+
+.sidebarFilterButton:hover,
+.sidebarFilterButton:focus-visible {
+  transform: translateY(-2px);
+}
+
+.sidebarNav {
+  display: flex;
+  flex-direction: column;
+}
+
+.sidebarButton {
+  width: 100%;
+  display: block;
+  padding: 12px 0;
+  border: none;
+  border-bottom: 1px solid #303030;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 14px;
+  font-weight: 700;
+  text-align: left;
+  cursor: pointer;
+  transition: color 160ms ease, opacity 160ms ease, transform 160ms ease;
+}
+
+.sidebarButton:first-of-type {
+  border-top: 1px solid #303030;
+}
+
+.sidebarButton:hover {
+  color: #ffffff;
+  transform: translateX(4px);
+}
+
+.sidebarButton[data-active="true"] {
+  color: #ff4520;
+}
+
+.sidebarButton[data-disabled="true"] {
+  opacity: 0.35;
+  cursor: default;
+  transform: none;
+}
+
+.sidebarLink {
+  text-decoration: none;
+  color: inherit;
+  display: block;
+  width: 100%;
+}
+
+.sidebarLink[data-disabled="true"] {
+  cursor: default;
+}
+
+.mainContent {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 40px;
+  min-width: 0;
+  max-width: 1500px;
+  margin-left: 0;
+  margin-right: auto;
+}
+
+.pageHeader {
+  display: flex;
+  justify-content: space-between;
   gap: 24px;
-  margin-bottom: 48px;
-  flex-wrap: wrap;
-  align-items: flex-end;
+  align-items: flex-start;
+}
+
+.headingGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.greeting {
+  margin: 0;
+  font-size: clamp(32px, 4vw, 48px);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+.tabs {
+  display: flex;
+  gap: 28px;
+}
+
+.tabButton {
+  position: relative;
+  background: transparent;
+  border: none;
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 18px;
+  font-weight: 700;
+  padding: 0px 0px 0px 0px;
+  cursor: pointer;
+  transition: color 160ms ease;
+}
+
+.tabButton:hover {
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.tabButton span {
+  margin-left: 4px;
+  font-size: 14px;
+  letter-spacing: 0.04em;
+}
+
+.tabButton[data-active="true"] {
+  color: #ffffff;
+}
+
+.tabButton[data-active="true"]::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -12px;
+  height: 2px;
+  border-radius: 6px;
+  background: linear-gradient(90deg, #ff4520 0%, #e10600 100%);
+}
+
+.addConfiguration {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  background: transparent;
+  border: none;
+  color: #ffffff;
+  font-size: 20px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 160ms ease, color 160ms ease;
+  padding: 8px 0;
+}
+
+.addConfiguration:hover {
+  color: #b5b5b5;
+  transform: translateY(-2px);
+}
+
+.addConfigurationIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 2px solid #ff4520;
+  color: #ff4520;
+  font-size: 14px;
+  line-height: 1;
+}
+
+.cardGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 340px));
+  gap: 32px;
+  justify-content: flex-start;
+  justify-items: stretch;
+  max-width: 1488px;
+  margin: -5px 0 0;
+}
+
+.card {
+  width: 340px;
+  max-width: 100%;
+  height: 324px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid #303030;
+  background: transparent;
+}
+
+.cardTop {
+  max-width: 340px;
+  min-width: 340px;
+  min-height: 162px;
+  max-height: 162px;
+  position: relative;
+  flex: 1;
+  background: #1f1f1f;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.cardImageWrapper {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.cardImage {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  position: relative;
+  z-index: 1;
+}
+
+.cardBottom {
+  flex: 1;
+  max-width: 340px;
+  min-width: 340px;
+  min-height: 162px;
+  max-height: 162px;
+  background: #000000;
+  padding: 7px 24px 20px;
+  display: flex;
+  flex-direction: column;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.cardDate {
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  margin-bottom: 10px;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.cardTitle {
+  font-size: 22px;
+  font-weight: 700;
+  color: #ffffff;
+  margin: 0 0 10px 0;
+  line-height: 1.1;
+}
+
+.cardPackage {
+  font-size: 8px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: #ffffff;
+  margin: 4px 0 0 0;
+}
+
+.cardText {
+  font-size: 8px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.6);
+  line-height: 1.7;
+  padding-bottom: 15px;
+  margin: 0;
+}
+
+.cardDivider {
+  height: 1px;
+  background: #303030;
+}
+
+.cardActions {
+  display: flex;
+  justify-content: flex-start;
+  align-items: center;
+  gap: 24px;
+  margin-top: auto;
+}
+
+.cardAction {
+  background: transparent;
+  border: none;
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  padding: 0;
+  transition: color 160ms ease, transform 160ms ease;
+}
+
+.cardAction:hover,
+.cardAction:focus-visible {
+  transform: translateY(-1px);
+  color: #b5b5b5;
+}
+
+.emptyStateMessage {
+  font-size: 14px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.45);
+  padding: 64px 0;
+}
+
+.filterOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(3, 3, 3, 0.78);
+  backdrop-filter: blur(6px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 32px;
+  z-index: 90;
+}
+
+.filterPanel {
+  background: #111111;
+  border: 1px solid #303030;
+  border-radius: 28px;
+  padding: 32px;
+  width: min(720px, 92vw);
+  max-height: 85vh;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+}
+
+.filterPanelHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.filterPanelTitle {
+  font-size: 24px;
+  font-weight: 700;
+  margin: 0;
+}
+
+.filterPanelClose {
+  background: transparent;
+  border: 1px solid #303030;
+  border-radius: 12px;
+  color: rgba(255, 255, 255, 0.75);
+  font-size: 14px;
+  font-weight: 600;
+  padding: 8px 16px;
+  cursor: pointer;
+  transition: border-color 160ms ease, color 160ms ease, transform 160ms ease;
+}
+
+.filterPanelClose:hover,
+.filterPanelClose:focus-visible {
+  border-color: #ff4520;
+  color: #ff4520;
+  transform: translateY(-1px);
+  outline: none;
+}
+
+.filters {
+  display: grid;
+  gap: 18px;
+}
+
+.filtersOverlay {
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
 }
 
 .filterGroup {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  flex: 1;
-  min-width: 200px;
 }
 
 .filterLabel {
   font-size: 12px;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
-  opacity: 0.8;
+  color: rgba(255, 255, 255, 0.72);
 }
 
 .filterSelect,
 .filterInput {
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 14px;
+  background: #0d0d0d;
+  border: 1px solid #303030;
+  border-radius: 12px;
   padding: 12px 16px;
   color: #f7f7f7;
   font-size: 14px;
-  letter-spacing: 0.04em;
   transition: border-color 160ms ease, box-shadow 160ms ease;
 }
 
 .filterSelect:focus-visible,
 .filterInput:focus-visible {
   outline: none;
-  border-color: rgba(255, 69, 32, 0.75);
+  border-color: #ff4520;
   box-shadow: 0 0 0 3px rgba(255, 69, 32, 0.18);
 }
 
 .filterSelect option {
-  background: #1a1a1a;
+  background: #0d0d0d;
   color: #f7f7f7;
 }
 
-/* Lanes Container */
-.lanes {
-  display: flex;
-  flex-direction: column;
-  gap: 48px;
-}
-
-/* Individual Lane */
-.lane {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-}
-
-.laneTitle {
-  font-size: 24px;
-  font-weight: 800;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  margin: 0;
-  opacity: 0.95;
-}
-
-.laneContent {
-  min-height: 200px;
-}
-
-.laneItems {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: 24px;
-}
-
-/* Save to Garage Button */
-.saveToGarageWrapper {
-  display: inline-flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.saveToGarageButton {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  padding: 12px 24px;
-  background: rgba(255, 69, 32, 0.15);
-  border: 1px solid rgba(255, 69, 32, 0.4);
-  border-radius: 14px;
-  color: #ff4520;
-  font-size: 14px;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  cursor: pointer;
-  transition: all 160ms ease;
-  min-width: 160px;
-}
-
-.saveToGarageButton:hover:not(:disabled) {
-  background: rgba(255, 69, 32, 0.25);
-  border-color: rgba(255, 69, 32, 0.6);
-  transform: translateY(-1px);
-}
-
-.saveToGarageButton:active:not(:disabled) {
-  transform: translateY(0);
-}
-
-.saveToGarageButton:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-.saveToGarageButton.saving {
-  background: rgba(255, 69, 32, 0.2);
-  border-color: rgba(255, 69, 32, 0.5);
-}
-
-.saveToGarageButton.success {
-  background: rgba(34, 197, 94, 0.15);
-  border-color: rgba(34, 197, 94, 0.4);
-  color: #22c55e;
-}
-
-.saveToGarageButton.error {
-  background: rgba(239, 68, 68, 0.15);
-  border-color: rgba(239, 68, 68, 0.4);
-  color: #ef4444;
-}
-
-.saveToGarageButton .spinner,
-.saveToGarageButton .checkmark,
-.saveToGarageButton .errorIcon {
-  display: inline-block;
-  font-size: 16px;
-}
-
-.saveToGarageButton .spinner {
-  animation: spin 1s linear infinite;
-}
-
-@keyframes spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-.errorMessage {
+.debugPanel {
+  background: rgba(255, 69, 32, 0.08);
+  border: 1px solid rgba(255, 69, 32, 0.3);
+  border-radius: 16px;
+  padding: 16px;
+  font-family: 'Courier New', Courier, monospace;
   font-size: 12px;
-  color: #ef4444;
-  padding: 4px 8px;
-  background: rgba(239, 68, 68, 0.1);
-  border-radius: 8px;
-  max-width: 300px;
+  color: rgba(255, 255, 255, 0.8);
 }
 
-/* Car Card */
-.carCard {
-  background: rgba(12, 12, 12, 0.82);
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  border-radius: 20px;
-  padding: 20px;
-  cursor: pointer;
-  transition: transform 200ms ease, box-shadow 200ms ease, border-color 200ms ease;
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.carCard:hover,
-.carCard:focus-visible {
-  transform: translateY(-4px);
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5);
-  border-color: rgba(255, 69, 32, 0.3);
-  outline: none;
-}
-
-.carCardThumbnail {
-  width: 100%;
-  aspect-ratio: 16 / 9;
-  border-radius: 12px;
-  overflow: hidden;
-  background: rgba(255, 255, 255, 0.04);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.carCardThumbnail img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.carCardPlaceholder {
-  width: 100%;
-  height: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 48px;
-  font-weight: 800;
-  color: rgba(255, 255, 255, 0.2);
-  text-transform: uppercase;
-}
-
-.carCardContent {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.carCardTitle {
-  font-size: 18px;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  margin: 0;
-  line-height: 1.3;
-}
-
-.carCardModel {
-  font-size: 14px;
-  opacity: 0.7;
-  margin: 0;
-  letter-spacing: 0.04em;
-}
-
-.carCardPrice {
-  font-size: 16px;
-  font-weight: 600;
-  color: rgba(255, 69, 32, 0.9);
-  margin: 4px 0 0 0;
-}
-
-.carCardDate {
-  font-size: 12px;
-  opacity: 0.6;
-  margin: 4px 0 0 0;
-}
-
-.carCardActions {
-  display: flex;
-  gap: 8px;
-  margin-top: auto;
-  padding-top: 12px;
-  border-top: 1px solid rgba(255, 255, 255, 0.06);
-}
-
-.carCardAction {
-  flex: 1;
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 10px;
-  padding: 8px 12px;
-  color: #f7f7f7;
-  font-size: 12px;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  cursor: pointer;
-  transition: background 160ms ease, border-color 160ms ease;
-}
-
-.carCardAction:hover {
-  background: rgba(255, 255, 255, 0.1);
-  border-color: rgba(255, 69, 32, 0.4);
-}
-
-.carCardAction:focus-visible {
-  outline: none;
-  border-color: rgba(255, 69, 32, 0.75);
-  box-shadow: 0 0 0 2px rgba(255, 69, 32, 0.18);
-}
-
-/* Empty State */
-.emptyState {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 200px;
-  padding: 40px;
-  text-align: center;
-}
-
-.emptyStateText {
-  font-size: 14px;
-  opacity: 0.6;
-  letter-spacing: 0.04em;
-  margin: 0;
-}
-
-/* Loading Skeleton */
-.loadingSkeleton {
-  width: 100%;
-  height: 200px;
-  background: linear-gradient(
-    90deg,
-    rgba(255, 255, 255, 0.04) 0%,
-    rgba(255, 255, 255, 0.08) 50%,
-    rgba(255, 255, 255, 0.04) 100%
-  );
-  background-size: 200% 100%;
-  border-radius: 20px;
-  animation: skeleton-loading 1.5s ease-in-out infinite;
-}
-
-@keyframes skeleton-loading {
-  0% {
-    background-position: 200% 0;
-  }
-  100% {
-    background-position: -200% 0;
-  }
-}
-
-/* Responsive */
-@media (max-width: 768px) {
-  .garageLayout {
-    padding: 100px 16px 60px;
-  }
-
-  .filters {
+@media (max-width: 1200px) {
+  .garagePage {
     flex-direction: column;
-    gap: 16px;
+    padding: 112px 32px 72px;
   }
 
-  .filterGroup {
-    min-width: 100%;
+  .sidebar {
+    width: 100%;
+    flex-direction: column;
+    gap: 24px;
   }
 
-  .laneItems {
+  .sidebarNav {
+    flex-direction: row;
+    gap: 12px;
+    overflow-x: auto;
+    border: 1px solid #303030;
+    border-radius: 16px;
+    padding: 4px 8px;
+  }
+
+  .sidebarButton,
+  .sidebarButton:first-of-type {
+    border: none;
+    padding: 10px 16px;
+    white-space: nowrap;
+  }
+
+  .sidebarButton:hover {
+    transform: translateY(-2px);
+  }
+}
+
+@media (max-width: 768px) {
+  .pageHeader {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .tabs {
+    flex-wrap: wrap;
+  }
+
+  .cardGrid {
     grid-template-columns: 1fr;
   }
 
-  .laneTitle {
-    font-size: 20px;
+  .card {
+    max-width: 100%;
+    height: 320px;
+  }
+
+  .cardTop {
+    padding: 14px 18px;
   }
 }
-

@@ -48,6 +48,10 @@
   "garage": {
     "title": "My Garage",
     "subtitle": "Saved configurations will appear here. Connect your account through the configurator to curate your personal Volturiano lineup.",
+    "tabs": {
+      "cars": "Your Cars",
+      "configurations": "Saved Configurations"
+    },
     "lanes": {
       "savedBuilds": "Saved Builds",
       "purchases": "Purchases",
@@ -80,9 +84,16 @@
       "priceMinPlaceholder": "Min (EUR)",
       "priceMaxPlaceholder": "Max (EUR)"
     },
+    "filterTrigger": "Filter",
     "actions": {
       "edit": "Edit",
-      "delete": "Delete"
+      "delete": "Delete",
+      "addConfiguration": "Add Configuration",
+      "configure": "Configure",
+      "viewReadyCars": "Ready for Delivery"
+    },
+    "overlay": {
+      "close": "Close"
     },
     "save": {
       "saveToGarage": "Save to Garage",

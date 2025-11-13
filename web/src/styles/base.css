@@ -7,7 +7,7 @@ body {
   scrollbar-width: thin;
   scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
 }
-main { max-width: 1440px; margin: 0 auto; padding: 0 1.5rem; }
+main { max-width: 100%; margin: 0 auto; padding: 0 0; }
 .accent { color: var(--accent); }
 
 html::-webkit-scrollbar,

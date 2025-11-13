@@ -1,62 +1,70 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useGarageStore } from '../../../stores/garageStore';
 import { useUserStore } from '../../../stores/userStore';
-import GarageLayout from '../../garage/components/GarageLayout';
+import GarageFilters from '../../garage/components/GarageFilters';
+import CarCard from '../../garage/components/CarCard';
 import styles from '../../garage/styles/garage.module.css';
+
+const CONFIGURATION_STATES = ['saved', 'prototype', 'wishlist'];
+
+function FilterIcon(props) {
+  return (
+    <svg
+      width="30"
+      height="30"
+      viewBox="0 0 30 30"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      aria-hidden="true"
+      {...props}
+    >
+      <line x1="6" y1="8" x2="24" y2="8" stroke="#fefefe" strokeWidth="2" strokeLinecap="round" />
+      <circle cx="12" cy="8" r="3" fill="#0d0d0d" stroke="#fefefe" strokeWidth="2" />
+      <line x1="6" y1="15" x2="24" y2="15" stroke="#fefefe" strokeWidth="2" strokeLinecap="round" />
+      <circle cx="18" cy="15" r="3" fill="#0d0d0d" stroke="#fefefe" strokeWidth="2" />
+      <line x1="6" y1="22" x2="24" y2="22" stroke="#fefefe" strokeWidth="2" strokeLinecap="round" />
+      <circle cx="10" cy="22" r="3" fill="#0d0d0d" stroke="#fefefe" strokeWidth="2" />
+    </svg>
+  );
+}
 
 export default function Garage() {
   const { t } = useTranslation('account');
-  const { loadGarage, subscribeRealtime, unsubscribeRealtime, error, items, loading, getItemsByState } = useGarageStore();
-  const { session } = useUserStore();
-  const [showDebug, setShowDebug] = useState(import.meta.env.DEV);
+  const navigate = useNavigate();
 
-  // Calculate debug info reactively from store state
-  const itemsArray = Array.from(items.values());
-  const debugInfo = {
-    itemCount: itemsArray.length,
-    byState: {
-      saved: getItemsByState('saved').length,
-      purchased: getItemsByState('purchased').length,
-      prototype: getItemsByState('prototype').length,
-      wishlist: getItemsByState('wishlist').length
-    },
-    userId: session?.user?.id,
-    hasError: !!error
-  };
+  const loadGarage = useGarageStore((state) => state.loadGarage);
+  const subscribeRealtime = useGarageStore((state) => state.subscribeRealtime);
+  const unsubscribeRealtime = useGarageStore((state) => state.unsubscribeRealtime);
+  const error = useGarageStore((state) => state.error);
+  const loading = useGarageStore((state) => state.loading);
+  const getItemsByState = useGarageStore((state) => state.getItemsByState);
+  const itemsMap = useGarageStore((state) => state.items);
+  const { session, profile } = useUserStore();
+
+  const [activeTab, setActiveTab] = useState('configurations');
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
+
+  const worldEnabled = import.meta.env.VITE_ENABLE_WORLD === 'true';
+
+  const displayName =
+    profile?.first_name ||
+    profile?.full_name ||
+    profile?.display_name ||
+    session?.user?.email?.split('@')[0] ||
+    'Firat';
 
   useEffect(() => {
-    console.log('[Garage] Component mounted, loading garage items...');
-    console.log('[Garage] Session:', session ? 'Authenticated' : 'Not authenticated');
-    console.log('[Garage] User ID:', session?.user?.id);
+    loadGarage(true).catch((err) => {
+      console.error('[Garage] Failed to load garage:', err);
+    });
 
-    // Load garage items on mount
-    loadGarage(true)
-      .then(() => {
-        const state = useGarageStore.getState();
-        const itemsArray = Array.from(state.items.values());
-        console.log('[Garage] Loaded items:', itemsArray.length);
-        console.log('[Garage] Items by state:', {
-          saved: itemsArray.filter((i) => i.state === 'saved').length,
-          purchased: itemsArray.filter((i) => i.state === 'purchased').length,
-          prototype: itemsArray.filter((i) => i.state === 'prototype').length,
-          wishlist: itemsArray.filter((i) => i.state === 'wishlist').length
-        });
-      })
-      .catch((err) => {
-        console.error('[Garage] Failed to load garage:', err);
-      });
-
-    // Subscribe to real-time changes
     subscribeRealtime();
-    console.log('[Garage] Subscribed to real-time updates');
-
-    // Cleanup on unmount
     return () => {
-      console.log('[Garage] Component unmounting, unsubscribing...');
       unsubscribeRealtime();
     };
-  }, [loadGarage, subscribeRealtime, unsubscribeRealtime, session]);
+  }, [loadGarage, subscribeRealtime, unsubscribeRealtime]);
 
   useEffect(() => {
     if (error) {
@@ -64,86 +72,182 @@ export default function Garage() {
     }
   }, [error]);
 
-  return (
-    <div className={styles.garageLayout}>
-      {showDebug && (
-        <div
-          style={{
-            marginBottom: '24px',
-            padding: '16px',
-            background: 'rgba(255, 69, 32, 0.1)',
-            border: '1px solid rgba(255, 69, 32, 0.3)',
-            borderRadius: '12px',
-            fontSize: '12px',
-            fontFamily: 'monospace'
-          }}
-        >
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-            <strong style={{ color: '#ff4520' }}>🔍 Debug Info</strong>
-            <button
-              type="button"
-              onClick={() => setShowDebug(false)}
-              style={{
-                background: 'transparent',
-                border: 'none',
-                color: '#fff',
-                cursor: 'pointer',
-                fontSize: '18px'
-              }}
-            >
-              ×
-            </button>
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '8px' }}>
-            <div>
-              <strong>Status:</strong> {loading ? 'Loading...' : error ? 'Error' : 'Ready'}
-            </div>
-            <div>
-              <strong>Items:</strong> {debugInfo.itemCount}
-            </div>
-            <div>
-              <strong>Saved:</strong> {debugInfo.byState.saved}
-            </div>
-            <div>
-              <strong>Purchased:</strong> {debugInfo.byState.purchased}
-            </div>
-            <div>
-              <strong>Prototype:</strong> {debugInfo.byState.prototype}
-            </div>
-            <div>
-              <strong>Wishlist:</strong> {debugInfo.byState.wishlist}
-            </div>
-            <div style={{ gridColumn: '1 / -1' }}>
-              <strong>User ID:</strong> {debugInfo.userId || 'Not authenticated'}
-            </div>
-            {error && (
-              <div style={{ gridColumn: '1 / -1', color: '#ff8c7a' }}>
-                <strong>Error:</strong> {error.message}
-              </div>
-            )}
-            {!loading && !error && debugInfo.itemCount === 0 && (
-              <div style={{ gridColumn: '1 / -1', color: '#ffa500', fontSize: '11px', marginTop: '8px' }}>
-                ⚠️ No items found. Check:
-                <br />1. User ID matches: {debugInfo.userId}
-                <br />2. RLS policies allow access
-                <br />3. Items exist in database for this user
-              </div>
-            )}
-          </div>
-        </div>
-      )}
+  useEffect(() => {
+    if (!isFilterOpen) return undefined;
 
-      {error && (
-        <div style={{ color: '#ff8c7a', marginBottom: '24px', padding: '16px', background: 'rgba(255, 140, 122, 0.1)', borderRadius: '12px' }}>
-          {t('garage.error.loadFailed')}: {error.message}
-          {import.meta.env.DEV && (
-            <div style={{ marginTop: '8px', fontSize: '11px', opacity: 0.8 }}>
-              Check browser console for detailed error logs.
+    const originalOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape') {
+        setIsFilterOpen(false);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.body.style.overflow = originalOverflow;
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isFilterOpen]);
+
+  const purchasedItems = getItemsByState('purchased');
+  const configurationItems = CONFIGURATION_STATES.flatMap((state) => {
+    const list = getItemsByState(state);
+    return Array.isArray(list) ? list : [];
+  });
+
+  const sideLinks = useMemo(
+    () => [
+      { key: 'overview', label: 'Översikt' },
+      { key: 'zibbi', label: 'Zibbi page' },
+      { key: 'configure', label: 'Konfigurera nytt', to: '/configurator' },
+      { key: 'garage', label: 'Garage', to: '/garage', active: true },
+      { key: 'showroom', label: 'Showroom', to: '/#showroom' },
+      {
+        key: 'world',
+        label: 'Volturiano world',
+        to: worldEnabled ? '/world' : null,
+        disabled: !worldEnabled
+      },
+      { key: 'vet', label: 'Vet inte ens vad jao' },
+      { key: 'free', label: 'Free mehrab' }
+    ],
+    [worldEnabled]
+  );
+
+  const activeItems = activeTab === 'cars' ? purchasedItems : configurationItems;
+  const itemsCount = {
+    cars: purchasedItems.length,
+    configurations: configurationItems.length
+  };
+
+  const handleAddConfiguration = () => {
+    navigate('/configurator');
+  };
+
+  return (
+    <div className={styles.garagePage}>
+      <aside className={styles.sidebar}>
+        <button
+          type="button"
+          className={styles.sidebarFilterButton}
+          onClick={() => setIsFilterOpen(true)}
+          aria-haspopup="dialog"
+          aria-expanded={isFilterOpen}
+        >
+          <FilterIcon />
+        </button>
+        <nav className={styles.sidebarNav} aria-label="Garage navigation">
+          {sideLinks.map((link, index) => {
+            const content = (
+              <span
+                className={styles.sidebarButton}
+                data-active={link.active ? 'true' : undefined}
+                data-disabled={link.disabled ? 'true' : undefined}
+              >
+                {link.label}
+              </span>
+            );
+
+            if (link.to && !link.disabled) {
+              return (
+                <Link
+                  key={link.key}
+                  to={link.to}
+                  className={styles.sidebarLink}
+                  aria-current={link.active ? 'page' : undefined}
+                >
+                  {content}
+                </Link>
+              );
+            }
+
+            return (
+              <div
+                key={link.key}
+                className={styles.sidebarLink}
+                data-disabled={link.disabled ? 'true' : undefined}
+                aria-disabled={link.disabled ? 'true' : undefined}
+              >
+                {content}
+              </div>
+            );
+          })}
+        </nav>
+      </aside>
+
+      <section className={styles.mainContent}>
+        <header className={styles.pageHeader}>
+          <div className={styles.headingGroup}>
+            <h1 className={styles.greeting}>Hej {displayName}</h1>
+            <div className={styles.tabs}>
+              <button
+                type="button"
+                className={styles.tabButton}
+                data-active={activeTab === 'cars' ? 'true' : undefined}
+                onClick={() => setActiveTab('cars')}
+              >
+                {t('garage.tabs.cars')}
+                <span>({itemsCount.cars})</span>
+              </button>
+              <button
+                type="button"
+                className={styles.tabButton}
+                data-active={activeTab === 'configurations' ? 'true' : undefined}
+                onClick={() => setActiveTab('configurations')}
+              >
+                {t('garage.tabs.configurations')}
+                <span>({itemsCount.configurations})</span>
+              </button>
             </div>
-          )}
+          </div>
+          <button type="button" className={styles.addConfiguration} onClick={handleAddConfiguration}>
+            <span className={styles.addConfigurationIcon}>+</span>
+            {t('garage.actions.addConfiguration')}
+          </button>
+        </header>
+
+        {(error || (!loading && itemsMap.size === 0)) && (
+          <div className={styles.debugPanel}>
+            {error
+              ? `${t('garage.error.loadFailed')}: ${error.message}`
+              : t('garage.empty.default')}
+          </div>
+        )}
+
+        {activeItems.length === 0 ? (
+          <div className={styles.emptyStateMessage}>
+            {activeTab === 'cars'
+              ? t('garage.empty.purchased')
+              : t('garage.empty.saved')}
+          </div>
+        ) : (
+          <div className={styles.cardGrid}>
+            {activeItems.map((item) => (
+              <CarCard key={item.id} item={item} />
+            ))}
+          </div>
+        )}
+      </section>
+
+      {isFilterOpen && (
+        <div className={styles.filterOverlay} role="dialog" aria-modal="true">
+          <div className={styles.filterPanel}>
+            <div className={styles.filterPanelHeader}>
+              <h2 className={styles.filterPanelTitle}>{t('garage.filterTrigger')}</h2>
+              <button
+                type="button"
+                className={styles.filterPanelClose}
+                onClick={() => setIsFilterOpen(false)}
+              >
+                {t('garage.overlay.close')}
+              </button>
+            </div>
+            <GarageFilters variant="overlay" />
+          </div>
         </div>
       )}
-      <GarageLayout />
     </div>
   );
 }

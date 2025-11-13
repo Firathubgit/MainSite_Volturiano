@@ -48,6 +48,10 @@
   "garage": {
     "title": "Mitt garage",
     "subtitle": "Sparade konfigurationer visas här. Koppla kontot via konfiguratorn för att kurera din personliga Volturiano-uppställning.",
+    "tabs": {
+      "cars": "Dina Bilar",
+      "configurations": "Sparade Konfigureringar"
+    },
     "lanes": {
       "savedBuilds": "Sparade byggen",
       "purchases": "Köp",
@@ -80,9 +84,16 @@
       "priceMinPlaceholder": "Min (EUR)",
       "priceMaxPlaceholder": "Max (EUR)"
     },
+    "filterTrigger": "Filtrera",
     "actions": {
       "edit": "Redigera",
-      "delete": "Radera"
+      "delete": "Radera",
+      "addConfiguration": "Lägg till Konfiguration",
+      "configure": "Konfigurera",
+      "viewReadyCars": "Leverans klara bilar"
+    },
+    "overlay": {
+      "close": "Stäng"
     },
     "save": {
       "saveToGarage": "Spara till garage",

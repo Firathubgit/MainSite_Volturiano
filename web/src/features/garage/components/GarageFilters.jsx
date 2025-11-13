@@ -6,7 +6,7 @@ import styles from '../styles/garage.module.css';
 /**
  * Garage filters component
  */
-export default function GarageFilters() {
+export default function GarageFilters({ variant = 'inline' }) {
   const { t } = useTranslation('account');
   const { filters, setFilters } = useGarageStore();
   const [searchValue, setSearchValue] = useState(filters.search || '');
@@ -78,7 +78,11 @@ export default function GarageFilters() {
   };
 
   return (
-    <div className={styles.filters}>
+    <div
+      className={`${styles.filters} ${
+        variant === 'overlay' ? styles.filtersOverlay : ''
+      }`}
+    >
       <div className={styles.filterGroup}>
         <label htmlFor="garage-state-filter" className={styles.filterLabel}>
           {t('garage.filters.state')}

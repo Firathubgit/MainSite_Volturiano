@@ -1,0 +1,154 @@
+# Volturiano 3D Configurator – MODEL CONTEXT
+
+This context describes the 3D model exported from Blender that will be used in a future Three.js-based car configurator. Use this info when writing any code that loads the .glb and when wiring up future color controls.
+
+## File
+
+- The model is exported from Blender 4.5 as **glTF 2.0 Binary (.glb)**.
+
+- Export settings:
+
+  - Only the `Car` object (and its children) are exported.
+
+  - No animations.
+
+  - No armature or skinning.
+
+  - +Y Up (glTF convention).
+
+- Assume the file path in the web project will be:
+
+  - `/public/models/volturiano.glb`  (you can change the path in code if needed).
+
+## Scene / Object structure (important parts)
+
+- Root object: **Car**
+
+  - This object contains the **body mesh** for the car.
+
+  - Children include:
+
+    - `DiffuserLower`
+
+    - `Emblem`
+
+    - `FrontWindshield`
+
+    - `GrillLeft`, `GrillLower`, `GrillMiddle`, `GrillRight`
+
+    - `headlightFL`, `headlightFR`, `headlightLB`, `headlightRB`
+
+    - `Left1`, `Left2`, `Left3`
+
+    - `Right1`, `Right2`, `Right3`
+
+    - `LeftSideMirror`, `RightSideMirror`
+
+    - `LeftWindowTrims`, `RightWindowTrims`
+
+    - `RearWindshield`
+
+    - `Regplåt` (license plate)
+
+    - Wheel meshes:
+
+      - `RimFL`, `RimFR`, `RimBL`, `RimBR`
+
+      - `TireFL`, `TireFR`, `TireBL`, `TireBR`
+
+- Only the meaningful names above matter. Everything else can stay as-is and is static.
+
+## Materials – THIS IS THE KEY PART
+
+The entire configurator logic will focus on **two materials**:
+
+1. **Mat_BodyPaint**
+
+   - Assigned ONLY to the car body mesh on the `Car` object.
+
+   - No other object uses this material.
+
+   - This is the material whose color will be changed when the user picks a car body color.
+
+2. **Mat_RimPaint**
+
+   - Assigned ONLY to the four rim meshes:
+
+     - `RimFL`, `RimFR`, `RimBL`, `RimBR`.
+
+   - All four rims share the exact same material instance (same name, not duplicates).
+
+   - This material’s color should be changed to recolor ALL rims at once.
+
+Other materials:
+
+- There are various static materials for:
+
+  - glass (windows, windshield),
+
+  - lights,
+
+  - trim / plastic / chrome,
+
+  - tires,
+
+  - etc.
+
+- These materials should **NOT** be changed in the configurator and can be treated as static PBR materials loaded from the .glb.
+
+## What is NOT in the model
+
+- No animations (no rotation, no keyframes).
+
+- No skeleton / skinning.
+
+- No shape keys / morph targets.
+
+- No physics.
+
+- Just a static mesh with PBR materials.
+
+## What future Three.js code should assume
+
+- The code should use a GLTFLoader to load `/public/models/volturiano.glb`.
+
+- After loading, traverse the scene and:
+
+  - Find the material whose name is `Mat_BodyPaint` and store a reference (e.g. `bodyMat`).
+
+  - Find the material whose name is `Mat_RimPaint` and store a reference (e.g. `rimMat`).
+
+- Future UI will call simple helpers like:
+
+  - `setBodyColor(hex)` → updates `bodyMat.color`.
+
+  - `setRimColor(hex)` → updates `rimMat.color`.
+
+- All other materials and objects can remain untouched.
+
+## For now – minimal Three.js setup (for Cursor to implement later)
+
+We want a simple, future-proof Three.js starter:
+
+- A canvas that renders the car model.
+
+- Basic scene + perspective camera + renderer.
+
+- OrbitControls enabled for camera orbit.
+
+- Simple environment lighting (could be:
+
+  - basic ambient + directional lights, or
+
+  - a placeholder for an HDRI environment).
+
+- The loader logic must be written in a way that is easy to extend later with:
+
+  - color pickers for Mat_BodyPaint and Mat_RimPaint,
+
+  - UI hooks that call `setBodyColor` and `setRimColor`.
+
+Important: ONLY the model information and the material names above are fixed requirements. Implementation details (file structure, TypeScript vs JS, etc.) can be chosen to be clean and future-proof.
+
+End of context.
+

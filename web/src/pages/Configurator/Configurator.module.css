@@ -1,0 +1,181 @@
+.container {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.viewerShell {
+  position: relative;
+  border-radius: 16px;
+  overflow: hidden;
+  background: linear-gradient(135deg, #0a0a0a, #1b1b1b);
+}
+
+.viewerToggle {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  z-index: 2;
+  display: inline-flex;
+  border-radius: 999px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: rgba(10, 10, 10, 0.7);
+  backdrop-filter: blur(10px);
+  box-shadow: 0 15px 40px rgba(0, 0, 0, 0.4);
+}
+
+.toggleButton {
+  appearance: none;
+  border: none;
+  background: transparent;
+  color: #fff;
+  font-size: 0.9rem;
+  padding: 0.4rem 1.2rem;
+  cursor: pointer;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+
+.toggleButton:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.active {
+  background: #fff;
+  color: #111;
+}
+
+.debugButton {
+  border-left: 1px solid rgba(255, 255, 255, 0.15);
+  font-size: 0.75rem;
+  padding: 0.4rem 0.9rem;
+  color: #ffa500;
+}
+
+.debugButton:hover {
+  background: rgba(255, 165, 0, 0.15);
+}
+
+.debugButton.active {
+  background: #ffa500;
+  color: #111;
+}
+
+.colorOverlay {
+  position: absolute;
+  top: 1rem;
+  left: 1rem;
+  z-index: 10;
+  pointer-events: none;
+}
+
+.colorPanel {
+  pointer-events: all;
+  background: rgba(0, 0, 0, 0.9);
+  border: 3px dashed #ff0000;
+  border-radius: 8px;
+  padding: 1rem;
+  min-width: 250px;
+  box-shadow: 0 0 20px rgba(255, 0, 0, 0.5);
+}
+
+.colorLabel {
+  color: #ff0000;
+  font-size: 0.7rem;
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  margin-bottom: 0.75rem;
+  text-align: center;
+  border-bottom: 1px solid rgba(255, 0, 0, 0.3);
+  padding-bottom: 0.5rem;
+}
+
+.colorControl {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.colorControl:last-child {
+  margin-bottom: 0;
+}
+
+.colorControl label {
+  color: #fff;
+  font-size: 0.85rem;
+  min-width: 80px;
+  font-weight: 500;
+}
+
+.colorControl input[type="color"] {
+  width: 50px;
+  height: 32px;
+  border: 2px solid #ff0000;
+  border-radius: 4px;
+  cursor: pointer;
+  background: transparent;
+}
+
+.colorInput {
+  flex: 1;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 0, 0, 0.5);
+  border-radius: 4px;
+  padding: 0.4rem 0.6rem;
+  color: #fff;
+  font-size: 0.85rem;
+  font-family: monospace;
+}
+
+.colorInput:focus {
+  outline: none;
+  border-color: #ff0000;
+  background: rgba(255, 255, 255, 0.15);
+}
+
+@media (max-width: 768px) {
+  .viewerToggle {
+    top: 0.75rem;
+    right: 0.75rem;
+  }
+  
+  .debugButton {
+    font-size: 0.7rem;
+    padding: 0.4rem 0.7rem;
+  }
+  
+  .colorOverlay {
+    top: 0.5rem;
+    left: 0.5rem;
+  }
+  
+  .colorPanel {
+    min-width: 200px;
+    padding: 0.75rem;
+  }
+  
+  .colorControl {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.25rem;
+  }
+  
+  .colorControl label {
+    min-width: auto;
+  }
+  
+  .colorInput {
+    width: 100%;
+  }
+}
+

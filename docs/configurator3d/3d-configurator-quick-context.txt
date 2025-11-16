@@ -1,0 +1,14 @@
+# 3D Configurator Quick Context (500 chars)
+
+✅ Built: R3F viewer loads VolturianoGLB.glb, custom HDRI (studio_small_06_4k.exr), polished ground plane, Mat_BodyPaint/RimPaint color controls.
+
+📍 Files: Viewer3D.jsx, Configurator.jsx, VolturianoGLB.glb, studio_small_06_4k.exr
+
+🎨 Materials: Mat_BodyPaint (body), Mat_RimPaint (rims) - both support real-time color via props.
+
+⚙️ Setup: Car scaled 2x, camera [6,1.8,8] FOV 50°, HDRI intensity 1.8, ground 200x200.
+
+⏭️ Next: Replace dev overlay with production UI, add color swatches, connect to config store.
+
+🔧 Debug: VITE_ENABLE_R3F_MODE=true or use DEBUG button. See model-context.txt for GLB structure.
+

@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useGarageStore } from '../../../stores/garageStore';
 import { useUserStore } from '../../../stores/userStore';
 import GarageFilters from '../../garage/components/GarageFilters';
@@ -57,8 +58,8 @@ export default function Garage() {
 
   useEffect(() => {
     loadGarage(true).catch((err) => {
-      console.error('[Garage] Failed to load garage:', err);
-    });
+        console.error('[Garage] Failed to load garage:', err);
+      });
 
     subscribeRealtime();
     return () => {
@@ -126,18 +127,138 @@ export default function Garage() {
     navigate('/configurator');
   };
 
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: {
+        duration: 0.4,
+        staggerChildren: 0.05,
+        delayChildren: 0.1
+      }
+    }
+  };
+
+  const sidebarItemVariants = {
+    hidden: { opacity: 0, x: -20 },
+    visible: {
+      opacity: 1,
+      x: 0,
+      transition: {
+        duration: 0.3,
+        ease: [0.25, 0.1, 0.25, 1]
+      }
+    }
+  };
+
+  const headerVariants = {
+    hidden: { opacity: 0, y: -10 },
+    visible: {
+      opacity: 1,
+      y: 0,
+      transition: {
+        duration: 0.4,
+        ease: [0.25, 0.1, 0.25, 1]
+      }
+    }
+  };
+
+  const tabVariants = {
+    hidden: { opacity: 0, y: -5 },
+    visible: {
+      opacity: 1,
+      y: 0,
+      transition: {
+        duration: 0.3,
+        ease: [0.25, 0.1, 0.25, 1]
+      }
+    }
+  };
+
+  const cardGridVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.06,
+        delayChildren: 0.2
+      }
+    }
+  };
+
+  const cardItemVariants = {
+    hidden: { opacity: 0, y: 20, scale: 0.95 },
+    visible: {
+      opacity: 1,
+      y: 0,
+      scale: 1,
+      transition: {
+        duration: 0.4,
+        ease: [0.25, 0.1, 0.25, 1]
+      }
+    }
+  };
+
+  const filterOverlayVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: {
+        duration: 0.2,
+        ease: [0.25, 0.1, 0.25, 1]
+      }
+    },
+    exit: {
+      opacity: 0,
+      transition: {
+        duration: 0.15,
+        ease: [0.25, 0.1, 0.25, 1]
+      }
+    }
+  };
+
+  const filterPanelVariants = {
+    hidden: { opacity: 0, y: 20, scale: 0.98 },
+    visible: {
+      opacity: 1,
+      y: 0,
+      scale: 1,
+      transition: {
+        duration: 0.3,
+        ease: [0.25, 0.1, 0.25, 1]
+      }
+    },
+    exit: {
+      opacity: 0,
+      y: 20,
+      scale: 0.98,
+      transition: {
+        duration: 0.2,
+        ease: [0.25, 0.1, 0.25, 1]
+      }
+    }
+  };
+
   return (
-    <div className={styles.garagePage}>
+    <motion.div
+      className={styles.garagePage}
+      variants={containerVariants}
+      initial="hidden"
+      animate="visible"
+    >
       <aside className={styles.sidebar}>
-        <button
+        <motion.button
           type="button"
           className={styles.sidebarFilterButton}
           onClick={() => setIsFilterOpen(true)}
           aria-haspopup="dialog"
           aria-expanded={isFilterOpen}
+          variants={sidebarItemVariants}
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
         >
           <FilterIcon />
-        </button>
+        </motion.button>
         <nav className={styles.sidebarNav} aria-label="Garage navigation">
           {sideLinks.map((link, index) => {
             const content = (
@@ -152,103 +273,181 @@ export default function Garage() {
 
             if (link.to && !link.disabled) {
               return (
-                <Link
+                <motion.div
                   key={link.key}
-                  to={link.to}
-                  className={styles.sidebarLink}
-                  aria-current={link.active ? 'page' : undefined}
+                  variants={sidebarItemVariants}
+                  custom={index}
                 >
-                  {content}
-                </Link>
+                  <Link
+                    to={link.to}
+                    className={styles.sidebarLink}
+                    aria-current={link.active ? 'page' : undefined}
+                  >
+                    {content}
+                  </Link>
+                </motion.div>
               );
             }
 
             return (
-              <div
+              <motion.div
                 key={link.key}
                 className={styles.sidebarLink}
                 data-disabled={link.disabled ? 'true' : undefined}
                 aria-disabled={link.disabled ? 'true' : undefined}
+                variants={sidebarItemVariants}
+                custom={index}
               >
                 {content}
-              </div>
+              </motion.div>
             );
           })}
         </nav>
       </aside>
 
       <section className={styles.mainContent}>
-        <header className={styles.pageHeader}>
+        <motion.header
+          className={styles.pageHeader}
+          variants={headerVariants}
+        >
           <div className={styles.headingGroup}>
-            <h1 className={styles.greeting}>Hej {displayName}</h1>
-            <div className={styles.tabs}>
-              <button
+            <motion.h1
+              className={styles.greeting}
+              initial={{ opacity: 0, y: -5 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4, delay: 0.2, ease: [0.25, 0.1, 0.25, 1] }}
+            >
+              Hej {displayName}
+            </motion.h1>
+            <motion.div
+              className={styles.tabs}
+              variants={tabVariants}
+            >
+              <motion.button
                 type="button"
                 className={styles.tabButton}
                 data-active={activeTab === 'cars' ? 'true' : undefined}
                 onClick={() => setActiveTab('cars')}
+                whileHover={{ opacity: 0.8 }}
+                whileTap={{ scale: 0.98 }}
               >
                 {t('garage.tabs.cars')}
                 <span>({itemsCount.cars})</span>
-              </button>
-              <button
+              </motion.button>
+              <motion.button
                 type="button"
                 className={styles.tabButton}
                 data-active={activeTab === 'configurations' ? 'true' : undefined}
                 onClick={() => setActiveTab('configurations')}
+                whileHover={{ opacity: 0.8 }}
+                whileTap={{ scale: 0.98 }}
               >
                 {t('garage.tabs.configurations')}
                 <span>({itemsCount.configurations})</span>
-              </button>
-            </div>
+              </motion.button>
+            </motion.div>
           </div>
-          <button type="button" className={styles.addConfiguration} onClick={handleAddConfiguration}>
+          <motion.button
+            type="button"
+            className={styles.addConfiguration}
+            onClick={handleAddConfiguration}
+            initial={{ opacity: 0, x: 10 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.4, delay: 0.3, ease: [0.25, 0.1, 0.25, 1] }}
+            whileHover={{ scale: 1.02, x: 2 }}
+            whileTap={{ scale: 0.98 }}
+          >
             <span className={styles.addConfigurationIcon}>+</span>
             {t('garage.actions.addConfiguration')}
-          </button>
-        </header>
+          </motion.button>
+        </motion.header>
 
-        {(error || (!loading && itemsMap.size === 0)) && (
-          <div className={styles.debugPanel}>
-            {error
-              ? `${t('garage.error.loadFailed')}: ${error.message}`
-              : t('garage.empty.default')}
-          </div>
-        )}
+        <AnimatePresence mode="wait">
+          {(error || (!loading && itemsMap.size === 0)) && (
+            <motion.div
+              className={styles.debugPanel}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 10 }}
+              transition={{ duration: 0.2 }}
+            >
+              {error
+                ? `${t('garage.error.loadFailed')}: ${error.message}`
+                : t('garage.empty.default')}
+            </motion.div>
+          )}
 
-        {activeItems.length === 0 ? (
-          <div className={styles.emptyStateMessage}>
-            {activeTab === 'cars'
-              ? t('garage.empty.purchased')
-              : t('garage.empty.saved')}
-          </div>
-        ) : (
-          <div className={styles.cardGrid}>
-            {activeItems.map((item) => (
-              <CarCard key={item.id} item={item} />
-            ))}
-          </div>
-        )}
+          {activeItems.length === 0 ? (
+            <motion.div
+              className={styles.emptyStateMessage}
+              key="empty"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 10 }}
+              transition={{ duration: 0.3 }}
+            >
+              {activeTab === 'cars'
+                ? t('garage.empty.purchased')
+                : t('garage.empty.saved')}
+            </motion.div>
+          ) : (
+            <motion.div
+              key="cards"
+              className={styles.cardGrid}
+              variants={cardGridVariants}
+              initial="hidden"
+              animate="visible"
+            >
+              {activeItems.map((item) => (
+                <motion.div key={item.id} variants={cardItemVariants}>
+                  <CarCard item={item} />
+                </motion.div>
+              ))}
+            </motion.div>
+          )}
+        </AnimatePresence>
       </section>
 
-      {isFilterOpen && (
-        <div className={styles.filterOverlay} role="dialog" aria-modal="true">
-          <div className={styles.filterPanel}>
-            <div className={styles.filterPanelHeader}>
-              <h2 className={styles.filterPanelTitle}>{t('garage.filterTrigger')}</h2>
-              <button
-                type="button"
-                className={styles.filterPanelClose}
-                onClick={() => setIsFilterOpen(false)}
-              >
-                {t('garage.overlay.close')}
-              </button>
-            </div>
-            <GarageFilters variant="overlay" />
-          </div>
-        </div>
-      )}
-    </div>
+      <AnimatePresence>
+        {isFilterOpen && (
+          <motion.div
+            className={styles.filterOverlay}
+            role="dialog"
+            aria-modal="true"
+            variants={filterOverlayVariants}
+            initial="hidden"
+            animate="visible"
+            exit="exit"
+            onClick={(e) => {
+              if (e.target === e.currentTarget) {
+                setIsFilterOpen(false);
+              }
+            }}
+          >
+            <motion.div
+              className={styles.filterPanel}
+              variants={filterPanelVariants}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className={styles.filterPanelHeader}>
+                <h2 className={styles.filterPanelTitle}>{t('garage.filterTrigger')}</h2>
+                <motion.button
+                  type="button"
+                  className={styles.filterPanelClose}
+                  onClick={() => setIsFilterOpen(false)}
+                  whileHover={{ scale: 1.1, rotate: 90 }}
+                  whileTap={{ scale: 0.9 }}
+                  transition={{ duration: 0.2 }}
+                >
+                  {t('garage.overlay.close')}
+                </motion.button>
+              </div>
+              <GarageFilters variant="overlay" />
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </motion.div>
   );
 }
 

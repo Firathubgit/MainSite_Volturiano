@@ -3,7 +3,7 @@
   gap: 72px;
   min-height: 100vh;
   padding: 100px 50px 54px;
-  background: radial-gradient(circle at top, rgba(255, 69, 32, 0.22), transparent 45%), #030303;
+  background: radial-gradient(circle at top, rgba(255, 69, 32, 0.4), transparent 45%), #030303;
   color: #f7f7f7;
   box-sizing: border-box;
   font-family: 'Inter', sans-serif;
@@ -114,6 +114,9 @@
   font-size: clamp(32px, 4vw, 48px);
   font-weight: 600;
   letter-spacing: -0.02em;
+  /* Move greeting further up the page */
+  margin-top: -16px;
+  padding-bottom: 16px;
 }
 
 .tabs {
@@ -126,7 +129,7 @@
   background: transparent;
   border: none;
   color: rgba(255, 255, 255, 0.6);
-  font-size: 18px;
+  font-size: 16px;
   font-weight: 700;
   padding: 0px 0px 0px 0px;
   cursor: pointer;
@@ -152,7 +155,7 @@
   position: absolute;
   left: 0;
   right: 0;
-  bottom: -12px;
+  bottom: -6px;
   height: 2px;
   border-radius: 6px;
   background: linear-gradient(90deg, #ff4520 0%, #e10600 100%);
@@ -197,7 +200,7 @@
   justify-content: flex-start;
   justify-items: stretch;
   max-width: 1488px;
-  margin: -5px 0 0;
+  margin: -25px 0 0;
 }
 
 .card {
@@ -240,6 +243,11 @@
   object-fit: contain;
   position: relative;
   z-index: 1;
+}
+
+.card .cardImage {
+  transform: scale(1.12);
+  transform-origin: center;
 }
 
 .cardBottom {

@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import { motion } from 'framer-motion';
 import { supabase } from '../../../lib/supabaseClient';
 import styles from '../styles/garage.module.css';
 import showroomPlaceholder from '../../../assets/Garage/ShowroomCarVOLTURIANO1.png';
@@ -148,34 +149,115 @@ export default function CarCard({
     }
   };
 
+
+  const imageVariants = {
+    hidden: { opacity: 0, scale: 1.1 },
+    visible: {
+      opacity: 1,
+      scale: 1,
+      transition: {
+        duration: 0.5,
+        ease: [0.25, 0.1, 0.25, 1]
+      }
+    }
+  };
+
+  const contentVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.05,
+        delayChildren: 0.2
+      }
+    }
+  };
+
+  const itemVariants = {
+    hidden: { opacity: 0, y: 5 },
+    visible: {
+      opacity: 1,
+      y: 0,
+      transition: {
+        duration: 0.3,
+        ease: [0.25, 0.1, 0.25, 1]
+      }
+    }
+  };
+
   return (
-    <div className={styles.card}>
+    <motion.div
+      className={styles.card}
+      whileHover={{ y: -4, transition: { duration: 0.2 } }}
+    >
       <div className={styles.cardTop}>
-        <div className={styles.cardImageWrapper}>
+        <motion.div
+          className={styles.cardImageWrapper}
+          variants={imageVariants}
+          initial="hidden"
+          animate="visible"
+        >
           <img
             src={imageUrl || showroomPlaceholder}
             alt={title}
             className={styles.cardImage}
             loading="lazy"
           />
-        </div>
+        </motion.div>
       </div>
-      <div className={styles.cardBottom}>
-        {dateLabel && <span className={styles.cardDate}>{dateLabel}</span>}
-        <h3 className={styles.cardTitle}>{title}</h3>
-        <p className={styles.cardPackage}>{packageLabel}</p>
-        {description && <p className={styles.cardText}>{description}</p>}
-        <div className={styles.cardDivider} />
-        <div className={styles.cardActions}>
-          <button type="button" className={styles.cardAction} onClick={handleConfigure}>
+      <motion.div
+        className={styles.cardBottom}
+        variants={contentVariants}
+        initial="hidden"
+        animate="visible"
+      >
+        {dateLabel && (
+          <motion.span className={styles.cardDate} variants={itemVariants}>
+            {dateLabel}
+          </motion.span>
+        )}
+        <motion.h3 className={styles.cardTitle} variants={itemVariants}>
+          {title}
+        </motion.h3>
+        <motion.p className={styles.cardPackage} variants={itemVariants}>
+          {packageLabel}
+        </motion.p>
+        {description && (
+          <motion.p className={styles.cardText} variants={itemVariants}>
+            {description}
+          </motion.p>
+        )}
+        <motion.div
+          className={styles.cardDivider}
+          variants={itemVariants}
+          initial={{ scaleX: 0 }}
+          animate={{ scaleX: 1 }}
+          transition={{ duration: 0.3, delay: 0.4 }}
+        />
+        <motion.div className={styles.cardActions} variants={itemVariants}>
+          <motion.button
+            type="button"
+            className={styles.cardAction}
+            onClick={handleConfigure}
+            whileHover={{ opacity: 0.8, x: 2 }}
+            whileTap={{ scale: 0.95 }}
+            transition={{ duration: 0.15 }}
+          >
             {configureLabel || t('garage.actions.configure')}
-          </button>
-          <button type="button" className={styles.cardAction} onClick={handleViewReady}>
+          </motion.button>
+          <motion.button
+            type="button"
+            className={styles.cardAction}
+            onClick={handleViewReady}
+            whileHover={{ opacity: 0.8, x: 2 }}
+            whileTap={{ scale: 0.95 }}
+            transition={{ duration: 0.15 }}
+          >
             {readyLabel || t('garage.actions.viewReadyCars')}
-          </button>
-        </div>
-      </div>
-    </div>
+          </motion.button>
+        </motion.div>
+      </motion.div>
+    </motion.div>
   );
 }
 

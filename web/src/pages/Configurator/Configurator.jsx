@@ -1,7 +1,7 @@
 import React, { Suspense, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import PageTransition from '../../components/PageTransition/PageTransition';
-import { Viewer2D } from '../../viewers/two-d/Viewer2D';
+import { Viewer2D, BODY_COLORS, RIM_COLORS, ANGLES } from '../../viewers/two-d/Viewer2D';
 import { Viewer3D } from '../../viewers/three-d/Viewer3D';
 import styles from './Configurator.module.css';
 
@@ -10,8 +10,15 @@ export default function Configurator() {
   const { t } = useTranslation('configurator');
   const [mode, setMode] = useState('2d');
   const [debugForce3D, setDebugForce3D] = useState(false);
-  const [bodyColor, setBodyColor] = useState('#FF4520');
-  const [rimColor, setRimColor] = useState('#111111');
+  
+  // 3D mode colors (hex values)
+  const [bodyColor3D, setBodyColor3D] = useState('#FF4520');
+  const [rimColor3D, setRimColor3D] = useState('#111111');
+  
+  // 2D mode selections (option keys)
+  const [bodyColor2D, setBodyColor2D] = useState('orange-fury');
+  const [rimColor2D, setRimColor2D] = useState('black');
+  const [angle2D, setAngle2D] = useState('front-3q');
 
   // Debug logging
   useEffect(() => {
@@ -73,24 +80,25 @@ export default function Configurator() {
               DEBUG
             </button>
           </div>
+          {/* 3D Dev Controls */}
           {show3D && (
             <div className={styles.colorOverlay}>
               <div className={styles.colorPanel}>
-                <div className={styles.colorLabel}>DEV MODE</div>
+                <div className={styles.colorLabel}>DEV MODE - 3D</div>
                 <div className={styles.colorControl}>
                   <label>Body Paint:</label>
                   <input
                     type="color"
-                    value={bodyColor}
+                    value={bodyColor3D}
                     onChange={(e) => {
                       console.log('[Configurator] Body color changed:', e.target.value);
-                      setBodyColor(e.target.value);
+                      setBodyColor3D(e.target.value);
                     }}
                   />
                   <input
                     type="text"
-                    value={bodyColor}
-                    onChange={(e) => setBodyColor(e.target.value)}
+                    value={bodyColor3D}
+                    onChange={(e) => setBodyColor3D(e.target.value)}
                     className={styles.colorInput}
                   />
                 </div>
@@ -98,24 +106,95 @@ export default function Configurator() {
                   <label>Rim Paint:</label>
                   <input
                     type="color"
-                    value={rimColor}
+                    value={rimColor3D}
                     onChange={(e) => {
                       console.log('[Configurator] Rim color changed:', e.target.value);
-                      setRimColor(e.target.value);
+                      setRimColor3D(e.target.value);
                     }}
                   />
                   <input
                     type="text"
-                    value={rimColor}
-                    onChange={(e) => setRimColor(e.target.value)}
+                    value={rimColor3D}
+                    onChange={(e) => setRimColor3D(e.target.value)}
                     className={styles.colorInput}
                   />
                 </div>
               </div>
             </div>
           )}
+          
+          {/* 2D Dev Controls */}
+          {!show3D && (
+            <div className={styles.colorOverlay}>
+              <div className={styles.colorPanel}>
+                <div className={styles.colorLabel}>DEV MODE - 2D</div>
+                
+                {/* Body Color Selection */}
+                <div className={styles.colorControl}>
+                  <label>Body:</label>
+                  <select
+                    value={bodyColor2D}
+                    onChange={(e) => {
+                      console.log('[Configurator] Body color changed:', e.target.value);
+                      setBodyColor2D(e.target.value);
+                    }}
+                    className={styles.selectInput}
+                  >
+                    {Object.entries(BODY_COLORS).map(([key, label]) => (
+                      <option key={key} value={key}>{label}</option>
+                    ))}
+                  </select>
+                </div>
+                
+                {/* Rim Color Selection */}
+                <div className={styles.colorControl}>
+                  <label>Rim:</label>
+                  <select
+                    value={rimColor2D}
+                    onChange={(e) => {
+                      console.log('[Configurator] Rim color changed:', e.target.value);
+                      setRimColor2D(e.target.value);
+                    }}
+                    className={styles.selectInput}
+                  >
+                    {Object.entries(RIM_COLORS).map(([key, label]) => (
+                      <option key={key} value={key}>{label}</option>
+                    ))}
+                  </select>
+                </div>
+                
+                {/* Angle Selection */}
+                <div className={styles.colorControl}>
+                  <label>Angle:</label>
+                  <div className={styles.angleButtons}>
+                    {Object.entries(ANGLES).map(([key, label]) => (
+                      <button
+                        key={key}
+                        type="button"
+                        className={`${styles.angleButton} ${angle2D === key ? styles.angleButtonActive : ''}`}
+                        onClick={() => {
+                          console.log('[Configurator] Angle changed:', key);
+                          setAngle2D(key);
+                        }}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
           <Suspense fallback={<div className="center">{t('loading')}</div>}>
-            {show3D ? <Viewer3D bodyColor={bodyColor} rimColor={rimColor} /> : <Viewer2D />}
+            {show3D ? (
+              <Viewer3D bodyColor={bodyColor3D} rimColor={rimColor3D} />
+            ) : (
+              <Viewer2D 
+                bodyColor={bodyColor2D} 
+                rimColor={rimColor2D} 
+                angle={angle2D}
+              />
+            )}
           </Suspense>
         </div>
       </section>

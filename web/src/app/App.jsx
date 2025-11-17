@@ -110,9 +110,18 @@ export default function App() {
     initialise();
 
     const { data: subscription } = supabase.auth.onAuthStateChange(
-      async (_event, session) => {
-        setStatus('loading');
-        await handleSession(session);
+      async (event, session) => {
+        // For sign out events, handle immediately without blocking
+        // The stores are already cleared optimistically in AccountMenu
+        if (event === 'SIGNED_OUT') {
+          // Don't await - let it run in background to avoid blocking
+          handleSession(session).catch((err) => {
+            console.warn('Error handling sign out session:', err);
+          });
+        } else {
+          setStatus('loading');
+          await handleSession(session);
+        }
       }
     );
 

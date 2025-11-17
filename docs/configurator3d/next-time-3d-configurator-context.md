@@ -1,7 +1,9 @@
 # 3D Configurator - Context for Next Developer
 
-**Last Updated:** 2025-11-16  
+**Last Updated:** 2025-01-XX  
 **Status:** Core 3D viewer functional, ready for color controls and UI polish
+
+**Note:** 2D configurator is also implemented. See `docs/configurator/2d-configurator-context.md` for details.
 
 ## What's Been Built
 
@@ -26,6 +28,7 @@
   - DEBUG button bypasses env flags for testing
   - Dev-mode color overlay (temporary UI) for body/rim color changes
   - Default colors: Body `#FF4520`, Rim `#111111`
+  - **2D Mode:** Fully functional with dev controls (see 2D configurator context)
 
 ### Environment & Lighting
 - Custom HDRI loaded via drei's `Environment` component
@@ -36,11 +39,13 @@
 ## Key Files
 
 - `web/src/viewers/three-d/Viewer3D.jsx` - Main 3D viewer component
+- `web/src/viewers/two-d/Viewer2D.jsx` - 2D viewer component (pre-rendered images)
 - `web/src/pages/Configurator/Configurator.jsx` - Page with mode toggle
 - `web/src/pages/Configurator/Configurator.module.css` - Styling
 - `web/src/assets/3DConfigurator/VolturianoGLB.glb` - Car model
 - `web/src/assets/3DConfigurator/studio_small_06_4k.exr` - HDRI environment
 - `docs/configurator3d/volturiano-model-context.txt` - Model structure documentation
+- `docs/configurator/2d-configurator-context.md` - 2D configurator documentation
 
 ## Model Context
 

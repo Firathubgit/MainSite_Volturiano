@@ -42,7 +42,48 @@ export async function sendPasswordReset(email) {
 export async function signOut() {
   const { client, error } = ensureClient();
   if (error) return { error };
-  return client.auth.signOut();
+  
+  // Critical: Close all realtime channels BEFORE signing out
+  // This prevents signOut from hanging on active websocket connections
+  try {
+    // Disconnect realtime completely - this closes all channels
+    if (client.realtime) {
+      // Try to disconnect realtime connection (closes all channels)
+      if (typeof client.realtime.disconnect === 'function') {
+        client.realtime.disconnect();
+      }
+      
+      // Also try to remove all channels if channels property exists
+      if (client.realtime.channels) {
+        const channels = Array.from(client.realtime.channels.values() || []);
+        channels.forEach((channel) => {
+          try {
+            client.removeChannel(channel);
+          } catch (err) {
+            // Ignore errors when removing channels
+          }
+        });
+      }
+    }
+  } catch (err) {
+    // Continue with signOut even if channel cleanup fails
+    console.warn('Error cleaning up realtime channels (non-blocking):', err);
+  }
+  
+  // Use global scope to sign out from all devices/sessions
+  // Add timeout to prevent hanging - reduced timeout since channels are closed
+  try {
+    const timeoutPromise = new Promise((_, reject) => 
+      setTimeout(() => reject(new Error('Sign out timeout')), 2000)
+    );
+    
+    const signOutPromise = client.auth.signOut({ scope: 'global' });
+    
+    return await Promise.race([signOutPromise, timeoutPromise]);
+  } catch (err) {
+    // If timeout or error, still return error but don't block UI
+    return { error: err };
+  }
 }
 
 export async function fetchProfile(userId) {

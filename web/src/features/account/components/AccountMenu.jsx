@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useUiStore } from '../../../stores/uiStore';
 import { useUserStore } from '../../../stores/userStore';
+import { useGarageStore } from '../../../stores/garageStore';
 import { signOut } from '../api';
 import styles from './AccountMenu.module.css';
 import { useRenderLogger } from '../../../debug/useRenderLogger';
@@ -14,6 +15,8 @@ export default function AccountMenu({ anchorRef }) {
   const closeMenu = useUiStore((state) => state.closeAccountMenu);
   const session = useUserStore((state) => state.session);
   const profile = useUserStore((state) => state.profile);
+  const resetUserStore = useUserStore((state) => state.reset);
+  const resetGarageStore = useGarageStore((state) => state.reset);
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
   const { t } = useTranslation('account');
@@ -48,14 +51,26 @@ export default function AccountMenu({ anchorRef }) {
   const handleSignOut = async () => {
     setLoading(true);
     setError(null);
-    const { error: signOutError } = await signOut();
-    if (signOutError) {
-      setError(signOutError.message);
-    } else {
-      closeMenu();
-      navigate('/', { replace: true });
+    
+    // Optimistic logout: clear stores and navigate immediately
+    // This makes the UI feel instant even if Supabase is slow
+    resetUserStore();
+    resetGarageStore();
+    closeMenu();
+    navigate('/', { replace: true });
+    
+    // Handle actual signOut in background (don't block UI)
+    try {
+      const { error: signOutError } = await signOut();
+      if (signOutError) {
+        // Log error but don't show to user since we already logged out locally
+        console.warn('Sign out error (non-blocking):', signOutError.message);
+      }
+    } catch (err) {
+      console.warn('Sign out exception (non-blocking):', err);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   const goToGarage = () => {

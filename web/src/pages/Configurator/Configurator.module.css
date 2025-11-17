@@ -143,6 +143,60 @@
   background: rgba(255, 255, 255, 0.15);
 }
 
+.selectInput {
+  flex: 1;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 0, 0, 0.5);
+  border-radius: 4px;
+  padding: 0.4rem 0.6rem;
+  color: #fff;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.selectInput:focus {
+  outline: none;
+  border-color: #ff0000;
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.selectInput option {
+  background: #1a1a1a;
+  color: #fff;
+}
+
+.angleButtons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  flex: 1;
+}
+
+.angleButton {
+  flex: 1;
+  min-width: 80px;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 0, 0, 0.5);
+  border-radius: 4px;
+  padding: 0.4rem 0.6rem;
+  color: #fff;
+  font-size: 0.75rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.angleButton:hover {
+  background: rgba(255, 255, 255, 0.15);
+  border-color: rgba(255, 0, 0, 0.7);
+}
+
+.angleButtonActive {
+  background: #ff0000;
+  border-color: #ff0000;
+  color: #fff;
+  font-weight: 600;
+}
+
 @media (max-width: 768px) {
   .viewerToggle {
     top: 0.75rem;

@@ -1,4 +1,8 @@
 {
+  "common": {
+    "close": "Stäng",
+    "cancel": "Avbryt"
+  },
   "menu": {
     "enter": "Gå in i Volturiano",
     "guestSubtitle": "Välj hur du vill fortsätta",
@@ -68,6 +72,8 @@
     "filters": {
       "state": "Filtrera efter status",
       "allStates": "Alla statusar",
+      "model": "Filtrera efter modell",
+      "allModels": "Alla modeller",
       "search": "Sök",
       "searchPlaceholder": "Sök efter titel eller beskrivning...",
       "dateRange": "Datumintervall",
@@ -82,7 +88,27 @@
       "priceMin": "Minpris",
       "priceMax": "Maxpris",
       "priceMinPlaceholder": "Min (EUR)",
-      "priceMaxPlaceholder": "Max (EUR)"
+      "priceMaxPlaceholder": "Max (EUR)",
+      "sort": "Sortera efter",
+      "sortDateNewest": "Datum (nyaste först)",
+      "sortDateOldest": "Datum (äldsta först)",
+      "sortPriceHigh": "Pris (högsta till lägsta)",
+      "sortPriceLow": "Pris (lägsta till högsta)",
+      "sortNameAZ": "Namn (A-Ö)",
+      "sortNameZA": "Namn (Ö-A)",
+      "presets": "Sparade filter",
+      "savePreset": "Spara nuvarande filter",
+      "presetName": "Förinställningsnamn",
+      "applyPreset": "Tillämpa",
+      "deletePreset": "Radera",
+      "clearAll": "Rensa alla filter",
+      "applyFilters": "Tillämpa filter",
+      "activeFilters": "{{count}} aktiva",
+      "defaultPresets": {
+        "myPurchases": "Mina köp",
+        "recentBuilds": "Senaste byggen",
+        "highValue": "Högt värde"
+      }
     },
     "filterTrigger": "Filtrera",
     "tags": {
@@ -103,6 +129,25 @@
       "tagsUpdated": "Taggar uppdaterade",
       "errorUpdating": "Kunde inte uppdatera taggar",
       "save": "Spara"
+    },
+    "pdfExport": {
+      "exportButton": "Exportera PDF",
+      "modalTitle": "Exportera PDF-specifikation",
+      "watermark": "Inkludera vattenstämpel",
+      "includeQR": "Inkludera QR-kod (länkar till onlinevy)",
+      "generate": "Generera PDF",
+      "processing": "Bearbetar",
+      "ready": "Klar",
+      "failed": "Misslyckades",
+      "statusTitle": "PDF-exporteringsstatus",
+      "statusQueued": "I kö",
+      "statusProcessing": "Genererar PDF...",
+      "statusCompleted": "PDF redo för nedladdning",
+      "statusFailed": "PDF-generering misslyckades",
+      "statusUnknown": "Okänd status",
+      "download": "Ladda ner PDF",
+      "retry": "Försök igen",
+      "generationFailed": "PDF-generering misslyckades. Försök igen."
     },
     "actions": {
       "edit": "Redigera",

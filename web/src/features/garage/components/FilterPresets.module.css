@@ -1,0 +1,181 @@
+.filterPresets {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.presetsHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.presetsLabel {
+  font-size: 12px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.72);
+}
+
+.saveButton {
+  background: transparent;
+  border: 1px solid #303030;
+  border-radius: 8px;
+  padding: 6px 12px;
+  color: #f7f7f7;
+  font-size: 12px;
+  cursor: pointer;
+  transition: border-color 160ms ease, background-color 160ms ease;
+}
+
+.saveButton:hover,
+.saveButton:focus-visible {
+  outline: none;
+  border-color: #ff4520;
+  background: rgba(255, 69, 32, 0.1);
+}
+
+.presetsList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.presetButton {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #0d0d0d;
+  border: 1px solid #303030;
+  border-radius: 8px;
+  padding: 8px 12px;
+  color: #f7f7f7;
+  font-size: 13px;
+  cursor: pointer;
+  transition: border-color 160ms ease, background-color 160ms ease;
+}
+
+.presetButton:hover,
+.presetButton:focus-visible {
+  outline: none;
+  border-color: #ff4520;
+  background: rgba(255, 69, 32, 0.08);
+}
+
+.presetName {
+  flex: 1;
+}
+
+.deleteButton {
+  background: transparent;
+  border: none;
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  transition: color 160ms ease, background-color 160ms ease;
+}
+
+.deleteButton:hover,
+.deleteButton:focus-visible {
+  outline: none;
+  color: #ff4520;
+  background: rgba(255, 69, 32, 0.1);
+}
+
+.modalOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.modal {
+  background: #1a1a1a;
+  border: 1px solid #303030;
+  border-radius: 16px;
+  padding: 24px;
+  min-width: 320px;
+  max-width: 90vw;
+}
+
+.modalTitle {
+  font-size: 18px;
+  font-weight: 600;
+  color: #f7f7f7;
+  margin: 0 0 16px 0;
+}
+
+.modalInput {
+  width: 100%;
+  background: #0d0d0d;
+  border: 1px solid #303030;
+  border-radius: 12px;
+  padding: 12px 16px;
+  color: #f7f7f7;
+  font-size: 14px;
+  margin-bottom: 16px;
+  transition: border-color 160ms ease, box-shadow 160ms ease;
+}
+
+.modalInput:focus {
+  outline: none;
+  border-color: #ff4520;
+  box-shadow: 0 0 0 3px rgba(255, 69, 32, 0.18);
+}
+
+.modalActions {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+}
+
+.modalButton {
+  background: transparent;
+  border: 1px solid #303030;
+  border-radius: 8px;
+  padding: 10px 20px;
+  color: #f7f7f7;
+  font-size: 14px;
+  cursor: pointer;
+  transition: border-color 160ms ease, background-color 160ms ease;
+}
+
+.modalButton:hover,
+.modalButton:focus-visible {
+  outline: none;
+  border-color: #ff4520;
+  background: rgba(255, 69, 32, 0.1);
+}
+
+.modalButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.modalButtonPrimary {
+  background: #ff4520;
+  border-color: #ff4520;
+  color: #ffffff;
+}
+
+.modalButtonPrimary:hover:not(:disabled),
+.modalButtonPrimary:focus-visible:not(:disabled) {
+  background: #ff5729;
+  border-color: #ff5729;
+}
+

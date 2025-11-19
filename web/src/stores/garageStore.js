@@ -20,7 +20,12 @@ import {
   addTag as addTagAPI,
   removeTag as removeTagAPI,
   getTags as getTagsAPI,
-  getAllTags as getAllTagsAPI
+  getAllTags as getAllTagsAPI,
+  getModelCounts as getModelCountsAPI,
+  createPdfExportJob as createPdfExportJobAPI,
+  getPdfJobStatus as getPdfJobStatusAPI,
+  getPdfDownloadUrl as getPdfDownloadUrlAPI,
+  listPdfExports as listPdfExportsAPI
 } from '../features/account/api';
 import { changeItemState } from '../features/garage/services/stateChangeService';
 import { autoMigrateConfig } from '../features/garage/utils/migrateConfigs';
@@ -29,6 +34,7 @@ import { migrateLegacyTags, needsTagMigration } from '../features/garage/utils/m
 
 const STORAGE_KEY = 'volturiano_garage_cache';
 const CACHE_EXPIRY_MS = 24 * 60 * 60 * 1000; // 24 hours
+const FILTER_PRESETS_STORAGE_KEY = 'volturiano_garage_filter_presets';
 
 /**
  * Load garage cache from localStorage
@@ -91,7 +97,9 @@ export const useGarageStore = create((set, get) => ({
     priceMin: null, // Minimum price in cents
     priceMax: null, // Maximum price in cents
     tags: [], // Array of selected tag strings
-    tagMode: 'OR' // 'AND' | 'OR' - filtering mode
+    tagMode: 'OR', // 'AND' | 'OR' - filtering mode
+    sortBy: 'created_at', // 'created_at' | 'updated_at' | 'price_cents' | 'title'
+    sortOrder: 'desc' // 'asc' | 'desc'
   },
   pagination: {
     page: 1,
@@ -108,6 +116,9 @@ export const useGarageStore = create((set, get) => ({
   shareLinks: new Map(), // Map<itemId, Array<ShareLink>> - Cache share links per item
   milestones: new Map(), // Map<itemId, Array<Milestone>> - Cache milestones per item
   tagCounts: new Map(), // Map<tag, count> - Cache tag usage counts
+  modelCounts: new Map(), // Map<model, count> - Cache model usage counts
+  pdfExports: new Map(), // Map<itemId, Array<Job>> - Cache PDF export jobs per item
+  pdfJobStatus: new Map(), // Map<jobId, status> - Cache PDF job status
 
   // Actions
   /**
@@ -116,17 +127,41 @@ export const useGarageStore = create((set, get) => ({
    */
   loadGarage: async (useCache = true) => {
     const state = get();
+    console.log('[GarageStore] loadGarage called:', {
+      useCache,
+      alreadyLoading: state.loading,
+      timestamp: new Date().toISOString()
+    });
+    
     if (state.loading) {
       console.warn('[GarageStore] Already loading, skipping duplicate call');
       return Promise.resolve();
     }
 
     console.log('[GarageStore] Starting loadGarage, useCache:', useCache);
+    
+    // Check session before loading
+    const { supabase } = await import('../lib/supabaseClient');
+    if (supabase) {
+      const sessionCheck = await supabase.auth.getSession();
+      console.log('[GarageStore] Session check before load:', {
+        hasSession: !!sessionCheck.data?.session,
+        hasUser: !!sessionCheck.data?.session?.user,
+        userId: sessionCheck.data?.session?.user?.id,
+        hasAccessToken: !!sessionCheck.data?.session?.access_token,
+        error: sessionCheck.error?.message
+      });
+    } else {
+      console.error('[GarageStore] Supabase client not available!');
+    }
+    
     set({ loading: true, error: null });
 
     // Try cache first if enabled (but only if no filters are active)
     const currentFilters = get().filters;
-    const hasActiveFilters = currentFilters.state || currentFilters.model || currentFilters.search;
+    const hasActiveFilters = currentFilters.state || currentFilters.model || currentFilters.search || 
+                             currentFilters.dateRange || currentFilters.priceMin || currentFilters.priceMax ||
+                             (currentFilters.sortBy !== 'created_at' || currentFilters.sortOrder !== 'desc');
     
     if (useCache && !hasActiveFilters) {
       const cached = loadCache();
@@ -201,7 +236,9 @@ export const useGarageStore = create((set, get) => ({
       // Only merge with existing items if no filters are active (for pagination)
       // If filters are active, replace items completely
       const finalFilters = get().filters;
-      const hasFilters = finalFilters.state || finalFilters.model || finalFilters.search;
+      const hasFilters = finalFilters.state || finalFilters.model || finalFilters.search || 
+                         finalFilters.dateRange || finalFilters.priceMin || finalFilters.priceMax ||
+                         (finalFilters.sortBy !== 'created_at' || finalFilters.sortOrder !== 'desc');
       
       if (!hasFilters) {
         // Merge with existing items (for pagination when no filters)
@@ -455,11 +492,13 @@ export const useGarageStore = create((set, get) => ({
    */
   setFilters: (newFilters) => {
     const currentState = get();
-    console.log('[GarageStore] setFilters called with:', newFilters);
+    console.log('[GarageStore] ===== setFilters CALLED =====');
+    console.log('[GarageStore] New filters being set:', newFilters);
     console.log('[GarageStore] Current filters:', currentState.filters);
     
     // Don't update if filters haven't changed
     const newFilterState = { ...currentState.filters, ...newFilters };
+    console.log('[GarageStore] Merged filter state:', newFilterState);
     
     // Normalize tags array for comparison
     const tagsEqual = (a, b) => {
@@ -479,33 +518,51 @@ export const useGarageStore = create((set, get) => ({
       newFilterState.priceMin !== currentState.filters.priceMin ||
       newFilterState.priceMax !== currentState.filters.priceMax ||
       !tagsEqual(newFilterState.tags, currentState.filters.tags) ||
-      newFilterState.tagMode !== currentState.filters.tagMode;
+      newFilterState.tagMode !== currentState.filters.tagMode ||
+      newFilterState.sortBy !== currentState.filters.sortBy ||
+      newFilterState.sortOrder !== currentState.filters.sortOrder;
+    
+    console.log('[GarageStore] Filters changed?', filtersChanged);
+    console.log('[GarageStore] State changed:', newFilterState.state !== currentState.filters.state, { old: currentState.filters.state, new: newFilterState.state });
+    console.log('[GarageStore] Model changed:', newFilterState.model !== currentState.filters.model, { old: currentState.filters.model, new: newFilterState.model });
+    console.log('[GarageStore] SortBy changed:', newFilterState.sortBy !== currentState.filters.sortBy, { old: currentState.filters.sortBy, new: newFilterState.sortBy });
+    console.log('[GarageStore] SortOrder changed:', newFilterState.sortOrder !== currentState.filters.sortOrder, { old: currentState.filters.sortOrder, new: newFilterState.sortOrder });
+    console.log('[GarageStore] DateRange changed:', newFilterState.dateRange !== currentState.filters.dateRange, { old: currentState.filters.dateRange, new: newFilterState.dateRange });
+    console.log('[GarageStore] DateField changed:', newFilterState.dateField !== currentState.filters.dateField, { old: currentState.filters.dateField, new: newFilterState.dateField });
     
     if (!filtersChanged) {
       console.log('[GarageStore] Filters unchanged, skipping reload');
       return;
     }
     
-    // Check if only client-side filters changed (search, tags, price) - no API reload needed
+    // Check if only client-side filters changed (search, tags) - no API reload needed
+    // Note: price filters, sort, model, state, dateRange all require API reload
     const onlyClientSideChanged = 
       (newFilterState.search !== currentState.filters.search ||
        !tagsEqual(newFilterState.tags, currentState.filters.tags) ||
-       newFilterState.tagMode !== currentState.filters.tagMode ||
-       newFilterState.priceMin !== currentState.filters.priceMin ||
-       newFilterState.priceMax !== currentState.filters.priceMax) &&
+       newFilterState.tagMode !== currentState.filters.tagMode) &&
       newFilterState.state === currentState.filters.state &&
       newFilterState.model === currentState.filters.model &&
       newFilterState.dateRange === currentState.filters.dateRange &&
-      newFilterState.dateField === currentState.filters.dateField;
+      newFilterState.dateField === currentState.filters.dateField &&
+      newFilterState.priceMin === currentState.filters.priceMin &&
+      newFilterState.priceMax === currentState.filters.priceMax &&
+      newFilterState.sortBy === currentState.filters.sortBy &&
+      newFilterState.sortOrder === currentState.filters.sortOrder;
+    
+    console.log('[GarageStore] Only client-side changed?', onlyClientSideChanged);
     
     // Update filters (this will trigger re-render with filtered items)
+    console.log('[GarageStore] Updating filter state in store...');
     set({
       filters: newFilterState,
       pagination: { ...currentState.pagination, page: 1 } // Reset to first page
     });
+    console.log('[GarageStore] Filter state updated in store');
     
     // Only reload from API if server-side filters changed (not client-side only)
     if (!onlyClientSideChanged) {
+      console.log('[GarageStore] Server-side filters changed, triggering API reload...');
       // Clear any existing loading state before setting new filters
       if (currentState.loading) {
         console.warn('[GarageStore] Already loading, clearing loading state first');
@@ -514,6 +571,7 @@ export const useGarageStore = create((set, get) => ({
       
       // Small delay to ensure state is updated before loading
       setTimeout(() => {
+        console.log('[GarageStore] Calling loadGarage(false) to reload with new filters...');
         // Reload without cache
         get().loadGarage(false).catch((err) => {
           console.error('[GarageStore] Error loading garage after filter change:', err);
@@ -521,8 +579,9 @@ export const useGarageStore = create((set, get) => ({
         });
       }, 0);
     } else {
-      console.log('[GarageStore] Only search changed, filtering client-side (no API reload)');
+      console.log('[GarageStore] Only client-side filters changed, filtering client-side (no API reload)');
     }
+    console.log('[GarageStore] ===== setFilters COMPLETE =====');
   },
 
   /**
@@ -534,14 +593,221 @@ export const useGarageStore = create((set, get) => ({
   },
 
   /**
-   * Get items filtered by state (for lanes)
+   * Get all filtered items (applies all active filters)
+   * @returns {Array} Filtered and sorted items
+   */
+  getFilteredItems: () => {
+    const storeState = get();
+    const items = Array.from(storeState.items.values());
+    console.log('[GarageStore] getFilteredItems called');
+    console.log('[GarageStore] Total items in store:', items.length);
+    console.log('[GarageStore] Current filters:', storeState.filters);
+    
+    // Start with all items, then apply filters
+    let filtered = items.filter((item) => !item.archived_at);
+    console.log('[GarageStore] Items after archived filter:', filtered.length);
+    
+    // Apply state filter
+    if (storeState.filters.state) {
+      const beforeCount = filtered.length;
+      filtered = filtered.filter((item) => item.state === storeState.filters.state);
+      console.log('[GarageStore] After state filter:', filtered.length, '(was', beforeCount + ')', 'state:', storeState.filters.state);
+    }
+    
+    // Apply model filter
+    if (storeState.filters.model) {
+      const beforeCount = filtered.length;
+      filtered = filtered.filter((item) => item.vehicle_model === storeState.filters.model);
+      console.log('[GarageStore] After model filter:', filtered.length, '(was', beforeCount + ')', 'model:', storeState.filters.model);
+    }
+    
+    // Apply date range filter
+    if (storeState.filters.dateRange && storeState.filters.dateRange !== 'all') {
+      const beforeCount = filtered.length;
+      const now = new Date();
+      let startDate;
+      
+      switch (storeState.filters.dateRange) {
+        case '7d':
+          startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+          break;
+        case '30d':
+          startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+          break;
+        case '90d':
+          startDate = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
+          break;
+        case '1y':
+          startDate = new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000);
+          break;
+        default:
+          startDate = null;
+      }
+      
+      if (startDate) {
+        const dateField = storeState.filters.dateField || 'created_at';
+        console.log('[GarageStore] Applying date filter:', { dateRange: storeState.filters.dateRange, dateField, startDate });
+        filtered = filtered.filter((item) => {
+          const itemDate = new Date(item[dateField]);
+          return itemDate >= startDate;
+        });
+        console.log('[GarageStore] After date filter:', filtered.length, '(was', beforeCount + ')');
+      }
+    }
+    
+    // Apply search filter
+    if (storeState.filters.search && storeState.filters.search.trim()) {
+      const searchTerm = storeState.filters.search.trim().toLowerCase();
+      filtered = filtered.filter((item) => {
+        const titleMatch = item.title?.toLowerCase().includes(searchTerm) || false;
+        const descMatch = item.description?.toLowerCase().includes(searchTerm) || false;
+        const modelMatch = item.vehicle_model?.toLowerCase().includes(searchTerm) || false;
+        return titleMatch || descMatch || modelMatch;
+      });
+    }
+    
+    // Apply price filters
+    if (storeState.filters.priceMin !== null && storeState.filters.priceMin !== undefined) {
+      filtered = filtered.filter((item) => {
+        const itemPrice = item.price_cents || 0;
+        return itemPrice >= storeState.filters.priceMin;
+      });
+    }
+    
+    if (storeState.filters.priceMax !== null && storeState.filters.priceMax !== undefined) {
+      filtered = filtered.filter((item) => {
+        const itemPrice = item.price_cents || 0;
+        return itemPrice <= storeState.filters.priceMax;
+      });
+    }
+    
+    // Apply tag filtering
+    if (storeState.filters.tags && Array.isArray(storeState.filters.tags) && storeState.filters.tags.length > 0) {
+      filtered = filterItemsByTags(
+        filtered,
+        storeState.filters.tags,
+        storeState.filters.tagMode || 'OR'
+      );
+    }
+    
+    // Apply sorting
+    const sortBy = storeState.filters.sortBy || 'created_at';
+    const sortOrder = storeState.filters.sortOrder || 'desc';
+    console.log('[GarageStore] Applying sort:', { sortBy, sortOrder });
+    console.log('[GarageStore] Items before sort:', filtered.slice(0, 3).map(i => ({ 
+      id: i.id, 
+      title: i.title, 
+      sortValue: sortBy === 'title' ? i.title : sortBy === 'price_cents' ? i.price_cents : i[sortBy]
+    })));
+    
+    // Create a new sorted array (don't mutate original)
+    const sorted = [...filtered].sort((a, b) => {
+      let aVal, bVal;
+      
+      switch (sortBy) {
+        case 'title':
+          aVal = (a.title || '').toLowerCase();
+          bVal = (b.title || '').toLowerCase();
+          break;
+        case 'price_cents':
+          aVal = a.price_cents || 0;
+          bVal = b.price_cents || 0;
+          break;
+        case 'updated_at':
+          aVal = new Date(a.updated_at || 0).getTime();
+          bVal = new Date(b.updated_at || 0).getTime();
+          break;
+        case 'created_at':
+        default:
+          aVal = new Date(a.created_at || 0).getTime();
+          bVal = new Date(b.created_at || 0).getTime();
+          break;
+      }
+      
+      if (sortOrder === 'asc') {
+        return aVal > bVal ? 1 : aVal < bVal ? -1 : 0;
+      } else {
+        return aVal < bVal ? 1 : aVal > bVal ? -1 : 0;
+      }
+    });
+    
+    console.log('[GarageStore] Final filtered items count:', sorted.length);
+    console.log('[GarageStore] Sample items after sort:', sorted.slice(0, 3).map(i => ({ 
+      id: i.id, 
+      title: i.title, 
+      state: i.state, 
+      model: i.vehicle_model,
+      sortValue: sortBy === 'title' ? i.title : sortBy === 'price_cents' ? i.price_cents : i[sortBy]
+    })));
+    
+    return sorted;
+  },
+
+  /**
+   * Get items filtered by state (for lanes when no filters active)
    * @param {string} state - State filter
    * @returns {Array} Filtered items
    */
   getItemsByState: (state) => {
     const storeState = get();
     const items = Array.from(storeState.items.values());
-    let filtered = items.filter((item) => item.state === state && !item.archived_at);
+    console.log('[GarageStore] getItemsByState called with state:', state);
+    console.log('[GarageStore] Total items in store:', items.length);
+    console.log('[GarageStore] Current filters:', storeState.filters);
+    
+    // Start with all items, then apply filters
+    // Note: Server-side filters (state, model, dateRange, sort) should already be applied
+    // But we apply them client-side too as a safety net and for consistency
+    let filtered = items.filter((item) => !item.archived_at);
+    console.log('[GarageStore] Items after archived filter:', filtered.length);
+    
+    // Apply state filter (if not already filtered server-side)
+    if (state) {
+      const beforeCount = filtered.length;
+      filtered = filtered.filter((item) => item.state === state);
+      console.log('[GarageStore] After state filter:', filtered.length, '(was', beforeCount + ')');
+    }
+    
+    // Apply model filter client-side (as backup, should already be filtered server-side)
+    if (storeState.filters.model) {
+      const beforeCount = filtered.length;
+      filtered = filtered.filter((item) => item.vehicle_model === storeState.filters.model);
+      console.log('[GarageStore] After model filter:', filtered.length, '(was', beforeCount + ')', 'model:', storeState.filters.model);
+    }
+    
+    // Apply date range filter client-side (as backup, should already be filtered server-side)
+    if (storeState.filters.dateRange && storeState.filters.dateRange !== 'all') {
+      const beforeCount = filtered.length;
+      const now = new Date();
+      let startDate;
+      
+      switch (storeState.filters.dateRange) {
+        case '7d':
+          startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+          break;
+        case '30d':
+          startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+          break;
+        case '90d':
+          startDate = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
+          break;
+        case '1y':
+          startDate = new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000);
+          break;
+        default:
+          startDate = null;
+      }
+      
+      if (startDate) {
+        const dateField = storeState.filters.dateField || 'created_at';
+        console.log('[GarageStore] Applying date filter:', { dateRange: storeState.filters.dateRange, dateField, startDate });
+        filtered = filtered.filter((item) => {
+          const itemDate = new Date(item[dateField]);
+          return itemDate >= startDate;
+        });
+        console.log('[GarageStore] After date filter:', filtered.length, '(was', beforeCount + ')');
+      }
+    }
     
     // Apply search filter client-side (searches title, description, and vehicle model)
     if (storeState.filters.search && storeState.filters.search.trim()) {
@@ -578,7 +844,57 @@ export const useGarageStore = create((set, get) => ({
       );
     }
     
-    return filtered;
+    // Apply sorting client-side (as backup, should already be sorted server-side)
+    const sortBy = storeState.filters.sortBy || 'created_at';
+    const sortOrder = storeState.filters.sortOrder || 'desc';
+    console.log('[GarageStore] Applying sort:', { sortBy, sortOrder });
+    console.log('[GarageStore] Items before sort:', filtered.slice(0, 3).map(i => ({ 
+      id: i.id, 
+      title: i.title, 
+      sortValue: sortBy === 'title' ? i.title : sortBy === 'price_cents' ? i.price_cents : i[sortBy]
+    })));
+    
+    // Create a new sorted array (don't mutate original)
+    const sorted = [...filtered].sort((a, b) => {
+      let aVal, bVal;
+      
+      switch (sortBy) {
+        case 'title':
+          aVal = (a.title || '').toLowerCase();
+          bVal = (b.title || '').toLowerCase();
+          break;
+        case 'price_cents':
+          aVal = a.price_cents || 0;
+          bVal = b.price_cents || 0;
+          break;
+        case 'updated_at':
+          aVal = new Date(a.updated_at || 0).getTime();
+          bVal = new Date(b.updated_at || 0).getTime();
+          break;
+        case 'created_at':
+        default:
+          aVal = new Date(a.created_at || 0).getTime();
+          bVal = new Date(b.created_at || 0).getTime();
+          break;
+      }
+      
+      if (sortOrder === 'asc') {
+        return aVal > bVal ? 1 : aVal < bVal ? -1 : 0;
+      } else {
+        return aVal < bVal ? 1 : aVal > bVal ? -1 : 0;
+      }
+    });
+    
+    console.log('[GarageStore] Final filtered items count:', sorted.length);
+    console.log('[GarageStore] Sample items after sort:', sorted.slice(0, 3).map(i => ({ 
+      id: i.id, 
+      title: i.title, 
+      state: i.state, 
+      model: i.vehicle_model,
+      sortValue: sortBy === 'title' ? i.title : sortBy === 'price_cents' ? i.price_cents : i[sortBy]
+    })));
+    
+    return sorted;
   },
 
   /**
@@ -1411,12 +1727,225 @@ export const useGarageStore = create((set, get) => ({
   },
 
   /**
+   * Load model counts for filtering UI
+   * @returns {Promise<{data: Map<string, number>, error: Error|null}>}
+   */
+  loadModelCounts: async () => {
+    const state = get();
+    
+    // Use cache if available
+    if (state.modelCounts.size > 0) {
+      return { data: state.modelCounts, error: null };
+    }
+
+    try {
+      const { data, error } = await getModelCountsAPI();
+
+      if (error) {
+        return { data: null, error };
+      }
+
+      // Convert to Map
+      const modelCountsMap = new Map();
+      (data || []).forEach(({ model, count }) => {
+        modelCountsMap.set(model, count);
+      });
+
+      set({ modelCounts: modelCountsMap });
+      return { data: modelCountsMap, error: null };
+    } catch (err) {
+      return { data: null, error: err };
+    }
+  },
+
+  /**
+   * Load filter presets from localStorage
+   * @returns {Array} Array of filter presets
+   */
+  loadFilterPresets: () => {
+    try {
+      const saved = localStorage.getItem(FILTER_PRESETS_STORAGE_KEY);
+      if (saved) {
+        return JSON.parse(saved);
+      }
+    } catch (err) {
+      console.warn('[GarageStore] Failed to load filter presets:', err);
+    }
+    return [];
+  },
+
+  /**
+   * Save filter presets to localStorage
+   * @param {Array} presets - Array of preset objects
+   */
+  saveFilterPresets: (presets) => {
+    try {
+      localStorage.setItem(FILTER_PRESETS_STORAGE_KEY, JSON.stringify(presets));
+    } catch (err) {
+      console.warn('[GarageStore] Failed to save filter presets:', err);
+    }
+  },
+
+  /**
+   * Save current filters as a preset
+   * @param {string} name - Preset name
+   * @returns {Object} Created preset object
+   */
+  saveFilterPreset: (name) => {
+    const state = get();
+    const presets = state.loadFilterPresets();
+    
+    const newPreset = {
+      id: `preset-${Date.now()}`,
+      name,
+      filters: { ...state.filters },
+      isDefault: false,
+      createdAt: new Date().toISOString()
+    };
+    
+    presets.push(newPreset);
+    state.saveFilterPresets(presets);
+    
+    return newPreset;
+  },
+
+  /**
+   * Apply a filter preset
+   * @param {string} presetId - Preset ID
+   */
+  applyFilterPreset: (presetId) => {
+    const state = get();
+    const presets = state.loadFilterPresets();
+    const preset = presets.find(p => p.id === presetId);
+    
+    if (preset && preset.filters) {
+      // Apply all filters from preset
+      setFilters(preset.filters);
+    }
+  },
+
+  /**
+   * Delete a filter preset
+   * @param {string} presetId - Preset ID
+   */
+  deleteFilterPreset: (presetId) => {
+    const state = get();
+    const presets = state.loadFilterPresets();
+    const filtered = presets.filter(p => p.id !== presetId);
+    state.saveFilterPresets(filtered);
+  },
+
+  /**
+   * Clear all filters to defaults
+   */
+  clearAllFilters: () => {
+    const defaultFilters = {
+      state: null,
+      model: null,
+      search: '',
+      dateRange: null,
+      dateField: 'created_at',
+      priceMin: null,
+      priceMax: null,
+      tags: [],
+      tagMode: 'OR',
+      sortBy: 'created_at',
+      sortOrder: 'desc'
+    };
+    
+    // Update filters directly (bypass setFilters to avoid reload check)
+    set({
+      filters: defaultFilters,
+      pagination: { ...get().pagination, page: 1 }
+    });
+    
+    // Force reload with cleared filters
+    setTimeout(() => {
+      get().loadGarage(false).catch((err) => {
+        console.error('[GarageStore] Error loading garage after clear filters:', err);
+        set({ loading: false, error: err });
+      });
+    }, 0);
+  },
+
+  /**
+   * Get default filter presets
+   * @returns {Array} Array of default preset objects
+   */
+  getDefaultPresets: () => {
+    return [
+      {
+        id: 'default-my-purchases',
+        name: 'My Purchases',
+        filters: {
+          state: 'purchased',
+          model: null,
+          search: '',
+          dateRange: null,
+          dateField: 'created_at',
+          priceMin: null,
+          priceMax: null,
+          tags: [],
+          tagMode: 'OR',
+          sortBy: 'created_at',
+          sortOrder: 'desc'
+        },
+        isDefault: true
+      },
+      {
+        id: 'default-recent-builds',
+        name: 'Recent Builds',
+        filters: {
+          state: null,
+          model: null,
+          search: '',
+          dateRange: '30d',
+          dateField: 'created_at',
+          priceMin: null,
+          priceMax: null,
+          tags: [],
+          tagMode: 'OR',
+          sortBy: 'created_at',
+          sortOrder: 'desc'
+        },
+        isDefault: true
+      },
+      {
+        id: 'default-high-value',
+        name: 'High Value',
+        filters: {
+          state: null,
+          model: null,
+          search: '',
+          dateRange: null,
+          dateField: 'created_at',
+          priceMin: 20000000, // 200,000 EUR in cents
+          priceMax: null,
+          tags: [],
+          tagMode: 'OR',
+          sortBy: 'price_cents',
+          sortOrder: 'desc'
+        },
+        isDefault: true
+      }
+    ];
+  },
+
+  /**
    * Reset store to initial state
    */
   reset: () => {
     set({
       items: new Map(),
-      filters: { state: null, model: null, search: '', tags: [], tagMode: 'OR' },
+      filters: { 
+        state: null, 
+        model: null, 
+        search: '', 
+        tags: [], 
+        tagMode: 'OR',
+        sortBy: 'created_at',
+        sortOrder: 'desc'
+      },
       pagination: { page: 1, pageSize: 20, hasMore: true, totalCount: 0 },
       loading: false,
       initialLoadComplete: false,
@@ -1425,10 +1954,168 @@ export const useGarageStore = create((set, get) => ({
       versions: new Map(),
       shareLinks: new Map(),
       milestones: new Map(),
-      tagCounts: new Map()
+      tagCounts: new Map(),
+      modelCounts: new Map(),
+      pdfExports: new Map(),
+      pdfJobStatus: new Map()
     });
     get().unsubscribeRealtime();
     localStorage.removeItem(STORAGE_KEY);
+  },
+
+  /**
+   * Create a PDF export job for a garage item
+   * @param {string} itemId - Garage item ID
+   * @param {Object} options - Export options
+   * @returns {Promise<{data: Object, error: Error|null}>}
+   */
+  createPdfExport: async (itemId, options = {}) => {
+    console.log('[GarageStore] createPdfExport called');
+    console.log('[GarageStore] Parameters:', { itemId, options });
+    const startTime = Date.now();
+    try {
+      const { data, error } = await createPdfExportJobAPI(itemId, options);
+      const duration = Date.now() - startTime;
+      
+      if (error) {
+        console.error('[GarageStore] Create PDF export error:', error);
+        console.log('[GarageStore] createPdfExport failed in', duration, 'ms');
+        return { data: null, error };
+      }
+      
+      // Cache job ID
+      if (data?.job_id) {
+        set((state) => {
+          const newPdfExports = new Map(state.pdfExports);
+          const itemExports = newPdfExports.get(itemId) || [];
+          newPdfExports.set(itemId, [...itemExports, { id: data.job_id, status: 'processing' }]);
+          return { pdfExports: newPdfExports };
+        });
+      }
+      
+      console.log('[GarageStore] PDF export job created successfully');
+      console.log('[GarageStore] Job ID:', data?.job_id);
+      console.log('[GarageStore] createPdfExport completed in', duration, 'ms');
+      return { data, error: null };
+    } catch (err) {
+      const duration = Date.now() - startTime;
+      console.error('[GarageStore] Exception creating PDF export:', err);
+      console.log('[GarageStore] createPdfExport failed after', duration, 'ms');
+      return { data: null, error: err };
+    }
+  },
+
+  /**
+   * Get PDF export job status
+   * @param {string} jobId - Job ID
+   * @returns {Promise<{data: Object, error: Error|null}>}
+   */
+  getPdfJobStatus: async (jobId) => {
+    console.log('[GarageStore] getPdfJobStatus called');
+    console.log('[GarageStore] Job ID:', jobId);
+    const startTime = Date.now();
+    try {
+      const { data, error } = await getPdfJobStatusAPI(jobId);
+      const duration = Date.now() - startTime;
+      
+      if (error) {
+        console.error('[GarageStore] Get PDF job status error:', error);
+        console.log('[GarageStore] getPdfJobStatus failed in', duration, 'ms');
+        return { data: null, error };
+      }
+      
+      // Update cache
+      if (data) {
+        set((state) => {
+          const newJobStatus = new Map(state.pdfJobStatus);
+          newJobStatus.set(jobId, data.status);
+          return { pdfJobStatus: newJobStatus };
+        });
+      }
+      
+      console.log('[GarageStore] Job status fetched:', data?.status);
+      console.log('[GarageStore] getPdfJobStatus completed in', duration, 'ms');
+      return { data, error: null };
+    } catch (err) {
+      const duration = Date.now() - startTime;
+      console.error('[GarageStore] Exception getting PDF job status:', err);
+      console.log('[GarageStore] getPdfJobStatus failed after', duration, 'ms');
+      return { data: null, error: err };
+    }
+  },
+
+  /**
+   * Download PDF by job ID
+   * @param {string} jobId - Job ID
+   * @returns {Promise<{data: string|null, error: Error|null}>}
+   */
+  downloadPdf: async (jobId) => {
+    console.log('[GarageStore] downloadPdf called');
+    console.log('[GarageStore] Job ID:', jobId);
+    const startTime = Date.now();
+    try {
+      const { data: url, error } = await getPdfDownloadUrlAPI(jobId);
+      const duration = Date.now() - startTime;
+      
+      if (error) {
+        console.error('[GarageStore] Get PDF download URL error:', error);
+        console.log('[GarageStore] downloadPdf failed in', duration, 'ms');
+        return { data: null, error };
+      }
+      
+      // Open download URL in new tab
+      if (url) {
+        window.open(url, '_blank');
+      }
+      
+      console.log('[GarageStore] PDF download URL retrieved');
+      console.log('[GarageStore] downloadPdf completed in', duration, 'ms');
+      return { data: url, error: null };
+    } catch (err) {
+      const duration = Date.now() - startTime;
+      console.error('[GarageStore] Exception downloading PDF:', err);
+      console.log('[GarageStore] downloadPdf failed after', duration, 'ms');
+      return { data: null, error: err };
+    }
+  },
+
+  /**
+   * Get all PDF exports for a garage item
+   * @param {string} itemId - Garage item ID
+   * @returns {Promise<{data: Array, error: Error|null}>}
+   */
+  getPdfExports: async (itemId) => {
+    console.log('[GarageStore] getPdfExports called');
+    console.log('[GarageStore] Item ID:', itemId);
+    const startTime = Date.now();
+    try {
+      const { data, error } = await listPdfExportsAPI(itemId);
+      const duration = Date.now() - startTime;
+      
+      if (error) {
+        console.error('[GarageStore] List PDF exports error:', error);
+        console.log('[GarageStore] getPdfExports failed in', duration, 'ms');
+        return { data: null, error };
+      }
+      
+      // Cache exports
+      if (data) {
+        set((state) => {
+          const newPdfExports = new Map(state.pdfExports);
+          newPdfExports.set(itemId, data);
+          return { pdfExports: newPdfExports };
+        });
+      }
+      
+      console.log('[GarageStore] PDF exports fetched:', data?.length || 0, 'exports');
+      console.log('[GarageStore] getPdfExports completed in', duration, 'ms');
+      return { data: data || [], error: null };
+    } catch (err) {
+      const duration = Date.now() - startTime;
+      console.error('[GarageStore] Exception getting PDF exports:', err);
+      console.log('[GarageStore] getPdfExports failed after', duration, 'ms');
+      return { data: null, error: err };
+    }
   }
 }));
 

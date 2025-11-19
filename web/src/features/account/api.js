@@ -114,24 +114,31 @@ function buildGarageQuery(filters = {}, pagination = {}) {
   const { client, error } = ensureClient();
   if (error) return null;
 
-  const { state = null, model = null, search = '', dateRange = null, dateField = 'created_at', priceMin = null, priceMax = null, tags = null, tagMode = 'OR' } = filters;
+  const { state = null, model = null, search = '', dateRange = null, dateField = 'created_at', priceMin = null, priceMax = null, tags = null, tagMode = 'OR', sortBy = 'created_at', sortOrder = 'desc' } = filters;
   const { page = 1, pageSize = 20 } = pagination;
   const from = (page - 1) * pageSize;
   const to = from + pageSize - 1;
+
+  console.log('[API] buildGarageQuery called with filters:', filters);
+  console.log('[API] Sort params:', { sortBy, sortOrder });
 
   // Include tags in select query
   let query = client
     .from('garage_items')
     .select('*, garage_item_tags(tag)', { count: 'exact' })
     .is('archived_at', null) // Exclude archived items (use .is() for NULL checks)
-    .order('created_at', { ascending: false })
+    .order(sortBy, { ascending: sortOrder === 'asc' })
     .range(from, to);
 
+  console.log('[API] Base query created, sortBy:', sortBy, 'sortOrder:', sortOrder);
+
   if (state) {
+    console.log('[API] Adding state filter:', state);
     query = query.eq('state', state);
   }
 
   if (model) {
+    console.log('[API] Adding model filter:', model);
     query = query.eq('vehicle_model', model);
   }
 
@@ -159,18 +166,23 @@ function buildGarageQuery(filters = {}, pagination = {}) {
     
     if (startDate) {
       // Filter by date field (created_at or updated_at)
+      console.log('[API] Adding date range filter:', { dateRange, dateField, startDate: startDate.toISOString() });
       query = query.gte(dateField, startDate.toISOString());
     }
   }
 
   // Apply price range filter
   if (priceMin !== null && priceMin !== undefined) {
+    console.log('[API] Adding priceMin filter:', priceMin);
     query = query.gte('price_cents', priceMin);
   }
   
   if (priceMax !== null && priceMax !== undefined) {
+    console.log('[API] Adding priceMax filter:', priceMax);
     query = query.lte('price_cents', priceMax);
   }
+  
+  console.log('[API] Final query built, returning query object');
 
   // Apply tag filtering
   // Note: Tag filtering is handled client-side after fetching for flexibility (AND/OR logic)
@@ -1858,6 +1870,572 @@ export async function getAllTags() {
     const duration = Date.now() - startTime;
     console.error('[API] Exception fetching all tags:', err);
     console.log('[API] getAllTags failed after', duration, 'ms');
+    return { data: null, error: err };
+  }
+}
+
+/**
+ * Get model counts for user's garage items
+ * Returns array of { model: string, count: number } sorted by count descending
+ * @returns {Promise<{data: Array<{model: string, count: number}>, error: Error|null}>}
+ */
+export async function getModelCounts() {
+  const startTime = Date.now();
+  console.log('[API] getModelCounts called');
+  
+  try {
+    const { client, error } = ensureClient();
+    if (error) {
+      console.error('[API] Supabase client error:', error);
+      return { data: null, error };
+    }
+
+    // Check authentication
+    const authResult = await client.auth.getUser();
+    const {
+      data: { user },
+      error: authError
+    } = authResult;
+
+    if (!user || authError) {
+      console.error('[API] Authentication failed:', authError || 'No user');
+      return { data: null, error: authError || new Error('Not authenticated') };
+    }
+
+    // Query garage_items for distinct vehicle_model with counts
+    const { data, error: queryError } = await client
+      .from('garage_items')
+      .select('vehicle_model')
+      .eq('owner_id', user.id)
+      .is('archived_at', null);
+    
+    const duration = Date.now() - startTime;
+
+    if (queryError) {
+      console.error('[API] Query error:', queryError);
+      console.log('[API] getModelCounts failed in', duration, 'ms');
+      return { data: null, error: queryError };
+    }
+
+    // Count models
+    const modelCounts = new Map();
+    (data || []).forEach(row => {
+      const model = row.vehicle_model;
+      if (model) {
+        modelCounts.set(model, (modelCounts.get(model) || 0) + 1);
+      }
+    });
+
+    // Convert to array format and sort by count descending
+    const result = Array.from(modelCounts.entries()).map(([model, count]) => ({
+      model,
+      count
+    })).sort((a, b) => b.count - a.count);
+
+    console.log('[API] Model counts fetched:', result.length, 'unique models');
+    console.log('[API] getModelCounts completed in', duration, 'ms');
+    return { data: result, error: null };
+  } catch (err) {
+    const duration = Date.now() - startTime;
+    console.error('[API] Exception fetching model counts:', err);
+    console.log('[API] getModelCounts failed after', duration, 'ms');
+    return { data: null, error: err };
+  }
+}
+
+/**
+ * Create a PDF export job for a garage item
+ * @param {string} garageItemId - Garage item ID
+ * @param {Object} options - Export options
+ * @param {boolean} options.watermark - Include watermark
+ * @param {boolean} options.include_qr - Include QR code
+ * @param {string} options.template - Template name (default: 'default')
+ * @returns {Promise<{data: Object, error: Error|null}>}
+ */
+export async function createPdfExportJob(garageItemId, options = {}) {
+  console.log('[API] createPdfExportJob called');
+  console.log('[API] Parameters:', { garageItemId, options });
+  const startTime = Date.now();
+  
+  try {
+    console.log('[API] Getting Supabase client...');
+    const { client, error } = ensureClient();
+    console.log('[API] Client obtained:', !!client, 'Error:', !!error);
+    if (error) {
+      console.error('[API] Supabase client error:', error);
+      return { data: null, error };
+    }
+    
+    if (!client) {
+      console.error('[API] Client is null/undefined');
+      return { data: null, error: new Error('Supabase client is null') };
+    }
+    // Verify authentication
+    console.log('[API] Step 1: Checking authentication...');
+    const {
+      data: { user },
+      error: authError
+    } = await client.auth.getUser();
+    console.log('[API] Step 1: Auth check result:', { userId: user?.id, authError });
+    
+    if (authError || !user) {
+      console.error('[API] Authentication failed:', authError || 'No user');
+      return { data: null, error: authError || new Error('Not authenticated') };
+    }
+    
+    // Get the session token for Edge Function invocation
+    console.log('[API] Step 1.5: Getting session...');
+    console.log('[API] Step 1.5: Client auth object:', {
+      hasAuth: !!client.auth,
+      authMethods: client.auth ? Object.keys(client.auth) : []
+    });
+    
+    const sessionResult = await client.auth.getSession();
+    console.log('[API] Step 1.5: Session result:', {
+      hasData: !!sessionResult.data,
+      hasSession: !!sessionResult.data?.session,
+      hasError: !!sessionResult.error,
+      error: sessionResult.error?.message
+    });
+    
+    const { data: { session }, error: sessionError } = sessionResult;
+    console.log('[API] Step 1.5: Session details:', {
+      hasSession: !!session,
+      hasUser: !!session?.user,
+      userId: session?.user?.id,
+      hasAccessToken: !!session?.access_token,
+      accessTokenLength: session?.access_token?.length,
+      accessTokenPrefix: session?.access_token?.substring(0, 20),
+      hasRefreshToken: !!session?.refresh_token,
+      expiresAt: session?.expires_at,
+      expiresIn: session?.expires_at ? Math.floor((session.expires_at * 1000 - Date.now()) / 1000) : null,
+      expiresAtDate: session?.expires_at ? new Date(session.expires_at * 1000).toISOString() : null,
+      now: new Date().toISOString(),
+      tokenType: session?.token_type,
+      sessionError: sessionError?.message
+    });
+    
+    // Also check user directly
+    const userResult = await client.auth.getUser();
+    console.log('[API] Step 1.5: User check:', {
+      hasUser: !!userResult.data?.user,
+      userId: userResult.data?.user?.id,
+      userError: userResult.error?.message
+    });
+    
+    if (sessionError) {
+      console.error('[API] Session error:', sessionError);
+      return { data: null, error: sessionError };
+    }
+    
+    if (!session?.access_token) {
+      console.error('[API] No session token available');
+      console.error('[API] Session object:', session);
+      console.error('[API] Checking localStorage...');
+      if (typeof window !== 'undefined') {
+        const storedSession = localStorage.getItem('sb-auth-token');
+        console.error('[API] Stored session in localStorage:', storedSession ? 'Present' : 'Missing');
+        if (storedSession) {
+          try {
+            const parsed = JSON.parse(storedSession);
+            console.error('[API] Parsed stored session:', {
+              hasAccessToken: !!parsed?.access_token,
+              expiresAt: parsed?.expires_at
+            });
+          } catch (e) {
+            console.error('[API] Could not parse stored session:', e);
+          }
+        }
+      }
+      return { data: null, error: new Error('No session token available') };
+    }
+    
+    console.log('[API] Step 1.5: Session token validated successfully');
+
+    // Check if functions API is available
+    console.log('[API] Step 2: Checking if functions API is available...');
+    console.log('[API] Step 2: client type:', typeof client);
+    console.log('[API] Step 2: client.functions exists?', !!client.functions);
+    console.log('[API] Step 2: client keys:', Object.keys(client));
+    
+    if (!client.functions) {
+      console.error('[API] client.functions is not available');
+      console.error('[API] Available client methods:', Object.keys(client));
+      return { data: null, error: new Error('Edge Functions API not available. Check Supabase client configuration.') };
+    }
+    
+    console.log('[API] Step 2: client.functions keys:', Object.keys(client.functions));
+    console.log('[API] Step 2: client.functions.invoke type:', typeof client.functions.invoke);
+    
+    if (typeof client.functions.invoke !== 'function') {
+      console.error('[API] client.functions.invoke is not a function');
+      console.error('[API] client.functions:', client.functions);
+      return { data: null, error: new Error('Edge Functions invoke method not available') };
+    }
+
+    // Invoke Edge Function
+    console.log('[API] Step 3: About to invoke Edge Function generate-pdf...');
+    const requestBody = {
+      garage_item_id: garageItemId,
+      options: {
+        watermark: options.watermark || false,
+        include_qr: options.include_qr || false,
+        template: options.template || 'default'
+      }
+    };
+    console.log('[API] Request body:', requestBody);
+    
+    let data, functionError, invokeResult;
+    try {
+      // Add timeout wrapper (60 seconds max for PDF generation)
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Edge Function invocation timeout (60s)')), 60000)
+      );
+      
+      console.log('[API] Calling client.functions.invoke...');
+      console.log('[API] Session details before invoke:', {
+        hasSession: !!session,
+        hasAccessToken: !!session?.access_token,
+        accessTokenPrefix: session?.access_token?.substring(0, 30),
+        expiresAt: session?.expires_at,
+        expiresIn: session?.expires_at ? Math.floor((session.expires_at * 1000 - Date.now()) / 1000) : null,
+        tokenType: session?.token_type
+      });
+      console.log('[API] Supabase key (first 20 chars):', client.supabaseKey?.substring(0, 20));
+      
+      // Ensure session is fully ready before invoking Edge Function
+      // Retry up to 3 times if session isn't ready
+      let currentSession = null;
+      let retries = 0;
+      const maxRetries = 3;
+      
+      while (retries < maxRetries && !currentSession?.access_token) {
+        const sessionCheck = await client.auth.getSession();
+        currentSession = sessionCheck.data?.session || session;
+        
+        console.log('[API] Pre-invoke session check (attempt ' + (retries + 1) + '):', {
+          hasSession: !!sessionCheck.data?.session,
+          hasAccessToken: !!sessionCheck.data?.session?.access_token,
+          accessTokenPrefix: sessionCheck.data?.session?.access_token?.substring(0, 30),
+          sessionMatch: sessionCheck.data?.session?.access_token === session?.access_token,
+          retry: retries
+        });
+        
+        if (!currentSession?.access_token) {
+          retries++;
+          if (retries < maxRetries) {
+            console.log('[API] Session not ready, waiting 200ms before retry...');
+            await new Promise(resolve => setTimeout(resolve, 200));
+          }
+        }
+      }
+      
+      if (!currentSession?.access_token) {
+        console.error('[API] No access token available after', maxRetries, 'attempts');
+        return { data: null, error: new Error('No access token available - session may not be fully restored') };
+      }
+      
+      // Verify token hasn't expired
+      if (currentSession.expires_at && currentSession.expires_at < Math.floor(Date.now() / 1000)) {
+        console.error('[API] Access token expired');
+        return { data: null, error: new Error('Access token expired - please refresh the page') };
+      }
+      
+      // Explicitly pass Authorization header to ensure it's sent
+      console.log('[API] Invoking with body and explicit Authorization header');
+      console.log('[API] Using access token:', currentSession.access_token.substring(0, 30) + '...');
+      console.log('[API] Token expires in:', currentSession.expires_at ? Math.floor((currentSession.expires_at * 1000 - Date.now()) / 1000) + 's' : 'unknown');
+      const invokePromise = client.functions.invoke('generate-pdf', {
+        body: requestBody,
+        headers: {
+          'Authorization': `Bearer ${currentSession.access_token}`,
+          'apikey': client.supabaseKey
+        }
+      });
+      
+      console.log('[API] Waiting for Edge Function response (max 60s)...');
+      invokeResult = await Promise.race([invokePromise, timeoutPromise]);
+      console.log('[API] Edge Function invoke completed');
+      console.log('[API] Invoke result type:', typeof invokeResult);
+      console.log('[API] Invoke result:', invokeResult);
+      
+      // Handle different response formats
+      if (invokeResult && typeof invokeResult === 'object') {
+        if ('data' in invokeResult) {
+          data = invokeResult.data;
+          functionError = invokeResult.error;
+        } else if ('error' in invokeResult) {
+          functionError = invokeResult.error;
+          data = null;
+        } else {
+          // Response might be the data directly
+          data = invokeResult;
+          functionError = null;
+        }
+      } else {
+        data = invokeResult;
+        functionError = null;
+      }
+      
+      // If there's an error, try to extract more details from the response
+      if (functionError && invokeResult?.response) {
+        try {
+          const errorText = await invokeResult.response.text();
+          console.error('[API] Edge Function error response body:', errorText);
+          try {
+            const errorJson = JSON.parse(errorText);
+            console.error('[API] Edge Function error JSON:', errorJson);
+            functionError.message = errorJson.error || errorJson.message || functionError.message;
+            functionError.details = errorJson;
+          } catch (e) {
+            // Not JSON, use text as message
+            functionError.message = errorText || functionError.message;
+          }
+        } catch (e) {
+          console.error('[API] Could not read error response:', e);
+        }
+      }
+      
+      console.log('[API] Parsed result - data:', data, 'error:', functionError);
+    } catch (invokeErr) {
+      console.error('[API] Exception during Edge Function invoke:', invokeErr);
+      console.error('[API] Exception type:', typeof invokeErr);
+      console.error('[API] Exception message:', invokeErr?.message);
+      console.error('[API] Exception name:', invokeErr?.name);
+      if (invokeErr?.stack) {
+        console.error('[API] Exception stack:', invokeErr.stack);
+      }
+      const duration = Date.now() - startTime;
+      console.log('[API] createPdfExportJob failed after', duration, 'ms');
+      return { data: null, error: invokeErr };
+    }
+    
+    const duration = Date.now() - startTime;
+    console.log('[API] Edge Function response received in', duration, 'ms');
+
+    if (functionError) {
+      console.error('[API] Edge Function error:', functionError);
+      console.error('[API] Error details:', {
+        message: functionError.message,
+        name: functionError.name,
+        stack: functionError.stack,
+        code: functionError.code,
+        details: functionError.details
+      });
+      
+      // Try to get more details from the response if available
+      if (invokeResult?.response) {
+        try {
+          const responseClone = invokeResult.response.clone();
+          const responseText = await responseClone.text();
+          console.error('[API] Edge Function response body:', responseText);
+          try {
+            const responseJson = JSON.parse(responseText);
+            console.error('[API] Edge Function response JSON:', responseJson);
+            // Update error message with more details if available
+            if (responseJson.error || responseJson.message) {
+              functionError.message = `${functionError.message} - ${responseJson.error || responseJson.message}`;
+            }
+          } catch (e) {
+            // Not JSON
+            console.error('[API] Response is not JSON:', responseText);
+          }
+        } catch (e) {
+          console.error('[API] Could not read response:', e);
+        }
+      }
+      
+      console.log('[API] createPdfExportJob failed in', duration, 'ms');
+      return { data: null, error: functionError };
+    }
+
+    // Check if data contains error (Edge Functions can return errors in data)
+    if (data && data.error) {
+      console.error('[API] Edge Function returned error in data:', data.error);
+      return { data: null, error: new Error(data.error || data.message || 'PDF generation failed') };
+    }
+
+    console.log('[API] PDF export job created successfully');
+    console.log('[API] Response data:', data);
+    console.log('[API] Job ID:', data?.job_id);
+    console.log('[API] createPdfExportJob completed in', duration, 'ms');
+    return { data, error: null };
+  } catch (err) {
+    const duration = Date.now() - startTime;
+    console.error('[API] Exception creating PDF export job:', err);
+    console.error('[API] Exception type:', typeof err);
+    console.error('[API] Exception message:', err?.message);
+    console.error('[API] Exception name:', err?.name);
+    console.error('[API] Exception stack:', err?.stack);
+    console.log('[API] createPdfExportJob failed after', duration, 'ms');
+    return { data: null, error: err };
+  }
+}
+
+/**
+ * Get PDF export job status
+ * @param {string} jobId - Job ID
+ * @returns {Promise<{data: Object, error: Error|null}>}
+ */
+export async function getPdfJobStatus(jobId) {
+  console.log('[API] getPdfJobStatus called');
+  console.log('[API] Job ID:', jobId);
+  const startTime = Date.now();
+  
+  const { client, error } = ensureClient();
+  if (error) {
+    console.error('[API] Supabase client error:', error);
+    return { data: null, error };
+  }
+
+  try {
+    // Verify authentication
+    const {
+      data: { user },
+      error: authError
+    } = await client.auth.getUser();
+    if (authError || !user) {
+      console.error('[API] Authentication failed:', authError || 'No user');
+      return { data: null, error: authError || new Error('Not authenticated') };
+    }
+
+    // Fetch job status
+    const { data, error: queryError } = await client
+      .from('pdf_export_jobs')
+      .select('*')
+      .eq('id', jobId)
+      .eq('owner_id', user.id)
+      .single();
+    const duration = Date.now() - startTime;
+
+    if (queryError) {
+      console.error('[API] Query error:', queryError);
+      console.log('[API] getPdfJobStatus failed in', duration, 'ms');
+      return { data: null, error: queryError };
+    }
+
+    console.log('[API] Job status fetched:', data?.status);
+    console.log('[API] getPdfJobStatus completed in', duration, 'ms');
+    return { data, error: null };
+  } catch (err) {
+    const duration = Date.now() - startTime;
+    console.error('[API] Exception fetching job status:', err);
+    console.log('[API] getPdfJobStatus failed after', duration, 'ms');
+    return { data: null, error: err };
+  }
+}
+
+/**
+ * Get PDF download URL (signed URL)
+ * @param {string} jobId - Job ID
+ * @returns {Promise<{data: string|null, error: Error|null}>}
+ */
+export async function getPdfDownloadUrl(jobId) {
+  console.log('[API] getPdfDownloadUrl called');
+  console.log('[API] Job ID:', jobId);
+  const startTime = Date.now();
+  
+  const { client, error } = ensureClient();
+  if (error) {
+    console.error('[API] Supabase client error:', error);
+    return { data: null, error };
+  }
+
+  try {
+    // Verify authentication
+    const {
+      data: { user },
+      error: authError
+    } = await client.auth.getUser();
+    if (authError || !user) {
+      console.error('[API] Authentication failed:', authError || 'No user');
+      return { data: null, error: authError || new Error('Not authenticated') };
+    }
+
+    // Fetch job to get output_url
+    const { data: job, error: jobError } = await client
+      .from('pdf_export_jobs')
+      .select('output_url, status')
+      .eq('id', jobId)
+      .eq('owner_id', user.id)
+      .single();
+
+    if (jobError) {
+      console.error('[API] Job fetch error:', jobError);
+      const duration = Date.now() - startTime;
+      console.log('[API] getPdfDownloadUrl failed in', duration, 'ms');
+      return { data: null, error: jobError };
+    }
+
+    if (job.status !== 'completed' || !job.output_url) {
+      const duration = Date.now() - startTime;
+      console.log('[API] Job not completed or no output URL');
+      console.log('[API] getPdfDownloadUrl completed in', duration, 'ms');
+      return { data: null, error: new Error('PDF not ready yet') };
+    }
+
+    // Return the signed URL (already signed by Edge Function)
+    const duration = Date.now() - startTime;
+    console.log('[API] Download URL retrieved');
+    console.log('[API] getPdfDownloadUrl completed in', duration, 'ms');
+    return { data: job.output_url, error: null };
+  } catch (err) {
+    const duration = Date.now() - startTime;
+    console.error('[API] Exception getting download URL:', err);
+    console.log('[API] getPdfDownloadUrl failed after', duration, 'ms');
+    return { data: null, error: err };
+  }
+}
+
+/**
+ * List all PDF exports for a garage item
+ * @param {string} garageItemId - Garage item ID
+ * @returns {Promise<{data: Array, error: Error|null}>}
+ */
+export async function listPdfExports(garageItemId) {
+  console.log('[API] listPdfExports called');
+  console.log('[API] Garage item ID:', garageItemId);
+  const startTime = Date.now();
+  
+  const { client, error } = ensureClient();
+  if (error) {
+    console.error('[API] Supabase client error:', error);
+    return { data: null, error };
+  }
+
+  try {
+    // Verify authentication
+    const {
+      data: { user },
+      error: authError
+    } = await client.auth.getUser();
+    if (authError || !user) {
+      console.error('[API] Authentication failed:', authError || 'No user');
+      return { data: null, error: authError || new Error('Not authenticated') };
+    }
+
+    // Fetch all PDF exports for this item
+    const { data, error: queryError } = await client
+      .from('pdf_export_jobs')
+      .select('*')
+      .eq('garage_item_id', garageItemId)
+      .eq('owner_id', user.id)
+      .order('created_at', { ascending: false });
+    const duration = Date.now() - startTime;
+
+    if (queryError) {
+      console.error('[API] Query error:', queryError);
+      console.log('[API] listPdfExports failed in', duration, 'ms');
+      return { data: null, error: queryError };
+    }
+
+    console.log('[API] PDF exports fetched:', data?.length || 0, 'exports');
+    console.log('[API] listPdfExports completed in', duration, 'ms');
+    return { data: data || [], error: null };
+  } catch (err) {
+    const duration = Date.now() - startTime;
+    console.error('[API] Exception listing PDF exports:', err);
+    console.log('[API] listPdfExports failed after', duration, 'ms');
     return { data: null, error: err };
   }
 }

@@ -31,7 +31,11 @@ function FilterIcon(props) {
   );
 }
 
+console.log('[Garage] ===== MODULE LOADED =====', new Date().toISOString());
+
 export default function Garage() {
+  console.log('[Garage] ===== COMPONENT RENDERED =====', new Date().toISOString());
+  
   const { t } = useTranslation('account');
   const navigate = useNavigate();
 
@@ -56,16 +60,42 @@ export default function Garage() {
     session?.user?.email?.split('@')[0] ||
     'Firat';
 
-  useEffect(() => {
-    loadGarage(true).catch((err) => {
-        console.error('[Garage] Failed to load garage:', err);
-      });
+  console.log('[Garage] Component rendered:', {
+    hasSession: !!session,
+    sessionUserId: session?.user?.id,
+    hasProfile: !!profile,
+    profileId: profile?.id,
+    itemsCount: itemsMap.size,
+    loading,
+    error: error?.message,
+    timestamp: new Date().toISOString()
+  });
 
+  useEffect(() => {
+    console.log('[Garage] useEffect triggered - loading garage...');
+    console.log('[Garage] Session at load time:', {
+      hasSession: !!session,
+      sessionUserId: session?.user?.id
+    });
+    
+    loadGarage(true).then(() => {
+      console.log('[Garage] loadGarage completed successfully');
+    }).catch((err) => {
+      console.error('[Garage] Failed to load garage:', err);
+      console.error('[Garage] Error details:', {
+        message: err?.message,
+        name: err?.name,
+        stack: err?.stack
+      });
+    });
+
+    console.log('[Garage] Subscribing to realtime...');
     subscribeRealtime();
     return () => {
+      console.log('[Garage] Cleaning up - unsubscribing from realtime');
       unsubscribeRealtime();
     };
-  }, [loadGarage, subscribeRealtime, unsubscribeRealtime]);
+  }, [loadGarage, subscribeRealtime, unsubscribeRealtime, session]);
 
   useEffect(() => {
     if (error) {
@@ -363,7 +393,7 @@ export default function Garage() {
         </motion.header>
 
         <AnimatePresence mode="wait">
-          {(error || (!loading && itemsMap.size === 0)) && (
+          {error && (
             <motion.div
               className={styles.debugPanel}
               initial={{ opacity: 0, y: 10 }}
@@ -371,9 +401,7 @@ export default function Garage() {
               exit={{ opacity: 0, y: 10 }}
               transition={{ duration: 0.2 }}
             >
-              {error
-                ? `${t('garage.error.loadFailed')}: ${error.message}`
-                : t('garage.empty.default')}
+              {`${t('garage.error.loadFailed')}: ${error.message}`}
             </motion.div>
           )}
 
@@ -389,6 +417,7 @@ export default function Garage() {
               {activeTab === 'cars'
                 ? t('garage.empty.purchased')
                 : t('garage.empty.saved')}
+                Try reloading.
             </motion.div>
           ) : (
             <motion.div

@@ -1,0 +1,214 @@
+.overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(11, 11, 12, 0.85);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  animation: fadeIn 0.2s ease;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.statusCard {
+  background: linear-gradient(135deg, #1a1a1b 0%, #0b0b0c 100%);
+  border: 1px solid rgba(255, 69, 32, 0.2);
+  border-radius: 12px;
+  width: 90%;
+  max-width: 420px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255, 69, 32, 0.1);
+  animation: slideUp 0.3s ease;
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 24px;
+  border-bottom: 1px solid rgba(255, 69, 32, 0.2);
+  position: relative;
+}
+
+.header::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, #FF4520, transparent);
+}
+
+.title {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 700;
+  color: #e6e6ea;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.closeButton {
+  background: rgba(255, 69, 32, 0.1);
+  border: 1px solid rgba(255, 69, 32, 0.3);
+  border-radius: 6px;
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+  color: #e6e6ea;
+  padding: 0;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.closeButton:hover {
+  background: rgba(255, 69, 32, 0.2);
+  border-color: #FF4520;
+  color: #FF4520;
+}
+
+.content {
+  padding: 24px;
+}
+
+.status {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 24px;
+  padding: 16px;
+  background: rgba(255, 69, 32, 0.05);
+  border-radius: 8px;
+  border: 1px solid rgba(255, 69, 32, 0.1);
+}
+
+.statusIndicator {
+  font-size: 28px;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+}
+
+.statusQueued {
+  color: #999;
+  background: rgba(153, 153, 153, 0.1);
+}
+
+.statusProcessing {
+  color: #FFA500;
+  background: rgba(255, 165, 0, 0.15);
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+.statusCompleted {
+  color: #4CAF50;
+  background: rgba(76, 175, 80, 0.15);
+}
+
+.statusFailed {
+  color: #F44336;
+  background: rgba(244, 67, 54, 0.15);
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.7;
+    transform: scale(1.05);
+  }
+}
+
+.statusText {
+  font-size: 16px;
+  font-weight: 600;
+  color: #e6e6ea;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.error {
+  padding: 16px;
+  background: rgba(244, 67, 54, 0.1);
+  border: 1px solid rgba(244, 67, 54, 0.3);
+  border-radius: 8px;
+  color: #F44336;
+  font-size: 14px;
+  margin-bottom: 20px;
+  font-weight: 500;
+}
+
+.downloadButton,
+.retryButton {
+  width: 100%;
+  padding: 14px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  cursor: pointer;
+  border: none;
+  transition: all 0.3s ease;
+}
+
+.downloadButton {
+  background: linear-gradient(135deg, #FF4520 0%, #E10600 100%);
+  color: #fff;
+  box-shadow: 0 4px 12px rgba(255, 69, 32, 0.3);
+}
+
+.downloadButton:hover {
+  background: linear-gradient(135deg, #E10600 0%, #FF4520 100%);
+  box-shadow: 0 6px 20px rgba(255, 69, 32, 0.5);
+  transform: translateY(-1px);
+}
+
+.downloadButton:active {
+  transform: translateY(0);
+}
+
+.retryButton {
+  background: rgba(255, 255, 255, 0.05);
+  color: #e6e6ea;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.retryButton:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+

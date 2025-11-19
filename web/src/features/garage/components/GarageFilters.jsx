@@ -1,17 +1,20 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useGarageStore } from '../../../stores/garageStore';
 import TagFilter from './TagFilter';
+import FilterPresets from './FilterPresets';
 import styles from '../styles/garage.module.css';
 
 const TAG_FILTER_STORAGE_KEY = 'volturiano_garage_tag_filters';
+const MODEL_FILTER_STORAGE_KEY = 'volturiano_garage_model_filter';
+const SORT_PREFERENCE_STORAGE_KEY = 'volturiano_garage_sort_preference';
 
 /**
  * Garage filters component
  */
 export default function GarageFilters({ variant = 'inline' }) {
   const { t } = useTranslation('account');
-  const { filters, setFilters, loadTagCounts, tagCounts } = useGarageStore();
+  const { filters, setFilters, loadTagCounts, tagCounts, loadModelCounts, modelCounts, clearAllFilters } = useGarageStore();
   const [searchValue, setSearchValue] = useState(filters.search || '');
   const [priceMinValue, setPriceMinValue] = useState(
     filters.priceMin ? (filters.priceMin / 100).toString() : ''
@@ -19,43 +22,149 @@ export default function GarageFilters({ variant = 'inline' }) {
   const [priceMaxValue, setPriceMaxValue] = useState(
     filters.priceMax ? (filters.priceMax / 100).toString() : ''
   );
+  const [pendingFilters, setPendingFilters] = useState({});
 
   // Load tag counts on mount
   useEffect(() => {
     loadTagCounts();
   }, [loadTagCounts]);
 
-  // Load tag filter preferences from localStorage
+  // Load model counts on mount
+  useEffect(() => {
+    loadModelCounts();
+  }, [loadModelCounts]);
+
+  // Sync local state with filters when filters change externally
+  useEffect(() => {
+    setSearchValue(filters.search || '');
+    setPriceMinValue(filters.priceMin ? (filters.priceMin / 100).toString() : '');
+    setPriceMaxValue(filters.priceMax ? (filters.priceMax / 100).toString() : '');
+    setPendingFilters({});
+  }, [filters.state, filters.model, filters.dateRange, filters.dateField, filters.sortBy, filters.sortOrder]);
+
+  // Load filter preferences from localStorage
   useEffect(() => {
     try {
-      const saved = localStorage.getItem(TAG_FILTER_STORAGE_KEY);
-      if (saved) {
-        const { tags, tagMode } = JSON.parse(saved);
+      // Load tag filter preferences
+      const savedTags = localStorage.getItem(TAG_FILTER_STORAGE_KEY);
+      if (savedTags) {
+        const { tags, tagMode } = JSON.parse(savedTags);
         if (tags && Array.isArray(tags)) {
           setFilters({ tags, tagMode: tagMode || 'OR' });
         }
       }
+
+      // Load model filter preference
+      const savedModel = localStorage.getItem(MODEL_FILTER_STORAGE_KEY);
+      if (savedModel) {
+        const model = JSON.parse(savedModel);
+        if (model) {
+          setFilters({ model });
+        }
+      }
+
+      // Load sort preference
+      const savedSort = localStorage.getItem(SORT_PREFERENCE_STORAGE_KEY);
+      if (savedSort) {
+        const { sortBy, sortOrder } = JSON.parse(savedSort);
+        if (sortBy && sortOrder) {
+          setFilters({ sortBy, sortOrder });
+        }
+      }
     } catch (err) {
-      console.warn('[GarageFilters] Failed to load tag filter preferences:', err);
+      console.warn('[GarageFilters] Failed to load filter preferences:', err);
     }
   }, [setFilters]);
 
-  // Save tag filter preferences to localStorage
+  // Save filter preferences to localStorage
   useEffect(() => {
     try {
+      // Save tag filter preferences
       localStorage.setItem(TAG_FILTER_STORAGE_KEY, JSON.stringify({
         tags: filters.tags || [],
         tagMode: filters.tagMode || 'OR'
       }));
+
+      // Save model filter preference
+      if (filters.model) {
+        localStorage.setItem(MODEL_FILTER_STORAGE_KEY, JSON.stringify(filters.model));
+      } else {
+        localStorage.removeItem(MODEL_FILTER_STORAGE_KEY);
+      }
+
+      // Save sort preference
+      localStorage.setItem(SORT_PREFERENCE_STORAGE_KEY, JSON.stringify({
+        sortBy: filters.sortBy || 'created_at',
+        sortOrder: filters.sortOrder || 'desc'
+      }));
     } catch (err) {
-      console.warn('[GarageFilters] Failed to save tag filter preferences:', err);
+      console.warn('[GarageFilters] Failed to save filter preferences:', err);
     }
-  }, [filters.tags, filters.tagMode]);
+  }, [filters.tags, filters.tagMode, filters.model, filters.sortBy, filters.sortOrder]);
 
   const handleStateChange = (e) => {
     const newState = e.target.value === 'all' ? null : e.target.value;
+    console.log('[GarageFilters] handleStateChange:', { oldValue: filters.state, newValue: newState });
+    setPendingFilters(prev => ({ ...prev, state: newState }));
     setFilters({ state: newState });
   };
+
+  const handleModelChange = (e) => {
+    const newModel = e.target.value === 'all' ? null : e.target.value;
+    console.log('[GarageFilters] handleModelChange:', { oldValue: filters.model, newValue: newModel });
+    setPendingFilters(prev => ({ ...prev, model: newModel }));
+    setFilters({ model: newModel });
+  };
+
+  const handleSortChange = (e) => {
+    const value = e.target.value;
+    // Parse sort option value (format: "sortBy:sortOrder")
+    const [sortBy, sortOrder] = value.split(':');
+    console.log('[GarageFilters] handleSortChange:', { value, sortBy, sortOrder, oldSortBy: filters.sortBy, oldSortOrder: filters.sortOrder });
+    setPendingFilters(prev => ({ ...prev, sortBy, sortOrder }));
+    setFilters({ sortBy, sortOrder });
+  };
+
+  const handleDateRangeChange = (e) => {
+    const value = e.target.value === 'all' ? null : e.target.value;
+    console.log('[GarageFilters] handleDateRangeChange:', { oldValue: filters.dateRange, newValue: value });
+    setPendingFilters(prev => ({ ...prev, dateRange: value }));
+    setFilters({ dateRange: value });
+  };
+
+  const handleDateFieldChange = (e) => {
+    const value = e.target.value;
+    console.log('[GarageFilters] handleDateFieldChange:', { oldValue: filters.dateField, newValue: value });
+    setPendingFilters(prev => ({ ...prev, dateField: value }));
+    setFilters({ dateField: value });
+  };
+
+  const handleApplyFilters = () => {
+    // Force reload with current filters
+    // This ensures filters are applied even if they were set but didn't trigger reload
+    console.log('[GarageFilters] handleApplyFilters called');
+    console.log('[GarageFilters] Current filters:', filters);
+    console.log('[GarageFilters] Pending filters:', pendingFilters);
+    const currentFilters = filters;
+    setFilters({ ...currentFilters }); // Trigger reload by setting filters again
+    setPendingFilters({});
+  };
+
+  // Count active filters
+  const activeFilterCount = useMemo(() => {
+    let count = 0;
+    if (filters.state) count++;
+    if (filters.model) count++;
+    if (filters.search && filters.search.trim()) count++;
+    if (filters.dateRange) count++;
+    if (filters.priceMin !== null && filters.priceMin !== undefined) count++;
+    if (filters.priceMax !== null && filters.priceMax !== undefined) count++;
+    if (filters.tags && filters.tags.length > 0) count++;
+    if (filters.sortBy !== 'created_at' || filters.sortOrder !== 'desc') count++;
+    return count;
+  }, [filters]);
+
+  const hasActiveFilters = activeFilterCount > 0;
 
   const handleSearchChange = (e) => {
     const value = e.target.value;
@@ -65,15 +174,6 @@ export default function GarageFilters({ variant = 'inline' }) {
     window.garageSearchTimeout = setTimeout(() => {
       setFilters({ search: value });
     }, 300);
-  };
-
-  const handleDateRangeChange = (e) => {
-    const value = e.target.value === 'all' ? null : e.target.value;
-    setFilters({ dateRange: value });
-  };
-
-  const handleDateFieldChange = (e) => {
-    setFilters({ dateField: e.target.value });
   };
 
   const handlePriceMinChange = (e) => {
@@ -112,12 +212,56 @@ export default function GarageFilters({ variant = 'inline' }) {
     }, 500);
   };
 
+  const handleClearFilters = () => {
+    // Clear all filters
+    clearAllFilters();
+    // Reset local state
+    setSearchValue('');
+    setPriceMinValue('');
+    setPriceMaxValue('');
+    setPendingFilters({});
+    // Clear localStorage preferences
+    try {
+      localStorage.removeItem(MODEL_FILTER_STORAGE_KEY);
+      localStorage.removeItem(SORT_PREFERENCE_STORAGE_KEY);
+    } catch (err) {
+      console.warn('[GarageFilters] Failed to clear filter preferences:', err);
+    }
+  };
+
   return (
     <div
       className={`${styles.filters} ${
         variant === 'overlay' ? styles.filtersOverlay : ''
       }`}
     >
+      <FilterPresets />
+
+      <div className={styles.filterActions}>
+        {hasActiveFilters && (
+          <button
+            type="button"
+            className={styles.clearAllButton}
+            onClick={handleClearFilters}
+            aria-label={t('garage.filters.clearAll')}
+          >
+            {t('garage.filters.clearAll')}
+            <span className={styles.activeFilterBadge}>
+              {t('garage.filters.activeFilters', { count: activeFilterCount })}
+            </span>
+          </button>
+        )}
+        {(hasActiveFilters || Object.keys(pendingFilters).length > 0) && (
+          <button
+            type="button"
+            className={styles.applyButton}
+            onClick={handleApplyFilters}
+            aria-label={t('garage.filters.applyFilters')}
+          >
+            {t('garage.filters.applyFilters')}
+          </button>
+        )}
+      </div>
       <div className={styles.filterGroup}>
         <label htmlFor="garage-state-filter" className={styles.filterLabel}>
           {t('garage.filters.state')}
@@ -133,6 +277,44 @@ export default function GarageFilters({ variant = 'inline' }) {
           <option value="purchased">{t('garage.lanes.purchases')}</option>
           <option value="prototype">{t('garage.lanes.prototypes')}</option>
           <option value="wishlist">{t('garage.lanes.wishlist')}</option>
+        </select>
+      </div>
+
+      <div className={styles.filterGroup}>
+        <label htmlFor="garage-model-filter" className={styles.filterLabel}>
+          {t('garage.filters.model')}
+        </label>
+        <select
+          id="garage-model-filter"
+          className={styles.filterSelect}
+          value={filters.model || 'all'}
+          onChange={handleModelChange}
+        >
+          <option value="all">{t('garage.filters.allModels')}</option>
+          {Array.from(modelCounts.entries()).map(([model, count]) => (
+            <option key={model} value={model}>
+              {model} ({count})
+            </option>
+          ))}
+        </select>
+      </div>
+
+      <div className={styles.filterGroup}>
+        <label htmlFor="garage-sort" className={styles.filterLabel}>
+          {t('garage.filters.sort')}
+        </label>
+        <select
+          id="garage-sort"
+          className={styles.filterSelect}
+          value={`${filters.sortBy || 'created_at'}:${filters.sortOrder || 'desc'}`}
+          onChange={handleSortChange}
+        >
+          <option value="created_at:desc">{t('garage.filters.sortDateNewest')}</option>
+          <option value="created_at:asc">{t('garage.filters.sortDateOldest')}</option>
+          <option value="price_cents:desc">{t('garage.filters.sortPriceHigh')}</option>
+          <option value="price_cents:asc">{t('garage.filters.sortPriceLow')}</option>
+          <option value="title:asc">{t('garage.filters.sortNameAZ')}</option>
+          <option value="title:desc">{t('garage.filters.sortNameZA')}</option>
         </select>
       </div>
 

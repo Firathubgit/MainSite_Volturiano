@@ -1,4 +1,8 @@
 {
+  "common": {
+    "close": "Close",
+    "cancel": "Cancel"
+  },
   "menu": {
     "enter": "Enter Volturiano",
     "guestSubtitle": "Choose how you want to continue",
@@ -68,6 +72,8 @@
     "filters": {
       "state": "Filter by state",
       "allStates": "All states",
+      "model": "Filter by model",
+      "allModels": "All models",
       "search": "Search",
       "searchPlaceholder": "Search by title or description...",
       "dateRange": "Date range",
@@ -82,7 +88,27 @@
       "priceMin": "Min price",
       "priceMax": "Max price",
       "priceMinPlaceholder": "Min (EUR)",
-      "priceMaxPlaceholder": "Max (EUR)"
+      "priceMaxPlaceholder": "Max (EUR)",
+      "sort": "Sort by",
+      "sortDateNewest": "Date (newest first)",
+      "sortDateOldest": "Date (oldest first)",
+      "sortPriceHigh": "Price (high to low)",
+      "sortPriceLow": "Price (low to high)",
+      "sortNameAZ": "Name (A-Z)",
+      "sortNameZA": "Name (Z-A)",
+      "presets": "Saved Filters",
+      "savePreset": "Save current filters",
+      "presetName": "Preset name",
+      "applyPreset": "Apply",
+      "deletePreset": "Delete",
+      "clearAll": "Clear all filters",
+      "applyFilters": "Apply Filters",
+      "activeFilters": "{{count}} active",
+      "defaultPresets": {
+        "myPurchases": "My Purchases",
+        "recentBuilds": "Recent Builds",
+        "highValue": "High Value"
+      }
     },
     "filterTrigger": "Filter",
     "tags": {
@@ -103,6 +129,25 @@
       "tagsUpdated": "Tags updated",
       "errorUpdating": "Failed to update tags",
       "save": "Save"
+    },
+    "pdfExport": {
+      "exportButton": "Export PDF",
+      "modalTitle": "Export PDF Specification",
+      "watermark": "Include watermark",
+      "includeQR": "Include QR code (links to online view)",
+      "generate": "Generate PDF",
+      "processing": "Processing",
+      "ready": "Ready",
+      "failed": "Failed",
+      "statusTitle": "PDF Export Status",
+      "statusQueued": "Queued",
+      "statusProcessing": "Generating PDF...",
+      "statusCompleted": "PDF ready for download",
+      "statusFailed": "PDF generation failed",
+      "statusUnknown": "Unknown status",
+      "download": "Download PDF",
+      "retry": "Retry",
+      "generationFailed": "PDF generation failed. Please try again."
     },
     "actions": {
       "edit": "Edit",

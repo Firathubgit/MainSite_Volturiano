@@ -36,7 +36,11 @@ const TestSaveToGarage = import.meta.env.DEV
   ? lazy(() => import('../pages/Debug/TestSaveToGarage'))
   : null;
 
+console.log('[App] ===== APP COMPONENT MODULE LOADED =====', new Date().toISOString());
+
 export default function App() {
+  console.log('[App] ===== APP COMPONENT RENDERED =====', new Date().toISOString());
+  
   const { t } = useTranslation('common');
   const setSession = useUserStore((state) => state.setSession);
   const setProfile = useUserStore((state) => state.setProfile);
@@ -45,6 +49,13 @@ export default function App() {
   const status = useUserStore((state) => state.status);
   const session = useUserStore((state) => state.session);
   const forceOverlay = useUiStore((state) => state.forceOverlay);
+  
+  console.log('[App] Current state:', {
+    status,
+    hasSession: !!session,
+    sessionUserId: session?.user?.id,
+    forceOverlay
+  });
   
   useRenderLogger('App', { status, hasSession: !!session, forceOverlay });
 
@@ -89,40 +100,104 @@ export default function App() {
     };
 
     const handleSession = async (session) => {
-      if (!active) return;
+      console.log('[App] handleSession called:', {
+        hasSession: !!session,
+        hasUser: !!session?.user,
+        userId: session?.user?.id,
+        active,
+        timestamp: new Date().toISOString()
+      });
+      
+      if (!active) {
+        console.log('[App] Component unmounted, skipping handleSession');
+        return;
+      }
+      
       if (session) {
+        console.log('[App] Session present, setting session and hydrating profile');
         setSession(session);
         await hydrateProfile(session);
       } else {
+        console.log('[App] No session, resetting store');
         reset();
       }
       if (active) {
+        console.log('[App] Setting status to ready');
         setStatus('ready');
+      } else {
+        console.log('[App] Component unmounted, not setting status');
       }
     };
 
     const initialise = async () => {
       setStatus('loading');
-      const {
-        data: { session }
-      } = await supabase.auth.getSession();
-      await handleSession(session);
+      console.log('[App] Initializing auth...');
+      console.log('[App] Checking localStorage for session...');
+      if (typeof window !== 'undefined') {
+        const storedSession = localStorage.getItem('sb-auth-token');
+        console.log('[App] Stored session in localStorage:', storedSession ? 'Present' : 'Missing');
+        if (storedSession) {
+          try {
+            const parsed = JSON.parse(storedSession);
+            console.log('[App] Parsed stored session:', {
+              hasAccessToken: !!parsed?.access_token,
+              expiresAt: parsed?.expires_at,
+              expiresIn: parsed?.expires_at ? Math.floor((parsed.expires_at * 1000 - Date.now()) / 1000) : null
+            });
+          } catch (e) {
+            console.error('[App] Could not parse stored session:', e);
+          }
+        }
+      }
+      
+      const sessionResult = await supabase.auth.getSession();
+      console.log('[App] getSession() result:', {
+        hasData: !!sessionResult.data,
+        hasSession: !!sessionResult.data?.session,
+        hasUser: !!sessionResult.data?.session?.user,
+        userId: sessionResult.data?.session?.user?.id,
+        hasAccessToken: !!sessionResult.data?.session?.access_token,
+        expiresAt: sessionResult.data?.session?.expires_at,
+        expiresIn: sessionResult.data?.session?.expires_at ? Math.floor((sessionResult.data.session.expires_at * 1000 - Date.now()) / 1000) : null,
+        error: sessionResult.error?.message
+      });
+      
+      const sessionToHandle = sessionResult.data?.session;
+      console.log('[App] About to handle session:', {
+        hasSession: !!sessionToHandle,
+        sessionUserId: sessionToHandle?.user?.id,
+        timestamp: new Date().toISOString()
+      });
+      await handleSession(sessionToHandle);
+      console.log('[App] Session handling completed');
     };
 
     initialise();
 
     const { data: subscription } = supabase.auth.onAuthStateChange(
       async (event, session) => {
+        console.log('[App] Auth state change event:', {
+          event,
+          hasSession: !!session,
+          hasUser: !!session?.user,
+          userId: session?.user?.id,
+          hasAccessToken: !!session?.access_token,
+          expiresAt: session?.expires_at,
+          expiresIn: session?.expires_at ? Math.floor((session.expires_at * 1000 - Date.now()) / 1000) : null
+        });
+        
         // For sign out events, handle immediately without blocking
         // The stores are already cleared optimistically in AccountMenu
         if (event === 'SIGNED_OUT') {
+          console.log('[App] Handling SIGNED_OUT event');
           // Don't await - let it run in background to avoid blocking
           handleSession(session).catch((err) => {
-            console.warn('Error handling sign out session:', err);
+            console.warn('[App] Error handling sign out session:', err);
           });
         } else {
-        setStatus('loading');
-        await handleSession(session);
+          console.log('[App] Handling auth event:', event);
+          setStatus('loading');
+          await handleSession(session);
         }
       }
     );

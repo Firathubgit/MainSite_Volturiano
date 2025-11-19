@@ -5,6 +5,8 @@ import { useGarageStore } from '../../../stores/garageStore';
 import { getValidTargetStates, isTerminalState } from '../utils/stateTransitions';
 import StateChangeDialog from './StateChangeDialog';
 import TagSelectorDialog from './TagSelectorDialog';
+import PdfExportModal from './PdfExportModal';
+import PdfJobStatus from './PdfJobStatus';
 import styles from './CarCardMoreMenu.module.css';
 
 /**
@@ -26,14 +28,21 @@ export default function CarCardMoreMenu({
   onReadyForDelivery
 }) {
   const { t } = useTranslation('account');
-  const { updateItemState } = useGarageStore();
+  const { updateItemState, createPdfExport, pdfExports, pdfJobStatus } = useGarageStore();
   const [isOpen, setIsOpen] = useState(false);
   const [showStateDialog, setShowStateDialog] = useState(false);
   const [showTagDialog, setShowTagDialog] = useState(false);
+  const [showPdfModal, setShowPdfModal] = useState(false);
+  const [currentJobId, setCurrentJobId] = useState(null);
   const [pendingState, setPendingState] = useState(null);
   const [isChanging, setIsChanging] = useState(false);
   const menuRef = useRef(null);
   const buttonRef = useRef(null);
+  
+  // Get latest PDF job for this item
+  const itemExports = pdfExports.get(itemId) || [];
+  const latestJob = itemExports.length > 0 ? itemExports[0] : null;
+  const jobStatus = latestJob ? pdfJobStatus.get(latestJob.id) || latestJob.status : null;
 
   const validTargetStates = getValidTargetStates(currentState || '');
   const isTerminal = isTerminalState(currentState || '');
@@ -125,6 +134,51 @@ export default function CarCardMoreMenu({
       setShowTagDialog(true);
     } else if (action === 'timeline' && onTimeline) {
       onTimeline();
+    } else if (action === 'exportPdf') {
+      setShowPdfModal(true);
+    }
+  };
+
+  const handlePdfExport = async (options) => {
+    console.log('[CarCardMoreMenu] handlePdfExport called with options:', options);
+    setShowPdfModal(false);
+    
+    try {
+      console.log('[CarCardMoreMenu] Calling createPdfExport...');
+      const { data, error } = await createPdfExport(itemId, options);
+      console.log('[CarCardMoreMenu] createPdfExport returned:', { data, error });
+      
+      if (error) {
+        console.error('[CarCardMoreMenu] Export failed:', error);
+        alert(`PDF Export Failed: ${error.message || error}`);
+        return;
+      }
+      
+      if (data?.job_id) {
+        console.log('[CarCardMoreMenu] Job created successfully, job_id:', data.job_id);
+        setCurrentJobId(data.job_id);
+      } else {
+        console.warn('[CarCardMoreMenu] No job_id returned from export');
+        alert('PDF Export started but no job ID received. Please check the logs.');
+      }
+    } catch (err) {
+      console.error('[CarCardMoreMenu] Exception in handlePdfExport:', err);
+      alert(`PDF Export Error: ${err.message || err}`);
+    }
+  };
+
+  const getPdfStatusBadge = () => {
+    if (!jobStatus) return null;
+    
+    switch (jobStatus) {
+      case 'processing':
+        return ' ⏳';
+      case 'completed':
+        return ' ✓';
+      case 'failed':
+        return ' ✗';
+      default:
+        return null;
     }
   };
 
@@ -195,6 +249,16 @@ export default function CarCardMoreMenu({
               {t('garage.actions.timeline', 'Timeline')}
             </button>
 
+            {/* Export PDF */}
+            <button
+              type="button"
+              className={styles.menuItem}
+              onClick={() => handleMenuAction('exportPdf')}
+            >
+              {t('garage.pdfExport.exportButton', 'Export PDF')}
+              {getPdfStatusBadge()}
+            </button>
+
             {/* Edit Tags */}
             <button
               type="button"
@@ -260,6 +324,20 @@ export default function CarCardMoreMenu({
         itemId={itemId}
         onClose={() => setShowTagDialog(false)}
       />
+
+      <PdfExportModal
+        show={showPdfModal}
+        itemId={itemId}
+        onClose={() => setShowPdfModal(false)}
+        onExport={handlePdfExport}
+      />
+
+      {currentJobId && (
+        <PdfJobStatus
+          jobId={currentJobId}
+          onClose={() => setCurrentJobId(null)}
+        />
+      )}
     </>
   );
 }

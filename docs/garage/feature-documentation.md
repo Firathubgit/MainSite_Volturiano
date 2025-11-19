@@ -274,21 +274,40 @@ create table garage_milestones (
   garage_item_id uuid not null references garage_items(id) on delete cascade,
   milestone_type text not null,
   note text,
+  from_state text,
+  to_state text,
+  metadata jsonb,
   occurred_at timestamptz not null default now()
 );
 ```
 
 **Design Rationale**:
 
-- **milestone_type**: Flexible text field ('created', 'purchased', 'delivered', 'custom')
+- **milestone_type**: Flexible text field ('created', 'updated', 'purchased', 'delivered', 'custom')
 - **note**: Optional narrative for milestone
-- **occurred_at**: When milestone happened (can be in past/future)
+- **from_state**: Previous state (for state transitions)
+- **to_state**: New state (for state transitions)
+- **metadata**: Additional data (JSONB) - Stripe order info, custom data, etc.
+- **occurred_at**: When milestone happened (can be in past/future for placeholders)
+
+**Index**:
+```sql
+CREATE INDEX garage_milestones_item_idx 
+  ON garage_milestones (garage_item_id, occurred_at DESC);
+```
 
 **Use Cases**:
-- Timeline view showing configuration journey
-- Delivery date tracking
+- Timeline view showing configuration journey (Phase 2.9 ✅)
+- Delivery date tracking (with placeholder support)
 - Custom user notes
-- Integration with order system
+- Integration with order system (Stripe webhooks)
+- State transition history
+
+**Implementation Status**: ✅ Complete (Phase 2.9)
+- Timeline UI component implemented
+- Custom milestone creation
+- Automatic milestone creation on item creation and state changes
+- Placeholder milestone structure prepared for Edge Function integration
 
 ### Activity Log: garage_activity
 
@@ -986,12 +1005,149 @@ See Phase 2 roadmap in `docs/ULTIMATE_ROADMAP.md` for planned features and timel
 
 ---
 
+## Version History
+
+### Overview
+
+Version History allows users to track changes to their garage item configurations over time. Each time a configuration's `config_payload` changes, a new version snapshot is automatically created.
+
+**Enhanced with configurator-aware support**: The system now fully supports both 2D and 3D configurators, automatically detects configurator types, handles conversions between formats, and provides detailed diff visualization for configurator-specific changes.
+
+### Components
+
+1. **VersionHistory**: Timeline UI showing all versions with configurator type badges
+2. **ConfigDiff**: Visual diff display (added/removed/changed) with configurator awareness
+3. **RestoreVersionDialog**: Confirmation dialog for restore with diff preview
+4. **ConfiguratorTypeBadge**: Reusable badge component for displaying configurator types
+
+### Features
+
+- **Automatic Versioning**: Versions created when config changes
+- **Configurator Type Detection**: Automatically detects and tracks 2D/3D/Hybrid types
+- **Type Conversion**: Supports converting between 2D and 3D formats
+- **Diff Visualization**: Color-coded change display with configurator-specific highlights
+- **Restore**: Restore any previous version (creates new version)
+- **Price Tracking**: Shows price changes between versions
+- **Legacy Migration**: Auto-migrates legacy configs without configurator type
+
+### API Functions
+
+- `fetchGarageVersions(itemId)` - Load version history (with auto-migration)
+- `restoreGarageVersion(itemId, versionNumber)` - Restore version (with normalization)
+- `updateGarageItem()` - Enhanced to auto-create versions and detect type changes
+- `createGarageItem()` - Enhanced to auto-detect and normalize configurator type
+
+### Store Methods
+
+- `loadVersions(itemId)` - Load and cache versions (with auto-migration)
+- `restoreVersion(itemId, versionNumber)` - Restore with optimistic update
+
+### Utilities
+
+- `detectConfiguratorType(config)` - Detect configurator type from payload
+- `normalizeConfiguratorMetadata(config)` - Normalize configurator metadata
+- `convert2DTo3D(config)` - Convert 2D config to 3D format
+- `convert3DTo2D(config)` - Convert 3D config to 2D format
+- `validate2DConfig(config)` - Validate 2D-specific fields
+- `validate3DConfig(config)` - Validate 3D-specific fields
+- `autoMigrateConfig(config)` - Auto-migrate legacy configs
+
+### Database
+
+- `garage_versions` table stores version snapshots
+- `diff_summary` JSONB field stores calculated diffs (includes configurator changes)
+- Version numbers increment sequentially per item
+- Configurator type stored in both `history.configuratorType` and `metadata.configurator.type`
+
+**See**: 
+- `docs/garage/version-history.md` for complete documentation
+- `docs/garage/configurator-integration.md` for integration guide
+
+---
+
+## State Transitions & Milestones
+
+### Overview
+
+The garage system includes a comprehensive state transition system that tracks how garage items move between different states (saved, purchased, prototype, wishlist, archived). All state changes are validated, logged, and can be triggered manually via UI or automatically via Stripe webhooks.
+
+### Valid States
+
+- **saved**: A saved configuration ready for purchase
+- **purchased**: A completed purchase (can transition back to saved or archived)
+- **prototype**: A prototype build (can transition to saved, wishlist, or archived)
+- **wishlist**: A wishlist item (can transition to saved, prototype, or archived)
+- **archived**: Terminal state - no transitions allowed (permanent archive)
+
+### Valid Transitions
+
+- From `saved`: → `purchased`, `prototype`, `wishlist`, `archived`
+- From `purchased`: → `saved`, `archived` (cannot go back to prototype/wishlist)
+- From `prototype`: → `saved`, `wishlist`, `archived`
+- From `wishlist`: → `saved`, `prototype`, `archived`
+- From `archived`: No transitions allowed (terminal state)
+
+### State Change Service
+
+All state changes go through the centralized `stateChangeService` which ensures:
+1. **Validation**: Transitions are validated before execution
+2. **Milestone Creation**: Automatic milestone creation for state changes
+3. **Activity Logging**: All state changes are logged to `garage_activity`
+4. **Consistency**: Same logic for manual UI, Stripe webhooks, admin tools
+
+### Milestones
+
+Milestones are automatically created when state changes occur. They track:
+- **milestone_type**: `'created'`, `'state_change'`, `'payment'`
+- **from_state**: Previous state (null for initial creation)
+- **to_state**: New state
+- **note**: Optional note
+- **metadata**: Additional data (Stripe order info, etc.)
+
+### Activity Logging
+
+All state changes are logged to `garage_activity` table with:
+- **action**: `'state_changed'`
+- **metadata**: `{ from_state, to_state, source, reason }`
+- **actor_id**: User who triggered the change
+
+### UI Components
+
+- **StateChangeButton**: Dropdown button component that allows users to change item state
+- **StateChangeDialog**: Confirmation modal for state changes that require user confirmation
+
+### API Functions
+
+- `updateGarageState(itemId, newState)` - Low-level API function with transition validation
+- `createMilestone(itemId, milestoneData)` - Creates a milestone record
+- `fetchMilestones(itemId)` - Fetches all milestones for an item
+- `createActivityLog(itemId, action, metadata)` - Creates an activity log entry
+- `fetchActivityLog(itemId, limit)` - Fetches activity log entries
+
+### Store Methods
+
+- `updateItemState(itemId, newState, options)` - Uses `stateChangeService` with optimistic updates
+- `loadMilestones(itemId, forceRefresh)` - Loads milestones with caching
+- `createMilestone(itemId, milestoneData)` - Creates milestone via API
+- `loadActivityLog(itemId, limit)` - Loads activity log entries
+- `createActivityLog(itemId, action, metadata)` - Creates activity log entry
+
+### Future Stripe Integration
+
+When Stripe is ready, webhook handlers will call the same `changeItemState` service. No changes to core logic needed - just webhook → service call.
+
+**See**: `docs/garage/state-transitions.md` for complete documentation
+
+---
+
 ## References
 
 - **Schema Documentation**: `docs/garage-schema.md`
 - **Database Setup**: `docs/garage/supabase-setup.md`
 - **Implementation Summary**: `docs/garage/implementation-summary.md`
 - **Testing Guide**: `docs/garage/testing-guide.md`
+- **Version History**: `docs/garage/version-history.md`
+- **State Transitions**: `docs/garage/state-transitions.md`
 - **Roadmap**: `docs/ULTIMATE_ROADMAP.md` (Phase 2)
 
 ---

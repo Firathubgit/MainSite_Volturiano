@@ -1,14 +1,16 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
+import LoadingOverlay from '../../components/LoadingOverlay/LoadingOverlay';
 import styles from './Viewer2D.module.css';
 
 // Available options - exported for use in parent components
+// Order: Blu Blue (default), Nero Black, Bianco White, Rosso Red, Orange Fury
 export const BODY_COLORS = {
-  'orange-fury': 'Orange Fury',
+  'blu-blue': 'Blu Blue',
   'nero-black': 'Nero Black',
   'bianco-white': 'Bianco White',
   'rosso-red': 'Rosso Red',
-  'blu-blue': 'Blu Blue',
+  'orange-fury': 'Orange Fury',
 };
 
 export const RIM_COLORS = {
@@ -36,7 +38,7 @@ function getImageUrl(bodyColor, rimColor, angle) {
 }
 
 export function Viewer2D({ 
-  bodyColor = 'orange-fury', 
+  bodyColor = 'blu-blue', 
   rimColor = 'black', 
   angle = 'front-3q',
   onImageLoad,
@@ -46,16 +48,38 @@ export function Viewer2D({
   const [imageSrc, setImageSrc] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [hasError, setHasError] = useState(false);
+  const [showOverlay, setShowOverlay] = useState(false);
 
   // Generate image URL
   const imageUrl = useMemo(() => {
     return getImageUrl(bodyColor, rimColor, angle);
   }, [bodyColor, rimColor, angle]);
 
+  // Show overlay only after 0.5 seconds of loading
+  useEffect(() => {
+    if (!isLoading) {
+      // Immediately hide overlay if loading stops
+      setShowOverlay(false);
+      return;
+    }
+
+    // Wait 0.5 seconds before showing overlay
+    const timeoutId = setTimeout(() => {
+      if (isLoading) {
+        setShowOverlay(true);
+      }
+    }, 500);
+
+    return () => {
+      clearTimeout(timeoutId);
+    };
+  }, [isLoading]);
+
   // Load image
   useEffect(() => {
     setIsLoading(true);
     setHasError(false);
+    setShowOverlay(false); // Reset overlay state when starting new load
 
     const img = new Image();
     
@@ -84,12 +108,7 @@ export function Viewer2D({
 
   return (
     <div className={styles.viewer2d}>
-      {isLoading && (
-        <div className={styles.loading}>
-          <div className={styles.spinner}></div>
-          <span>{t('loading') || 'Loading...'}</span>
-        </div>
-      )}
+      <LoadingOverlay show={showOverlay} />
       
       {hasError && (
         <div className={styles.error}>

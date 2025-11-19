@@ -3,6 +3,12 @@ import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
 import { supabase } from '../../../lib/supabaseClient';
+import { useGarageStore } from '../../../stores/garageStore';
+import VersionHistory from './VersionHistory';
+import ShareModal from './ShareModal';
+import TimelineModal from './Timeline/TimelineModal';
+import CarCardMoreMenu from './CarCardMoreMenu';
+import TagDisplay from './TagDisplay';
 import styles from '../styles/garage.module.css';
 import showroomPlaceholder from '../../../assets/Garage/ShowroomCarVOLTURIANO1.png';
 
@@ -69,6 +75,10 @@ export default function CarCard({
 }) {
   const { t } = useTranslation('account');
   const navigate = useNavigate();
+  const setFilters = useGarageStore((state) => state.setFilters);
+  const [showHistory, setShowHistory] = useState(false);
+  const [showShare, setShowShare] = useState(false);
+  const [showTimeline, setShowTimeline] = useState(false);
 
   const config = useMemo(() => parseConfigPayload(item?.config_payload), [item]);
   const modelName = item?.vehicle_model || config?.vehicle?.model || null;
@@ -117,12 +127,12 @@ export default function CarCard({
     item?.vehicle_model ||
     'Sport Package';
 
+  // Get tags from database (preferred) or fallback to legacy config metadata
+  const tags = item?.tags || (Array.isArray(config?.metadata?.goalTags) ? config.metadata.goalTags : []) || [];
+  
   const description =
     item?.description ||
     config?.history?.notes ||
-    (Array.isArray(config?.metadata?.goalTags)
-      ? config.metadata.goalTags.join(' • ')
-      : '') ||
     '';
 
   const dateLabel = formatDate(item?.created_at || item?.updated_at);
@@ -136,8 +146,8 @@ export default function CarCard({
   const handleConfigure = () => {
     if (typeof onConfigure === 'function') {
       onConfigure(item);
-    } else {
-      navigate('/configurator', { state: { garageItemId: item?.id } });
+    } else if (item?.id) {
+      navigate(`/configurator/${item.id}`);
     }
   };
 
@@ -245,18 +255,46 @@ export default function CarCard({
           >
             {configureLabel || t('garage.actions.configure')}
           </motion.button>
-          <motion.button
-            type="button"
-            className={styles.cardAction}
-            onClick={handleViewReady}
-            whileHover={{ opacity: 0.8, x: 2 }}
-            whileTap={{ scale: 0.95 }}
-            transition={{ duration: 0.15 }}
-          >
-            {readyLabel || t('garage.actions.viewReadyCars')}
-          </motion.button>
+          <CarCardMoreMenu
+            itemId={item?.id}
+            currentState={item?.state}
+            onHistory={() => setShowHistory(true)}
+            onShare={() => setShowShare(true)}
+            onTimeline={() => setShowTimeline(true)}
+            onReadyForDelivery={handleViewReady}
+          />
+          {tags.length > 0 && (
+            <motion.div className={styles.cardTags} variants={itemVariants}>
+              <TagDisplay
+                tags={tags}
+                onTagClick={(tag) => setFilters({ tags: [tag] })}
+                maxVisible={2}
+                variant="compact"
+              />
+            </motion.div>
+          )}
         </motion.div>
       </motion.div>
+
+      <VersionHistory
+        show={showHistory}
+        itemId={item?.id}
+        onClose={() => setShowHistory(false)}
+      />
+
+      <ShareModal
+        show={showShare}
+        itemId={item?.id}
+        onClose={() => setShowShare(false)}
+      />
+
+      {showTimeline && (
+        <TimelineModal
+          show={showTimeline}
+          itemId={item?.id}
+          onClose={() => setShowTimeline(false)}
+        />
+      )}
     </motion.div>
   );
 }

@@ -61,15 +61,15 @@ export default function AccountMenu({ anchorRef }) {
     
     // Handle actual signOut in background (don't block UI)
     try {
-      const { error: signOutError } = await signOut();
-      if (signOutError) {
+    const { error: signOutError } = await signOut();
+    if (signOutError) {
         // Log error but don't show to user since we already logged out locally
         console.warn('Sign out error (non-blocking):', signOutError.message);
       }
     } catch (err) {
       console.warn('Sign out exception (non-blocking):', err);
     } finally {
-      setLoading(false);
+    setLoading(false);
     }
   };
 

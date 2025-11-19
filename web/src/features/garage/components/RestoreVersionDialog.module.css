@@ -1,0 +1,203 @@
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(3, 3, 3, 0.85);
+  backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 32px;
+  z-index: 10000; /* Higher than VersionHistory to appear on top */
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+}
+
+.panel {
+  background: #111111;
+  border: 1px solid #303030;
+  border-radius: 28px;
+  padding: 32px;
+  width: min(800px, 92vw);
+  max-height: 85vh;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.title {
+  font-size: 24px;
+  font-weight: 700;
+  margin: 0;
+  color: #f7f7f7;
+}
+
+.closeButton {
+  background: transparent;
+  border: 1px solid #303030;
+  border-radius: 12px;
+  color: rgba(255, 255, 255, 0.75);
+  font-size: 24px;
+  font-weight: 300;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: border-color 160ms ease, color 160ms ease;
+  padding: 0;
+}
+
+.closeButton:hover:not(:disabled),
+.closeButton:focus-visible:not(:disabled) {
+  border-color: #ff4520;
+  color: #ff4520;
+  outline: none;
+}
+
+.closeButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.content {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.versionInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 16px;
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: 12px;
+}
+
+.versionNumberRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.versionNumber {
+  font-size: 18px;
+  font-weight: 700;
+  color: #f7f7f7;
+}
+
+.typeChangeIndicator {
+  font-size: 12px;
+  color: rgba(255, 69, 32, 0.8);
+  font-weight: 600;
+}
+
+.versionDate {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.diffPreview {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.expandButton {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  padding: 8px 16px;
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 160ms ease, border-color 160ms ease;
+  align-self: flex-start;
+}
+
+.expandButton:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 69, 32, 0.5);
+}
+
+.expandButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.warning {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 16px;
+  background: rgba(251, 191, 36, 0.1);
+  border: 1px solid rgba(251, 191, 36, 0.3);
+  border-radius: 12px;
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.warningIcon {
+  font-size: 20px;
+  flex-shrink: 0;
+}
+
+.actions {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+  padding-top: 8px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.cancelButton,
+.confirmButton {
+  padding: 12px 24px;
+  border-radius: 12px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 160ms ease, transform 160ms ease;
+  border: none;
+}
+
+.cancelButton {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.cancelButton:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.confirmButton {
+  background: linear-gradient(120deg, #ff4520, #e10600);
+  color: #fff;
+}
+
+.confirmButton:hover:not(:disabled) {
+  opacity: 0.9;
+}
+
+.cancelButton:disabled,
+.confirmButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+

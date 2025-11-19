@@ -1,0 +1,74 @@
+.container {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+}
+
+.loadingMessage {
+  margin-top: 2rem;
+  text-align: center;
+  color: var(--color-text-secondary);
+  font-size: 1rem;
+}
+
+.errorContainer {
+  max-width: 600px;
+  width: 100%;
+  text-align: center;
+  padding: 3rem 2rem;
+}
+
+.errorTitle {
+  font-size: 2rem;
+  font-weight: 600;
+  margin-bottom: 1rem;
+  color: var(--color-text);
+}
+
+.errorMessage {
+  font-size: 1.125rem;
+  color: var(--color-text-secondary);
+  margin-bottom: 2rem;
+  line-height: 1.6;
+}
+
+.errorActions {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.backButton,
+.retryButton {
+  padding: 0.75rem 1.5rem;
+  font-size: 1rem;
+  font-weight: 500;
+  border: 1px solid var(--color-border);
+  border-radius: 0.5rem;
+  background: var(--color-background);
+  color: var(--color-text);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.backButton:hover,
+.retryButton:hover {
+  background: var(--color-background-hover);
+  border-color: var(--color-border-hover);
+}
+
+.retryButton {
+  background: var(--color-accent);
+  color: var(--color-background);
+  border-color: var(--color-accent);
+}
+
+.retryButton:hover {
+  background: var(--color-accent-hover);
+  border-color: var(--color-accent-hover);
+}
+

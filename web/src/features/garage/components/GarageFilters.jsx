@@ -1,14 +1,17 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useGarageStore } from '../../../stores/garageStore';
+import TagFilter from './TagFilter';
 import styles from '../styles/garage.module.css';
+
+const TAG_FILTER_STORAGE_KEY = 'volturiano_garage_tag_filters';
 
 /**
  * Garage filters component
  */
 export default function GarageFilters({ variant = 'inline' }) {
   const { t } = useTranslation('account');
-  const { filters, setFilters } = useGarageStore();
+  const { filters, setFilters, loadTagCounts, tagCounts } = useGarageStore();
   const [searchValue, setSearchValue] = useState(filters.search || '');
   const [priceMinValue, setPriceMinValue] = useState(
     filters.priceMin ? (filters.priceMin / 100).toString() : ''
@@ -16,6 +19,38 @@ export default function GarageFilters({ variant = 'inline' }) {
   const [priceMaxValue, setPriceMaxValue] = useState(
     filters.priceMax ? (filters.priceMax / 100).toString() : ''
   );
+
+  // Load tag counts on mount
+  useEffect(() => {
+    loadTagCounts();
+  }, [loadTagCounts]);
+
+  // Load tag filter preferences from localStorage
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(TAG_FILTER_STORAGE_KEY);
+      if (saved) {
+        const { tags, tagMode } = JSON.parse(saved);
+        if (tags && Array.isArray(tags)) {
+          setFilters({ tags, tagMode: tagMode || 'OR' });
+        }
+      }
+    } catch (err) {
+      console.warn('[GarageFilters] Failed to load tag filter preferences:', err);
+    }
+  }, [setFilters]);
+
+  // Save tag filter preferences to localStorage
+  useEffect(() => {
+    try {
+      localStorage.setItem(TAG_FILTER_STORAGE_KEY, JSON.stringify({
+        tags: filters.tags || [],
+        tagMode: filters.tagMode || 'OR'
+      }));
+    } catch (err) {
+      console.warn('[GarageFilters] Failed to save tag filter preferences:', err);
+    }
+  }, [filters.tags, filters.tagMode]);
 
   const handleStateChange = (e) => {
     const newState = e.target.value === 'all' ? null : e.target.value;
@@ -177,6 +212,16 @@ export default function GarageFilters({ variant = 'inline' }) {
           placeholder={t('garage.filters.searchPlaceholder')}
           value={searchValue}
           onChange={handleSearchChange}
+        />
+      </div>
+
+      <div className={styles.filterGroup}>
+        <TagFilter
+          selectedTags={filters.tags || []}
+          tagCounts={tagCounts}
+          onChange={(tags) => setFilters({ tags })}
+          mode={filters.tagMode || 'OR'}
+          onModeChange={(tagMode) => setFilters({ tagMode })}
         />
       </div>
     </div>

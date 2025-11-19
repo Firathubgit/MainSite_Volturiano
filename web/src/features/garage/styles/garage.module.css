@@ -298,6 +298,15 @@
   margin: 0;
 }
 
+.cardTags {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  max-width: fit-content;
+  overflow: hidden;
+}
+
 .cardDivider {
   height: 1px;
   background: #303030;
@@ -307,8 +316,11 @@
   display: flex;
   justify-content: flex-start;
   align-items: center;
-  gap: 24px;
+  gap: 12px;
   margin-top: auto;
+  flex-wrap: nowrap;
+  position: relative;
+  overflow: hidden;
 }
 
 .cardAction {
@@ -326,6 +338,20 @@
 .cardAction:focus-visible {
   transform: translateY(-1px);
   color: #b5b5b5;
+}
+
+.historyButton,
+.shareButton {
+  /* Same styling as cardAction */
+}
+
+.stateChangeWrapper {
+  display: flex;
+  align-items: center;
+  margin-left: auto;
+  flex-shrink: 0;
+  padding-left: 24px;
+  border-left: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .emptyStateMessage {

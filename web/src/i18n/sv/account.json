@@ -85,12 +85,37 @@
       "priceMaxPlaceholder": "Max (EUR)"
     },
     "filterTrigger": "Filtrera",
+    "tags": {
+      "track": "Bana",
+      "grandTourer": "Grand Tourer",
+      "concept": "Koncept",
+      "dailyDriver": "Daglig körning",
+      "filterByTags": "Filtrera efter taggar",
+      "tagMode": "Filterläge",
+      "and": "OCH",
+      "or": "ELLER",
+      "clearTags": "Rensa",
+      "editTags": "Redigera taggar",
+      "addTag": "Lägg till tagg",
+      "removeTag": "Ta bort tagg",
+      "tagAdded": "Tagg tillagd",
+      "tagRemoved": "Tagg borttagen",
+      "tagsUpdated": "Taggar uppdaterade",
+      "errorUpdating": "Kunde inte uppdatera taggar",
+      "save": "Spara"
+    },
     "actions": {
       "edit": "Redigera",
       "delete": "Radera",
       "addConfiguration": "Lägg till Konfiguration",
       "configure": "Konfigurera",
-      "viewReadyCars": "Leverans klara bilar"
+      "viewReadyCars": "Leverans klara bilar",
+      "history": "Historik",
+      "viewHistory": "Visa versionshistorik",
+      "share": "Dela",
+      "timeline": "Tidslinje",
+      "more": "Mer...",
+      "moreOptions": "Fler alternativ"
     },
     "overlay": {
       "close": "Stäng"
@@ -105,6 +130,156 @@
     "confirmDelete": "Är du säker på att du vill radera detta objekt?",
     "error": {
       "loadFailed": "Kunde inte ladda garage-objekt"
+    },
+    "versionHistory": {
+      "title": "Versionshistorik",
+      "version": "Version",
+      "date": "Datum",
+      "restore": "Återställ till denna version",
+      "viewSnapshot": "Visa ögonblicksbild",
+      "hideSnapshot": "Dölj ögonblicksbild",
+      "current": "Nuvarande",
+      "loading": "Laddar versionshistorik...",
+      "error": "Kunde inte ladda versionshistorik",
+      "empty": "Ingen versionshistorik tillgänglig",
+      "initialVersion": "Initial version",
+      "configuratorTypeChanged": "Konfiguratortyp ändrades i denna version"
+    },
+    "diff": {
+      "noChanges": "Inga ändringar",
+      "added": "Tillagd",
+      "removed": "Borttagen",
+      "changed": "Ändrad",
+      "priceDelta": "Prisändring",
+      "show": "Visa diff",
+      "hide": "Dölj diff",
+      "from": "Från",
+      "to": "Till",
+      "categories": {
+        "exterior": "Exteriör",
+        "interior": "Interiör",
+        "performance": "Prestanda",
+        "vehicle": "Fordon",
+        "pricing": "Prissättning",
+        "metadata": "Metadata",
+        "configurator": "Konfigurator",
+        "other": "Övrigt"
+      }
+    },
+    "configurator": {
+      "type": {
+        "2d": "2D Konfigurator",
+        "3d": "3D Konfigurator",
+        "hybrid": "Hybrid Konfigurator"
+      },
+      "loading": "Laddar konfiguration...",
+      "error": {
+        "title": "Konfigurationsfel",
+        "missingItem": "Garage-objekt hittades inte",
+        "missingConfig": "Konfigurationsdata saknas",
+        "invalidConfig": "Konfigurationsdata är ogiltig",
+        "generic": "Kunde inte ladda konfiguration"
+      },
+      "editing": "Redigerar: {{model}}",
+      "backToGarage": "Tillbaka till garage",
+      "retry": "Försök igen"
+    },
+    "restore": {
+      "title": "Återställ Version",
+      "confirm": "Återställ",
+      "cancel": "Avbryt",
+      "restoring": "Återställer...",
+      "warning": "Detta kommer att skapa en ny version från det återställda tillståndet. Din nuvarande konfiguration kommer att sparas som en ny version.",
+      "error": "Kunde inte återställa version"
+    },
+    "share": {
+      "title": "Dela Konfiguration",
+      "createLink": "Skapa Delningslänk",
+      "existingLinks": "Befintliga Delningslänkar",
+      "noLinks": "Inga delningslänkar skapade ännu",
+      "copyLink": "Kopiera Länk",
+      "copied": "Kopierad!",
+      "privacy": "Integritet",
+      "privacyPublic": "Offentlig",
+      "privacyPrivate": "Privat",
+      "privacyUnlisted": "Olistad",
+      "setExpiry": "Sätt utgångsdatum",
+      "expiresAt": "Går ut",
+      "neverExpires": "Går aldrig ut",
+      "accessCount": "Antal visningar",
+      "delete": "Radera",
+      "confirmDelete": "Är du säker på att du vill radera denna delningslänk?",
+      "creating": "Skapar...",
+      "loading": "Laddar...",
+      "error": "Fel",
+      "expired": "Utgången"
+    },
+    "shared": {
+      "title": "Delad Konfiguration",
+      "viewingShared": "Visar delad konfiguration",
+      "saveToGarage": "Spara till mitt garage",
+      "loginToSave": "Logga in för att spara denna konfiguration till ditt garage",
+      "linkExpired": "Denna delningslänk har gått ut",
+      "linkNotFound": "Delningslänk hittades inte eller är ogiltig",
+      "loading": "Laddar delad konfiguration...",
+      "error": "Kunde inte ladda delad konfiguration",
+      "backToHome": "Tillbaka till startsidan"
+    },
+    "stateChange": {
+      "title": "Ändra Status",
+      "message": "Flytta från {{fromState}} till {{toState}}?",
+      "confirm": "Bekräfta",
+      "cancel": "Avbryt",
+      "changing": "Ändrar...",
+      "changed": "Status ändrad",
+      "error": "Kunde inte ändra status",
+      "confirmArchived": "Att arkivera detta objekt är permanent. Du kan inte ångra denna åtgärd.",
+      "confirmPurchased": "Att markera detta objekt som köpt kan inte enkelt ångras.",
+      "invalidTransition": "Ogiltig statusövergång",
+      "states": {
+        "saved": "Sparad",
+        "purchased": "Köpt",
+        "prototype": "Prototyp",
+        "wishlist": "Önskelista",
+        "archived": "Arkiverad"
+      }
+    },
+    "timeline": {
+      "title": "Tidslinje",
+      "empty": "Inga milstolpar ännu",
+      "addCustom": "Lägg till anpassad milstolpe",
+      "loading": "Laddar milstolpar...",
+      "error": "Kunde inte ladda milstolpar",
+      "retry": "Försök igen",
+      "future": "Framtida",
+      "futureMilestone": "Framtida milstolpe",
+      "stateChange": "Statusändring",
+      "milestone": {
+        "created": "Skapad",
+        "updated": "Uppdaterad",
+        "purchased": "Köpt",
+        "delivered": "Levererad",
+        "custom": "Anpassad anteckning"
+      },
+      "addDialog": {
+        "title": "Lägg till anpassad milstolpe",
+        "type": "Typ",
+        "date": "Datum",
+        "time": "Tid",
+        "note": "Anteckning",
+        "notePlaceholder": "Lägg till en anteckning om denna milstolpe...",
+        "noteRequired": "Anteckning krävs",
+        "dateRequired": "Datum krävs",
+        "submit": "Lägg till milstolpe",
+        "submitting": "Lägger till...",
+        "cancel": "Avbryt",
+        "error": "Kunde inte lägga till milstolpe"
+      },
+      "details": {
+        "expand": "Visa detaljer",
+        "collapse": "Dölj detaljer",
+        "metadata": "Ytterligare information"
+      }
     }
   },
   "volturianoWorld": {

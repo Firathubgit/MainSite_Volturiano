@@ -38,40 +38,61 @@ export default function SaveToGarageButton({
   /**
    * Validate configuration payload structure
    * @param {Object} config - Configuration payload
-   * @returns {{valid: boolean, error: string|null}}
+   * @returns {Promise<{valid: boolean, error: string|null, warnings: Array<string>}>}
    */
-  const validateConfiguration = (config) => {
+  const validateConfiguration = async (config) => {
     if (!config) {
-      return { valid: false, error: 'Configuration is required' };
+      return { valid: false, error: 'Configuration is required', warnings: [] };
     }
+
+    const warnings = [];
 
     // Check required top-level keys
     if (!config.schemaVersion) {
-      return { valid: false, error: 'Missing schemaVersion' };
+      return { valid: false, error: 'Missing schemaVersion', warnings: [] };
     }
 
     if (!config.vehicle || typeof config.vehicle !== 'object') {
-      return { valid: false, error: 'Missing or invalid vehicle object' };
+      return { valid: false, error: 'Missing or invalid vehicle object', warnings: [] };
     }
 
     if (!config.vehicle.model || typeof config.vehicle.model !== 'string') {
-      return { valid: false, error: 'Missing or invalid vehicle.model' };
+      return { valid: false, error: 'Missing or invalid vehicle.model', warnings: [] };
     }
 
     if (!config.options || typeof config.options !== 'object') {
-      return { valid: false, error: 'Missing or invalid options object' };
+      return { valid: false, error: 'Missing or invalid options object', warnings: [] };
     }
 
     if (!config.pricing || typeof config.pricing !== 'object') {
-      return { valid: false, error: 'Missing or invalid pricing object' };
+      return { valid: false, error: 'Missing or invalid pricing object', warnings: [] };
     }
 
     // Validate pricing fields
     if (typeof config.pricing.basePriceCents !== 'number') {
-      return { valid: false, error: 'Missing or invalid pricing.basePriceCents' };
+      return { valid: false, error: 'Missing or invalid pricing.basePriceCents', warnings: [] };
     }
 
-    return { valid: true, error: null };
+    // Configurator-specific validation
+    try {
+      const { validateConfig: validateConfigurator } = await import('../utils/configuratorValidator');
+      const configuratorValidation = validateConfigurator(config);
+      
+      if (!configuratorValidation.valid) {
+        return {
+          valid: false,
+          error: `Configurator validation failed: ${configuratorValidation.errors.join(', ')}`,
+          warnings: configuratorValidation.warnings || []
+        };
+      }
+      
+      warnings.push(...(configuratorValidation.warnings || []));
+    } catch (importError) {
+      console.warn('[SaveToGarageButton] Failed to import configurator validator:', importError);
+      // Continue without configurator validation if import fails
+    }
+
+    return { valid: true, error: null, warnings };
   };
 
   /**
@@ -150,7 +171,7 @@ export default function SaveToGarageButton({
     console.log('[SaveToGarageButton] User authenticated:', session.user.id);
 
     // Validate configuration
-    const validation = validateConfiguration(configuration);
+    const validation = await validateConfiguration(configuration);
     if (!validation.valid) {
       const error = new Error(validation.error);
       console.error('[SaveToGarageButton] Validation failed:', validation.error);
@@ -160,14 +181,31 @@ export default function SaveToGarageButton({
       return;
     }
 
+    // Show warnings if any
+    if (validation.warnings && validation.warnings.length > 0) {
+      console.warn('[SaveToGarageButton] Validation warnings:', validation.warnings);
+      // Could show warnings to user if needed
+    }
+
+    // Normalize configurator metadata before saving
+    let normalizedConfig = configuration;
+    try {
+      const { detectConfiguratorType, normalizeConfiguratorMetadata } = await import('../utils/configuratorType');
+      const detectedType = detectConfiguratorType(configuration);
+      normalizedConfig = normalizeConfiguratorMetadata(configuration, { detectedType });
+    } catch (importError) {
+      console.warn('[SaveToGarageButton] Failed to normalize configurator metadata:', importError);
+      // Continue with original config if normalization fails
+    }
+
     // Set saving state
     setSaveStatus('saving');
     setErrorMessage(null);
     console.log('[SaveToGarageButton] Starting save...');
 
     try {
-      // Build garage item payload
-      const payload = buildGaragePayload(configuration);
+      // Build garage item payload (use normalized config)
+      const payload = buildGaragePayload(normalizedConfig);
 
       // Save to garage (optimistic update handled by store)
       const result = await addItem(payload);
@@ -179,6 +217,22 @@ export default function SaveToGarageButton({
       // Success!
       console.log('[SaveToGarageButton] Save successful!', result.data);
       setSaveStatus('success');
+      
+      // Create initial milestone for the new item
+      try {
+        const { createMilestone } = await import('../../../features/account/api');
+        await createMilestone(result.data.id, {
+          milestone_type: 'created',
+          from_state: null,
+          to_state: initialState,
+          note: 'Initial creation',
+          metadata: { source: 'manual' }
+        });
+        console.log('[SaveToGarageButton] Initial milestone created');
+      } catch (milestoneError) {
+        console.warn('[SaveToGarageButton] Failed to create initial milestone (non-critical):', milestoneError);
+        // Don't fail the save if milestone creation fails
+      }
       
       // Call success callback
       if (onSuccess) {

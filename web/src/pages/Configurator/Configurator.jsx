@@ -1,24 +1,85 @@
 import React, { Suspense, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useLocation, useNavigate } from 'react-router-dom';
 import PageTransition from '../../components/PageTransition/PageTransition';
 import { Viewer2D, BODY_COLORS, RIM_COLORS, ANGLES } from '../../viewers/two-d/Viewer2D';
 import { Viewer3D } from '../../viewers/three-d/Viewer3D';
+import { 
+  findPaintColorFromOptions, 
+  findRimColorFromOptions 
+} from '../../features/garage/utils/extractGarageConfigForConfigurator';
 import styles from './Configurator.module.css';
 
 export default function Configurator() {
   const enable3D = import.meta.env.VITE_ENABLE_R3F_MODE === 'true';
-  const { t } = useTranslation('configurator');
-  const [mode, setMode] = useState('2d');
+  const { t: tConfigurator } = useTranslation('configurator');
+  const { t } = useTranslation('account');
+  const location = useLocation();
+  const navigate = useNavigate();
+  
+  // Get garage config from location state
+  const garageConfig = location.state?.garageConfig;
+  
+  // Determine initial mode based on garage config or default
+  const getInitialMode = () => {
+    if (!garageConfig) return '2d';
+    const type = garageConfig.configuratorType;
+    if (type === '3d') return '3d';
+    if (type === 'hybrid') return '2d'; // Default hybrid to 2D
+    return '2d';
+  };
+  
+  const [mode, setMode] = useState(getInitialMode());
   const [debugForce3D, setDebugForce3D] = useState(false);
   
-  // 3D mode colors (hex values)
-  const [bodyColor3D, setBodyColor3D] = useState('#FF4520');
-  const [rimColor3D, setRimColor3D] = useState('#111111');
+  // Color key to hex mapping for 3D viewer
+  const BODY_COLOR_HEX = {
+    'blu-blue': '#060FE7',
+    'nero-black': '#111111',
+    'bianco-white': '#FFFFFF',
+    'rosso-red': '#E10600',
+    'orange-fury': '#FF4520',
+  };
+
+  const RIM_COLOR_HEX = {
+    'black': '#111111',
+    'silver': '#F7FAFF',
+    'bronze': '#900678',
+  };
+
+  // Extract initial values from garage config
+  const getInitialBodyColor = () => {
+    if (!garageConfig) return 'blu-blue';
+    const paintColor = findPaintColorFromOptions([
+      ...(garageConfig.options?.exterior || []),
+      ...(garageConfig.options?.interior || []),
+      ...(garageConfig.options?.performance || [])
+    ]);
+    return paintColor || 'blu-blue';
+  };
+
+  const getInitialRimColor = () => {
+    if (!garageConfig) return 'black';
+    const rimColor = findRimColorFromOptions([
+      ...(garageConfig.options?.exterior || []),
+      ...(garageConfig.options?.performance || [])
+    ]);
+    return rimColor || 'black';
+  };
+
+  const getInitialAngle = () => {
+    if (!garageConfig) return 'front-3q';
+    return garageConfig.cameraAngle || 'front-3q';
+  };
+
+  // 3D mode selections (option keys, same as 2D)
+  const [bodyColor3D, setBodyColor3D] = useState(getInitialBodyColor());
+  const [rimColor3D, setRimColor3D] = useState(getInitialRimColor());
   
   // 2D mode selections (option keys)
-  const [bodyColor2D, setBodyColor2D] = useState('orange-fury');
-  const [rimColor2D, setRimColor2D] = useState('black');
-  const [angle2D, setAngle2D] = useState('front-3q');
+  const [bodyColor2D, setBodyColor2D] = useState(getInitialBodyColor());
+  const [rimColor2D, setRimColor2D] = useState(getInitialRimColor());
+  const [angle2D, setAngle2D] = useState(getInitialAngle());
 
   // Debug logging
   useEffect(() => {
@@ -32,11 +93,45 @@ export default function Configurator() {
   const effective3DEnabled = enable3D || debugForce3D;
   const show3D = debugForce3D ? true : (mode === '3d' && effective3DEnabled);
 
+  // Initialize from garage config on mount
+  useEffect(() => {
+    if (garageConfig) {
+      const paintColor = getInitialBodyColor();
+      const rimColor = getInitialRimColor();
+      const angle = getInitialAngle();
+      
+      setBodyColor2D(paintColor);
+      setRimColor2D(rimColor);
+      setAngle2D(angle);
+      setBodyColor3D(paintColor);
+      setRimColor3D(rimColor);
+      
+      // Set mode based on configurator type
+      const initialMode = getInitialMode();
+      setMode(initialMode);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Only run on mount - garageConfig comes from location.state which doesn't change
+
   return (
     <PageTransition>
       <section className={styles.container}>
         <header className={styles.header}>
-          <h2>{t('title')}</h2>
+          <h2>{tConfigurator('title')}</h2>
+          {garageConfig && (
+            <div className={styles.garageBanner}>
+              <span className={styles.garageBannerText}>
+                {t('garage.configurator.editing', { model: garageConfig.vehicle?.model || 'Configuration' })}
+              </span>
+              <button
+                type="button"
+                className={styles.garageBannerButton}
+                onClick={() => navigate('/garage')}
+              >
+                {t('garage.configurator.backToGarage', 'Back to Garage')}
+              </button>
+            </div>
+          )}
         </header>
         <div className={styles.viewerShell}>
           <div className={styles.viewerToggle} aria-label="Viewer mode">
@@ -85,39 +180,39 @@ export default function Configurator() {
             <div className={styles.colorOverlay}>
               <div className={styles.colorPanel}>
                 <div className={styles.colorLabel}>DEV MODE - 3D</div>
+                
+                {/* Body Color Selection */}
                 <div className={styles.colorControl}>
-                  <label>Body Paint:</label>
-                  <input
-                    type="color"
+                  <label>Body:</label>
+                  <select
                     value={bodyColor3D}
                     onChange={(e) => {
                       console.log('[Configurator] Body color changed:', e.target.value);
                       setBodyColor3D(e.target.value);
                     }}
-                  />
-                  <input
-                    type="text"
-                    value={bodyColor3D}
-                    onChange={(e) => setBodyColor3D(e.target.value)}
-                    className={styles.colorInput}
-                  />
+                    className={styles.selectInput}
+                  >
+                    {Object.entries(BODY_COLORS).map(([key, label]) => (
+                      <option key={key} value={key}>{label}</option>
+                    ))}
+                  </select>
                 </div>
+                
+                {/* Rim Color Selection */}
                 <div className={styles.colorControl}>
-                  <label>Rim Paint:</label>
-                  <input
-                    type="color"
+                  <label>Rim:</label>
+                  <select
                     value={rimColor3D}
                     onChange={(e) => {
                       console.log('[Configurator] Rim color changed:', e.target.value);
                       setRimColor3D(e.target.value);
                     }}
-                  />
-                  <input
-                    type="text"
-                    value={rimColor3D}
-                    onChange={(e) => setRimColor3D(e.target.value)}
-                    className={styles.colorInput}
-                  />
+                    className={styles.selectInput}
+                  >
+                    {Object.entries(RIM_COLORS).map(([key, label]) => (
+                      <option key={key} value={key}>{label}</option>
+                    ))}
+                  </select>
                 </div>
               </div>
             </div>
@@ -185,9 +280,12 @@ export default function Configurator() {
               </div>
             </div>
           )}
-          <Suspense fallback={<div className="center">{t('loading')}</div>}>
+          <Suspense fallback={<div className="center">{tConfigurator('loading')}</div>}>
             {show3D ? (
-              <Viewer3D bodyColor={bodyColor3D} rimColor={rimColor3D} />
+              <Viewer3D 
+                bodyColor={BODY_COLOR_HEX[bodyColor3D]} 
+                rimColor={RIM_COLOR_HEX[rimColor3D]} 
+              />
             ) : (
               <Viewer2D 
                 bodyColor={bodyColor2D} 

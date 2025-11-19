@@ -34,13 +34,27 @@ Each garage entry represents a saved configuration snapshot with optional versio
     "createdAt": "2025-11-11T12:34:56.000Z",
     "updatedAt": "2025-11-11T12:34:56.000Z",
     "source": "configurator",
+    "configuratorType": "2d",
+    "configuratorVersion": "1.0",
+    "manifestId": "tornado-gt-launch",
     "notes": "Configured during Geneva teaser stream."
   },
   "metadata": {
     "goalTags": ["track", "concept"],
     "locale": "sv",
     "isPrototype": false,
-    "relatedShowcaseId": null
+    "relatedShowcaseId": null,
+    "configurator": {
+      "type": "2d",
+      "manifestId": "tornado-gt-launch",
+      "cameraAngle": "front-3q",
+      "materialSettings": null,
+      "environment": null,
+      "renderSettings": {
+        "quality": "high",
+        "resolution": "1920x1080"
+      }
+    }
   }
 }
 ```
@@ -53,7 +67,17 @@ Each garage entry represents a saved configuration snapshot with optional versio
 - `pricing`: canonical cost data; totals are recomputed server-side via RPC when configurations change.
 - `media`: optional assets to highlight saved states or user uploads.
 - `history`: provenance and timestamps used to populate milestone timelines.
+  - `history.configuratorType`: "2d" | "3d" | "hybrid" | null - Type of configurator used
+  - `history.configuratorVersion`: Version of configurator system (e.g., "1.0")
+  - `history.manifestId`: Manifest ID for 2D configurator (optional)
 - `metadata.goalTags`: maps to entries in `garage_item_tags`.
+- `metadata.configurator`: Configurator-specific metadata (optional):
+  - `type`: "2d" | "3d" | "hybrid" - Configurator type
+  - `manifestId`: String - Manifest ID for 2D configurator
+  - `cameraAngle`: String - Camera angle for 2D ("front-3q", "side", "rear-3q", "rim")
+  - `materialSettings`: Object - Material properties for 3D (metalness, roughness, envMapIntensity)
+  - `environment`: String - HDRI environment name for 3D
+  - `renderSettings`: Object - Render quality and resolution settings
 
 ### Version History
 

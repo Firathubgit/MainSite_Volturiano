@@ -14,6 +14,7 @@ import { useRenderLogger } from '../debug/useRenderLogger';
 const Home = lazy(() => import('../pages/Home/Home'));
 const Models = lazy(() => import('../pages/Models/Models'));
 const Configurator = lazy(() => import('../pages/Configurator/Configurator'));
+const ConfiguratorFromGarage = lazy(() => import('../pages/Configurator/ConfiguratorFromGarage'));
 const World = lazy(() => import('../pages/World/World'));
 const Investor = lazy(() => import('../pages/Investor/Investor'));
 const StartAnim = lazy(() => import('../pages/Start/StartAnim'));
@@ -24,6 +25,7 @@ const ForgotPassword = lazy(() => import('../features/account/pages/ForgotPasswo
 const Garage = lazy(() => import('../features/account/pages/Garage'));
 const Profile = lazy(() => import('../features/account/pages/Profile'));
 const VolturianoWorld = lazy(() => import('../features/account/pages/VolturianoWorld'));
+const SharedGarageView = lazy(() => import('../features/garage/components/SharedGarageView'));
 const LoadingOverlayTest = import.meta.env.DEV
   ? lazy(() => import('../pages/Debug/LoadingOverlayTest'))
   : null;
@@ -119,8 +121,8 @@ export default function App() {
             console.warn('Error handling sign out session:', err);
           });
         } else {
-          setStatus('loading');
-          await handleSession(session);
+        setStatus('loading');
+        await handleSession(session);
         }
       }
     );
@@ -144,6 +146,14 @@ export default function App() {
             <Route path="/" element={<IndexGate />} />
             <Route path="/start" element={<StartAnim />} />
             <Route path="/models" element={<Models />} />
+            <Route
+              path="/configurator/:garageItemId"
+              element={(
+                <RequireAuth>
+                  <ConfiguratorFromGarage />
+                </RequireAuth>
+              )}
+            />
             <Route path="/configurator" element={<Configurator />} />
             {import.meta.env.VITE_ENABLE_WORLD === 'true' && (
               <Route path="/world" element={<World />} />
@@ -161,6 +171,10 @@ export default function App() {
                   <Garage />
                 </RequireAuth>
               )}
+            />
+            <Route
+              path="/garage/share/:shareCode"
+              element={<SharedGarageView />}
             />
             <Route
               path="/account/world"

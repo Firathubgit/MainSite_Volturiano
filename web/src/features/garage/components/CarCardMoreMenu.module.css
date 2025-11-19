@@ -1,0 +1,127 @@
+.moreButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  font-size: 14px;
+  font-weight: 700;
+  color: #ffffff;
+  cursor: pointer;
+  transition: color 160ms ease, transform 160ms ease;
+  white-space: nowrap;
+}
+
+.moreButton:hover:not(:disabled) {
+  color: #b5b5b5;
+  transform: translateY(-1px);
+}
+
+.moreButton:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.arrow {
+  font-size: 8px;
+  opacity: 0.7;
+  transition: transform 0.2s ease, opacity 0.2s ease;
+  display: inline-block;
+  margin-left: 2px;
+}
+
+.moreButton:hover .arrow {
+  opacity: 1;
+}
+
+.overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: transparent;
+  z-index: 9998;
+}
+
+.menu {
+  position: fixed;
+  min-width: 160px;
+  background: #1a1a1a;
+  border: 1px solid #303030;
+  border-radius: 6px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6);
+  z-index: 9999;
+  overflow: hidden;
+  animation: slideDown 0.2s ease-out;
+  padding: 2px 0;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.menuItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 6px 12px;
+  text-align: left;
+  background: transparent;
+  border: none;
+  font-size: 13px;
+  font-weight: 500;
+  color: #ffffff;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+  line-height: 1.2;
+}
+
+.menuItem:hover:not(:disabled) {
+  background: #2a2a2a;
+  color: #b5b5b5;
+}
+
+.menuItem:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.menuItemActive {
+  background: rgba(255, 255, 255, 0.1);
+  font-weight: 700;
+}
+
+.menuIcon {
+  font-size: 14px;
+  width: 16px;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.divider {
+  height: 1px;
+  background: #303030;
+  margin: 2px 0;
+}
+
+.menuSectionLabel {
+  padding: 4px 12px 2px 12px;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: rgba(255, 255, 255, 0.5);
+  line-height: 1.2;
+}
+

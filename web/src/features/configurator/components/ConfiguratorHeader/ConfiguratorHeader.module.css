@@ -1,0 +1,132 @@
+.header {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  z-index: 40;
+  padding: 1.5rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  pointer-events: none;
+}
+
+.left,
+.center,
+.right {
+  pointer-events: auto;
+}
+
+.left {
+  display: flex;
+  align-items: center;
+}
+
+.menuButton {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0.5rem;
+  color: white;
+  transition: color 0.2s ease;
+}
+
+.menuButton:hover {
+  color: var(--volt-accent);
+}
+
+.center {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.logoLink {
+  display: block;
+  cursor: pointer;
+  transition: opacity 0.3s ease;
+}
+
+.logoLink:hover {
+  opacity: 0.8;
+}
+
+.logo {
+  width: 64px;
+  height: 64px;
+  display: block;
+}
+
+.right {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.devGridButton {
+  display: none;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.375rem 0.75rem;
+  border: 1px solid var(--volt-light);
+  background: transparent;
+  color: rgba(255, 255, 255, 0.4);
+  font-family: monospace;
+  font-size: 0.75rem;
+  letter-spacing: 0.1em;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border-radius: 4px;
+}
+
+.devGridButton:hover {
+  color: white;
+  border-color: rgba(255, 255, 255, 0.6);
+}
+
+.devGridButton.active {
+  border-color: var(--volt-accent);
+  color: var(--volt-accent);
+  background: rgba(255, 69, 32, 0.1);
+}
+
+.viewSpecsButton {
+  padding: 0.5rem 1.5rem;
+  background: rgba(58, 58, 58, 0.5);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: white;
+  font-family: var(--font-display);
+  font-size: 0.875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+}
+
+.viewSpecsButton:hover {
+  background: white;
+  color: var(--volt-black);
+}
+
+.userButton {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0.5rem;
+  color: white;
+  transition: color 0.2s ease;
+}
+
+.userButton:hover {
+  color: var(--volt-accent);
+}
+
+@media (min-width: 768px) {
+  .devGridButton {
+    display: flex;
+  }
+}
+

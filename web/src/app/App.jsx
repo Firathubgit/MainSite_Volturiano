@@ -13,7 +13,8 @@ import { useRenderLogger } from '../debug/useRenderLogger';
 
 const Home = lazy(() => import('../pages/Home/Home'));
 const Models = lazy(() => import('../pages/Models/Models'));
-const Configurator = lazy(() => import('../pages/Configurator/Configurator'));
+// Using new premium configurator - switch back to Configurator if needed
+const Configurator = lazy(() => import('../pages/Configurator/ConfiguratorNew'));
 const ConfiguratorFromGarage = lazy(() => import('../pages/Configurator/ConfiguratorFromGarage'));
 const World = lazy(() => import('../pages/World/World'));
 const Investor = lazy(() => import('../pages/Investor/Investor'));

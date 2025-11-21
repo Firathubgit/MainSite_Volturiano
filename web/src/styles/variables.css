@@ -6,6 +6,18 @@
   --scrollbar-track: #111111;
   --scrollbar-thumb: var(--accent);
   --scrollbar-thumb-hover: color-mix(in srgb, var(--accent) 80%, #ffffff 20%);
+  
+  /* Volturiano Brand Colors for Configurator */
+  --volt-black: #111111;
+  --volt-dark: #1F1F1F;
+  --volt-panel: #303030;
+  --volt-light: #3A3A3A;
+  --volt-accent: #FF4520;
+  --volt-accent-dark: #E10600;
+  
+  /* Typography */
+  --font-display: 'Oswald', sans-serif;
+  --font-body: 'Inter', system-ui, -apple-system, sans-serif;
 }
 
 html[data-theme="sport"] { --accent: #ff3b3b; }

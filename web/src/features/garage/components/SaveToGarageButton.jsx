@@ -20,6 +20,7 @@ import styles from '../styles/garage.module.css';
 export default function SaveToGarageButton({
   configuration,
   initialState = 'wishlist',
+  garageItemId = null, // If provided, update existing item instead of creating new
   onSuccess,
   onError,
   navigateToGarage = false,
@@ -30,10 +31,17 @@ export default function SaveToGarageButton({
   const navigate = useNavigate();
   const session = useUserStore((state) => state.session);
   const authStatus = useUserStore((state) => state.status);
-  const { addItem } = useGarageStore();
+  const { addItem, updateItem } = useGarageStore();
   
   const [saveStatus, setSaveStatus] = useState('idle'); // 'idle' | 'saving' | 'success' | 'error'
   const [errorMessage, setErrorMessage] = useState(null);
+  
+  // Debug: Log props on every render
+  console.log('[SaveToGarageButton] Component rendered with props:', {
+    garageItemId,
+    hasConfiguration: !!configuration,
+    initialState
+  });
 
   /**
    * Validate configuration payload structure
@@ -149,6 +157,11 @@ export default function SaveToGarageButton({
    * Handle save button click
    */
   const handleSave = async () => {
+    console.log('[SaveToGarageButton] ===== SAVE INITIATED =====');
+    console.log('[SaveToGarageButton] garageItemId:', garageItemId);
+    console.log('[SaveToGarageButton] Will UPDATE existing item:', !!garageItemId);
+    console.log('[SaveToGarageButton] Will CREATE new item:', !garageItemId);
+    
     // Wait for auth to be ready
     if (authStatus === 'loading' || authStatus === 'idle') {
       console.log('[SaveToGarageButton] Auth still loading, waiting...', { authStatus, hasSession: !!session });
@@ -207,8 +220,26 @@ export default function SaveToGarageButton({
       // Build garage item payload (use normalized config)
       const payload = buildGaragePayload(normalizedConfig);
 
-      // Save to garage (optimistic update handled by store)
-      const result = await addItem(payload);
+      let result;
+      
+      // Update existing item if garageItemId is provided
+      if (garageItemId) {
+        console.log('[SaveToGarageButton] ===== UPDATING EXISTING ITEM =====');
+        console.log('[SaveToGarageButton] garageItemId:', garageItemId);
+        console.log('[SaveToGarageButton] Payload:', payload);
+        console.log('[SaveToGarageButton] config_payload keys:', Object.keys(normalizedConfig));
+        result = await updateItem(garageItemId, {
+          ...payload,
+          config_payload: normalizedConfig // Ensure we save the normalized config
+        });
+        console.log('[SaveToGarageButton] Update result:', result);
+      } else {
+        // Create new item
+        console.log('[SaveToGarageButton] ===== CREATING NEW ITEM =====');
+        console.log('[SaveToGarageButton] Payload:', payload);
+        result = await addItem(payload);
+        console.log('[SaveToGarageButton] Create result:', result);
+      }
 
       if (result.error) {
         throw result.error;

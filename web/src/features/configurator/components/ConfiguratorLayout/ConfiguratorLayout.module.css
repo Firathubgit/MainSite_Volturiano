@@ -1,0 +1,92 @@
+.layout {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--volt-black);
+  overflow: hidden;
+}
+
+.headerContainer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 40;
+  pointer-events: none;
+}
+
+.mainContent {
+  flex: 1;
+  position: relative;
+  width: 100%;
+  height: 100vh;
+  transition: margin-right 0.5s ease-in-out;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.mainContent.panelOpen {
+  margin-right: 0;
+}
+
+@media (min-width: 768px) {
+  .mainContent.panelOpen {
+    margin-right: 450px;
+  }
+}
+
+.panel {
+  position: fixed;
+  top: 0;
+  right: 0;
+  width: 100%;
+  height: 100vh;
+  z-index: 50;
+  transform: translateX(100%);
+  transition: transform 0.3s ease-out;
+  pointer-events: none;
+  background: var(--volt-dark);
+  box-shadow: -4px 0 24px rgba(0, 0, 0, 0.5);
+}
+
+.panel.panelVisible {
+  transform: translateX(0);
+  pointer-events: auto;
+}
+
+@media (min-width: 768px) {
+  .panel {
+    width: 450px;
+  }
+}
+
+.panelToggleButton {
+  position: fixed;
+  right: 2rem;
+  bottom: 2rem;
+  z-index: 30;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: var(--volt-accent);
+  color: white;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.panelToggleButton:hover {
+  transform: scale(1.1);
+  box-shadow: 0 6px 16px rgba(255, 69, 32, 0.4);
+}
+
+.panelToggleButton:active {
+  transform: scale(0.95);
+}
+

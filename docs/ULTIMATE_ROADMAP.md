@@ -22,7 +22,8 @@
 10. [Phase 6: AI Assistant & Support System](#phase-6-ai-assistant--support-system)
 11. [Phase 7: Operations & Observability](#phase-7-operations--observability)
 12. [Phase 8: Advanced Features & Integrations](#phase-8-advanced-features--integrations)
-13. [Dependencies & Critical Path](#dependencies--critical-path)
+13. [Phase 9: Product Launches & Marketing Communications](#phase-9-product-launches--marketing-communications)
+14. [Dependencies & Critical Path](#dependencies--critical-path)
 14. [Risk Assessment & Mitigation](#risk-assessment--mitigation)
 15. [Success Metrics & KPIs](#success-metrics--kpis)
 16. [Timeline Estimates](#timeline-estimates)
@@ -1353,97 +1354,6 @@ Build a comprehensive garage management system where users can save, organize, f
 - **RLS Policies:** Comprehensive policies for test_drive_requests (users can only access their own requests) and dealers (public read for active dealers)
 - **Integration:** "Schedule Test Drive" button added to CarCardMoreMenu dropdown between Timeline and Export PDF
 
-### 2.13 Showcase Mode
-**Priority:** Low  
-**Estimated Time:** 2 weeks  
-**Dependencies:** Phase 2.1, Phase 3 (Configurator)
-
-**Detailed Steps:**
-
-**Step 2.13.1: Showcase Presets**
-- Define preset JSON structure:
-  - Environment (winter/summer/studio)
-  - Lighting setup
-  - Background assets
-  - Copy/text overlays
-  - Camera angles
-
-**Step 2.13.2: Showcase View**
-- Create `ShowcaseMode.jsx` component:
-  - Full-screen layout
-  - Environment switching
-  - Render car with preset
-  - Overlay text
-  - Share button
-
-**Step 2.13.3: Preset Management**
-- Store presets in Supabase or JSON
-- Allow switching between presets
-- Persist user preference
-- Create new presets (admin)
-
-**Step 2.13.4: Integration**
-- Add "Showcase" button to CarCard
-- Navigate to showcase view
-- Link back to garage
-- Analytics tracking
-
-**Deliverables:**
-- Showcase mode component
-- Preset system
-- UI integration
-- User testing
-
-**Success Criteria:**
-- Showcase mode works
-- Presets are visually appealing
-- Switching is smooth
-- Users enjoy the feature
-
-### 2.14 Model Launch Notifications
-**Priority:** Low  
-**Estimated Time:** 1.5 weeks  
-**Dependencies:** Phase 2.1, Phase 7 (Notifications)
-
-**Detailed Steps:**
-
-**Step 2.14.1: Subscription Management**
-- Use `model_subscriptions` table
-- Add subscription toggle in garage settings
-- Allow subscribing to multiple models
-- Unsubscribe functionality
-
-**Step 2.14.2: Launch Announcements**
-- Use `model_launches` table
-- Admin creates launch announcements
-- Include: model name, launch date, teaser content
-
-**Step 2.14.3: Notification System**
-- Create Edge Function `functions/notify-launch/index.ts`:
-  - Find subscribed users
-  - Generate personalized email
-  - Send via email provider (Resend/SendGrid)
-  - Log delivery in `garage_activity`
-  - Track open/click rates
-
-**Step 2.14.4: UI Integration**
-- Show subscription status in garage
-- Display launch announcements
-- Link to configurator for new model
-- Unsubscribe link in emails
-
-**Deliverables:**
-- Subscription management
-- Launch announcement system
-- Notification Edge Function
-- UI integration
-
-**Success Criteria:**
-- Users can subscribe/unsubscribe
-- Notifications are sent correctly
-- Email design is on-brand
-- Unsubscribe works
-
 ---
 
 ## Phase 3: Configurator 2D Pipeline
@@ -2080,6 +1990,65 @@ Build the primary 2D configurator experience using layered image composition. Th
 - Watermarks render correctly
 - Toggle works
 - Performance is acceptable
+
+### 3.14 Showcase Mode
+**Priority:** Low  
+**Estimated Time:** 2 weeks  
+**Dependencies:** Phase 3.1 (Manifests), Phase 3.7 (Camera Angles), Phase 3.11 (Studio Lighting), Phase 4.4 (Studio Light Presets - 3D)
+
+**Detailed Steps:**
+
+**Step 3.14.1: Showcase Presets**
+- Define preset JSON structure:
+  - Environment (winter/summer/studio/track/gallery)
+  - Lighting setup (2D background + 3D HDRI if available)
+  - Background assets (2D images or 3D environments)
+  - Copy/text overlays
+  - Camera angles (from manifest)
+  - Optional: 3D scenario presets integration
+
+**Step 3.14.2: Showcase View Component**
+- Create `ShowcaseMode.jsx` component:
+  - Full-screen immersive layout
+  - Environment switching (2D/3D aware)
+  - Render car with current configuration
+  - Overlay text/copy system
+  - Share button (generates shareable URL)
+  - Integration with 2D configurator renderer
+  - Optional: 3D configurator integration
+
+**Step 3.14.3: Preset Management**
+- Store presets in Supabase `showcase_presets` table:
+  - Link to vehicle models
+  - Reference manifest angles
+  - Store environment assets (2D/3D)
+  - Store overlay text templates
+  - Allow switching between presets
+  - Persist user preference per configuration
+  - Admin interface for creating presets
+
+**Step 3.14.4: Configurator Integration**
+- Add "Showcase" button to configurator toolbar
+- Navigate to showcase view with current config
+- Support deep linking: `/showcase/:configId?preset=winter`
+- Link back to configurator
+- Support both 2D and 3D render modes
+- Analytics tracking
+
+**Deliverables:**
+- Showcase mode component
+- Preset system (Supabase schema)
+- UI integration in configurator
+- Shareable showcase URLs
+- User testing
+
+**Success Criteria:**
+- Showcase mode works with 2D configurator
+- Presets are visually appealing
+- Switching between environments is smooth
+- Shareable URLs work correctly
+- Optional: 3D showcase mode works (if Phase 4 complete)
+- Users enjoy the feature
 
 ---
 
@@ -3090,6 +3059,204 @@ Advanced features including Volturiano World experiences, investor microsite enh
 
 ---
 
+## Phase 9: Product Launches & Marketing Communications
+
+**Status:** Planned  
+**Timeline:** 4-6 weeks  
+**Priority:** Medium (growth and engagement features)
+
+### Overview
+Build comprehensive product launch and marketing communication systems that enable proactive engagement with users, announce new vehicle models, and maintain brand awareness through targeted notifications and announcements. This phase focuses on creating a scalable marketing infrastructure that supports product launches, user engagement, and growth initiatives.
+
+### 9.1 Model Launch Notification System
+**Priority:** High  
+**Estimated Time:** 2 weeks  
+**Dependencies:** Phase 2 (Garage), Phase 7 (Notifications), Phase 1 (Schema)
+
+**Detailed Steps:**
+
+**Step 9.1.1: Subscription Management Infrastructure**
+- Create `model_subscriptions` table:
+  - `id` (uuid, primary key)
+  - `user_id` (uuid, references profiles)
+  - `model_id` (text, references vehicles.name)
+  - `notification_preferences` (jsonb) - email, push, in-app
+  - `subscribed_at` (timestamptz)
+  - `unsubscribed_at` (timestamptz, nullable)
+  - Unique constraint on (user_id, model_id)
+- Create RLS policies (users manage own subscriptions)
+- Add subscription toggle in garage settings UI
+- Allow subscribing to multiple models simultaneously
+- Implement unsubscribe functionality with confirmation
+
+**Step 9.1.2: Launch Announcement System**
+- Create `model_launches` table:
+  - `id` (uuid, primary key)
+  - `model_id` (text, references vehicles.name)
+  - `launch_date` (date, not null)
+  - `announcement_date` (date) - when to send notifications
+  - `title` (text, not null)
+  - `teaser_content` (text)
+  - `full_content` (text)
+  - `hero_image_url` (text)
+  - `configurator_link` (text) - deep link to new model
+  - `status` (enum: 'draft', 'scheduled', 'announced', 'launched')
+  - `created_by` (uuid, references profiles)
+  - `created_at`, `updated_at` (timestamptz)
+- Create admin interface for managing launches
+- Support rich content (images, videos, links)
+- Schedule announcements in advance
+
+**Step 9.1.3: Notification Delivery System**
+- Create Edge Function `functions/notify-launch/index.ts`:
+  - Accept launch announcement ID
+  - Query subscribed users for the model
+  - Respect user notification preferences
+  - Generate personalized email templates
+  - Send via email provider (Resend/SendGrid)
+  - Support batch processing for large subscriber lists
+  - Log delivery status in `notification_deliveries` table
+  - Track open rates, click rates, and engagement metrics
+  - Handle bounces and unsubscribes gracefully
+  - Retry failed deliveries with exponential backoff
+
+**Step 9.1.4: User Interface Integration**
+- Add subscription management to garage settings:
+  - Show subscription status per model
+  - Toggle subscriptions with visual feedback
+  - Display upcoming launches for subscribed models
+- Create launch announcements banner/component:
+  - Display active and upcoming launches
+  - Show teaser content with images
+  - Link to configurator for new model
+  - Dismissible announcements
+- Add in-app notification center:
+  - Show launch notifications
+  - Mark as read/unread
+  - Link to relevant content
+- Email templates:
+  - On-brand design with Volturiano styling
+  - Responsive layout
+  - Clear call-to-action buttons
+  - Unsubscribe link in footer
+  - Preference center link
+
+**Deliverables:**
+- Model subscription system (database + UI)
+- Launch announcement management (admin interface)
+- Notification delivery Edge Function
+- Email templates (responsive, on-brand)
+- In-app notification center
+- Analytics and tracking dashboard
+
+**Success Criteria:**
+- Users can easily subscribe/unsubscribe to model launches
+- Launch announcements are created and scheduled successfully
+- Notifications are delivered reliably (>99% delivery rate)
+- Email design is on-brand and responsive
+- Unsubscribe process is simple and immediate
+- Engagement metrics are tracked accurately
+- System scales to 10,000+ subscribers per launch
+
+### 9.2 Product Update Communications
+**Priority:** Medium  
+**Estimated Time:** 1.5 weeks  
+**Dependencies:** Phase 9.1
+
+**Detailed Steps:**
+
+**Step 9.2.1: Update Categories**
+- Define communication types:
+  - New features (configurator enhancements, garage features)
+  - Product updates (new options, compatibility changes)
+  - Service announcements (maintenance, downtime)
+  - Special offers (limited editions, promotions)
+- Create `product_updates` table:
+  - `id` (uuid, primary key)
+  - `category` (enum: 'feature', 'product', 'service', 'offer')
+  - `title` (text, not null)
+  - `content` (text)
+  - `target_audience` (jsonb) - all users, specific segments
+  - `published_at` (timestamptz)
+  - `expires_at` (timestamptz, nullable)
+
+**Step 9.2.2: User Segmentation**
+- Create user segments based on:
+  - Activity level (active, inactive)
+  - Garage item count
+  - Configuration history
+  - Purchase history
+  - Preferences
+- Store segments in `user_segments` table
+- Update segments periodically (daily job)
+
+**Step 9.2.3: Targeted Delivery**
+- Extend notification system:
+  - Target specific user segments
+  - A/B test different messaging
+  - Personalize content based on user history
+  - Track segment-specific engagement
+
+**Deliverables:**
+- Product update system
+- User segmentation infrastructure
+- Targeted delivery capabilities
+- Analytics dashboard
+
+**Success Criteria:**
+- Updates can be targeted to specific segments
+- Personalization improves engagement
+- A/B testing provides actionable insights
+
+### 9.3 Launch Event Management
+**Priority:** Low  
+**Estimated Time:** 1.5 weeks  
+**Dependencies:** Phase 9.1, Phase 5 (Account Settings)
+
+**Detailed Steps:**
+
+**Step 9.3.1: Event Schema**
+- Create `launch_events` table:
+  - `id` (uuid, primary key)
+  - `model_id` (text, references vehicles.name)
+  - `event_type` (enum: 'reveal', 'preview', 'launch', 'test-drive')
+  - `event_date` (timestamptz)
+  - `location` (text) - physical or virtual
+  - `description` (text)
+  - `registration_required` (boolean)
+  - `max_attendees` (integer, nullable)
+
+**Step 9.3.2: Event Registration**
+- Create `event_registrations` table:
+  - `id` (uuid, primary key)
+  - `event_id` (uuid, references launch_events)
+  - `user_id` (uuid, references profiles)
+  - `status` (enum: 'registered', 'confirmed', 'cancelled', 'attended')
+  - `registered_at` (timestamptz)
+- Build registration UI
+- Send confirmation emails
+- Send reminder notifications (24h before event)
+
+**Step 9.3.3: Integration**
+- Link events to launch announcements
+- Show upcoming events in garage
+- Allow RSVP from notification emails
+- Track attendance and engagement
+
+**Deliverables:**
+- Event management system
+- Registration interface
+- Reminder notifications
+- Attendance tracking
+
+**Success Criteria:**
+- Users can register for launch events
+- Reminders are sent reliably
+- Event capacity is managed correctly
+- Attendance is tracked accurately
+
+---
+
 ## Dependencies & Critical Path
 
 ### Critical Path Analysis
@@ -3105,6 +3272,7 @@ Advanced features including Volturiano World experiences, investor microsite enh
 7. **Phase 6 (AI Assistant)**: Can proceed in parallel
 8. **Phase 7 (Operations)**: Required before production launch
 9. **Phase 8 (Advanced Features)**: Post-MVP
+10. **Phase 9 (Product Launches & Marketing)**: Growth phase, can proceed in parallel with Phase 8
 
 ### Dependency Graph
 
@@ -3122,6 +3290,8 @@ Phase 6 (AI Assistant) ─────────┤
 Phase 7 (Operations) ────────────┘
     ↓
 Phase 8 (Advanced Features)
+    ↓
+Phase 9 (Product Launches & Marketing)
 ```
 
 ---
@@ -3214,6 +3384,15 @@ Phase 8 (Advanced Features)
 - Error rate: <0.1%
 - Mean time to resolution: <1 hour
 
+### Phase 9 (Product Launches & Marketing)
+- Email delivery rate: >99%
+- Open rate: >25% (industry average: 20%)
+- Click-through rate: >5% (industry average: 3%)
+- Subscription conversion: 30% of active users
+- Unsubscribe rate: <0.5% per campaign
+- Event registration rate: 15% of notified users
+- Notification system uptime: 99.9%
+
 ---
 
 ## Timeline Estimates
@@ -3223,6 +3402,7 @@ Phase 8 (Advanced Features)
 **MVP (Phases 0-3)**: 4-6 months
 **Full Feature Set (Phases 0-7)**: 12-18 months
 **Advanced Features (Phase 8)**: 6+ months (ongoing)
+**Growth & Marketing (Phase 9)**: 4-6 weeks
 
 ### Phase Breakdown
 
@@ -3235,6 +3415,7 @@ Phase 8 (Advanced Features)
 - **Phase 6**: 6-8 weeks
 - **Phase 7**: 4-6 weeks
 - **Phase 8**: 12+ weeks (ongoing)
+- **Phase 9**: 4-6 weeks
 
 ### Critical Path Timeline
 
@@ -3356,6 +3537,8 @@ This Ultimate Roadmap provides a comprehensive, phase-by-phase plan for building
 **Key Takeaways**:
 - **MVP Timeline**: 4-6 months (Phases 0-3)
 - **Full Feature Set**: 12-18 months (Phases 0-7)
+- **Advanced Features**: 6+ months (Phase 8, ongoing)
+- **Growth & Marketing**: 4-6 weeks (Phase 9)
 - **Critical Path**: Foundation → Garage → Configurator → Commerce
 - **Success Metrics**: Defined for each phase
 - **Risk Mitigation**: Identified and planned

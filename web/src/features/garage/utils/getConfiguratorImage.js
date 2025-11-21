@@ -20,8 +20,14 @@ const PAINT_ID_TO_FILENAME = {
 
 const RIM_ID_TO_FILENAME = {
   'rim_black': 'black',
+  'rims_black': 'black',
+  'wheel_black': 'black',
   'rim_silver': 'silver',
-  'rim_bronze': 'bronze'
+  'rims_silver': 'silver',
+  'wheel_silver': 'silver',
+  'rim_bronze': 'bronze',
+  'rims_bronze': 'bronze',
+  'wheel_bronze': 'bronze'
 };
 
 /**
@@ -37,15 +43,17 @@ function extractBodyColor(config) {
   
   // Find paint option
   for (const option of exterior) {
-    const optionId = typeof option === 'string' ? option : option?.id || option?.option_id;
+    const optionId = typeof option === 'string' ? option : option?.id || option?.code || option?.option_id;
     if (!optionId) continue;
     
     // Check if it's a paint option
     if (PAINT_ID_TO_FILENAME[optionId]) {
+      console.log('[getConfiguratorImage] Found paint:', optionId, '→', PAINT_ID_TO_FILENAME[optionId]);
       return PAINT_ID_TO_FILENAME[optionId];
     }
   }
   
+  console.log('[getConfiguratorImage] No paint found, using default: blu-blue');
   return null;
 }
 
@@ -57,20 +65,37 @@ function extractBodyColor(config) {
 function extractRimColor(config) {
   if (!config || !config.options) return null;
   
+  // Check exterior options first
   const exterior = config.options.exterior || [];
-  if (!Array.isArray(exterior)) return null;
-  
-  // Find rim option
-  for (const option of exterior) {
-    const optionId = typeof option === 'string' ? option : option?.id || option?.option_id;
-    if (!optionId) continue;
-    
-    // Check if it's a rim option
-    if (RIM_ID_TO_FILENAME[optionId]) {
-      return RIM_ID_TO_FILENAME[optionId];
+  if (Array.isArray(exterior)) {
+    for (const option of exterior) {
+      const optionId = typeof option === 'string' ? option : option?.id || option?.code || option?.option_id;
+      if (!optionId) continue;
+      
+      // Check if it's a rim option
+      if (RIM_ID_TO_FILENAME[optionId]) {
+        console.log('[getConfiguratorImage] Found rim in exterior:', optionId, '→', RIM_ID_TO_FILENAME[optionId]);
+        return RIM_ID_TO_FILENAME[optionId];
+      }
     }
   }
   
+  // Also check performance options (rims might be there)
+  const performance = config.options.performance || [];
+  if (Array.isArray(performance)) {
+    for (const option of performance) {
+      const optionId = typeof option === 'string' ? option : option?.id || option?.code || option?.option_id;
+      if (!optionId) continue;
+      
+      // Check if it's a rim option
+      if (RIM_ID_TO_FILENAME[optionId]) {
+        console.log('[getConfiguratorImage] Found rim in performance:', optionId, '→', RIM_ID_TO_FILENAME[optionId]);
+        return RIM_ID_TO_FILENAME[optionId];
+      }
+    }
+  }
+  
+  console.log('[getConfiguratorImage] No rim found, using default: black');
   return null;
 }
 
@@ -135,8 +160,13 @@ export function getConfiguratorImageUrl(config) {
   const bodyColor = extractBodyColor(config) || defaultBodyColor;
   const rimColor = extractRimColor(config) || defaultRimColor;
   
+  console.log('[getConfiguratorImage] Final selection:', { bodyColor, rimColor });
+  console.log('[getConfiguratorImage] Config options:', config?.options);
+  
   // Get image from map
   const image = IMAGE_MAP[bodyColor]?.[rimColor] || IMAGE_MAP[defaultBodyColor]?.[defaultRimColor] || null;
+  
+  console.log('[getConfiguratorImage] Selected image:', image ? 'Found' : 'Not found');
   
   return image;
 }

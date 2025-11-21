@@ -183,11 +183,17 @@ export function mapOptionIdToViewerKey(optionId) {
     'paint_orange_fury': 'orange-fury'
   };
 
-  // Rim options mapping
+  // Rim options mapping (handle multiple prefixes)
   const rimMappings = {
     'rim_black': 'black',
+    'rims_black': 'black',
+    'wheel_black': 'black',
     'rim_silver': 'silver',
-    'rim_bronze': 'bronze'
+    'rims_silver': 'silver',
+    'wheel_silver': 'silver',
+    'rim_bronze': 'bronze',
+    'rims_bronze': 'bronze',
+    'wheel_bronze': 'bronze'
   };
 
   // Check paint mappings
@@ -220,18 +226,22 @@ export function findPaintColorFromOptions(options) {
   }
 
   for (const option of options) {
-    const optionId = typeof option === 'string' ? option : option?.id;
+    const optionId = typeof option === 'string' ? option : option?.id || option?.code;
     if (!optionId) continue;
+
+    console.log('[findPaintColorFromOptions] Checking option:', optionId);
 
     // Check if it's a paint option
     if (optionId.startsWith('paint_')) {
       const viewerKey = mapOptionIdToViewerKey(optionId);
+      console.log('[findPaintColorFromOptions] Found paint option:', optionId, '→', viewerKey);
       if (viewerKey) {
         return viewerKey;
       }
     }
   }
 
+  console.log('[findPaintColorFromOptions] No paint found in options');
   return null;
 }
 
@@ -246,18 +256,22 @@ export function findRimColorFromOptions(options) {
   }
 
   for (const option of options) {
-    const optionId = typeof option === 'string' ? option : option?.id;
+    const optionId = typeof option === 'string' ? option : option?.id || option?.code;
     if (!optionId) continue;
 
-    // Check if it's a rim option
-    if (optionId.startsWith('rim_')) {
+    console.log('[findRimColorFromOptions] Checking option:', optionId);
+
+    // Check if it's a rim option (handle multiple prefixes)
+    if (optionId.startsWith('rim_') || optionId.startsWith('rims_') || optionId.startsWith('wheel_')) {
       const viewerKey = mapOptionIdToViewerKey(optionId);
+      console.log('[findRimColorFromOptions] Found rim option:', optionId, '→', viewerKey);
       if (viewerKey) {
         return viewerKey;
       }
     }
   }
 
+  console.log('[findRimColorFromOptions] No rim found in options');
   return null;
 }
 

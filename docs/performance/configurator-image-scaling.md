@@ -1,54 +1,77 @@
-## Configurator Image Scaling Strategy
+# Configurator Image Scaling Strategy
 
-This guide defines how the 2D configurator selects the appropriate asset quality based on the viewer’s device. It adheres to performance expectations in `.cursor/rules/06-performance.md` and builds on the asset taxonomy documented in `docs/data/asset-manifest.md`.
+## Overview
+This document defines the image scaling strategy for the configurator to ensure optimal performance across devices and network conditions.
 
-### Asset Tiers
+## Breakpoints
 
-| Tier | Filename suffix | Target devices | Max resolution | Notes |
-| --- | --- | --- | --- | --- |
-| Low | `@1x.webp` | Mobile, low bandwidth | 1280px width | Progressive load placeholder |
-| Medium | `@2x.webp` | Tablets, standard desktop | 1920px width | Default for moderate DPR |
-| High | `@3x.webp` | HiDPI desktop | 2560px width | Loaded lazily; avoid on slow networks |
-| Ultra | `@4x.avif` | Art director review | 3200px width | Manual opt-in via query flag |
+### Viewport Breakpoints
+- **Mobile**: < 768px width
+- **Tablet**: 768px - 1024px width
+- **Desktop**: > 1024px width
 
-### Breakpoints & Conditions
+### Device Pixel Ratio (DPR)
+- **1x**: Standard displays
+- **2x**: Retina displays (most modern devices)
+- **3x**: High-DPI displays (premium devices)
 
-- **Viewport width**: `<= 768`, `769–1280`, `1281–1920`, `>1920`.
-- **Device Pixel Ratio (DPR)**: `<=1`, `1<dpr<=1.5`, `1.5<dpr<=2`, `>2`.
-- **Network info**: Use `navigator.connection.effectiveType` when available to defer high tiers on `2g`/`slow-2g`.
+## Quality Tiers
 
-### Implementation Checklist
+### Image Sizes
+- **Low**: 800px width (mobile, slow networks)
+- **Medium**: 1200px width (tablet, standard networks)
+- **High**: 2000px width (desktop, fast networks)
+- **Ultra**: Original size (premium experience, very fast networks)
 
-1. Expose utility `selectImageSource({ baseUrl, viewport, dpr, network })` returning the optimal suffix.
-2. Extend configurator loader to:
-   - Preload low-tier assets.
-   - Swap to higher tier once image enters viewport (`IntersectionObserver`).
-   - Cache chosen tier in session storage for subsequent renders.
-3. Include `<link rel="preload">` hints for hero assets on desktop.
-4. Honour `prefers-reduced-data` media query, locking to `@1x`.
+### Network Speed Detection
+Uses `navigator.connection` API when available:
+- **slow-2g / 2g**: Low quality
+- **3g**: Medium quality
+- **4g**: High quality
+- **5g / wifi**: Ultra quality (if available)
 
-### Lazy Loading & Intersection
+### Data Saver Mode
+When `navigator.connection.saveData === true`:
+- Force Low quality tier
+- Disable preloading
+- Reduce image sizes by 50%
 
-- Each layer registers with a shared observer.
-- Observer threshold `0.25` to begin fetching before element fully visible.
-- Use requestIdleCallback to schedule tier recalculation after layout changes.
+## Implementation
 
-### Testing & Monitoring
+### Image Selection Logic
+1. Detect viewport size
+2. Detect DPR
+3. Detect network speed
+4. Check data saver mode
+5. Select appropriate quality tier
+6. Generate CDN URL with transformations
 
-- Lighthouse runs at three viewport sizes with `npm run perf:configurator`.
-- Capture WebPageTest scripts (mobile vs desktop) and compare total transfer size.
-- Log chosen tier per session via telemetry for future tuning.
+### CDN URL Format
+For Supabase Storage:
+```
+{baseUrl}/storage/v1/object/public/{bucket}/{path}?transform=resize&width={size}&quality={quality}
+```
 
-### CDN Considerations
+### Preloading Strategy
+- **Current angle**: Load immediately at selected quality
+- **Adjacent angles**: Prefetch at Medium quality when idle
+- **Hover prefetch**: Load at Low quality on swatch hover
 
-- All assets served via CDN with `Cache-Control: public, max-age=604800`.
-- Query parameter `?quality=low|medium|high` maps to underlying filename.
-- Provide fallback to `.png` if AVIF/WebP unsupported (validate using feature detection).
+## Performance Targets
 
-### Future Enhancements
+- **LCP (Largest Contentful Paint)**: < 2.5s
+- **Image load time**: < 1s on 3G
+- **Option swap time**: < 100ms (cached images)
+- **Preload time**: < 500ms (background)
 
-- Integrate adaptive streaming for video layers.
-- Feed historical tier metrics into ML-based predictor for returning users.
-- Evaluate Web Workers for asset decoding to keep main thread responsive.
+## Fallback Strategy
 
+1. If image fails to load:
+   - Retry with lower quality tier
+   - Show placeholder image
+   - Log error for monitoring
 
+2. If network is unavailable:
+   - Use cached images
+   - Show offline indicator
+   - Queue requests for when online

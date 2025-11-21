@@ -81,8 +81,19 @@ export default function ConfiguratorFromGarage() {
           return;
         }
 
-        // Success - set config and redirect
-        setGarageConfig(extractionResult.data);
+        // Success - attach garage item metadata and set state
+        const normalizedConfig = {
+          ...extractionResult.data,
+          garageItemId: itemId
+        };
+        
+        console.log('[ConfiguratorFromGarage] ===== GARAGE ITEM LOADED =====');
+        console.log('[ConfiguratorFromGarage] itemId:', itemId);
+        console.log('[ConfiguratorFromGarage] garageItem.id:', garageItem.id);
+        console.log('[ConfiguratorFromGarage] normalizedConfig.garageItemId:', normalizedConfig.garageItemId);
+        console.log('[ConfiguratorFromGarage] Will pass to configurator for UPDATE');
+        
+        setGarageConfig(normalizedConfig);
         setLoading(false);
       } catch (err) {
         console.error('[ConfiguratorFromGarage] Error loading garage item:', err);
@@ -147,10 +158,17 @@ export default function ConfiguratorFromGarage() {
 
   // Redirect to configurator with extracted config
   if (garageConfig) {
+    console.log('[ConfiguratorFromGarage] ===== REDIRECTING TO CONFIGURATOR =====');
+    console.log('[ConfiguratorFromGarage] Passing state.garageItemId:', garageConfig.garageItemId);
+    console.log('[ConfiguratorFromGarage] Passing state.garageConfig:', garageConfig);
+    
     return (
       <Navigate
         to="/configurator"
-        state={{ garageConfig }}
+        state={{ 
+          garageConfig,
+          garageItemId: garageConfig.garageItemId
+        }}
         replace
       />
     );

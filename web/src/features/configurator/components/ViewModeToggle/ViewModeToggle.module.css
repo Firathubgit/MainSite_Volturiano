@@ -1,0 +1,56 @@
+.container {
+  position: absolute;
+  top: 6rem;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 30;
+  display: flex;
+  background: rgba(31, 31, 31, 0.8);
+  backdrop-filter: blur(8px);
+  padding: 4px;
+  border-radius: 9999px;
+  border: 1px solid var(--volt-light);
+}
+
+.button {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1.5rem;
+  border-radius: 9999px;
+  border: none;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.4);
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.button:hover:not(.disabled) {
+  color: white;
+}
+
+.button.active {
+  background: white;
+  color: var(--volt-black);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.button.active:last-child {
+  background: var(--volt-accent);
+  color: white;
+}
+
+.button.disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.button svg {
+  flex-shrink: 0;
+}
+

@@ -31,15 +31,17 @@ export default function CarCardMoreMenu({
   onReadyForDelivery
 }) {
   const { t } = useTranslation('account');
-  const { updateItemState, createPdfExport, pdfExports, pdfJobStatus } = useGarageStore();
+  const { updateItemState, createPdfExport, pdfExports, pdfJobStatus, deleteItem } = useGarageStore();
   const [isOpen, setIsOpen] = useState(false);
   const [showStateDialog, setShowStateDialog] = useState(false);
   const [showTagDialog, setShowTagDialog] = useState(false);
   const [showPdfModal, setShowPdfModal] = useState(false);
   const [showTestDriveModal, setShowTestDriveModal] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [currentJobId, setCurrentJobId] = useState(null);
   const [pendingState, setPendingState] = useState(null);
   const [isChanging, setIsChanging] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const menuRef = useRef(null);
   const buttonRef = useRef(null);
   
@@ -142,7 +144,36 @@ export default function CarCardMoreMenu({
       setShowPdfModal(true);
     } else if (action === 'testDrive') {
       setShowTestDriveModal(true);
+    } else if (action === 'delete') {
+      setShowDeleteDialog(true);
     }
+  };
+  
+  const handleDeleteConfirm = async () => {
+    if (!itemId) return;
+    
+    setIsDeleting(true);
+    setShowDeleteDialog(false);
+    
+    try {
+      console.log('[CarCardMoreMenu] Deleting item:', itemId);
+      const { error } = await deleteItem(itemId);
+      
+      if (error) {
+        throw error;
+      }
+      
+      console.log('[CarCardMoreMenu] Item deleted successfully');
+    } catch (err) {
+      console.error('[CarCardMoreMenu] Failed to delete item:', err);
+      alert(`Failed to delete configuration: ${err.message || 'Unknown error'}`);
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+  
+  const handleDeleteCancel = () => {
+    setShowDeleteDialog(false);
   };
 
   const handlePdfExport = async (options) => {
@@ -293,6 +324,19 @@ export default function CarCardMoreMenu({
             </button>
 
             {/* Divider */}
+            <div className={styles.divider} />
+
+            {/* Delete Configuration */}
+            <button
+              type="button"
+              className={`${styles.menuItem} ${styles.menuItemDanger}`}
+              onClick={() => handleMenuAction('delete')}
+              disabled={isDeleting}
+            >
+              {isDeleting ? t('garage.actions.deleting', 'Deleting...') : t('garage.actions.delete', 'Delete Configuration')}
+            </button>
+
+            {/* Divider */}
             {!isTerminal && validTargetStates.length > 0 && (
               <div className={styles.divider} />
             )}
@@ -360,6 +404,37 @@ export default function CarCardMoreMenu({
         vehicleModel={vehicleModel}
         onClose={() => setShowTestDriveModal(false)}
       />
+      
+      {/* Delete Confirmation Dialog */}
+      {showDeleteDialog && createPortal(
+        <div className={styles.dialogOverlay} onClick={handleDeleteCancel}>
+          <div className={styles.dialogBox} onClick={(e) => e.stopPropagation()}>
+            <h3 className={styles.dialogTitle}>
+              {t('garage.delete.confirmTitle', 'Delete Configuration?')}
+            </h3>
+            <p className={styles.dialogMessage}>
+              {t('garage.delete.confirmMessage', 'This will permanently delete this configuration from your garage. This action cannot be undone.')}
+            </p>
+            <div className={styles.dialogActions}>
+              <button
+                type="button"
+                className={styles.dialogButtonCancel}
+                onClick={handleDeleteCancel}
+              >
+                {t('garage.delete.cancel', 'Cancel')}
+              </button>
+              <button
+                type="button"
+                className={styles.dialogButtonConfirm}
+                onClick={handleDeleteConfirm}
+              >
+                {t('garage.delete.confirm', 'Delete')}
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
     </>
   );
 }

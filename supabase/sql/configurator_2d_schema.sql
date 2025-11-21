@@ -7,7 +7,7 @@ create table if not exists config_2d_manifests (
   slug text not null unique,
   version integer not null default 1,
   status text not null default 'draft', -- draft | published
-  author_id uuid references account_profiles(id) on delete set null,
+  author_id uuid references profiles(id) on delete set null,
   data jsonb not null,
   metadata jsonb default '{}'::jsonb,
   created_at timestamptz default now(),
@@ -50,28 +50,38 @@ create unique index if not exists variant_inventory_unique
   on variant_inventory (manifest_slug, option_code, region);
 
 -- Row Level Security
-alter table if not exists config_2d_manifests enable row level security;
-alter table if not exists configurator_presets enable row level security;
-alter table if not exists variant_inventory enable row level security;
+-- Note: Enabling RLS multiple times is safe (idempotent), so no need for IF NOT EXISTS
+alter table config_2d_manifests enable row level security;
+alter table configurator_presets enable row level security;
+alter table variant_inventory enable row level security;
 
-create policy if not exists "configurator_manifests_read" on config_2d_manifests
+-- Drop policies if they exist (for idempotency)
+drop policy if exists "configurator_manifests_read" on config_2d_manifests;
+drop policy if exists "configurator_manifests_service_role" on config_2d_manifests;
+drop policy if exists "configurator_presets_read" on configurator_presets;
+drop policy if exists "configurator_presets_service_role" on configurator_presets;
+drop policy if exists "variant_inventory_read" on variant_inventory;
+drop policy if exists "variant_inventory_service_role" on variant_inventory;
+
+-- Create policies
+create policy "configurator_manifests_read" on config_2d_manifests
   for select using (true);
 
-create policy if not exists "configurator_manifests_service_role" on config_2d_manifests
+create policy "configurator_manifests_service_role" on config_2d_manifests
   for all using (current_setting('request.jwt.claims', true)::json ->> 'role' = 'service_role')
   with check (current_setting('request.jwt.claims', true)::json ->> 'role' = 'service_role');
 
-create policy if not exists "configurator_presets_read" on configurator_presets
+create policy "configurator_presets_read" on configurator_presets
   for select using (true);
 
-create policy if not exists "configurator_presets_service_role" on configurator_presets
+create policy "configurator_presets_service_role" on configurator_presets
   for all using (current_setting('request.jwt.claims', true)::json ->> 'role' = 'service_role')
   with check (current_setting('request.jwt.claims', true)::json ->> 'role' = 'service_role');
 
-create policy if not exists "variant_inventory_read" on variant_inventory
+create policy "variant_inventory_read" on variant_inventory
   for select using (true);
 
-create policy if not exists "variant_inventory_service_role" on variant_inventory
+create policy "variant_inventory_service_role" on variant_inventory
   for all using (current_setting('request.jwt.claims', true)::json ->> 'role' = 'service_role')
   with check (current_setting('request.jwt.claims', true)::json ->> 'role' = 'service_role');
 

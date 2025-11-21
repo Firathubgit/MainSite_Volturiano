@@ -1,0 +1,97 @@
+.compactBadge {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.statusBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.statusIcon {
+  font-size: 14px;
+  line-height: 1;
+}
+
+.statusLabel {
+  font-size: 12px;
+}
+
+.statusPending {
+  background: rgba(251, 191, 36, 0.15);
+  color: #fbbf24;
+  border: 1px solid rgba(251, 191, 36, 0.3);
+}
+
+.statusConfirmed {
+  background: rgba(16, 185, 129, 0.15);
+  color: #10b981;
+  border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.statusCompleted {
+  background: rgba(156, 163, 175, 0.15);
+  color: #9ca3af;
+  border: 1px solid rgba(156, 163, 175, 0.3);
+}
+
+.statusCancelled {
+  background: rgba(239, 68, 68, 0.15);
+  color: #ef4444;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+.statusDefault {
+  background: rgba(156, 163, 175, 0.15);
+  color: #9ca3af;
+  border: 1px solid rgba(156, 163, 175, 0.3);
+}
+
+.date {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.statusCard {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+  background: #1a1a1a;
+  border: 1px solid #303030;
+  border-radius: 12px;
+}
+
+.statusHeader {
+  display: flex;
+  align-items: center;
+}
+
+.dateInfo,
+.dealerInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.dateLabel,
+.dealerLabel {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.6);
+  font-weight: 500;
+}
+
+.date,
+.dealerName {
+  font-size: 14px;
+  color: #f7f7f7;
+}
+

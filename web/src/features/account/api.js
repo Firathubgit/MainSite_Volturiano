@@ -2440,3 +2440,468 @@ export async function listPdfExports(garageItemId) {
   }
 }
 
+// ============================================================================
+// Test Drive Request API Functions
+// ============================================================================
+
+/**
+ * Fetch active dealers (public read)
+ * @returns {Promise<{data: Array, error: Error|null}>}
+ */
+export async function fetchDealers() {
+  console.log('[API] fetchDealers called');
+  const startTime = Date.now();
+  
+  const { client, error } = ensureClient();
+  if (error) {
+    console.error('[API] Supabase client error:', error);
+    return { data: null, error };
+  }
+
+  try {
+    console.log('[API] Querying dealers table...');
+    // Use .select() without RLS bypass - the policy should allow public read
+    const { data, error: queryError } = await client
+      .from('dealers')
+      .select('id, name, email, phone, location, address, is_active, metadata, created_at, updated_at')
+      .eq('is_active', true)
+      .order('name', { ascending: true });
+    
+    const duration = Date.now() - startTime;
+
+    if (queryError) {
+      console.error('[API] Query error:', queryError);
+      console.error('[API] Error code:', queryError.code);
+      console.error('[API] Error message:', queryError.message);
+      console.error('[API] Error details:', queryError.details);
+      console.error('[API] Error hint:', queryError.hint);
+      console.log('[API] fetchDealers failed in', duration, 'ms');
+      
+      // Provide more helpful error message
+      let errorMessage = queryError.message || 'Failed to fetch dealers';
+      if (queryError.code === '42P01') {
+        errorMessage = 'Dealers table does not exist. Please run the SQL migration to create it.';
+      } else if (queryError.code === '42501') {
+        errorMessage = 'Permission denied. Check RLS policies on dealers table.';
+      }
+      
+      return { data: null, error: { ...queryError, message: errorMessage } };
+    }
+
+    console.log('[API] Dealers fetched:', data?.length || 0, 'dealers');
+    if (data && data.length > 0) {
+      console.log('[API] Sample dealer:', data[0]);
+    }
+    console.log('[API] fetchDealers completed in', duration, 'ms');
+    return { data: data || [], error: null };
+  } catch (err) {
+    const duration = Date.now() - startTime;
+    console.error('[API] Exception fetching dealers:', err);
+    console.error('[API] Exception message:', err.message);
+    console.error('[API] Exception stack:', err.stack);
+    console.log('[API] fetchDealers failed after', duration, 'ms');
+    return { data: null, error: err };
+  }
+}
+
+/**
+ * Create a test drive request
+ * @param {string} garageItemId - Garage item ID (optional)
+ * @param {Object} data - Request data
+ * @param {string} data.vehicle_model - Vehicle model
+ * @param {string} data.preferred_date - Preferred date (YYYY-MM-DD)
+ * @param {string} data.dealer_id - Dealer ID (optional)
+ * @param {string} data.dealer - Dealer name (fallback if dealer_id not provided)
+ * @param {string} data.contact_name - Contact name
+ * @param {string} data.contact_email - Contact email
+ * @param {string} data.contact_phone - Contact phone (optional)
+ * @param {string} data.notes - Additional notes (optional)
+ * @returns {Promise<{data: Object, error: Error|null}>}
+ */
+export async function createTestDriveRequest(garageItemId, data) {
+  console.log('[API] createTestDriveRequest called');
+  console.log('[API] Parameters:', { garageItemId, data });
+  const startTime = Date.now();
+  
+  const { client, error } = ensureClient();
+  if (error) {
+    console.error('[API] Supabase client error:', error);
+    return { data: null, error };
+  }
+
+  try {
+    // Verify authentication
+    const {
+      data: { user },
+      error: authError
+    } = await client.auth.getUser();
+    if (authError || !user) {
+      console.error('[API] Authentication failed:', authError || 'No user');
+      return { data: null, error: authError || new Error('Not authenticated') };
+    }
+
+    // Validate required fields
+    if (!data.vehicle_model || !data.preferred_date) {
+      return {
+        data: null,
+        error: new Error('Missing required fields: vehicle_model, preferred_date')
+      };
+    }
+
+    // Validate date is in the future
+    const preferredDate = new Date(data.preferred_date);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    if (preferredDate < today) {
+      return {
+        data: null,
+        error: new Error('Preferred date must be in the future')
+      };
+    }
+
+    // Insert test drive request
+    const insertData = {
+      owner_id: user.id,
+      garage_item_id: garageItemId || null,
+      vehicle_model: data.vehicle_model,
+      preferred_date: data.preferred_date,
+      dealer_id: data.dealer_id || null,
+      dealer: data.dealer || null,
+      contact_name: data.contact_name || null,
+      contact_email: data.contact_email || null,
+      contact_phone: data.contact_phone || null,
+      notes: data.notes || null,
+      status: 'pending',
+      updated_by: user.id
+    };
+
+    const { data: request, error: insertError } = await client
+      .from('test_drive_requests')
+      .insert(insertData)
+      .select()
+      .single();
+    
+    const duration = Date.now() - startTime;
+
+    if (insertError) {
+      console.error('[API] Insert error:', insertError);
+      console.log('[API] createTestDriveRequest failed in', duration, 'ms');
+      return { data: null, error: insertError };
+    }
+
+    // Log activity (non-blocking)
+    if (garageItemId) {
+      try {
+        await createActivityLog(garageItemId, 'test_drive_requested', {
+          request_id: request.id,
+          vehicle_model: data.vehicle_model,
+          preferred_date: data.preferred_date
+        });
+      } catch (activityErr) {
+        console.warn('[API] Failed to log activity (non-critical):', activityErr);
+      }
+    }
+
+    // Try to trigger email notification (non-blocking)
+    try {
+      await client.functions.invoke('send-test-drive-notification', {
+        body: {
+          request_id: request.id,
+          notification_type: 'new_request'
+        }
+      });
+    } catch (emailErr) {
+      console.warn('[API] Failed to trigger email notification (non-critical):', emailErr);
+      // Don't fail the request if email fails
+    }
+
+    console.log('[API] Test drive request created successfully');
+    console.log('[API] Request ID:', request?.id);
+    console.log('[API] createTestDriveRequest completed in', duration, 'ms');
+    return { data: request, error: null };
+  } catch (err) {
+    const duration = Date.now() - startTime;
+    console.error('[API] Exception creating test drive request:', err);
+    console.log('[API] createTestDriveRequest failed after', duration, 'ms');
+    return { data: null, error: err };
+  }
+}
+
+/**
+ * Fetch test drive requests for current user
+ * @param {Object} filters - Optional filters
+ * @param {string} filters.status - Filter by status
+ * @param {string} filters.garage_item_id - Filter by garage item
+ * @returns {Promise<{data: Array, error: Error|null}>}
+ */
+export async function fetchTestDriveRequests(filters = {}) {
+  console.log('[API] fetchTestDriveRequests called');
+  console.log('[API] Filters:', filters);
+  const startTime = Date.now();
+  
+  const { client, error } = ensureClient();
+  if (error) {
+    console.error('[API] Supabase client error:', error);
+    return { data: null, error };
+  }
+
+  try {
+    // Verify authentication
+    const {
+      data: { user },
+      error: authError
+    } = await client.auth.getUser();
+    if (authError || !user) {
+      console.error('[API] Authentication failed:', authError || 'No user');
+      return { data: null, error: authError || new Error('Not authenticated') };
+    }
+
+    let query = client
+      .from('test_drive_requests')
+      .select(`
+        *,
+        dealers:dealer_id (
+          id,
+          name,
+          email,
+          location,
+          phone
+        ),
+        garage_items:garage_item_id (
+          id,
+          title,
+          vehicle_model
+        )
+      `)
+      .eq('owner_id', user.id)
+      .order('created_at', { ascending: false });
+
+    // Apply filters
+    if (filters.status) {
+      query = query.eq('status', filters.status);
+    }
+    if (filters.garage_item_id) {
+      query = query.eq('garage_item_id', filters.garage_item_id);
+    }
+
+    const { data, error: queryError } = await query;
+    const duration = Date.now() - startTime;
+
+    if (queryError) {
+      console.error('[API] Query error:', queryError);
+      console.log('[API] fetchTestDriveRequests failed in', duration, 'ms');
+      return { data: null, error: queryError };
+    }
+
+    console.log('[API] Test drive requests fetched:', data?.length || 0, 'requests');
+    console.log('[API] fetchTestDriveRequests completed in', duration, 'ms');
+    return { data: data || [], error: null };
+  } catch (err) {
+    const duration = Date.now() - startTime;
+    console.error('[API] Exception fetching test drive requests:', err);
+    console.log('[API] fetchTestDriveRequests failed after', duration, 'ms');
+    return { data: null, error: err };
+  }
+}
+
+/**
+ * Update test drive request status
+ * @param {string} requestId - Request ID
+ * @param {string} status - New status
+ * @param {string} notes - Optional notes
+ * @returns {Promise<{data: Object, error: Error|null}>}
+ */
+export async function updateTestDriveRequestStatus(requestId, status, notes = null) {
+  console.log('[API] updateTestDriveRequestStatus called');
+  console.log('[API] Parameters:', { requestId, status, notes });
+  const startTime = Date.now();
+  
+  const { client, error } = ensureClient();
+  if (error) {
+    console.error('[API] Supabase client error:', error);
+    return { data: null, error };
+  }
+
+  try {
+    // Verify authentication
+    const {
+      data: { user },
+      error: authError
+    } = await client.auth.getUser();
+    if (authError || !user) {
+      console.error('[API] Authentication failed:', authError || 'No user');
+      return { data: null, error: authError || new Error('Not authenticated') };
+    }
+
+    // Fetch current request to get garage_item_id and previous status
+    const { data: currentRequest, error: fetchError } = await client
+      .from('test_drive_requests')
+      .select('garage_item_id, status')
+      .eq('id', requestId)
+      .eq('owner_id', user.id)
+      .single();
+
+    if (fetchError || !currentRequest) {
+      return { data: null, error: fetchError || new Error('Request not found') };
+    }
+
+    const previousStatus = currentRequest.status;
+
+    // Build update data
+    const updateData = {
+      status,
+      updated_by: user.id
+    };
+    
+    if (notes !== null) {
+      updateData.notes = notes;
+    }
+
+    // Update request
+    const { data: request, error: updateError } = await client
+      .from('test_drive_requests')
+      .update(updateData)
+      .eq('id', requestId)
+      .select()
+      .single();
+    
+    const duration = Date.now() - startTime;
+
+    if (updateError) {
+      console.error('[API] Update error:', updateError);
+      console.log('[API] updateTestDriveRequestStatus failed in', duration, 'ms');
+      return { data: null, error: updateError };
+    }
+
+    // Log activity (non-blocking)
+    if (currentRequest.garage_item_id) {
+      try {
+        await createActivityLog(currentRequest.garage_item_id, 'test_drive_status_updated', {
+          request_id: requestId,
+          status,
+          previous_status: previousStatus,
+          notes: notes || null
+        });
+      } catch (activityErr) {
+        console.warn('[API] Failed to log activity (non-critical):', activityErr);
+      }
+    }
+
+    // Try to trigger email notification (non-blocking)
+    try {
+      await client.functions.invoke('send-test-drive-notification', {
+        body: {
+          request_id: requestId,
+          notification_type: 'status_update',
+          status
+        }
+      });
+    } catch (emailErr) {
+      console.warn('[API] Failed to trigger email notification (non-critical):', emailErr);
+    }
+
+    console.log('[API] Test drive request status updated successfully');
+    console.log('[API] updateTestDriveRequestStatus completed in', duration, 'ms');
+    return { data: request, error: null };
+  } catch (err) {
+    const duration = Date.now() - startTime;
+    console.error('[API] Exception updating test drive request status:', err);
+    console.log('[API] updateTestDriveRequestStatus failed after', duration, 'ms');
+    return { data: null, error: err };
+  }
+}
+
+/**
+ * Cancel a test drive request
+ * @param {string} requestId - Request ID
+ * @returns {Promise<{data: Object, error: Error|null}>}
+ */
+export async function cancelTestDriveRequest(requestId) {
+  console.log('[API] cancelTestDriveRequest called');
+  console.log('[API] Request ID:', requestId);
+  const startTime = Date.now();
+  
+  const { client, error } = ensureClient();
+  if (error) {
+    console.error('[API] Supabase client error:', error);
+    return { data: null, error };
+  }
+
+  try {
+    // Verify authentication
+    const {
+      data: { user },
+      error: authError
+    } = await client.auth.getUser();
+    if (authError || !user) {
+      console.error('[API] Authentication failed:', authError || 'No user');
+      return { data: null, error: authError || new Error('Not authenticated') };
+    }
+
+    // Fetch current request to get garage_item_id
+    const { data: currentRequest, error: fetchError } = await client
+      .from('test_drive_requests')
+      .select('garage_item_id, status')
+      .eq('id', requestId)
+      .eq('owner_id', user.id)
+      .single();
+
+    if (fetchError || !currentRequest) {
+      return { data: null, error: fetchError || new Error('Request not found') };
+    }
+
+    // Update request to cancelled
+    const { data: request, error: updateError } = await client
+      .from('test_drive_requests')
+      .update({
+        status: 'cancelled',
+        cancelled_at: new Date().toISOString(),
+        updated_by: user.id
+      })
+      .eq('id', requestId)
+      .select()
+      .single();
+    
+    const duration = Date.now() - startTime;
+
+    if (updateError) {
+      console.error('[API] Update error:', updateError);
+      console.log('[API] cancelTestDriveRequest failed in', duration, 'ms');
+      return { data: null, error: updateError };
+    }
+
+    // Log activity (non-blocking)
+    if (currentRequest.garage_item_id) {
+      try {
+        await createActivityLog(currentRequest.garage_item_id, 'test_drive_cancelled', {
+          request_id: requestId,
+          previous_status: currentRequest.status
+        });
+      } catch (activityErr) {
+        console.warn('[API] Failed to log activity (non-critical):', activityErr);
+      }
+    }
+
+    // Try to trigger email notification (non-blocking)
+    try {
+      await client.functions.invoke('send-test-drive-notification', {
+        body: {
+          request_id: requestId,
+          notification_type: 'cancellation'
+        }
+      });
+    } catch (emailErr) {
+      console.warn('[API] Failed to trigger email notification (non-critical):', emailErr);
+    }
+
+    console.log('[API] Test drive request cancelled successfully');
+    console.log('[API] cancelTestDriveRequest completed in', duration, 'ms');
+    return { data: request, error: null };
+  } catch (err) {
+    const duration = Date.now() - startTime;
+    console.error('[API] Exception cancelling test drive request:', err);
+    console.log('[API] cancelTestDriveRequest failed after', duration, 'ms');
+    return { data: null, error: err };
+  }
+}
+

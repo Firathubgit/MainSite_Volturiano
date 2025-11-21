@@ -7,6 +7,7 @@ import StateChangeDialog from './StateChangeDialog';
 import TagSelectorDialog from './TagSelectorDialog';
 import PdfExportModal from './PdfExportModal';
 import PdfJobStatus from './PdfJobStatus';
+import TestDriveModal from './TestDriveModal';
 import styles from './CarCardMoreMenu.module.css';
 
 /**
@@ -14,6 +15,7 @@ import styles from './CarCardMoreMenu.module.css';
  * @param {Object} props
  * @param {string} props.itemId - Garage item ID
  * @param {string} props.currentState - Current state of the item
+ * @param {string} props.vehicleModel - Vehicle model (optional, for test drive modal)
  * @param {Function} props.onHistory - Callback for History action
  * @param {Function} props.onShare - Callback for Share action
  * @param {Function} props.onTimeline - Callback for Timeline action
@@ -22,6 +24,7 @@ import styles from './CarCardMoreMenu.module.css';
 export default function CarCardMoreMenu({
   itemId,
   currentState,
+  vehicleModel,
   onHistory,
   onShare,
   onTimeline,
@@ -33,6 +36,7 @@ export default function CarCardMoreMenu({
   const [showStateDialog, setShowStateDialog] = useState(false);
   const [showTagDialog, setShowTagDialog] = useState(false);
   const [showPdfModal, setShowPdfModal] = useState(false);
+  const [showTestDriveModal, setShowTestDriveModal] = useState(false);
   const [currentJobId, setCurrentJobId] = useState(null);
   const [pendingState, setPendingState] = useState(null);
   const [isChanging, setIsChanging] = useState(false);
@@ -136,6 +140,8 @@ export default function CarCardMoreMenu({
       onTimeline();
     } else if (action === 'exportPdf') {
       setShowPdfModal(true);
+    } else if (action === 'testDrive') {
+      setShowTestDriveModal(true);
     }
   };
 
@@ -249,6 +255,15 @@ export default function CarCardMoreMenu({
               {t('garage.actions.timeline', 'Timeline')}
             </button>
 
+            {/* Schedule Test Drive */}
+            <button
+              type="button"
+              className={styles.menuItem}
+              onClick={() => handleMenuAction('testDrive')}
+            >
+              {t('garage.testDrive.schedule')}
+            </button>
+
             {/* Export PDF */}
             <button
               type="button"
@@ -338,6 +353,13 @@ export default function CarCardMoreMenu({
           onClose={() => setCurrentJobId(null)}
         />
       )}
+
+      <TestDriveModal
+        show={showTestDriveModal}
+        itemId={itemId}
+        vehicleModel={vehicleModel}
+        onClose={() => setShowTestDriveModal(false)}
+      />
     </>
   );
 }

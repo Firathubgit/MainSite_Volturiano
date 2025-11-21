@@ -9,6 +9,7 @@ import ShareModal from './ShareModal';
 import TimelineModal from './Timeline/TimelineModal';
 import CarCardMoreMenu from './CarCardMoreMenu';
 import TagDisplay from './TagDisplay';
+import { getConfiguratorImageUrl } from '../utils/getConfiguratorImage';
 import styles from '../styles/garage.module.css';
 import showroomPlaceholder from '../../../assets/Garage/ShowroomCarVOLTURIANO1.png';
 
@@ -113,12 +114,21 @@ export default function CarCard({
     };
   }, [modelName]);
 
+  // Get configurator front angle image based on configuration
+  const configuratorImageUrl = useMemo(() => {
+    if (config) {
+      return getConfiguratorImageUrl(config);
+    }
+    return null;
+  }, [config]);
+
   const imageUrl =
+    configuratorImageUrl ||
     vehicleHeroImage ||
     item?.thumbnail_url ||
     config?.media?.heroImage ||
     (Array.isArray(config?.media?.gallery) ? config.media.gallery[0] : null) ||
-    null;
+    showroomPlaceholder;
 
   const packageLabel =
     config?.metadata?.primaryPackage ||
@@ -258,6 +268,7 @@ export default function CarCard({
           <CarCardMoreMenu
             itemId={item?.id}
             currentState={item?.state}
+            vehicleModel={item?.vehicle_model}
             onHistory={() => setShowHistory(true)}
             onShare={() => setShowShare(true)}
             onTimeline={() => setShowTimeline(true)}

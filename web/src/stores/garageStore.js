@@ -25,7 +25,12 @@ import {
   createPdfExportJob as createPdfExportJobAPI,
   getPdfJobStatus as getPdfJobStatusAPI,
   getPdfDownloadUrl as getPdfDownloadUrlAPI,
-  listPdfExports as listPdfExportsAPI
+  listPdfExports as listPdfExportsAPI,
+  fetchDealers as fetchDealersAPI,
+  createTestDriveRequest as createTestDriveRequestAPI,
+  fetchTestDriveRequests as fetchTestDriveRequestsAPI,
+  updateTestDriveRequestStatus as updateTestDriveRequestStatusAPI,
+  cancelTestDriveRequest as cancelTestDriveRequestAPI
 } from '../features/account/api';
 import { changeItemState } from '../features/garage/services/stateChangeService';
 import { autoMigrateConfig } from '../features/garage/utils/migrateConfigs';
@@ -119,6 +124,8 @@ export const useGarageStore = create((set, get) => ({
   modelCounts: new Map(), // Map<model, count> - Cache model usage counts
   pdfExports: new Map(), // Map<itemId, Array<Job>> - Cache PDF export jobs per item
   pdfJobStatus: new Map(), // Map<jobId, status> - Cache PDF job status
+  testDriveRequests: new Map(), // Map<itemId, Array<Request>> - Cache test drive requests per item
+  dealers: [], // Array of active dealers
 
   // Actions
   /**
@@ -1957,7 +1964,9 @@ export const useGarageStore = create((set, get) => ({
       tagCounts: new Map(),
       modelCounts: new Map(),
       pdfExports: new Map(),
-      pdfJobStatus: new Map()
+      pdfJobStatus: new Map(),
+      testDriveRequests: new Map(),
+      dealers: []
     });
     get().unsubscribeRealtime();
     localStorage.removeItem(STORAGE_KEY);
@@ -2116,6 +2125,220 @@ export const useGarageStore = create((set, get) => ({
       console.log('[GarageStore] getPdfExports failed after', duration, 'ms');
       return { data: null, error: err };
     }
+  },
+
+  /**
+   * Fetch active dealers
+   * @returns {Promise<{data: Array, error: Error|null}>}
+   */
+  fetchDealers: async () => {
+    const state = get();
+    const startTime = Date.now();
+    
+    // Return cached dealers if available (they don't change often)
+    if (state.dealers.length > 0) {
+      console.log('[GarageStore] Using cached dealers');
+      return { data: state.dealers, error: null };
+    }
+
+    try {
+      const { data, error } = await fetchDealersAPI();
+      const duration = Date.now() - startTime;
+
+      if (error) {
+        console.error('[GarageStore] fetchDealers failed:', error);
+        return { data: null, error };
+      }
+
+      set({ dealers: data || [] });
+      console.log('[GarageStore] Dealers fetched:', data?.length || 0, 'dealers');
+      console.log('[GarageStore] fetchDealers completed in', duration, 'ms');
+      return { data: data || [], error: null };
+    } catch (err) {
+      const duration = Date.now() - startTime;
+      console.error('[GarageStore] Exception fetching dealers:', err);
+      console.log('[GarageStore] fetchDealers failed after', duration, 'ms');
+      return { data: null, error: err };
+    }
+  },
+
+  /**
+   * Create a test drive request
+   * @param {string} itemId - Garage item ID
+   * @param {Object} requestData - Request data
+   * @returns {Promise<{data: Object, error: Error|null}>}
+   */
+  createTestDriveRequest: async (itemId, requestData) => {
+    const startTime = Date.now();
+    
+    try {
+      const { data, error } = await createTestDriveRequestAPI(itemId, requestData);
+      const duration = Date.now() - startTime;
+
+      if (error) {
+        console.error('[GarageStore] createTestDriveRequest failed:', error);
+        return { data: null, error };
+      }
+
+      // Add request to cache
+      if (data && itemId) {
+        set((state) => {
+          const newRequests = new Map(state.testDriveRequests);
+          const itemRequests = newRequests.get(itemId) || [];
+          newRequests.set(itemId, [data, ...itemRequests]);
+          return { testDriveRequests: newRequests };
+        });
+      }
+
+      console.log('[GarageStore] Test drive request created successfully');
+      console.log('[GarageStore] createTestDriveRequest completed in', duration, 'ms');
+      return { data, error: null };
+    } catch (err) {
+      const duration = Date.now() - startTime;
+      console.error('[GarageStore] Exception creating test drive request:', err);
+      console.log('[GarageStore] createTestDriveRequest failed after', duration, 'ms');
+      return { data: null, error: err };
+    }
+  },
+
+  /**
+   * Fetch test drive requests for a garage item
+   * @param {string} itemId - Garage item ID
+   * @returns {Promise<{data: Array, error: Error|null}>}
+   */
+  fetchTestDriveRequests: async (itemId) => {
+    const state = get();
+    const startTime = Date.now();
+    
+    // Check cache first
+    const cachedRequests = state.testDriveRequests.get(itemId);
+    if (cachedRequests && cachedRequests.length > 0) {
+      console.log('[GarageStore] Using cached test drive requests for item:', itemId);
+      return { data: cachedRequests, error: null };
+    }
+
+    try {
+      const { data, error } = await fetchTestDriveRequestsAPI({ garage_item_id: itemId });
+      const duration = Date.now() - startTime;
+
+      if (error) {
+        console.error('[GarageStore] fetchTestDriveRequests failed:', error);
+        return { data: null, error };
+      }
+
+      // Update cache
+      if (data) {
+        set((state) => {
+          const newRequests = new Map(state.testDriveRequests);
+          newRequests.set(itemId, data);
+          return { testDriveRequests: newRequests };
+        });
+      }
+
+      console.log('[GarageStore] Test drive requests fetched:', data?.length || 0, 'requests');
+      console.log('[GarageStore] fetchTestDriveRequests completed in', duration, 'ms');
+      return { data: data || [], error: null };
+    } catch (err) {
+      const duration = Date.now() - startTime;
+      console.error('[GarageStore] Exception fetching test drive requests:', err);
+      console.log('[GarageStore] fetchTestDriveRequests failed after', duration, 'ms');
+      return { data: null, error: err };
+    }
+  },
+
+  /**
+   * Update test drive request status
+   * @param {string} requestId - Request ID
+   * @param {string} status - New status
+   * @param {string} notes - Optional notes
+   * @returns {Promise<{data: Object, error: Error|null}>}
+   */
+  updateTestDriveRequestStatus: async (requestId, status, notes = null) => {
+    const startTime = Date.now();
+    
+    try {
+      const { data, error } = await updateTestDriveRequestStatusAPI(requestId, status, notes);
+      const duration = Date.now() - startTime;
+
+      if (error) {
+        console.error('[GarageStore] updateTestDriveRequestStatus failed:', error);
+        return { data: null, error };
+      }
+
+      // Update cache
+      if (data && data.garage_item_id) {
+        set((state) => {
+          const newRequests = new Map(state.testDriveRequests);
+          const itemRequests = newRequests.get(data.garage_item_id) || [];
+          const updatedRequests = itemRequests.map(req => 
+            req.id === requestId ? data : req
+          );
+          newRequests.set(data.garage_item_id, updatedRequests);
+          return { testDriveRequests: newRequests };
+        });
+      }
+
+      console.log('[GarageStore] Test drive request status updated successfully');
+      console.log('[GarageStore] updateTestDriveRequestStatus completed in', duration, 'ms');
+      return { data, error: null };
+    } catch (err) {
+      const duration = Date.now() - startTime;
+      console.error('[GarageStore] Exception updating test drive request status:', err);
+      console.log('[GarageStore] updateTestDriveRequestStatus failed after', duration, 'ms');
+      return { data: null, error: err };
+    }
+  },
+
+  /**
+   * Cancel a test drive request
+   * @param {string} requestId - Request ID
+   * @returns {Promise<{data: Object, error: Error|null}>}
+   */
+  cancelTestDriveRequest: async (requestId) => {
+    const startTime = Date.now();
+    
+    try {
+      const { data, error } = await cancelTestDriveRequestAPI(requestId);
+      const duration = Date.now() - startTime;
+
+      if (error) {
+        console.error('[GarageStore] cancelTestDriveRequest failed:', error);
+        return { data: null, error };
+      }
+
+      // Update cache
+      if (data && data.garage_item_id) {
+        set((state) => {
+          const newRequests = new Map(state.testDriveRequests);
+          const itemRequests = newRequests.get(data.garage_item_id) || [];
+          const updatedRequests = itemRequests.map(req => 
+            req.id === requestId ? data : req
+          );
+          newRequests.set(data.garage_item_id, updatedRequests);
+          return { testDriveRequests: newRequests };
+        });
+      }
+
+      console.log('[GarageStore] Test drive request cancelled successfully');
+      console.log('[GarageStore] cancelTestDriveRequest completed in', duration, 'ms');
+      return { data, error: null };
+    } catch (err) {
+      const duration = Date.now() - startTime;
+      console.error('[GarageStore] Exception cancelling test drive request:', err);
+      console.log('[GarageStore] cancelTestDriveRequest failed after', duration, 'ms');
+      return { data: null, error: err };
+    }
+  },
+
+  /**
+   * Get latest test drive request for an item
+   * @param {string} itemId - Garage item ID
+   * @returns {Object|null} Latest request or null
+   */
+  getTestDriveRequestForItem: (itemId) => {
+    const state = get();
+    const requests = state.testDriveRequests.get(itemId) || [];
+    return requests.length > 0 ? requests[0] : null;
   }
 }));
 

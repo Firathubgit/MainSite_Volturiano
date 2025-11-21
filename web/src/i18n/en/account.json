@@ -162,6 +162,31 @@
       "more": "More...",
       "moreOptions": "More options"
     },
+    "testDrive": {
+      "schedule": "Schedule Test Drive",
+      "modal": {
+        "title": "Schedule Test Drive",
+        "vehicleModel": "Vehicle Model",
+        "preferredDate": "Preferred Date",
+        "dealer": "Dealer",
+        "noDealers": "No dealers available",
+        "contactInfo": "Contact Information",
+        "name": "Name",
+        "email": "Email",
+        "phone": "Phone (Optional)",
+        "notes": "Additional Notes (Optional)",
+        "submit": "Submit Request",
+        "submitting": "Submitting...",
+        "success": "Test drive request submitted successfully!",
+        "error": "Failed to submit request"
+      },
+      "status": {
+        "pending": "Pending",
+        "confirmed": "Confirmed",
+        "completed": "Completed",
+        "cancelled": "Cancelled"
+      }
+    },
     "overlay": {
       "close": "Close"
     },

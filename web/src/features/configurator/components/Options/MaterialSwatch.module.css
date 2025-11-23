@@ -1,0 +1,29 @@
+.materialSwatch {
+  display: block;
+  width: 100%;
+  height: 100%;
+  transition: transform 0.2s ease, filter 0.2s ease;
+  cursor: pointer;
+  pointer-events: none; /* Prevent SVG from intercepting clicks */
+}
+
+.materialSwatch:hover {
+  transform: scale(1.02);
+}
+
+.materialSwatch.active {
+  transform: scale(1.05);
+}
+
+.swatchBorder {
+  transition: stroke 0.2s ease;
+}
+
+.materialSwatch:hover .swatchBorder {
+  stroke: rgba(255, 255, 255, 0.2);
+}
+
+.swatchSelected {
+  transition: opacity 0.2s ease;
+}
+

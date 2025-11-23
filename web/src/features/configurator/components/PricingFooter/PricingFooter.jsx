@@ -96,47 +96,58 @@ export default function PricingFooter({ garageItemId = null }) {
     });
   };
 
+  // Get selected option names for summary
+  const getSelectedPaint = () => {
+    const paintOption = vehicleOptions.find(opt => 
+      selectedOptions[opt.id] && 
+      (opt.code?.startsWith('paint_') || opt.configurator_group === 'exterior')
+    );
+    return paintOption?.label || 'Not Selected';
+  };
+
+  const getSelectedWheels = () => {
+    const wheelOption = vehicleOptions.find(opt => 
+      selectedOptions[opt.id] && 
+      (opt.code?.startsWith('rim') || opt.code?.startsWith('wheel') || opt.configurator_group === 'wheels')
+    );
+    return wheelOption?.label || 'Not Selected';
+  };
+
+  const getSelectedInterior = () => {
+    const interiorOption = vehicleOptions.find(opt => 
+      selectedOptions[opt.id] && 
+      (opt.category === 'interior' || opt.configurator_group === 'interior')
+    );
+    return interiorOption?.label || 'Not Selected';
+  };
+
   return (
-    <div className={styles.footer}>
+    <footer className={styles.footer}>
+      <div className={styles.footerContent}>
+        {/* Left: Configuration Summary */}
+        <div className={styles.summary}>
+          <div className={styles.summaryItem}>
+            <p className={styles.summaryLabel}>Paint</p>
+            <p className={styles.summaryValue}>{getSelectedPaint()}</p>
+          </div>
+          <div className={styles.summaryItem}>
+            <p className={styles.summaryLabel}>Wheels</p>
+            <p className={styles.summaryValue}>{getSelectedWheels()}</p>
+          </div>
+          <div className={`${styles.summaryItem} ${styles.summaryItemHidden}`}>
+            <p className={styles.summaryLabel}>Interior</p>
+            <p className={styles.summaryValue}>{getSelectedInterior()}</p>
+          </div>
+        </div>
+
+        {/* Right: Price & Order Button */}
       <div className={styles.priceSection}>
-        <div className={styles.priceLabel}>Total Configuration</div>
+          <div className={styles.priceInfo}>
+            <p className={styles.priceLabel}>Est. Price</p>
         <h3 className={styles.priceValue}>
           {formatPrice(pricing.total * 100 || 0)}
         </h3>
       </div>
-      
-      <button
-        type="button"
-        className={styles.breakdownLink}
-        onClick={() => setShowBreakdown(!showBreakdown)}
-      >
-        View Breakdown
-      </button>
-      
-      {showBreakdown && (
-        <div className={styles.breakdown}>
-          <div className={styles.breakdownRow}>
-            <span>Base Price</span>
-            <span>{formatPrice(pricing.base * 100 || 0)}</span>
-          </div>
-          <div className={styles.breakdownRow}>
-            <span>Options</span>
-            <span>{formatPrice(pricing.options * 100 || 0)}</span>
-          </div>
-          {pricing.taxes > 0 && (
-            <div className={styles.breakdownRow}>
-              <span>Taxes</span>
-              <span>{formatPrice(pricing.taxes * 100 || 0)}</span>
-            </div>
-          )}
-          {pricing.incentives > 0 && (
-            <div className={styles.breakdownRow}>
-              <span>Incentives</span>
-              <span>-{formatPrice(pricing.incentives * 100 || 0)}</span>
-            </div>
-          )}
-        </div>
-      )}
       
       {configuration ? (
         <>
@@ -144,18 +155,8 @@ export default function PricingFooter({ garageItemId = null }) {
           <SaveToGarageButton
             configuration={configuration}
             garageItemId={garageItemId}
-            initialState={garageItemId ? undefined : 'saved'} // Use existing state if updating
+                initialState={garageItemId ? undefined : 'saved'}
             className={styles.orderButton}
-            buttonProps={{
-              style: {
-                width: '100%',
-                padding: '1rem 2rem',
-                fontSize: '1rem',
-                fontWeight: '600',
-                textTransform: 'uppercase',
-                letterSpacing: '0.05em'
-              }
-            }}
             onSuccess={(item) => {
               console.log('[Configurator] Configuration saved to garage:', item);
             }}
@@ -170,10 +171,15 @@ export default function PricingFooter({ garageItemId = null }) {
           className={styles.orderButton}
           disabled
         >
-          Order Configuration
+              Place Order
+              <svg xmlns="http://www.w3.org/2000/svg" className={styles.orderIcon} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
+              </svg>
         </button>
       )}
     </div>
+      </div>
+    </footer>
   );
 }
 

@@ -1,0 +1,31 @@
+.swatchButton {
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  transition: transform 0.2s ease, opacity 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  position: relative;
+}
+
+.swatchButton:hover {
+  transform: scale(1.05);
+}
+
+.swatchButton:active {
+  transform: scale(0.98);
+}
+
+.swatchButton:focus-visible {
+  outline: 2px solid rgba(255, 255, 255, 0.3);
+  outline-offset: 2px;
+}
+
+.swatchButton.selected {
+  opacity: 1;
+}
+

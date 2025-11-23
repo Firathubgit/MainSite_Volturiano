@@ -3,7 +3,7 @@
   width: 100%;
   height: 100%;
   min-height: 100%;
-  overflow: visible;
+  overflow: hidden;
   background: transparent;
   display: flex;
   align-items: center;
@@ -13,22 +13,19 @@
 .layer {
   position: absolute;
   inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  display: block;
   pointer-events: none;
   width: 100%;
   height: 100%;
 }
 
 .layerImage {
-  width: auto;
-  height: auto;
-  max-width: calc(100vw - 500px); /* Account for panel width */
-  max-height: 90vh;
-  min-width: 1400px;
-  min-height: 788px;
-  object-fit: contain;
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  object-fit: cover;
   object-position: center;
   user-select: none;
   pointer-events: none;
@@ -36,9 +33,9 @@
 
 @media (max-width: 768px) {
   .layerImage {
-    max-width: 100vw;
-    min-width: 100%;
-    min-height: auto;
+    width: 100vw;
+    height: 100vh;
+    object-fit: contain;
   }
 }
 

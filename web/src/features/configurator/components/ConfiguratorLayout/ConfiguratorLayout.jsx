@@ -1,26 +1,15 @@
-import React, { useState } from 'react';
+import React from 'react';
 import styles from './ConfiguratorLayout.module.css';
 
 /**
  * ConfiguratorLayout Component
- * Full-screen layout with collapsible sidebar panel
+ * Full-screen layout with overlay panels (Fiverr style)
  */
 export default function ConfiguratorLayout({ 
   children, 
   panel, 
-  header,
-  onPanelToggle 
+  header
 }) {
-  const [isPanelOpen, setIsPanelOpen] = useState(true);
-
-  const handlePanelToggle = () => {
-    const newState = !isPanelOpen;
-    setIsPanelOpen(newState);
-    if (onPanelToggle) {
-      onPanelToggle(newState);
-    }
-  };
-
   return (
     <div className={styles.layout}>
       {header && (
@@ -29,33 +18,15 @@ export default function ConfiguratorLayout({
         </div>
       )}
       
-      <main 
-        className={`${styles.mainContent} ${isPanelOpen ? styles.panelOpen : ''}`}
-      >
+      <main className={styles.mainContent}>
         {children}
       </main>
       
+      {/* Overlay Panel (ConfigurationPanel renders as overlay) */}
       {panel && (
-        <>
-          <div 
-            className={`${styles.panel} ${isPanelOpen ? styles.panelVisible : ''}`}
-          >
-            {panel}
-          </div>
-          
-          {!isPanelOpen && (
-            <button
-              type="button"
-              className={styles.panelToggleButton}
-              onClick={handlePanelToggle}
-              aria-label="Open configuration panel"
-            >
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M9 18l6-6-6-6" />
-              </svg>
-            </button>
-          )}
-        </>
+        <div className={styles.overlayContainer}>
+          {panel}
+        </div>
       )}
     </div>
   );

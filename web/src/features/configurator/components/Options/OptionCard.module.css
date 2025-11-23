@@ -1,15 +1,17 @@
 .card {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
   gap: 1rem;
-  padding: 1.5rem;
-  border-radius: 12px;
+  padding: 0.875rem 1rem; /* Vertical padding smaller, horizontal padding for spacing */
+  border-radius: 0; /* Straight edges */
   border: 1px solid rgba(255, 255, 255, 0.1);
   cursor: pointer;
   transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
   background: rgba(255, 255, 255, 0.03);
-  min-height: 160px;
-  justify-content: space-between;
+  min-height: auto;
+  width: 100%;
   position: relative;
   overflow: hidden;
 }
@@ -17,14 +19,14 @@
 .card:hover {
   background: rgba(255, 255, 255, 0.08);
   border-color: rgba(255, 255, 255, 0.2);
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  transform: translateY(-1px); /* -2px * 0.5 */
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2); /* 4px * 0.5, 12px * 0.5 */
 }
 
 .card.selected {
   border-color: var(--volt-accent);
   background: rgba(255, 69, 32, 0.08);
-  box-shadow: 0 0 0 1px var(--volt-accent), 0 4px 12px rgba(255, 69, 32, 0.15);
+  box-shadow: 0 0 0 1px var(--volt-accent), 0 2px 6px rgba(255, 69, 32, 0.15); /* 4px * 0.5, 12px * 0.5 */
 }
 
 .preview {
@@ -32,22 +34,45 @@
   align-items: center;
   justify-content: center;
   position: relative;
-  height: 70px;
+  width: 48px; /* Fixed width for preview */
+  height: 48px;
+  flex-shrink: 0;
+  order: -1; /* Ensure preview is always first (left side) */
+}
+
+.paintCard .preview {
+  height: 56px; /* Full height for material swatch */
+  padding: 0;
+}
+
+.paintCard {
+  min-height: auto;
+  padding: 0.5rem;
+  justify-content: center;
+}
+
+.paintCard:hover {
+  transform: translateY(-2px);
+}
+
+.paintCard.selected {
+  border-color: var(--volt-accent);
+  box-shadow: 0 0 0 2px var(--volt-accent), 0 4px 12px rgba(255, 69, 32, 0.2);
 }
 
 .checkmark {
   position: absolute;
-  top: 0.5rem;
-  right: 0.5rem;
+  top: 0.25rem; /* 0.5rem * 0.5 */
+  right: 0.25rem; /* 0.5rem * 0.5 */
   color: white;
   background: var(--volt-accent);
   border-radius: 50%;
-  width: 20px;
-  height: 20px;
+  width: 14px; /* 20px * 0.7 */
+  height: 14px; /* 20px * 0.7 */
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3); /* 2px * 0.5, 6px * 0.5 */
   animation: scaleIn 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
 
@@ -59,33 +84,63 @@
 .info {
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
-  text-align: center;
+  gap: 0.125rem; /* 0.25rem * 0.5 */
+  text-align: left;
+  flex: 1;
+  min-width: 0; /* Allow text to shrink */
+  overflow: hidden; /* Prevent text overflow */
+}
+
+.info > * {
+  display: block; /* Ensure text elements are visible */
 }
 
 .name {
-  font-size: 0.9rem;
-  font-weight: 600;
-  color: rgba(255, 255, 255, 0.7);
+  font-size: 0.7rem; /* 0.9rem * 0.78 */
+  font-weight: 700;
+  color: white;
   margin: 0;
   transition: color 0.2s ease;
   letter-spacing: 0.01em;
+  text-transform: uppercase;
 }
 
 .card.selected .name {
   color: white;
 }
 
-.price {
-  font-size: 0.8rem;
+.description {
+  font-size: 0.6rem;
   color: rgba(255, 255, 255, 0.5);
+  margin: 0;
+  line-height: 1.4;
+}
+
+.card.selected .description {
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.price {
+  font-size: 0.65rem; /* 0.8rem * 0.81 */
+  color: white;
   margin: 0;
   font-family: monospace;
   letter-spacing: -0.02em;
+  font-weight: 600;
+  white-space: nowrap;
+  margin-left: auto; /* Push price to the right */
 }
 
 .card.selected .price {
   color: var(--volt-accent);
   font-weight: 600;
+}
+
+.price.included {
+  color: white;
+}
+
+.card.selected .price.included {
+  color: white;
 }
 

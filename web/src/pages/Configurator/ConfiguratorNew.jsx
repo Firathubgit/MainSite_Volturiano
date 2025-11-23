@@ -19,6 +19,7 @@ import ConfiguratorCanvas from '../../features/configurator/components/Configura
 import ConfigurationPanel from '../../features/configurator/components/ConfigurationPanel/ConfigurationPanel';
 import CompatibilityAlert from '../../features/configurator/components/CompatibilityAlert/CompatibilityAlert';
 import CameraControls from '../../features/configurator/components/CameraControls/CameraControls';
+import PricingFooter from '../../features/configurator/components/PricingFooter/PricingFooter';
 import { useConfigSync } from '../../features/configurator/hooks/useConfigSync';
 import { 
   findPaintColorFromOptions, 
@@ -70,8 +71,6 @@ export default function ConfiguratorNew() {
   const effectiveGarageItemId = garageItemId || storedGarageItemId;
   
   // Local state
-  const [showGrid, setShowGrid] = useState(false);
-  const [isPanelOpen, setIsPanelOpen] = useState(true);
   const [storeHydrated, setStoreHydrated] = useState(
     typeof useConfigStore.persist?.hasHydrated === 'function'
       ? useConfigStore.persist.hasHydrated()
@@ -373,12 +372,6 @@ export default function ConfiguratorNew() {
     }
   };
   
-  // Handle view specs
-  const handleViewSpecs = () => {
-    // TODO: Open specs modal or navigate to specs page
-    console.log('[Configurator] View specs');
-  };
-  
   // Render 3D viewer if in 3D mode
   const renderViewer = () => {
     if (viewMode === '3d') {
@@ -431,7 +424,7 @@ export default function ConfiguratorNew() {
         layers={resolvedLayers}
         isLoading={loading.manifest || loading.options}
         currentAngle={currentAngle}
-        showGrid={showGrid}
+        showGrid={false}
         manifest={manifest}
         onLayerLoad={(layerId, url) => {
           console.log('[Configurator] Layer loaded:', layerId, url);
@@ -445,15 +438,8 @@ export default function ConfiguratorNew() {
   
   return (
     <ConfiguratorLayout
-      header={
-        <ConfiguratorHeader
-          onViewSpecs={handleViewSpecs}
-          showGrid={showGrid}
-          onToggleGrid={() => setShowGrid(!showGrid)}
-        />
-      }
+      header={<ConfiguratorHeader />}
           panel={<ConfigurationPanel garageItemId={effectiveGarageItemId} />}
-      onPanelToggle={setIsPanelOpen}
     >
       {/* View Mode Toggle */}
       <ViewModeToggle />
@@ -479,6 +465,9 @@ export default function ConfiguratorNew() {
       {viewMode === '2d' && (
         <CameraControls availableAngles={availableAngles} />
       )}
+      
+      {/* Pricing Footer Overlay */}
+      <PricingFooter garageItemId={effectiveGarageItemId} />
     </ConfiguratorLayout>
   );
 }

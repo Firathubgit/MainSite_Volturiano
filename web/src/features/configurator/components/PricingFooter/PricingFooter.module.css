@@ -1,88 +1,146 @@
+/* Fiverr-style Overlay Footer - Scaled down 30% */
 .footer {
-  padding: 1.5rem;
-  border-top: 1px solid var(--volt-light);
-  background: var(--volt-black);
-  flex-shrink: 0;
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 30;
+  pointer-events: none;
+  padding: 0 1.4rem 1.4rem; /* 2rem * 0.7 */
 }
 
-.priceSection {
+.footerContent {
+  pointer-events: auto;
   display: flex;
-  justify-content: space-between;
   align-items: flex-end;
-  margin-bottom: 1rem;
+  justify-content: space-between;
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.95) 0%, rgba(0, 0, 0, 0.8) 50%, transparent 100%);
+  padding: 2.1rem 1.4rem 1.4rem; /* 3rem * 0.7, 2rem * 0.7 */
+  margin: 0 -1.4rem -1.4rem; /* -2rem * 0.7 */
 }
 
-.priceLabel {
-  font-size: 0.75rem;
+/* Configuration Summary */
+.summary {
+  display: flex;
+  gap: 1.4rem; /* 2rem * 0.7 */
+  align-items: flex-end;
+}
+
+.summaryItem {
+  display: flex;
+  flex-direction: column;
+}
+
+.summaryLabel {
+  font-size: 0.4375rem; /* 0.625rem * 0.7 */
+  font-family: monospace;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.1em;
   color: rgba(255, 255, 255, 0.4);
+  margin: 0 0 0.175rem 0; /* 0.25rem * 0.7 */
 }
 
-.priceValue {
-  font-family: var(--font-display);
-  font-size: 1.875rem;
-  font-weight: 700;
+.summaryValue {
+  font-size: 0.6125rem; /* 0.875rem * 0.7 */
+  font-weight: 500;
   color: white;
   margin: 0;
 }
 
-.breakdownLink {
-  background: none;
-  border: none;
-  color: var(--volt-accent);
-  font-size: 0.75rem;
-  cursor: pointer;
-  padding: 0;
-  margin-bottom: 1rem;
-  text-decoration: none;
-  transition: text-decoration 0.2s ease;
+.summaryItemHidden {
+  display: none;
 }
 
-.breakdownLink:hover {
-  text-decoration: underline;
+@media (min-width: 768px) {
+  .summaryItemHidden {
+    display: flex;
+  }
 }
 
-.breakdown {
-  margin-bottom: 1rem;
-  padding: 1rem;
-  background: rgba(31, 31, 31, 0.5);
-  border-radius: 4px;
+/* Price Section */
+.priceSection {
   display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
+  align-items: center;
+  gap: 1.4rem; /* 2rem * 0.7 */
 }
 
-.breakdownRow {
-  display: flex;
-  justify-content: space-between;
-  font-size: 0.875rem;
-  color: rgba(255, 255, 255, 0.6);
+.priceInfo {
+  text-align: right;
+}
+
+.priceLabel {
+  font-size: 0.4375rem; /* 0.625rem * 0.7 */
+  font-family: monospace;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: rgba(255, 255, 255, 0.4);
+  margin: 0 0 0.175rem 0; /* 0.25rem * 0.7 */
+}
+
+.priceValue {
+  font-family: var(--font-display);
+  font-size: 1.3125rem; /* 1.875rem * 0.7 */
+  font-weight: 700;
+  color: white;
+  margin: 0;
+  letter-spacing: -0.02em;
 }
 
 .orderButton {
-  width: 100%;
-  padding: 1rem;
+  height: 2.45rem; /* 3.5rem * 0.7 */
+  padding: 0 1.4rem; /* 2rem * 0.7 */
   background: var(--volt-accent);
   color: white;
   border: none;
-  border-radius: 4px;
+  border-radius: 2.8px; /* 4px * 0.7 */
   font-family: var(--font-display);
-  font-size: 0.875rem;
+  font-size: 0.6125rem; /* 0.875rem * 0.7 */
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.1em;
   cursor: pointer;
   transition: all 0.2s ease;
-  box-shadow: 0 0 20px rgba(255, 69, 32, 0.3);
+  display: flex;
+  align-items: center;
+  gap: 0.35rem; /* 0.5rem * 0.7 */
+  box-shadow: 0 0 14px rgba(255, 69, 32, 0.3); /* 20px * 0.7 */
 }
 
-.orderButton:hover {
+.orderButton:hover:not(:disabled) {
   background: var(--volt-accent-dark);
-  box-shadow: 0 0 30px rgba(255, 69, 32, 0.5);
+  box-shadow: 0 0 21px rgba(255, 69, 32, 0.5); /* 30px * 0.7 */
+  transform: scale(1.05);
 }
 
-.orderButton:active {
-  transform: scale(0.98);
+.orderButton:active:not(:disabled) {
+  transform: scale(0.95);
+}
+
+.orderButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.orderIcon {
+  width: 0.7rem; /* 1rem * 0.7 */
+  height: 0.7rem; /* 1rem * 0.7 */
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .footerContent {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1.05rem; /* 1.5rem * 0.7 */
+  }
+  
+  .priceSection {
+    width: 100%;
+    justify-content: space-between;
+  }
+  
+  .orderButton {
+    flex: 1;
+  }
 }
 

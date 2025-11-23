@@ -340,6 +340,11 @@ export default function SaveToGarageButton({
           <span className={styles.errorIcon} aria-hidden="true">✗</span>
         )}
         <span>{getButtonText()}</span>
+        {saveStatus === 'idle' && (
+          <svg xmlns="http://www.w3.org/2000/svg" className={styles.arrowIcon} fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
+          </svg>
+        )}
       </button>
       
       {errorMessage && saveStatus === 'error' && (

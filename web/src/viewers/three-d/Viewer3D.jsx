@@ -31,19 +31,17 @@ function VolturianoCar({ bodyColor = '#FF4520', rimColor = '#111111', onMaterial
       materials.forEach((material) => {
         if (!material) return;
         
-        // Enable environment map usage for all materials
+        // Material settings optimized for dark geometric environment
         if (material.isMeshStandardMaterial || material.isMeshPhysicalMaterial) {
-          material.envMapIntensity = 1.0;
           material.needsUpdate = true;
         }
         
         if (material.name === 'Mat_BodyPaint') {
           bodyMatRef.current = material;
-          // Enhance car paint material for better reflections
+          // Enhance car paint material for dark environment
           if (material.isMeshStandardMaterial || material.isMeshPhysicalMaterial) {
             material.metalness = 0.8;
             material.roughness = 0.2;
-            material.envMapIntensity = 1.5; // Stronger reflections for car paint
           }
         }
         if (material.name === 'Mat_RimPaint') {
@@ -52,7 +50,6 @@ function VolturianoCar({ bodyColor = '#FF4520', rimColor = '#111111', onMaterial
           if (material.isMeshStandardMaterial || material.isMeshPhysicalMaterial) {
             material.metalness = 0.9;
             material.roughness = 0.1;
-            material.envMapIntensity = 1.2;
           }
         }
       });
@@ -91,140 +88,181 @@ function VolturianoCar({ bodyColor = '#FF4520', rimColor = '#111111', onMaterial
   return <primitive object={gltf.scene} dispose={null} />;
 }
 
-// Dark geometric environment background
-function GeometricBackground() {
-  const { scene, gl } = useThree();
-  const envMapRef = useRef();
+// Geometric Environment Background Component
+function GeometricEnvironment() {
+  const groupRef = useRef();
 
-  useEffect(() => {
-    // Create a dark environment map for reflections
-    const size = 1024;
-    const canvas = document.createElement('canvas');
-    canvas.width = size;
-    canvas.height = size;
-    const context = canvas.getContext('2d');
-
-    // Dark radial gradient background (darker at edges, slightly lighter in center)
-    const gradient = context.createRadialGradient(size / 2, size / 2, 0, size / 2, size / 2, size / 2);
-    gradient.addColorStop(0, '#1a1a1a');
-    gradient.addColorStop(0.3, '#0f0f0f');
-    gradient.addColorStop(0.7, '#080808');
-    gradient.addColorStop(1, '#000000');
-    context.fillStyle = gradient;
-    context.fillRect(0, 0, size, size);
-
-    // Add subtle geometric grid pattern (like moodboard)
-    context.strokeStyle = '#1a1a1a';
-    context.lineWidth = 0.5;
-    const gridSize = 64;
-    for (let i = 0; i <= size; i += gridSize) {
-      context.beginPath();
-      context.moveTo(i, 0);
-      context.lineTo(i, size);
-      context.stroke();
-      context.beginPath();
-      context.moveTo(0, i);
-      context.lineTo(size, i);
-      context.stroke();
-    }
-
-    // Add diagonal pattern overlay (subtle)
-    context.strokeStyle = '#151515';
-    context.lineWidth = 0.3;
-    const diagonalSpacing = 40;
-    for (let i = -size; i <= size * 2; i += diagonalSpacing) {
-      context.beginPath();
-      context.moveTo(i, 0);
-      context.lineTo(i + size, size);
-      context.stroke();
-    }
-
-    // Convert canvas to texture
-    const texture = new THREE.CanvasTexture(canvas);
-    texture.mapping = THREE.EquirectangularReflectionMapping;
-    texture.needsUpdate = true;
-
-    // Create PMREM generator for environment map using the scene's renderer
-    const pmremGenerator = new THREE.PMREMGenerator(gl);
-    const envMap = pmremGenerator.fromEquirectangular(texture).texture;
-    pmremGenerator.dispose();
-    texture.dispose();
-
-    scene.environment = envMap;
-    scene.background = new THREE.Color(0x0a0a0a); // Dark background matching moodboard
-    envMapRef.current = envMap;
-
-    return () => {
-      if (envMapRef.current) {
-        envMapRef.current.dispose();
-      }
+  // Create dense wireframe buildings surrounding the car on all sides
+  const buildings = useMemo(() => {
+    const buildingGroup = new THREE.Group();
+    
+    // Use seeded random for consistent results
+    let seed = 12345;
+    const random = () => {
+      seed = (seed * 9301 + 49297) % 233280;
+      return seed / 233280;
     };
-  }, [scene, gl]);
 
-  return null;
-}
-
-// Geometric wall panels for depth - matching moodboard aesthetic
-function GeometricWalls() {
-  const wallsRef = useRef();
-
-  const wallGeometry = useMemo(() => {
-    const group = new THREE.Group();
+    // Create dense grid of buildings surrounding the car
+    // Grid covers all directions: front, back, left, right
+    const gridSpacing = 4; // Spacing between buildings
+    const gridSizeX = 30; // Number of buildings in X direction (left-right)
+    const gridSizeZ = 25; // Number of buildings in Z direction (front-back)
     
-    // Create geometric panels on back wall (staggered/interlocking pattern)
-    const panelCount = 24;
-    const baseZ = -18;
+    // Minimum distance from car center - buildings start further away
+    const minDistanceFromCar = 18;
     
-    for (let i = 0; i < panelCount; i++) {
-      const width = 6 + Math.random() * 4;
-      const height = 6 + Math.random() * 4;
-      const depth = 0.15 + Math.random() * 0.1;
-      
-      const panel = new THREE.Mesh(
-        new THREE.BoxGeometry(width, height, depth),
-        new THREE.MeshStandardMaterial({
-          color: new THREE.Color().setHSL(0, 0, 0.06 + Math.random() * 0.04),
-          roughness: 0.85,
-          metalness: 0.05,
-        })
-      );
-      
-      // Staggered positioning for interlocking effect
-      const x = (Math.random() - 0.5) * 35;
-      const y = (Math.random() - 0.5) * 18 + 6;
-      const z = baseZ + (Math.random() - 0.5) * 0.5;
-      
-      panel.position.set(x, y, z);
-      panel.rotation.y = (Math.random() - 0.5) * 0.05;
-      panel.rotation.x = (Math.random() - 0.5) * 0.02;
-      group.add(panel);
+    for (let x = -gridSizeX; x <= gridSizeX; x++) {
+      for (let z = -gridSizeZ; z <= gridSizeZ; z++) {
+        const posX = x * gridSpacing;
+        const posZ = z * gridSpacing;
+        
+        // Skip buildings too close to the car
+        const distanceFromCar = Math.sqrt(posX * posX + posZ * posZ);
+        if (distanceFromCar < minDistanceFromCar) continue;
+        
+        // Add some randomness to skip some positions for more organic feel
+        // But keep it dense (80% chance to place a building)
+        if (random() > 0.2) {
+          const height = 6 + random() * 14;
+          const width = 1.5 + random() * 2.5;
+          const depth = 1.5 + random() * 2.5;
+          
+          // Vary position slightly for more natural look
+          const finalX = posX + (random() - 0.5) * 1.2;
+          const finalZ = posZ + (random() - 0.5) * 1.2;
+          
+          // Create wireframe box
+          const geometry = new THREE.BoxGeometry(width, height, depth);
+          const edges = new THREE.EdgesGeometry(geometry);
+          const line = new THREE.LineSegments(
+            edges,
+            new THREE.LineBasicMaterial({ 
+              color: '#ffffff', 
+              opacity: 0.15,
+              transparent: true 
+            })
+          );
+          
+          line.position.set(finalX, height / 2, finalZ);
+          buildingGroup.add(line);
+        }
+      }
     }
-    
-    return group;
+
+    return buildingGroup;
   }, []);
 
-  return <primitive ref={wallsRef} object={wallGeometry} />;
+  // Create diagonal line pattern background
+  const diagonalLines = useMemo(() => {
+    const lineGroup = new THREE.Group();
+    const lineMaterial = new THREE.LineBasicMaterial({ 
+      color: '#ffffff', 
+      opacity: 0.08,
+      transparent: true 
+    });
+
+    // Use seeded random for consistent results
+    let seed = 67890;
+    const random = () => {
+      seed = (seed * 9301 + 49297) % 233280;
+      return seed / 233280;
+    };
+
+    // Create diagonal lines across the background
+    for (let i = 0; i < 50; i++) {
+      const points = [];
+      const x = (random() - 0.5) * 100;
+      const y = (random() - 0.5) * 50;
+      const z = -30 - random() * 20;
+      
+      points.push(new THREE.Vector3(x, y, z));
+      points.push(new THREE.Vector3(x + 20, y - 10, z));
+      
+      const geometry = new THREE.BufferGeometry().setFromPoints(points);
+      const line = new THREE.Line(geometry, lineMaterial);
+      lineGroup.add(line);
+    }
+
+    return lineGroup;
+  }, []);
+
+  // Create grid pattern
+  const gridPattern = useMemo(() => {
+    const gridGroup = new THREE.Group();
+    const gridMaterial = new THREE.LineBasicMaterial({ 
+      color: '#ffffff', 
+      opacity: 0.05,
+      transparent: true 
+    });
+
+    // Horizontal grid lines
+    for (let i = -20; i <= 20; i += 2) {
+      const points = [
+        new THREE.Vector3(-50, i, -25),
+        new THREE.Vector3(50, i, -25)
+      ];
+      const geometry = new THREE.BufferGeometry().setFromPoints(points);
+      const line = new THREE.Line(geometry, gridMaterial);
+      gridGroup.add(line);
+    }
+
+    // Vertical grid lines
+    for (let i = -50; i <= 50; i += 5) {
+      const points = [
+        new THREE.Vector3(i, -20, -25),
+        new THREE.Vector3(i, 20, -25)
+      ];
+      const geometry = new THREE.BufferGeometry().setFromPoints(points);
+      const line = new THREE.Line(geometry, gridMaterial);
+      gridGroup.add(line);
+    }
+
+    return gridGroup;
+  }, []);
+
+  useEffect(() => {
+    if (!groupRef.current) return;
+    
+    groupRef.current.add(buildings);
+    groupRef.current.add(diagonalLines);
+    groupRef.current.add(gridPattern);
+
+    return () => {
+      buildings.traverse((child) => {
+        if (child.geometry) child.geometry.dispose();
+        if (child.material) child.material.dispose();
+      });
+      diagonalLines.traverse((child) => {
+        if (child.geometry) child.geometry.dispose();
+        if (child.material) child.material.dispose();
+      });
+      gridPattern.traverse((child) => {
+        if (child.geometry) child.geometry.dispose();
+        if (child.material) child.material.dispose();
+      });
+    };
+  }, [buildings, diagonalLines, gridPattern]);
+
+  return <group ref={groupRef} />;
 }
 
 function GroundPlane() {
-  const { scene } = useThree();
   const groundRef = useRef();
 
   useEffect(() => {
     if (!groundRef.current) return;
     
-    // Dark geometric floor matching moodboard aesthetic (staggered/interlocking pattern)
+    // Dark geometric floor with subtle pattern
     const material = new THREE.MeshStandardMaterial({
-      color: '#151515', // Very dark gray
-      roughness: 0.7,
-      metalness: 0.15,
-      envMap: scene.environment,
-      envMapIntensity: 0.2,
+      color: '#0a0a0a', // Very dark gray, almost black
+      roughness: 0.8,
+      metalness: 0.1,
       receiveShadow: true,
     });
     
     groundRef.current.material = material;
-  }, [scene.environment]);
+  }, []);
 
   return (
     <mesh
@@ -233,42 +271,46 @@ function GroundPlane() {
       position={[0, 0, 0]}
       receiveShadow
     >
-      <planeGeometry args={[200, 200, 60, 60]} />
+      <planeGeometry args={[200, 200]} />
     </mesh>
   );
 }
 
 export function Viewer3D({ bodyColor, rimColor, onMaterialsReady }) {
   return (
-    <div style={{ aspectRatio: '16/9', borderRadius: '10px', overflow: 'hidden' }}>
+    <div style={{ aspectRatio: '16/9', borderRadius: '10px', overflow: 'hidden', backgroundColor: '#000000' }}>
       <Canvas
         shadows
         dpr={[1, 2]}
         camera={{ position: [6, 1.8, 8], fov: 50 }}
         gl={{ 
-          toneMappingExposure: 1.2, // Adjusted for dark environment
+          toneMappingExposure: 1.2,
           toneMapping: THREE.ACESFilmicToneMapping,
           physicallyCorrectLights: true
         }}
       >
+        {/* Dark geometric environment background */}
+        <color attach="background" args={['#000000']} />
+        
         <Suspense fallback={null}>
-          <GeometricBackground />
-          <GeometricWalls />
+          <GeometricEnvironment />
           <GroundPlane />
           <VolturianoCar bodyColor={bodyColor} rimColor={rimColor} onMaterialsReady={onMaterialsReady} />
         </Suspense>
         
         {/* Lighting optimized for dark geometric environment */}
-        <ambientLight intensity={0.4} color="#ffffff" />
+        <ambientLight intensity={0.4} />
         <directionalLight 
           position={[10, 12, 8]} 
           intensity={1.2} 
           castShadow 
           color="#ffffff"
-          shadow-mapSize-width={2048}
-          shadow-mapSize-height={2048}
         />
-        <directionalLight position={[-8, 10, -6]} intensity={0.6} color="#ffffff" />
+        <directionalLight 
+          position={[-8, 10, -6]} 
+          intensity={0.6} 
+          color="#ffffff"
+        />
         <pointLight position={[0, 8, 0]} intensity={0.5} color="#ffffff" />
         
         <OrbitControls 

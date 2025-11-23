@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useConfigStore } from '../../../../stores/configStore';
 import { useUserStore } from '../../../../stores/userStore';
 import SaveToGarageButton from '../../../garage/components/SaveToGarageButton';
@@ -9,6 +10,7 @@ import styles from './PricingFooter.module.css';
  * Fixed footer with total price and order button
  */
 export default function PricingFooter({ garageItemId = null }) {
+  const { t } = useTranslation('configurator');
   const [showBreakdown, setShowBreakdown] = useState(false);
   const pricing = useConfigStore((state) => state.pricing);
   const totalPrice = useConfigStore((state) => state.totalPrice());
@@ -102,7 +104,7 @@ export default function PricingFooter({ garageItemId = null }) {
       selectedOptions[opt.id] && 
       (opt.code?.startsWith('paint_') || opt.configurator_group === 'exterior')
     );
-    return paintOption?.label || 'Not Selected';
+    return paintOption?.label || t('states.notSelected');
   };
 
   const getSelectedWheels = () => {
@@ -110,7 +112,7 @@ export default function PricingFooter({ garageItemId = null }) {
       selectedOptions[opt.id] && 
       (opt.code?.startsWith('rim') || opt.code?.startsWith('wheel') || opt.configurator_group === 'wheels')
     );
-    return wheelOption?.label || 'Not Selected';
+    return wheelOption?.label || t('states.notSelected');
   };
 
   const getSelectedInterior = () => {
@@ -118,7 +120,7 @@ export default function PricingFooter({ garageItemId = null }) {
       selectedOptions[opt.id] && 
       (opt.category === 'interior' || opt.configurator_group === 'interior')
     );
-    return interiorOption?.label || 'Not Selected';
+    return interiorOption?.label || t('states.notSelected');
   };
 
   return (
@@ -127,15 +129,15 @@ export default function PricingFooter({ garageItemId = null }) {
         {/* Left: Configuration Summary */}
         <div className={styles.summary}>
           <div className={styles.summaryItem}>
-            <p className={styles.summaryLabel}>Paint</p>
+            <p className={styles.summaryLabel}>{t('pricing.paint')}</p>
             <p className={styles.summaryValue}>{getSelectedPaint()}</p>
           </div>
           <div className={styles.summaryItem}>
-            <p className={styles.summaryLabel}>Wheels</p>
+            <p className={styles.summaryLabel}>{t('pricing.wheels')}</p>
             <p className={styles.summaryValue}>{getSelectedWheels()}</p>
           </div>
           <div className={`${styles.summaryItem} ${styles.summaryItemHidden}`}>
-            <p className={styles.summaryLabel}>Interior</p>
+            <p className={styles.summaryLabel}>{t('pricing.interior')}</p>
             <p className={styles.summaryValue}>{getSelectedInterior()}</p>
           </div>
         </div>
@@ -143,7 +145,7 @@ export default function PricingFooter({ garageItemId = null }) {
         {/* Right: Price & Order Button */}
       <div className={styles.priceSection}>
           <div className={styles.priceInfo}>
-            <p className={styles.priceLabel}>Est. Price</p>
+            <p className={styles.priceLabel}>{t('pricing.estPrice')}</p>
         <h3 className={styles.priceValue}>
           {formatPrice(pricing.total * 100 || 0)}
         </h3>
@@ -171,7 +173,7 @@ export default function PricingFooter({ garageItemId = null }) {
           className={styles.orderButton}
           disabled
         >
-              Place Order
+              {t('pricing.placeOrder')}
               <svg xmlns="http://www.w3.org/2000/svg" className={styles.orderIcon} fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
               </svg>

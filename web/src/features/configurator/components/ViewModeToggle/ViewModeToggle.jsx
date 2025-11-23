@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { useConfigStore } from '../../../../stores/configStore';
 import styles from './ViewModeToggle.module.css';
 
@@ -7,6 +8,7 @@ import styles from './ViewModeToggle.module.css';
  * Floating pill toggle for 2D/3D switching
  */
 export default function ViewModeToggle() {
+  const { t } = useTranslation('configurator');
   const viewMode = useConfigStore((state) => state.viewMode);
   const setViewMode = useConfigStore((state) => state.setViewMode);
   // Always enable 3D mode - Viewer3D component handles its own availability
@@ -34,7 +36,7 @@ export default function ViewModeToggle() {
           <rect x="3" y="3" width="18" height="18" rx="2" />
           <path d="M3 9h18M9 3v18" />
         </svg>
-        <span>2D Visualizer</span>
+        <span>{t('viewMode.2dVisualizer')}</span>
       </button>
       
       <button
@@ -48,7 +50,7 @@ export default function ViewModeToggle() {
           <polyline points="3.27 6.96 12 12.01 20.73 6.96" />
           <line x1="12" y1="22.08" x2="12" y2="12" />
         </svg>
-        <span>3D Configurator</span>
+        <span>{t('viewMode.3dConfigurator')}</span>
       </button>
       </div>
     </div>

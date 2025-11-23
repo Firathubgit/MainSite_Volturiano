@@ -1,5 +1,6 @@
 import React, { useRef, useState, useCallback } from 'react';
 import { motion } from 'framer-motion';
+import { useTranslation } from 'react-i18next';
 import LayeredViewer from '../Viewer/LayeredViewer';
 import exteriorIcon from '../../../../assets/Logo/ExteriorButtonIcon.png';
 import interiorIcon from '../../../../assets/Logo/InteriorButtonIcon.png';
@@ -18,6 +19,7 @@ export default function ConfiguratorCanvas({
   onLayerLoad,
   onLayerError
 }) {
+  const { t } = useTranslation('configurator');
   const containerRef = useRef(null);
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
   const [isHovering, setIsHovering] = useState(false);
@@ -106,7 +108,7 @@ export default function ConfiguratorCanvas({
           type="button"
           className={styles.controlButton}
           onClick={handleFullscreen}
-          aria-label="Toggle fullscreen"
+          aria-label={t('controls.fullscreen', 'Toggle fullscreen')}
           whileHover={{ scale: 1.05, backgroundColor: 'rgba(255, 255, 255, 0.1)' }}
           whileTap={{ scale: 0.95 }}
           transition={{ duration: 0.2 }}
@@ -120,18 +122,18 @@ export default function ConfiguratorCanvas({
           className={styles.controlButton}
           whileHover={{ scale: 1.05, backgroundColor: 'rgba(255, 255, 255, 0.1)' }}
           whileTap={{ scale: 0.95 }}
-          aria-label="Exterior"
+          aria-label={t('categories.exterior')}
         >
-          <img src={exteriorIcon} alt="Exterior" className={`${styles.controlIcon} ${styles.exteriorIcon}`} />
+          <img src={exteriorIcon} alt={t('categories.exterior')} className={`${styles.controlIcon} ${styles.exteriorIcon}`} />
         </motion.button>
         
         <motion.button 
           className={styles.controlButton}
           whileHover={{ scale: 1.05, backgroundColor: 'rgba(255, 255, 255, 0.1)' }}
           whileTap={{ scale: 0.95 }}
-          aria-label="Interior"
+          aria-label={t('categories.interior')}
         >
-          <img src={interiorIcon} alt="Interior" className={styles.controlIcon} />
+          <img src={interiorIcon} alt={t('categories.interior')} className={styles.controlIcon} />
         </motion.button>
       </motion.div>
     </motion.div>

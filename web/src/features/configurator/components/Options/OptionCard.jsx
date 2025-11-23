@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import ColorSwatch from './ColorSwatch';
 import MaterialSwatch from './MaterialSwatch';
 import InteriorColorSwatch from './InteriorColorSwatch';
@@ -12,6 +13,7 @@ import styles from './OptionCard.module.css';
  * Uses MaterialSwatch for paint/exterior options for a cleaner visual design
  */
 export default function OptionCard({ option, isSelected, onSelect, index = 0 }) {
+  const { t } = useTranslation('configurator');
   const hasColor = option.configurator_metadata?.previewColor;
   const hasImage = option.configurator_image_url && !hasColor;
   
@@ -127,7 +129,7 @@ export default function OptionCard({ option, isSelected, onSelect, index = 0 }) 
           </div>
           <span className={`${styles.price} ${option.price_cents === 0 ? styles.included : ''}`}>
             {option.price_cents === 0 
-              ? 'INCLUDED' 
+              ? t('options.included') 
               : `+$${(option.price_cents / 100).toLocaleString()}`}
           </span>
         </>

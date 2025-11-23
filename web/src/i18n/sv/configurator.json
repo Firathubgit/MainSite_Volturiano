@@ -1,6 +1,53 @@
 {
   "title": "Konfigurator",
   "loading": "Laddar visning…",
-  "viewer2dPlaceholder": "Platshållare för 2D-lager"
+  "viewer2dPlaceholder": "Platshållare för 2D-lager",
+  "categories": {
+    "trim": "Utrustning",
+    "exterior": "Exteriör",
+    "wheels": "Hjul",
+    "interior": "Interiör",
+    "performance": "Prestanda"
+  },
+  "categoryLabels": {
+    "modelTrim": "Modellutrustning",
+    "paintFinish": "Färg / Finish",
+    "rimSelection": "Fälgval",
+    "trimUpholstery": "Inredning & Klädsel",
+    "powertrain": "Drivlina"
+  },
+  "states": {
+    "loadingOptions": "Laddar alternativ...",
+    "noOptions": "Inga alternativ tillgängliga för denna kategori.",
+    "notSelected": "Ej valt"
+  },
+  "pricing": {
+    "estPrice": "Ber. Pris",
+    "paint": "Färg",
+    "wheels": "Hjul",
+    "interior": "Interiör",
+    "placeOrder": "Beställ"
+  },
+  "viewMode": {
+    "2dVisualizer": "2D Visualisering",
+    "3dConfigurator": "3D Konfigurator"
+  },
+  "options": {
+    "included": "INGÅR"
+  },
+  "camera": {
+    "front": "Fram",
+    "side": "Sida",
+    "rear": "Bak",
+    "rim": "Fälg",
+    "interior": "Interiör",
+    "viewAngle": "Visa {{angle}} vinkel"
+  },
+  "paint": {
+    "selectColor": "Välj {{color}} färg"
+  },
+  "controls": {
+    "fullscreen": "Växla helskärm"
+  }
 }
 

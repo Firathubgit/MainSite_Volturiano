@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { useConfigStore } from '../../../../stores/configStore';
 import styles from './CameraControls.module.css';
 
@@ -7,6 +8,7 @@ import styles from './CameraControls.module.css';
  * Angle selector buttons for switching camera views
  */
 export default function CameraControls({ availableAngles = [] }) {
+  const { t } = useTranslation('configurator');
   const currentAngle = useConfigStore((state) => state.currentAngle);
   const setAngle = useConfigStore((state) => state.setAngle);
 
@@ -15,11 +17,11 @@ export default function CameraControls({ availableAngles = [] }) {
   }
 
   const angleLabels = {
-    'front-3q': 'Front',
-    'side': 'Side',
-    'rear-3q': 'Rear',
-    'rim': 'Rim',
-    'interior': 'Interior'
+    'front-3q': t('camera.front', 'Front'),
+    'side': t('camera.side', 'Side'),
+    'rear-3q': t('camera.rear', 'Rear'),
+    'rim': t('camera.rim', 'Rim'),
+    'interior': t('camera.interior', 'Interior')
   };
 
   return (
@@ -30,7 +32,7 @@ export default function CameraControls({ availableAngles = [] }) {
           type="button"
           className={`${styles.button} ${currentAngle === angle ? styles.active : ''}`}
           onClick={() => setAngle(angle)}
-          aria-label={`View ${angleLabels[angle] || angle} angle`}
+          aria-label={t('camera.viewAngle', { angle: angleLabels[angle] || angle, defaultValue: `View ${angleLabels[angle] || angle} angle` })}
         >
           {angleLabels[angle] || angle}
         </button>

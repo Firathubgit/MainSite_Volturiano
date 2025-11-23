@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useTranslation } from 'react-i18next';
 import { useConfigStore } from '../../../../stores/configStore';
 import OptionCard from '../Options/OptionCard';
 import PaintSwatchButton from '../Options/PaintSwatchButton';
@@ -21,20 +22,12 @@ const ChevronRight = ({ size = 20 }) => (
   </svg>
 );
 
-// Navigation items matching Fiverr design
-const NAV_ITEMS = [
-  { id: 'trim', label: 'Trim', icon: '🚗' },
-  { id: 'exterior', label: 'Exterior', icon: '🎨' },
-  { id: 'wheels', label: 'Wheels', icon: '⚙️' },
-  { id: 'interior', label: 'Interior', icon: '🪑' },
-  { id: 'performance', label: 'Performance', icon: '⚡' },
-];
-
 /**
  * ConfigurationPanel Component
  * Sidebar panel with expandable sections for configuring the vehicle
  */
 export default function ConfigurationPanel({ garageItemId = null }) {
+  const { t } = useTranslation('configurator');
   const vehicleOptions = useConfigStore((state) => state.vehicleOptions);
   const selectedOptions = useConfigStore((state) => state.selectedOptions);
   const selectOption = useConfigStore((state) => state.selectOption);
@@ -43,6 +36,15 @@ export default function ConfigurationPanel({ garageItemId = null }) {
   const vehicleId = useConfigStore((state) => state.vehicleId);
   const setAngle = useConfigStore((state) => state.setAngle);
   const currentAngle = useConfigStore((state) => state.currentAngle);
+  
+  // Navigation items matching Fiverr design - with translations
+  const NAV_ITEMS = useMemo(() => [
+    { id: 'trim', label: t('categories.trim'), icon: '🚗' },
+    { id: 'exterior', label: t('categories.exterior'), icon: '🎨' },
+    { id: 'wheels', label: t('categories.wheels'), icon: '⚙️' },
+    { id: 'interior', label: t('categories.interior'), icon: '🪑' },
+    { id: 'performance', label: t('categories.performance'), icon: '⚡' },
+  ], [t]);
 
   // Auto-expand first section with options
   const [expandedSection, setExpandedSection] = useState(null);
@@ -254,7 +256,7 @@ export default function ConfigurationPanel({ garageItemId = null }) {
       case 'trim':
         return groupedOptions.trim.length > 0 ? (
           <div className={styles.categoryContent}>
-            <h3 className={styles.categoryLabel}>Model Trim</h3>
+            <h3 className={styles.categoryLabel}>{t('categoryLabels.modelTrim')}</h3>
             <div className={styles.optionsGrid}>
               {groupedOptions.trim.map((option, index) => (
                 <TrimCard
@@ -272,7 +274,7 @@ export default function ConfigurationPanel({ garageItemId = null }) {
       case 'exterior':
         return groupedOptions.exterior.length > 0 ? (
           <div className={styles.categoryContent}>
-            <h3 className={styles.categoryLabel}>Paint / Finish</h3>
+            <h3 className={styles.categoryLabel}>{t('categoryLabels.paintFinish')}</h3>
             <div className={styles.paintGrid}>
               {groupedOptions.exterior.map((option) => (
                 <PaintSwatchButton
@@ -289,7 +291,7 @@ export default function ConfigurationPanel({ garageItemId = null }) {
       case 'wheels':
         return groupedOptions.wheels.length > 0 ? (
           <div className={styles.categoryContent}>
-            <h3 className={styles.categoryLabel}>Rim Selection</h3>
+            <h3 className={styles.categoryLabel}>{t('categoryLabels.rimSelection')}</h3>
             <div className={styles.optionsGrid}>
               {groupedOptions.wheels.map((option, index) => (
                 <OptionCard
@@ -307,7 +309,7 @@ export default function ConfigurationPanel({ garageItemId = null }) {
       case 'interior':
         return groupedOptions.interior.length > 0 ? (
           <div className={styles.categoryContent}>
-            <h3 className={styles.categoryLabel}>Trim & Upholstery</h3>
+            <h3 className={styles.categoryLabel}>{t('categoryLabels.trimUpholstery')}</h3>
             <div className={styles.optionsGrid}>
               {groupedOptions.interior.map((option, index) => (
                 <OptionCard
@@ -325,7 +327,7 @@ export default function ConfigurationPanel({ garageItemId = null }) {
       case 'performance':
         return groupedOptions.performance.length > 0 ? (
           <div className={styles.categoryContent}>
-            <h3 className={styles.categoryLabel}>Powertrain</h3>
+            <h3 className={styles.categoryLabel}>{t('categoryLabels.powertrain')}</h3>
             <div className={styles.optionsGrid}>
               {groupedOptions.performance.map((option, index) => (
                 <OptionCard
@@ -448,7 +450,7 @@ export default function ConfigurationPanel({ garageItemId = null }) {
         <div className={styles.categoryPanel}>
           <div className={styles.categoryHeader}>
             <h2 className={styles.categoryTitle}>
-              {NAV_ITEMS.find(n => n.id === activeCategory)?.label || 'Exterior'}
+              {NAV_ITEMS.find(n => n.id === activeCategory)?.label || t('categories.exterior')}
             </h2>
             <span className={styles.categoryNumber}>
               0{NAV_ITEMS.findIndex(n => n.id === activeCategory) + 1} / 05
@@ -457,11 +459,11 @@ export default function ConfigurationPanel({ garageItemId = null }) {
           <div className={`${styles.categoryBody} custom-scrollbar`}>
             {vehicleOptions.length === 0 ? (
               <div className={styles.loadingState}>
-                <p>Loading options...</p>
+                <p>{t('states.loadingOptions')}</p>
               </div>
             ) : renderCategoryOptions() || (
               <div className={styles.emptyState}>
-                <p>No options available for this category.</p>
+                <p>{t('states.noOptions')}</p>
               </div>
             )}
           </div>

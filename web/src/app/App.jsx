@@ -7,6 +7,7 @@ import { useUserStore } from '../stores/userStore';
 import { useUiStore } from '../stores/uiStore';
 import { fetchProfile } from '../features/account/api';
 import RequireAuth from '../features/account/RequireAuth';
+import RequireAdmin from '../features/admin/components/RequireAdmin';
 import NavDrawer from '../components/NavDrawer/NavDrawer';
 import LoadingOverlay from '../components/LoadingOverlay/LoadingOverlay';
 import { useRenderLogger } from '../debug/useRenderLogger';
@@ -27,6 +28,16 @@ const Garage = lazy(() => import('../features/account/pages/Garage'));
 const Profile = lazy(() => import('../features/account/pages/Profile'));
 const VolturianoWorld = lazy(() => import('../features/account/pages/VolturianoWorld'));
 const SharedGarageView = lazy(() => import('../features/garage/components/SharedGarageView'));
+const AdminDashboard = lazy(() => import('../pages/Admin/Dashboard/Dashboard'));
+const UserList = lazy(() => import('../pages/Admin/Users/UserList'));
+const UserDetail = lazy(() => import('../pages/Admin/Users/UserDetail'));
+const UserCreate = lazy(() => import('../pages/Admin/Users/UserCreate'));
+const VehicleList = lazy(() => import('../pages/Admin/Content/Vehicles/VehicleList'));
+const VehicleDetail = lazy(() => import('../pages/Admin/Content/Vehicles/VehicleDetail'));
+const ManifestList = lazy(() => import('../pages/Admin/Manifests/ManifestList'));
+const AnalyticsDashboard = lazy(() => import('../pages/Admin/Analytics/AnalyticsDashboard'));
+const AuditLogs = lazy(() => import('../pages/Admin/Analytics/AuditLogs'));
+const SystemSettings = lazy(() => import('../pages/Admin/Settings/SystemSettings'));
 const LoadingOverlayTest = import.meta.env.DEV
   ? lazy(() => import('../pages/Debug/LoadingOverlayTest'))
   : null;
@@ -277,6 +288,86 @@ export default function App() {
             {import.meta.env.DEV && TestSaveToGarage && (
               <Route path="/debug/test-save" element={<TestSaveToGarage />} />
             )}
+            <Route
+              path="/admin"
+              element={(
+                <RequireAdmin>
+                  <AdminDashboard />
+                </RequireAdmin>
+              )}
+            />
+            <Route
+              path="/admin/users"
+              element={(
+                <RequireAdmin>
+                  <UserList />
+                </RequireAdmin>
+              )}
+            />
+            <Route
+              path="/admin/users/create"
+              element={(
+                <RequireAdmin>
+                  <UserCreate />
+                </RequireAdmin>
+              )}
+            />
+            <Route
+              path="/admin/users/:userId"
+              element={(
+                <RequireAdmin>
+                  <UserDetail />
+                </RequireAdmin>
+              )}
+            />
+            <Route
+              path="/admin/content/vehicles"
+              element={(
+                <RequireAdmin>
+                  <VehicleList />
+                </RequireAdmin>
+              )}
+            />
+            <Route
+              path="/admin/content/vehicles/:vehicleId"
+              element={(
+                <RequireAdmin>
+                  <VehicleDetail />
+                </RequireAdmin>
+              )}
+            />
+            <Route
+              path="/admin/manifests"
+              element={(
+                <RequireAdmin>
+                  <ManifestList />
+                </RequireAdmin>
+              )}
+            />
+            <Route
+              path="/admin/analytics"
+              element={(
+                <RequireAdmin>
+                  <AnalyticsDashboard />
+                </RequireAdmin>
+              )}
+            />
+            <Route
+              path="/admin/analytics/audit-logs"
+              element={(
+                <RequireAdmin>
+                  <AuditLogs />
+                </RequireAdmin>
+              )}
+            />
+            <Route
+              path="/admin/settings"
+              element={(
+                <RequireAdmin requiredRole="super_admin">
+                  <SystemSettings />
+                </RequireAdmin>
+              )}
+            />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </Suspense>

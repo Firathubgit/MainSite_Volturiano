@@ -92,11 +92,24 @@ export async function fetchProfile(userId) {
   if (!userId) {
     return { data: null, error: new Error('Missing user id for profile lookup.') };
   }
-  return client
+  
+  // Add timeout to prevent infinite hanging due to RLS recursion
+  const profilePromise = client
     .from('profiles')
-    .select('id, display_name, locale, avatar_url, preferences')
+    .select('id, display_name, locale, avatar_url, preferences, role')
     .eq('id', userId)
     .single();
+    
+  const timeoutPromise = new Promise((_, reject) =>
+    setTimeout(() => reject(new Error('Profile fetch timeout - check database RLS policies')), 5000)
+  );
+  
+  try {
+    return await Promise.race([profilePromise, timeoutPromise]);
+  } catch (err) {
+    console.error('[fetchProfile] Query failed or timed out:', err);
+    return { data: null, error: err };
+  }
 }
 
 /**

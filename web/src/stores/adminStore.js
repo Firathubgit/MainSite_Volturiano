@@ -1,0 +1,166 @@
+import { create } from 'zustand';
+import { supabase } from '../lib/supabaseClient';
+
+// Admin store for managing admin authentication and permissions
+export const useAdminStore = create((set, get) => ({
+  isAdmin: false,
+  adminRole: null,
+  permissions: [],
+  loading: true,
+  error: null,
+  
+  checkAdminStatus: async (providedSession = null) => {
+    try {
+      set({ loading: true, error: null });
+      console.log('[AdminStore] Checking admin status...');
+      
+      let session = providedSession;
+      
+      if (!session) {
+        console.log('[AdminStore] No provided session, fetching from Supabase...');
+        // Wrap getSession in a timeout
+        const sessionPromise = supabase.auth.getSession();
+        const timeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Session fetch timeout')), 5000)
+        );
+        
+        try {
+          const result = await Promise.race([sessionPromise, timeoutPromise]);
+          session = result.data?.session;
+          if (result.error) {
+            console.error('[AdminStore] Session error:', result.error);
+            set({ loading: false, isAdmin: false, error: result.error.message });
+            return;
+          }
+        } catch (e) {
+          console.error('[AdminStore] Session fetch timed out or failed:', e);
+          set({ loading: false, isAdmin: false, error: e.message });
+          return;
+        }
+      }
+      
+      if (!session) {
+        console.log('[AdminStore] No session found');
+        set({ 
+          isAdmin: false, 
+          adminRole: null, 
+          permissions: [], 
+          loading: false,
+          error: null
+        });
+        return;
+      }
+      
+      console.log('[AdminStore] Session found for user:', session.user.id);
+      
+      // Get user profile with role
+      // We use a timeout to prevent infinite loading if the query hangs (e.g. due to RLS recursion)
+      const profilePromise = supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', session.user.id)
+        .single();
+        
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Profile fetch timeout - Check database RLS policies')), 5000)
+      );
+      
+      let profile, profileError;
+      
+      try {
+        const result = await Promise.race([profilePromise, timeoutPromise]);
+        profile = result.data;
+        profileError = result.error;
+      } catch (e) {
+        console.error('[AdminStore] Profile fetch failed or timed out:', e);
+        profileError = { message: e.message };
+      }
+      
+      if (profileError) {
+        console.error('[AdminStore] Error fetching profile:', profileError);
+        set({ 
+          isAdmin: false, 
+          adminRole: null, 
+          permissions: [], 
+          loading: false,
+          error: profileError.message
+        });
+        return;
+      }
+      
+      if (!profile) {
+        console.warn('[AdminStore] Profile not found');
+        set({ loading: false, isAdmin: false, error: 'Profile not found' });
+        return;
+      }
+
+      console.log('[AdminStore] Profile role:', profile.role);
+      
+      const isAdmin = profile?.role && 
+        ['support_admin', 'content_admin', 'super_admin'].includes(profile.role);
+      
+      if (isAdmin) {
+        // Fetch permissions for this role
+        const { data: perms, error: permsError } = await supabase
+          .from('admin_permissions')
+          .select('resource, action')
+          .eq('role', profile.role);
+        
+        if (permsError) {
+          console.error('[AdminStore] Error fetching permissions:', permsError);
+        }
+        
+        set({
+          isAdmin: true,
+          adminRole: profile.role,
+          permissions: perms || [],
+          loading: false,
+          error: null
+        });
+      } else {
+        set({ 
+          isAdmin: false, 
+          adminRole: null, 
+          permissions: [], 
+          loading: false,
+          error: 'User is not an admin' // Not really an error, but reason for rejection
+        });
+      }
+    } catch (error) {
+      console.error('[AdminStore] Error checking admin status:', error);
+      set({ 
+        isAdmin: false, 
+        adminRole: null, 
+        permissions: [], 
+        loading: false,
+        error: error.message
+      });
+    }
+  },
+  
+  hasPermission: (resource, action) => {
+    const { adminRole, permissions } = get();
+    
+    // Super admin has all permissions
+    if (adminRole === 'super_admin') {
+      return true;
+    }
+    
+    // Check if permission exists in permissions array
+    return permissions.some(p => 
+      (p.resource === resource || p.resource === '*') &&
+      (p.action === action || p.action === '*')
+    );
+  },
+  
+  reset: () => {
+    set({
+      isAdmin: false,
+      adminRole: null,
+      permissions: [],
+      loading: true,
+      error: null
+    });
+  }
+}));
+

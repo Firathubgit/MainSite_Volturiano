@@ -1,0 +1,67 @@
+.tableWrapper {
+  overflow-x: auto;
+  background-color: #1a1a1a;
+  border: 1px solid #2a2a2a;
+  border-radius: 8px;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.headerCell {
+  padding: 1rem;
+  text-align: left;
+  font-weight: 600;
+  font-size: 0.875rem;
+  color: #cccccc;
+  border-bottom: 1px solid #2a2a2a;
+  background-color: #0a0a0a;
+}
+
+.headerContent {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.sortIndicator {
+  color: #ff4520;
+  font-size: 0.75rem;
+}
+
+.checkboxColumn {
+  width: 40px;
+  padding: 1rem;
+  text-align: center;
+}
+
+.row {
+  border-bottom: 1px solid #2a2a2a;
+  transition: background-color 0.2s;
+}
+
+.row:hover {
+  background-color: #2a2a2a;
+}
+
+.row.selected {
+  background-color: #2a2a2a;
+}
+
+.cell {
+  padding: 1rem;
+  font-size: 0.875rem;
+  color: #ffffff;
+}
+
+.loading,
+.empty {
+  padding: 3rem;
+  text-align: center;
+  color: #666666;
+}
+
+
+

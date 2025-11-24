@@ -1,0 +1,47 @@
+.vehicleDetail {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2rem;
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.formActions {
+  display: flex;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.vehicleInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.infoRow {
+  display: flex;
+  gap: 1rem;
+}
+
+.label {
+  font-weight: 600;
+  color: #cccccc;
+  min-width: 150px;
+}
+
+.value {
+  color: #ffffff;
+}
+
+
+

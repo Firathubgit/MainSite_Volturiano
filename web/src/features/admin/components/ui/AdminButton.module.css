@@ -1,0 +1,88 @@
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border: none;
+  border-radius: 6px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-family: inherit;
+}
+
+.button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.button.loading {
+  cursor: wait;
+}
+
+/* Variants */
+.primary {
+  background-color: #ff4520;
+  color: #ffffff;
+}
+
+.primary:hover:not(:disabled) {
+  background-color: #e63e1c;
+}
+
+.secondary {
+  background-color: #2a2a2a;
+  color: #ffffff;
+  border: 1px solid #3a3a3a;
+}
+
+.secondary:hover:not(:disabled) {
+  background-color: #3a3a3a;
+  border-color: #4a4a4a;
+}
+
+.danger {
+  background-color: #dc2626;
+  color: #ffffff;
+}
+
+.danger:hover:not(:disabled) {
+  background-color: #b91c1c;
+}
+
+/* Sizes */
+.small {
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+}
+
+.medium {
+  padding: 0.75rem 1.5rem;
+  font-size: 0.875rem;
+}
+
+.large {
+  padding: 1rem 2rem;
+  font-size: 1rem;
+}
+
+.icon {
+  font-size: 1rem;
+}
+
+.spinner {
+  display: inline-block;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+
+

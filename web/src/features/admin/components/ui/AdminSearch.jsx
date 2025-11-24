@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Search, X } from 'lucide-react';
 import styles from './AdminSearch.module.css';
 
 export default function AdminSearch({
@@ -31,26 +32,31 @@ export default function AdminSearch({
 
   return (
     <div className={`${styles.searchWrapper} ${className}`}>
-      <span className={styles.searchIcon}>🔍</span>
+      <Search size={18} className={styles.searchIcon} />
       <input
         type="text"
         className={styles.searchInput}
         placeholder={placeholder}
         value={localValue}
         onChange={(e) => setLocalValue(e.target.value)}
+        aria-label="Search"
       />
       {localValue && (
         <button
           className={styles.clearButton}
           onClick={handleClear}
           aria-label="Clear search"
+          type="button"
         >
-          ×
+          <X size={14} />
         </button>
       )}
     </div>
   );
 }
+
+
+
 
 
 

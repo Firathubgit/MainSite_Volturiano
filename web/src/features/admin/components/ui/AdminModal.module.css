@@ -1,63 +1,97 @@
 .overlay {
   position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: rgba(0, 0, 0, 0.75);
+  inset: 0;
+  z-index: 50;
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 1000;
   padding: 1rem;
+  background-color: rgba(0, 0, 0, 0.8);
+  backdrop-filter: blur(4px);
+  animation: fadeIn 0.2s ease-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 .modal {
-  background-color: #1a1a1a;
-  border: 1px solid #2a2a2a;
-  border-radius: 8px;
-  max-width: 600px;
+  position: relative;
   width: 100%;
-  max-height: 90vh;
+  background-color: #0a0a0a;
+  border: 1px solid #27272a;
+  border-radius: 4px;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
   display: flex;
   flex-direction: column;
-  overflow: hidden;
+  max-height: 90vh;
+  animation: zoomIn 0.2s ease-out;
+}
+
+@keyframes zoomIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.modal.sm {
+  max-width: 24rem;
+}
+
+.modal.md {
+  max-width: 28rem;
+}
+
+.modal.lg {
+  max-width: 42rem;
+}
+
+.modal.xl {
+  max-width: 80rem;
 }
 
 .header {
-  padding: 1.5rem;
-  border-bottom: 1px solid #2a2a2a;
   display: flex;
-  justify-content: space-between;
   align-items: center;
+  justify-content: space-between;
+  padding: 1rem;
+  border-bottom: 1px solid #27272a;
 }
 
 .title {
-  font-size: 1.5rem;
-  font-weight: 600;
+  font-size: 1.125rem;
+  font-weight: 700;
   margin: 0;
   color: #ffffff;
+  letter-spacing: -0.025em;
 }
 
 .closeButton {
   background: none;
   border: none;
-  color: #cccccc;
-  font-size: 2rem;
+  color: #71717a;
   cursor: pointer;
-  padding: 0;
-  width: 32px;
-  height: 32px;
+  padding: 0.25rem;
   display: flex;
   align-items: center;
   justify-content: center;
   border-radius: 4px;
-  transition: all 0.2s;
+  transition: all 0.15s;
 }
 
 .closeButton:hover {
-  background-color: #2a2a2a;
   color: #ffffff;
+  background-color: rgba(255, 255, 255, 0.05);
 }
 
 .body {
@@ -67,12 +101,17 @@
 }
 
 .footer {
-  padding: 1rem 1.5rem;
-  border-top: 1px solid #2a2a2a;
+  padding: 1rem;
+  border-top: 1px solid #27272a;
+  background-color: #0f0f0f;
   display: flex;
   justify-content: flex-end;
   gap: 0.75rem;
+  border-radius: 0 0 4px 4px;
 }
+
+
+
 
 
 

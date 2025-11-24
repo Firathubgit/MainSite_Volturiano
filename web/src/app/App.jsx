@@ -35,9 +35,15 @@ const UserCreate = lazy(() => import('../pages/Admin/Users/UserCreate'));
 const VehicleList = lazy(() => import('../pages/Admin/Content/Vehicles/VehicleList'));
 const VehicleDetail = lazy(() => import('../pages/Admin/Content/Vehicles/VehicleDetail'));
 const ManifestList = lazy(() => import('../pages/Admin/Manifests/ManifestList'));
+const ManifestEditor = lazy(() => import('../features/admin/components/ManifestEditor/ManifestEditor'));
+const OptionList = lazy(() => import('../pages/Admin/Content/Options/OptionList'));
+const OptionDetail = lazy(() => import('../pages/Admin/Content/Options/OptionDetail'));
+const OptionCreate = lazy(() => import('../pages/Admin/Content/Options/OptionCreate'));
 const AnalyticsDashboard = lazy(() => import('../pages/Admin/Analytics/AnalyticsDashboard'));
 const AuditLogs = lazy(() => import('../pages/Admin/Analytics/AuditLogs'));
+const UserActivity = lazy(() => import('../pages/Admin/Analytics/UserActivity'));
 const SystemSettings = lazy(() => import('../pages/Admin/Settings/SystemSettings'));
+const RoleManagement = lazy(() => import('../pages/Admin/Settings/RoleManagement'));
 const LoadingOverlayTest = import.meta.env.DEV
   ? lazy(() => import('../pages/Debug/LoadingOverlayTest'))
   : null;
@@ -345,6 +351,38 @@ export default function App() {
               )}
             />
             <Route
+              path="/admin/manifests/:manifestId/edit"
+              element={(
+                <RequireAdmin>
+                  <ManifestEditor />
+                </RequireAdmin>
+              )}
+            />
+            <Route
+              path="/admin/content/options"
+              element={(
+                <RequireAdmin>
+                  <OptionList />
+                </RequireAdmin>
+              )}
+            />
+            <Route
+              path="/admin/content/options/create"
+              element={(
+                <RequireAdmin>
+                  <OptionCreate />
+                </RequireAdmin>
+              )}
+            />
+            <Route
+              path="/admin/content/options/:optionId"
+              element={(
+                <RequireAdmin>
+                  <OptionDetail />
+                </RequireAdmin>
+              )}
+            />
+            <Route
               path="/admin/analytics"
               element={(
                 <RequireAdmin>
@@ -361,10 +399,26 @@ export default function App() {
               )}
             />
             <Route
+              path="/admin/analytics/user-activity"
+              element={(
+                <RequireAdmin>
+                  <UserActivity />
+                </RequireAdmin>
+              )}
+            />
+            <Route
               path="/admin/settings"
               element={(
                 <RequireAdmin requiredRole="super_admin">
                   <SystemSettings />
+                </RequireAdmin>
+              )}
+            />
+            <Route
+              path="/admin/settings/roles"
+              element={(
+                <RequireAdmin requiredRole="super_admin">
+                  <RoleManagement />
                 </RequireAdmin>
               )}
             />

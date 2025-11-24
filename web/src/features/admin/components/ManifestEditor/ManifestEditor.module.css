@@ -1,0 +1,288 @@
+.container {
+  position: fixed;
+  inset: 0;
+  background-color: #0a0a0a;
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  color: #ffffff;
+}
+
+.toolbar {
+  height: 3.5rem;
+  border-bottom: 1px solid #27272a;
+  background-color: #0f0f0f;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 1rem;
+  flex-shrink: 0;
+}
+
+.toolbarLeft {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.titleRow {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.title {
+  font-weight: 700;
+  font-size: 1.125rem;
+  letter-spacing: -0.025em;
+  color: #ffffff;
+}
+
+.vehicleId {
+  padding: 0.125rem 0.5rem;
+  border-radius: 4px;
+  background-color: #27272a;
+  font-size: 0.75rem;
+  color: #a1a1aa;
+  font-family: monospace;
+}
+
+.statusBar {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.75rem;
+  margin-left: 1rem;
+  padding-left: 1rem;
+  border-left: 1px solid #3f3f46;
+  height: 1.5rem;
+}
+
+.statusSaving {
+  color: #eab308;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.statusSaved {
+  color: #10b981;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.statusError {
+  color: #ef4444;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.statusDraft {
+  color: #71717a;
+}
+
+.statusIcon {
+  animation: spin 1s linear infinite;
+}
+
+.statusSaved .statusIcon {
+  animation: none;
+}
+
+.toolbarRight {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.publishButton {
+  background-color: #10b981;
+  border-color: transparent;
+  color: #ffffff;
+}
+
+.publishButton:hover {
+  background-color: #059669;
+}
+
+.closeButton {
+  margin-left: 0.5rem;
+  padding: 0.5rem;
+  color: #71717a;
+  background: none;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  transition: color 0.15s;
+}
+
+.closeButton:hover {
+  color: #ffffff;
+}
+
+.editor {
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+}
+
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid #27272a;
+  flex-shrink: 0;
+}
+
+.resizer {
+  width: 0.25rem;
+  background-color: #18181b;
+  cursor: col-resize;
+  transition: all 0.15s;
+  flex-shrink: 0;
+  z-index: 10;
+}
+
+.resizer:hover {
+  background-color: #ff4520;
+  width: 0.375rem;
+}
+
+.main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 25rem;
+}
+
+.preview {
+  flex: 1;
+  background-color: #121212;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  border-bottom: 1px solid #27272a;
+}
+
+.previewControls {
+  position: absolute;
+  top: 1rem;
+  left: 1rem;
+  z-index: 10;
+}
+
+.angleSelector {
+  background-color: rgba(0, 0, 0, 0.8);
+  backdrop-filter: blur(4px);
+  border: 1px solid #27272a;
+  border-radius: 4px;
+  padding: 0.25rem;
+  display: flex;
+  gap: 0.25rem;
+}
+
+.angleButton {
+  padding: 0.375rem;
+  border-radius: 4px;
+  background: none;
+  border: none;
+  color: #a1a1aa;
+  cursor: pointer;
+  font-size: 0.75rem;
+  transition: all 0.15s;
+}
+
+.angleButton:hover {
+  background-color: #27272a;
+}
+
+.angleButtonActive {
+  padding: 0.375rem;
+  border-radius: 4px;
+  background-color: #27272a;
+  border: none;
+  color: #ffffff;
+}
+
+.previewCanvas {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  overflow: hidden;
+  background-image: radial-gradient(circle at center, #1a1a1a 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+
+.previewPlaceholder {
+  position: relative;
+  width: 500px;
+  height: 300px;
+  background-color: rgba(0, 0, 0, 0.2);
+  border-radius: 8px;
+  border: 1px dashed #3f3f46;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.previewText {
+  color: #71717a;
+  font-size: 0.875rem;
+}
+
+.previewImage {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.layerIndicators {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.5;
+}
+
+.layerIndicator {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 5rem;
+  height: 5rem;
+  border-radius: 9999px;
+  border: 1px solid #52525b;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.5rem;
+  color: #ffffff;
+  transform: translate(-50%, -50%);
+}
+
+.variantSection {
+  height: 300px;
+  flex-shrink: 0;
+}
+
+.propsPanel {
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  background-color: #0a0a0a;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+

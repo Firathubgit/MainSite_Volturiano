@@ -115,7 +115,8 @@ export async function getOptions(filters = {}) {
   const {
     vehicleId = null,
     category = null,
-    search = '',
+    search = null,
+    visible = null,
     page = 1,
     limit = 50
   } = filters;
@@ -124,16 +125,20 @@ export async function getOptions(filters = {}) {
     .from('vehicle_options')
     .select('*', { count: 'exact' });
 
-  if (vehicleId) {
+  if (vehicleId && vehicleId !== 'all') {
     query = query.eq('vehicle_id', vehicleId);
   }
 
-  if (category) {
+  if (category && category !== 'all') {
     query = query.eq('category', category);
   }
 
   if (search) {
     query = query.or(`code.ilike.%${search}%,label.ilike.%${search}%`);
+  }
+
+  if (visible !== null) {
+    query = query.eq('configurator_visible', visible);
   }
 
   query = query.order('configurator_order', { ascending: true });
@@ -144,9 +149,33 @@ export async function getOptions(filters = {}) {
 
   const { data, error, count } = await query;
 
-  if (error) throw error;
+  if (error) {
+    // If table doesn't exist, return empty array
+    if (error.code === '42P01') {
+      return { data: [], count: 0 };
+    }
+    throw error;
+  }
 
-  return { data: data || [], count: count || 0 };
+  // Transform to match expected format
+  const transformed = (data || []).map(opt => ({
+    id: opt.id,
+    vehicleId: opt.vehicle_id,
+    category: opt.category,
+    code: opt.code,
+    label: opt.label,
+    description: opt.description,
+    priceCents: opt.price_cents || 0,
+    currency: opt.currency || 'EUR',
+    mediaUrl: opt.media_url,
+    configuratorVisible: opt.configurator_visible !== false,
+    configuratorGroup: opt.configurator_group,
+    configuratorOrder: opt.configurator_order,
+    dependencies: opt.dependencies || [],
+    updatedAt: opt.updated_at || opt.created_at
+  }));
+
+  return { data: transformed, count: count || 0 };
 }
 
 /**
@@ -162,7 +191,24 @@ export async function getOptionById(optionId) {
     .single();
 
   if (error) throw error;
-  return data;
+  
+  // Transform to app format
+  return {
+    id: data.id,
+    vehicleId: data.vehicle_id,
+    category: data.category,
+    code: data.code,
+    label: data.label,
+    description: data.description,
+    priceCents: data.price_cents || 0,
+    currency: data.currency || 'EUR',
+    mediaUrl: data.media_url,
+    configuratorVisible: data.configurator_visible !== false,
+    configuratorGroup: data.configurator_group,
+    configuratorOrder: data.configurator_order,
+    dependencies: data.dependencies || [],
+    updatedAt: data.updated_at || data.created_at
+  };
 }
 
 /**
@@ -171,16 +217,49 @@ export async function getOptionById(optionId) {
  * @returns {Promise<object>}
  */
 export async function createOption(optionData) {
+  // Transform to database format
+  const dbData = {
+    vehicle_id: optionData.vehicleId,
+    category: optionData.category,
+    code: optionData.code,
+    label: optionData.label,
+    description: optionData.description,
+    price_cents: optionData.priceCents || 0,
+    currency: optionData.currency || 'EUR',
+    media_url: optionData.mediaUrl,
+    configurator_visible: optionData.configuratorVisible !== false,
+    configurator_group: optionData.configuratorGroup,
+    configurator_order: optionData.configuratorOrder,
+    dependencies: optionData.dependencies || []
+  };
+
   const { data, error } = await supabase
     .from('vehicle_options')
-    .insert(optionData)
+    .insert(dbData)
     .select()
     .single();
 
   if (error) throw error;
 
   await logAdminAction('option_created', 'vehicle_option', data.id, optionData);
-  return data;
+  
+  // Transform back to app format
+  return {
+    id: data.id,
+    vehicleId: data.vehicle_id,
+    category: data.category,
+    code: data.code,
+    label: data.label,
+    description: data.description,
+    priceCents: data.price_cents || 0,
+    currency: data.currency || 'EUR',
+    mediaUrl: data.media_url,
+    configuratorVisible: data.configurator_visible !== false,
+    configuratorGroup: data.configurator_group,
+    configuratorOrder: data.configurator_order,
+    dependencies: data.dependencies || [],
+    updatedAt: data.updated_at || data.created_at
+  };
 }
 
 /**
@@ -190,9 +269,24 @@ export async function createOption(optionData) {
  * @returns {Promise<object>}
  */
 export async function updateOption(optionId, updates) {
+  // Transform to database format
+  const dbUpdates = {};
+  if (updates.vehicleId !== undefined) dbUpdates.vehicle_id = updates.vehicleId;
+  if (updates.category !== undefined) dbUpdates.category = updates.category;
+  if (updates.code !== undefined) dbUpdates.code = updates.code;
+  if (updates.label !== undefined) dbUpdates.label = updates.label;
+  if (updates.description !== undefined) dbUpdates.description = updates.description;
+  if (updates.priceCents !== undefined) dbUpdates.price_cents = updates.priceCents;
+  if (updates.currency !== undefined) dbUpdates.currency = updates.currency;
+  if (updates.mediaUrl !== undefined) dbUpdates.media_url = updates.mediaUrl;
+  if (updates.configuratorVisible !== undefined) dbUpdates.configurator_visible = updates.configuratorVisible;
+  if (updates.configuratorGroup !== undefined) dbUpdates.configurator_group = updates.configuratorGroup;
+  if (updates.configuratorOrder !== undefined) dbUpdates.configurator_order = updates.configuratorOrder;
+  if (updates.dependencies !== undefined) dbUpdates.dependencies = updates.dependencies;
+
   const { data, error } = await supabase
     .from('vehicle_options')
-    .update(updates)
+    .update(dbUpdates)
     .eq('id', optionId)
     .select()
     .single();
@@ -200,7 +294,24 @@ export async function updateOption(optionId, updates) {
   if (error) throw error;
 
   await logAdminAction('option_updated', 'vehicle_option', optionId, { updates });
-  return data;
+  
+  // Transform back to app format
+  return {
+    id: data.id,
+    vehicleId: data.vehicle_id,
+    category: data.category,
+    code: data.code,
+    label: data.label,
+    description: data.description,
+    priceCents: data.price_cents || 0,
+    currency: data.currency || 'EUR',
+    mediaUrl: data.media_url,
+    configuratorVisible: data.configurator_visible !== false,
+    configuratorGroup: data.configurator_group,
+    configuratorOrder: data.configurator_order,
+    dependencies: data.dependencies || [],
+    updatedAt: data.updated_at || data.created_at
+  };
 }
 
 /**
@@ -245,6 +356,9 @@ export async function uploadImage(file, bucket, path) {
 
   return publicUrl;
 }
+
+
+
 
 
 

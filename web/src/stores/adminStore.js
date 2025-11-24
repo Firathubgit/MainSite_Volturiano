@@ -60,7 +60,7 @@ export const useAdminStore = create((set, get) => ({
         .select('role')
         .eq('id', session.user.id)
         .single();
-        
+      
       const timeoutPromise = new Promise((_, reject) => 
         setTimeout(() => reject(new Error('Profile fetch timeout - Check database RLS policies')), 5000)
       );

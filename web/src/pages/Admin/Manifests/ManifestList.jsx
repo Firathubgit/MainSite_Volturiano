@@ -34,10 +34,22 @@ export default function ManifestList() {
     try {
       setLoading(true);
       const { data, count } = await getManifests(filters);
-      setManifests(data);
-      setTotalCount(count);
+      // Filter out null/undefined and ensure all manifests have required fields with defaults
+      const normalizedData = (data || [])
+        .filter(manifest => manifest != null) // Remove null/undefined items
+        .map(manifest => ({
+          ...manifest,
+          status: manifest.status || 'draft',
+          version: manifest.version || 1,
+          slug: manifest.slug || manifest.id || 'unknown',
+          created_at: manifest.created_at || new Date().toISOString()
+        }));
+      setManifests(normalizedData);
+      setTotalCount(count || 0);
     } catch (error) {
       console.error('[ManifestList] Error fetching manifests:', error);
+      setManifests([]);
+      setTotalCount(0);
     } finally {
       setLoading(false);
     }
@@ -84,7 +96,8 @@ export default function ManifestList() {
   const columns = [
     {
       key: 'slug',
-      label: 'Slug'
+      label: 'Slug',
+      render: (value, row) => value || row?.id || 'unknown'
     },
     {
       key: 'data',
@@ -94,12 +107,12 @@ export default function ManifestList() {
     {
       key: 'version',
       label: 'Version',
-      render: (value) => `v${value}`
+      render: (value) => `v${value || 1}`
     },
     {
       key: 'status',
       label: 'Status',
-      render: (value) => getStatusBadge(value)
+      render: (value) => getStatusBadge(value || 'draft')
     },
     {
       key: 'created_at',
@@ -109,37 +122,46 @@ export default function ManifestList() {
     {
       key: 'id',
       label: 'Actions',
-      render: (value, row) => (
-        <div className={styles.actions}>
-          <AdminButton
-            size="small"
-            onClick={() => navigate(`/admin/manifests/${value}`)}
-          >
-            Edit
-          </AdminButton>
-          {row.status === 'draft' && (
+      render: (value, row) => {
+        // Defensive check for row existence
+        if (!row || !value) {
+          return <div className={styles.actions}>-</div>;
+        }
+        
+        const status = row.status || 'draft';
+        
+        return (
+          <div className={styles.actions}>
             <AdminButton
               size="small"
-              variant="primary"
-              onClick={() => {
-                setSelectedManifest(row);
-                setShowPublishModal(true);
-              }}
+              onClick={() => navigate(`/admin/manifests/${value}/edit`)}
             >
-              Publish
+              Edit
             </AdminButton>
-          )}
-          {row.status === 'published' && (
-            <AdminButton
-              size="small"
-              variant="secondary"
-              onClick={() => handleArchive(value)}
-            >
-              Archive
-            </AdminButton>
-          )}
-        </div>
-      )
+            {status === 'draft' && (
+              <AdminButton
+                size="small"
+                variant="primary"
+                onClick={() => {
+                  setSelectedManifest(row);
+                  setShowPublishModal(true);
+                }}
+              >
+                Publish
+              </AdminButton>
+            )}
+            {status === 'published' && (
+              <AdminButton
+                size="small"
+                variant="secondary"
+                onClick={() => handleArchive(value)}
+              >
+                Archive
+              </AdminButton>
+            )}
+          </div>
+        );
+      }
     }
   ];
 
@@ -230,6 +252,9 @@ export default function ManifestList() {
     </AdminLayout>
   );
 }
+
+
+
 
 
 

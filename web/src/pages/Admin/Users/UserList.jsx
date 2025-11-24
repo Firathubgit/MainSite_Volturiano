@@ -1,231 +1,167 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { Search, Filter, MoreHorizontal, ShieldCheck, Shield, User as UserIcon } from 'lucide-react';
 import AdminLayout from '../../../features/admin/components/AdminLayout/AdminLayout';
-import AdminTable from '../../../features/admin/components/ui/AdminTable';
-import AdminSearch from '../../../features/admin/components/ui/AdminSearch';
-import AdminSelect from '../../../features/admin/components/ui/AdminSelect';
-import AdminButton from '../../../features/admin/components/ui/AdminButton';
-import AdminPagination from '../../../features/admin/components/ui/AdminPagination';
-import AdminBadge from '../../../features/admin/components/ui/AdminBadge';
-import { getUsers, bulkUpdateUserRoles, exportUsersToCSV } from '../../../features/admin/api/users';
+import { getUsers } from '../../../features/admin/api/adminService';
 import styles from './UserList.module.css';
 
 export default function UserList() {
   const navigate = useNavigate();
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [selectedRows, setSelectedRows] = useState([]);
-  const [filters, setFilters] = useState({
-    search: '',
-    role: '',
-    page: 1,
-    limit: 50,
-    sortColumn: 'created_at',
-    sortDirection: 'desc'
-  });
-  const [totalCount, setTotalCount] = useState(0);
+  const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
-    fetchUsers();
-  }, [filters]);
-
-  const fetchUsers = async () => {
-    try {
-      setLoading(true);
-      const { data, count } = await getUsers(filters);
-      setUsers(data);
-      setTotalCount(count);
-    } catch (error) {
-      console.error('[UserList] Error fetching users:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleSearch = (search) => {
-    setFilters(prev => ({ ...prev, search, page: 1 }));
-  };
-
-  const handleRoleFilter = (e) => {
-    setFilters(prev => ({ ...prev, role: e.target.value || null, page: 1 }));
-  };
-
-  const handleSort = (column, direction) => {
-    setFilters(prev => ({ ...prev, sortColumn: column, sortDirection: direction }));
-  };
-
-  const handlePageChange = (page) => {
-    setFilters(prev => ({ ...prev, page }));
-  };
-
-  const handlePageSizeChange = (limit) => {
-    setFilters(prev => ({ ...prev, limit, page: 1 }));
-  };
-
-  const handleBulkRoleUpdate = async (role) => {
-    if (selectedRows.length === 0) return;
-    
-    const userIds = selectedRows.map(index => users[index].id);
-    try {
-      await bulkUpdateUserRoles(userIds, role);
-      setSelectedRows([]);
-      fetchUsers();
-    } catch (error) {
-      console.error('[UserList] Error updating roles:', error);
-      alert('Failed to update user roles');
-    }
-  };
-
-  const handleExportCSV = async () => {
-    try {
-      const csv = await exportUsersToCSV(filters);
-      const blob = new Blob([csv], { type: 'text/csv' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `users-${new Date().toISOString()}.csv`;
-      a.click();
-      URL.revokeObjectURL(url);
-    } catch (error) {
-      console.error('[UserList] Error exporting CSV:', error);
-      alert('Failed to export users');
-    }
-  };
-
-  const columns = [
-    {
-      key: 'email',
-      label: 'Email',
-      sortable: true,
-      render: (value) => value || 'N/A'
-    },
-    {
-      key: 'display_name',
-      label: 'Display Name',
-      sortable: true,
-      render: (value) => value || 'N/A'
-    },
-    {
-      key: 'role',
-      label: 'Role',
-      sortable: true,
-      render: (value) => {
-        const roleColors = {
-          super_admin: 'error',
-          content_admin: 'warning',
-          support_admin: 'info',
-          user: 'default'
-        };
-        return (
-          <AdminBadge variant={roleColors[value] || 'default'}>
-            {value || 'user'}
-          </AdminBadge>
-        );
+    const fetchUsers = async () => {
+      try {
+        setLoading(true);
+        const data = await getUsers();
+        setUsers(data);
+      } catch (error) {
+        console.error('[UserList] Error fetching users:', error);
+      } finally {
+        setLoading(false);
       }
-    },
-    {
-      key: 'created_at',
-      label: 'Created At',
-      sortable: true,
-      render: (value) => value ? new Date(value).toLocaleDateString() : 'N/A'
-    },
-    {
-      key: 'id',
-      label: 'Actions',
-      render: (value, row) => (
-        <AdminButton
-          size="small"
-          onClick={() => navigate(`/admin/users/${value}`)}
-        >
-          View
-        </AdminButton>
-      )
+    };
+
+    fetchUsers();
+  }, []);
+
+  const getRoleBadge = (role) => {
+    switch (role) {
+      case 'super_admin':
+        return (
+          <span className={styles.roleBadge}>
+            <ShieldCheck size={14} className={styles.roleIcon} />
+            Super Admin
+          </span>
+        );
+      case 'content_admin':
+        return (
+          <span className={`${styles.roleBadge} ${styles.roleBadgePurple}`}>
+            <Shield size={14} className={styles.roleIcon} />
+            Content
+          </span>
+        );
+      case 'support_admin':
+        return (
+          <span className={`${styles.roleBadge} ${styles.roleBadgeBlue}`}>
+            <Shield size={14} className={styles.roleIcon} />
+            Support
+          </span>
+        );
+      default:
+        return (
+          <span className={`${styles.roleBadge} ${styles.roleBadgeDefault}`}>
+            <UserIcon size={14} className={styles.roleIcon} />
+            User
+          </span>
+        );
     }
-  ];
+  };
+
+  const filteredUsers = users.filter(u => 
+    u.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    u.id.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  const getInitials = (email) => {
+    if (!email) return 'AD';
+    return email.substring(0, 2).toUpperCase();
+  };
 
   return (
     <AdminLayout>
       <div className={styles.userList}>
         <div className={styles.header}>
-          <h1 className={styles.title}>User Management</h1>
-          <AdminButton onClick={() => navigate('/admin/users/create')}>
-            Create User
-          </AdminButton>
+          <div>
+            <h1 className={styles.title}>Users</h1>
+            <p className={styles.subtitle}>Manage access and role-based permissions.</p>
+          </div>
+          <button 
+            className={styles.inviteButton}
+            onClick={() => navigate('/admin/users/create')}
+          >
+            Invite Admin
+          </button>
         </div>
 
-        <div className={styles.filters}>
-          <AdminSearch
-            placeholder="Search by email or name..."
-            value={filters.search}
-            onChange={handleSearch}
-            className={styles.search}
-          />
-          <AdminSelect
-            label="Filter by Role"
-            value={filters.role || ''}
-            onChange={handleRoleFilter}
-            options={[
-              { value: '', label: 'All Roles' },
-              { value: 'user', label: 'User' },
-              { value: 'support_admin', label: 'Support Admin' },
-              { value: 'content_admin', label: 'Content Admin' },
-              { value: 'super_admin', label: 'Super Admin' }
-            ]}
-            className={styles.roleFilter}
-          />
-        </div>
-
-        {selectedRows.length > 0 && (
-          <div className={styles.bulkActions}>
-            <span className={styles.selectedCount}>
-              {selectedRows.length} selected
-            </span>
-            <AdminSelect
-              value=""
-              onChange={(e) => e.target.value && handleBulkRoleUpdate(e.target.value)}
-              options={[
-                { value: '', label: 'Bulk Role Update' },
-                { value: 'user', label: 'Set to User' },
-                { value: 'support_admin', label: 'Set to Support Admin' },
-                { value: 'content_admin', label: 'Set to Content Admin' }
-              ]}
+        {/* Toolbar */}
+        <div className={styles.toolbar}>
+          <div className={styles.searchContainer}>
+            <Search className={styles.searchIcon} size={18} />
+            <input 
+              type="text" 
+              placeholder="Search by email..." 
+              className={styles.searchInput}
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
             />
-            <AdminButton variant="danger" onClick={() => setSelectedRows([])}>
-              Clear Selection
-            </AdminButton>
+          </div>
+          <button className={styles.filterButton}>
+            <Filter size={18} className={styles.filterIcon} />
+            Filter
+          </button>
+        </div>
+
+        {/* Data Table */}
+        {loading ? (
+          <div className={styles.loading}>Loading users...</div>
+        ) : (
+          <div className={styles.tableContainer}>
+            <table className={styles.table}>
+              <thead className={styles.thead}>
+                <tr>
+                  <th className={styles.th}>User Identity</th>
+                  <th className={styles.th}>Role</th>
+                  <th className={styles.th}>Status</th>
+                  <th className={styles.th}>Last Active</th>
+                  <th className={`${styles.th} ${styles.thActions}`}>Actions</th>
+                </tr>
+              </thead>
+              <tbody className={styles.tbody}>
+                {filteredUsers.map((user) => (
+                  <tr key={user.id} className={styles.tr}>
+                    <td className={styles.td}>
+                      <div className={styles.userIdentity}>
+                        <div className={styles.avatar}>
+                          {getInitials(user.email)}
+                        </div>
+                        <div>
+                          <div className={styles.userEmail}>{user.email}</div>
+                          <div className={styles.userId}>ID: {user.id}</div>
+                        </div>
+                      </div>
+                    </td>
+                    <td className={styles.td}>
+                      {getRoleBadge(user.role)}
+                    </td>
+                    <td className={styles.td}>
+                      <span className={`${styles.statusBadge} ${user.status === 'active' ? styles.statusActive : styles.statusSuspended}`}>
+                        {user.status.toUpperCase()}
+                      </span>
+                    </td>
+                    <td className={styles.td}>
+                      <span className={styles.lastActive}>{user.lastActive}</span>
+                    </td>
+                    <td className={`${styles.td} ${styles.tdActions}`}>
+                      <button 
+                        className={styles.actionButton}
+                        onClick={() => navigate(`/admin/users/${user.id}`)}
+                      >
+                        <MoreHorizontal size={20} />
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            {filteredUsers.length === 0 && (
+              <div className={styles.emptyState}>No users found matching your search.</div>
+            )}
           </div>
         )}
-
-        <div className={styles.actions}>
-          <AdminButton variant="secondary" onClick={handleExportCSV}>
-            Export CSV
-          </AdminButton>
-        </div>
-
-        <AdminTable
-          columns={columns}
-          data={users}
-          loading={loading}
-          onSort={handleSort}
-          sortColumn={filters.sortColumn}
-          sortDirection={filters.sortDirection}
-          onRowSelect={setSelectedRows}
-          selectedRows={selectedRows}
-          emptyMessage="No users found"
-        />
-
-        <AdminPagination
-          currentPage={filters.page}
-          totalPages={Math.ceil(totalCount / filters.limit)}
-          onPageChange={handlePageChange}
-          pageSize={filters.limit}
-          onPageSizeChange={handlePageSizeChange}
-          totalItems={totalCount}
-        />
       </div>
     </AdminLayout>
   );
 }
-
-
-

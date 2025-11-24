@@ -1,119 +1,116 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { Plus, PenTool, Eye } from 'lucide-react';
 import AdminLayout from '../../../../features/admin/components/AdminLayout/AdminLayout';
-import AdminTable from '../../../../features/admin/components/ui/AdminTable';
-import AdminSearch from '../../../../features/admin/components/ui/AdminSearch';
-import AdminButton from '../../../../features/admin/components/ui/AdminButton';
-import AdminPagination from '../../../../features/admin/components/ui/AdminPagination';
-import { getVehicles } from '../../../../features/admin/api/content';
+import { getVehicles } from '../../../../features/admin/api/adminService';
 import styles from './VehicleList.module.css';
 
 export default function VehicleList() {
   const navigate = useNavigate();
   const [vehicles, setVehicles] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [filters, setFilters] = useState({
-    search: '',
-    page: 1,
-    limit: 50,
-    sortColumn: 'created_at',
-    sortDirection: 'desc'
-  });
-  const [totalCount, setTotalCount] = useState(0);
 
   useEffect(() => {
+    const fetchVehicles = async () => {
+      try {
+        setLoading(true);
+        const data = await getVehicles();
+        setVehicles(data);
+      } catch (error) {
+        console.error('[VehicleList] Error fetching vehicles:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
     fetchVehicles();
-  }, [filters]);
-
-  const fetchVehicles = async () => {
-    try {
-      setLoading(true);
-      const { data, count } = await getVehicles(filters);
-      setVehicles(data);
-      setTotalCount(count);
-    } catch (error) {
-      console.error('[VehicleList] Error fetching vehicles:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const columns = [
-    {
-      key: 'name',
-      label: 'Name',
-      sortable: true
-    },
-    {
-      key: 'slug',
-      label: 'Slug',
-      sortable: true
-    },
-    {
-      key: 'trim',
-      label: 'Trim'
-    },
-    {
-      key: 'year',
-      label: 'Year',
-      sortable: true
-    },
-    {
-      key: 'base_price_cents',
-      label: 'Base Price',
-      render: (value) => value ? `€${(value / 100).toLocaleString()}` : 'N/A'
-    },
-    {
-      key: 'id',
-      label: 'Actions',
-      render: (value) => (
-        <AdminButton
-          size="small"
-          onClick={() => navigate(`/admin/content/vehicles/${value}`)}
-        >
-          View
-        </AdminButton>
-      )
-    }
-  ];
+  }, []);
 
   return (
     <AdminLayout>
       <div className={styles.vehicleList}>
         <div className={styles.header}>
-          <h1 className={styles.title}>Vehicle Management</h1>
-          <AdminButton onClick={() => navigate('/admin/content/vehicles/create')}>
+          <div>
+            <h1 className={styles.title}>Vehicles</h1>
+            <p className={styles.subtitle}>Manage 3D assets, configuration manifests, and pricing.</p>
+          </div>
+          <button 
+            className={styles.addButton}
+            onClick={() => navigate('/admin/content/vehicles/create')}
+          >
+            <Plus size={16} className={styles.addButtonIcon} />
             Add Vehicle
-          </AdminButton>
+          </button>
         </div>
 
-        <div className={styles.filters}>
-          <AdminSearch
-            placeholder="Search vehicles..."
-            value={filters.search}
-            onChange={(search) => setFilters(prev => ({ ...prev, search, page: 1 }))}
-          />
-        </div>
+        {loading ? (
+          <div className={styles.loading}>Loading vehicles...</div>
+        ) : (
+          <div className={styles.grid}>
+            {vehicles.map((car) => (
+              <div key={car.id} className={styles.card}>
+                <div className={styles.imageContainer}>
+                  <img 
+                    src={car.thumbnail} 
+                    alt={car.name} 
+                    className={styles.image}
+                  />
+                  <div className={styles.statusBadge}>
+                    <span className={`${styles.statusText} ${styles[`status${car.status.charAt(0).toUpperCase() + car.status.slice(1)}`]}`}>
+                      {car.status}
+                    </span>
+                  </div>
+                </div>
+                
+                <div className={styles.cardContent}>
+                  <div className={styles.cardHeader}>
+                    <div>
+                      <h3 className={styles.vehicleName}>{car.name}</h3>
+                      <p className={styles.modelCode}>{car.modelCode}</p>
+                    </div>
+                  </div>
+                  
+                  <div className={styles.statsGrid}>
+                    <div className={styles.stat}>
+                      <p className={styles.statLabel}>Configs</p>
+                      <p className={styles.statValue}>{car.configurationsCount}</p>
+                    </div>
+                    <div className={styles.stat}>
+                      <p className={styles.statLabel}>Last Edit</p>
+                      <p className={styles.statValueSmall}>{car.lastUpdated}</p>
+                    </div>
+                  </div>
 
-        <AdminTable
-          columns={columns}
-          data={vehicles}
-          loading={loading}
-          emptyMessage="No vehicles found"
-        />
+                  <div className={styles.cardActions}>
+                    <button 
+                      className={styles.editButton}
+                      onClick={() => navigate(`/admin/content/vehicles/${car.id}`)}
+                    >
+                      <PenTool size={14} className={styles.editButtonIcon} />
+                      Edit
+                    </button>
+                    <button className={styles.viewButton}>
+                      <Eye size={16} />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
 
-        <AdminPagination
-          currentPage={filters.page}
-          totalPages={Math.ceil(totalCount / filters.limit)}
-          onPageChange={(page) => setFilters(prev => ({ ...prev, page }))}
-          pageSize={filters.limit}
-          onPageSizeChange={(limit) => setFilters(prev => ({ ...prev, limit, page: 1 }))}
-          totalItems={totalCount}
-        />
+            {/* Placeholder for 'New' card */}
+            <div 
+              className={styles.newCard}
+              onClick={() => navigate('/admin/content/vehicles/create')}
+            >
+              <div className={styles.newCardIcon}>
+                <Plus size={32} />
+              </div>
+              <h3 className={styles.newCardTitle}>Create New Model</h3>
+              <p className={styles.newCardSubtitle}>Import blender assets to start</p>
+            </div>
+          </div>
+        )}
       </div>
     </AdminLayout>
   );
 }
-
-
-

@@ -1,4 +1,5 @@
 import React from 'react';
+import { ArrowLeft, ArrowRight } from 'lucide-react';
 import styles from './AdminPagination.module.css';
 
 export default function AdminPagination({
@@ -7,7 +8,8 @@ export default function AdminPagination({
   onPageChange,
   pageSize,
   onPageSizeChange,
-  totalItems
+  totalItems,
+  className = ''
 }) {
   const getPageNumbers = () => {
     const pages = [];
@@ -39,33 +41,49 @@ export default function AdminPagination({
   if (totalPages <= 1) return null;
 
   return (
-    <div className={styles.pagination}>
+    <div className={`${styles.pagination} ${className}`}>
       <div className={styles.info}>
-        Showing {((currentPage - 1) * pageSize) + 1} to {Math.min(currentPage * pageSize, totalItems)} of {totalItems}
+        {totalItems && pageSize ? (
+          <>
+            Showing <span className={styles.number}>{Math.min((currentPage - 1) * pageSize + 1, totalItems)}</span> to{' '}
+            <span className={styles.number}>{Math.min(currentPage * pageSize, totalItems)}</span> of{' '}
+            <span className={styles.number}>{totalItems}</span> results
+          </>
+        ) : (
+          <>
+            Page <span className={styles.number}>{currentPage}</span> of <span className={styles.number}>{totalPages}</span>
+          </>
+        )}
       </div>
       <div className={styles.controls}>
         <button
           className={styles.button}
           onClick={() => onPageChange(currentPage - 1)}
           disabled={currentPage === 1}
+          aria-label="Previous page"
         >
-          Previous
+          <ArrowLeft size={16} />
         </button>
-        {getPageNumbers().map((page) => (
-          <button
-            key={page}
-            className={`${styles.button} ${currentPage === page ? styles.active : ''}`}
-            onClick={() => onPageChange(page)}
-          >
-            {page}
-          </button>
-        ))}
+        <div className={styles.pageNumbers}>
+          {getPageNumbers().map((page) => (
+            <button
+              key={page}
+              className={`${styles.pageButton} ${currentPage === page ? styles.pageButtonActive : ''}`}
+              onClick={() => onPageChange(page)}
+              aria-label={`Page ${page}`}
+              aria-current={currentPage === page ? 'page' : undefined}
+            >
+              {page}
+            </button>
+          ))}
+        </div>
         <button
           className={styles.button}
           onClick={() => onPageChange(currentPage + 1)}
           disabled={currentPage === totalPages}
+          aria-label="Next page"
         >
-          Next
+          <ArrowRight size={16} />
         </button>
       </div>
       {onPageSizeChange && (
@@ -74,6 +92,7 @@ export default function AdminPagination({
             value={pageSize}
             onChange={(e) => onPageSizeChange(Number(e.target.value))}
             className={styles.select}
+            aria-label="Items per page"
           >
             <option value={10}>10 per page</option>
             <option value={25}>25 per page</option>
@@ -85,6 +104,9 @@ export default function AdminPagination({
     </div>
   );
 }
+
+
+
 
 
 

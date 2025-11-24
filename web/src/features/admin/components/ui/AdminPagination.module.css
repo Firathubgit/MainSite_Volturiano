@@ -2,16 +2,19 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 1rem;
-  border-top: 1px solid #2a2a2a;
-  background-color: #0a0a0a;
+  padding: 1rem 0.5rem;
   flex-wrap: wrap;
   gap: 1rem;
 }
 
 .info {
   font-size: 0.875rem;
-  color: #cccccc;
+  color: #71717a;
+}
+
+.number {
+  font-weight: 500;
+  color: #ffffff;
 }
 
 .controls {
@@ -21,20 +24,24 @@
 }
 
 .button {
-  padding: 0.5rem 0.75rem;
+  padding: 0.5rem;
+  border: 1px solid #27272a;
   background-color: #1a1a1a;
-  border: 1px solid #2a2a2a;
-  border-radius: 6px;
-  color: #ffffff;
+  color: #a1a1aa;
+  border-radius: 4px;
   cursor: pointer;
   font-size: 0.875rem;
-  transition: all 0.2s;
-  min-width: 40px;
+  transition: all 0.15s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2rem;
+  height: 2rem;
 }
 
 .button:hover:not(:disabled) {
-  background-color: #2a2a2a;
-  border-color: #3a3a3a;
+  color: #ffffff;
+  border-color: #3f3f46;
 }
 
 .button:disabled {
@@ -42,10 +49,39 @@
   cursor: not-allowed;
 }
 
-.button.active {
-  background-color: #ff4520;
-  border-color: #ff4520;
+.pageNumbers {
+  display: flex;
+  gap: 0.25rem;
+  align-items: center;
+}
+
+.pageButton {
+  width: 2rem;
+  height: 2rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  font-size: 0.875rem;
+  color: #a1a1aa;
+  background-color: transparent;
+  border: none;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.pageButton:hover {
+  background-color: #27272a;
   color: #ffffff;
+}
+
+.pageButtonActive {
+  background-color: #ff4520;
+  color: #ffffff;
+}
+
+.pageButtonActive:hover {
+  background-color: #ff4520;
 }
 
 .pageSize {
@@ -56,16 +92,22 @@
 .select {
   padding: 0.5rem;
   background-color: #1a1a1a;
-  border: 1px solid #2a2a2a;
-  border-radius: 6px;
+  border: 1px solid #27272a;
+  border-radius: 4px;
   color: #ffffff;
   font-size: 0.875rem;
   cursor: pointer;
+  transition: all 0.15s;
 }
 
 .select:focus {
   outline: none;
   border-color: #ff4520;
+  box-shadow: 0 0 0 1px rgba(255, 69, 32, 0.2);
+}
+
+.select:hover {
+  border-color: #3f3f46;
 }
 
 @media (max-width: 768px) {
@@ -77,7 +119,14 @@
   .controls {
     justify-content: center;
   }
+
+  .pageNumbers {
+    display: none;
+  }
 }
+
+
+
 
 
 

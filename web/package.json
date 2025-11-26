@@ -21,7 +21,7 @@
     "react-i18next": "^13.5.0",
     "react-router-dom": "^6.26.2",
     "recharts": "^3.5.0",
-    "three": "^0.160.0",
+    "three": "^0.181.2",
     "use-debounce": "^10.0.6",
     "zustand": "^4.5.2"
   },

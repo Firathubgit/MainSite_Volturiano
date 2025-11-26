@@ -11,6 +11,7 @@ import RequireAdmin from '../features/admin/components/RequireAdmin';
 import NavDrawer from '../components/NavDrawer/NavDrawer';
 import LoadingOverlay from '../components/LoadingOverlay/LoadingOverlay';
 import { useRenderLogger } from '../debug/useRenderLogger';
+import { usePageTitle } from '../hooks/usePageTitle';
 
 const Home = lazy(() => import('../pages/Home/Home'));
 const Models = lazy(() => import('../pages/Models/Models'));
@@ -67,6 +68,9 @@ export default function App() {
   const status = useUserStore((state) => state.status);
   const session = useUserStore((state) => state.session);
   const forceOverlay = useUiStore((state) => state.forceOverlay);
+  
+  // Set dynamic page title based on current route
+  usePageTitle();
   
   console.log('[App] Current state:', {
     status,

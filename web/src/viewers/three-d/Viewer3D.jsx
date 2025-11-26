@@ -8,7 +8,7 @@ import * as THREE from 'three';
 const CAR_MODEL_URL = '/VolturianoGLB.glb';
 
 function VolturianoCar({ bodyColor = '#FF4520', rimColor = '#111111', onMaterialsReady }) {
-  const gltf = useGLTF(CAR_MODEL_URL);
+  const gltf = useGLTF(CAR_MODEL_URL, true); // true = useDraco for compression if available
   const bodyMatRef = useRef(null);
   const rimMatRef = useRef(null);
 
@@ -16,6 +16,26 @@ function VolturianoCar({ bodyColor = '#FF4520', rimColor = '#111111', onMaterial
     console.log('[Viewer3D] GLTF loaded:', gltf);
     console.log('[Viewer3D] GLTF scene:', gltf?.scene);
     console.log('[Viewer3D] CAR_MODEL_URL:', CAR_MODEL_URL);
+    
+    if (gltf?.scene) {
+      // Check for texture loading issues
+      gltf.scene.traverse((child) => {
+        if (child.isMesh) {
+          const materials = Array.isArray(child.material) ? child.material : [child.material];
+          materials.forEach((material) => {
+            if (material) {
+              // Log texture status
+              if (material.map && !material.map.image) {
+                console.warn('[Viewer3D] Material', material.name, 'has map but image not loaded');
+              }
+              if (material.map && material.map.image) {
+                console.log('[Viewer3D] Material', material.name, 'texture loaded:', material.map.image.src);
+              }
+            }
+          });
+        }
+      });
+    }
   }, [gltf]);
 
   useEffect(() => {
@@ -24,20 +44,49 @@ function VolturianoCar({ bodyColor = '#FF4520', rimColor = '#111111', onMaterial
       return;
     }
 
+    // Log all meshes and materials for debugging
+    const allMaterials = new Set();
+    const allMeshes = [];
+    
     gltf.scene.traverse((child) => {
       if (!child.isMesh) return;
+      
+      // Set shadow properties on mesh (not material)
       child.castShadow = true;
       child.receiveShadow = true;
+      
+      allMeshes.push({
+        name: child.name,
+        material: child.material
+      });
 
       const materials = Array.isArray(child.material) ? child.material : [child.material];
       materials.forEach((material) => {
         if (!material) return;
         
-        // Material settings optimized for dark geometric environment
+        allMaterials.add(material.name || 'unnamed');
+        
+        // Ensure all materials are properly initialized
+        // This is critical for base mesh materials that don't change color
         if (material.isMeshStandardMaterial || material.isMeshPhysicalMaterial) {
           material.needsUpdate = true;
+          
+          // Ensure textures are properly loaded
+          if (material.map) {
+            material.map.needsUpdate = true;
+          }
+          if (material.normalMap) {
+            material.normalMap.needsUpdate = true;
+          }
+          if (material.roughnessMap) {
+            material.roughnessMap.needsUpdate = true;
+          }
+          if (material.metalnessMap) {
+            material.metalnessMap.needsUpdate = true;
+          }
         }
         
+        // Handle paint materials (for color changes)
         if (material.name === 'Mat_BodyPaint') {
           bodyMatRef.current = material;
           // Enhance car paint material for dark environment
@@ -56,6 +105,10 @@ function VolturianoCar({ bodyColor = '#FF4520', rimColor = '#111111', onMaterial
         }
       });
     });
+    
+    console.log('[Viewer3D] Found meshes:', allMeshes.length);
+    console.log('[Viewer3D] Found materials:', Array.from(allMaterials));
+    console.log('[Viewer3D] Mesh details:', allMeshes.map(m => ({ name: m.name, materialName: Array.isArray(m.material) ? m.material.map(mat => mat.name) : m.material?.name })));
 
     if (onMaterialsReady) {
       onMaterialsReady({

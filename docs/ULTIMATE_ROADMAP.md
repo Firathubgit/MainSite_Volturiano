@@ -23,7 +23,8 @@
 11. [Phase 7: Operations & Observability](#phase-7-operations--observability)
 12. [Phase 8: Advanced Features & Integrations](#phase-8-advanced-features--integrations)
 13. [Phase 9: Product Launches & Marketing Communications](#phase-9-product-launches--marketing-communications)
-14. [Dependencies & Critical Path](#dependencies--critical-path)
+14. [Phase 10: Volturiano Agency Services Page](#phase-10-volturiano-agency-services-page)
+15. [Dependencies & Critical Path](#dependencies--critical-path)
 14. [Risk Assessment & Mitigation](#risk-assessment--mitigation)
 15. [Success Metrics & KPIs](#success-metrics--kpis)
 16. [Timeline Estimates](#timeline-estimates)
@@ -3257,6 +3258,198 @@ Build comprehensive product launch and marketing communication systems that enab
 
 ---
 
+## Phase 10: Volturiano Agency Services Page
+
+**Status:** Planned  
+**Timeline:** 2-3 weeks (backend integration)  
+**Priority:** Medium (revenue generation opportunity)  
+**Dependencies:** Phase 0 (Foundation), Phase 8 (Admin Panel)
+
+### Overview
+
+Create a professional agency services page (`/agency`) that converts visitors from the main Volturiano site into potential customers for Volturiano's software services. This phase focuses on **backend functionality and integration** - the frontend will be developed by a senior frontend engineer, and this phase covers requirements specification, backend implementation, and integration.
+
+### Implementation Approach
+
+**Step 1: Frontend Requirements Specification**
+- Create detailed specification document for frontend engineer
+- Define required UI components, buttons, forms, and functionality
+- Specify API endpoints and data structures
+- Document integration points with existing Volturiano platform
+
+**Step 2: Frontend Code Integration**
+- Receive frontend code from senior engineer
+- Integrate components into main Volturiano codebase
+- Set up routing and navigation
+- Connect UI to backend services
+
+**Step 3: Backend Implementation & Connection**
+- Create database schema for inquiries and demo requests
+- Build Edge Functions for form submissions
+- Implement email notification system
+- Integrate with admin dashboard for lead management
+
+### 10.1 Frontend Requirements Specification
+
+**Target Audience:**
+- E-commerce shops wanting 3D configurators
+- Web agencies needing fullstack solutions
+- Luxury brands needing premium UI design
+- Businesses requiring admin dashboards
+- Companies needing Supabase backend solutions
+
+**Required Page Sections:**
+1. Hero Section with CTAs
+2. Service Showcase (5 service cards)
+3. Case Study Section (Volturiano platform)
+4. Contact Form Modal
+5. Demo Request Modal
+6. Pricing Overview Section
+
+**Required Functionality:**
+- Contact form with fields: name, email, company, service interests (multi-select), budget range, project timeline, message
+- Demo request form with fields: name, email, company, preferred service, datetime, timezone, meeting type
+- Service cards with "Learn More", "Request Demo", "Get Quote" buttons
+- All forms must call Supabase Edge Functions
+- Responsive design matching Volturiano brand (#0a0a0a dark theme, #ff4520 orange CTAs)
+
+**API Endpoints Required:**
+- `POST /functions/v1/send-agency-inquiry` - Contact form submissions
+- `POST /functions/v1/schedule-demo` - Demo request submissions
+
+### 10.2 Database Schema
+
+**Table: `agency_inquiries`**
+- Store contact form submissions
+- Fields: id, name, email, company, service_interests (array), budget_range, project_timeline, message, status, created_at, updated_at
+- RLS: Admin-only access
+- Status workflow: new → contacted → qualified → closed
+
+**Table: `demo_requests`**
+- Store demo request submissions
+- Fields: id, name, email, company, preferred_service, preferred_datetime, timezone, meeting_type, additional_notes, status, created_at, updated_at
+- RLS: Admin-only access
+- Status workflow: pending → scheduled → completed → cancelled
+
+### 10.3 Edge Functions
+
+**Function: `send-agency-inquiry`**
+- Purpose: Handle contact form submissions
+- Actions:
+  - Validate request body
+  - Insert into `agency_inquiries` table
+  - Send email notification to sales team
+  - Send confirmation email to submitter
+- Email service: Resend API (using existing RESEND_API_KEY)
+- Rate limiting: Max 3 submissions per email per hour, 10 per IP per hour
+
+**Function: `schedule-demo`**
+- Purpose: Handle demo request submissions
+- Actions:
+  - Validate request body and datetime (must be future)
+  - Insert into `demo_requests` table
+  - Send email notification to sales team
+  - Send confirmation email to requester
+- Email service: Resend API
+- Rate limiting: Same as contact form
+
+### 10.4 Email Templates
+
+**Templates Required:**
+1. New Inquiry Notification (to sales team)
+2. Inquiry Confirmation (to submitter)
+3. Demo Request Notification (to sales team)
+4. Demo Request Confirmation (to requester)
+
+All templates must be:
+- On-brand with Volturiano styling
+- Responsive design
+- Include relevant information
+- Professional tone
+
+### 10.5 Admin Dashboard Integration
+
+**New Admin Pages:**
+1. **Agency Inquiries Page** (`/admin/agency/inquiries`)
+   - Table view with filters (status, service, date range)
+   - View inquiry details modal
+   - Update status workflow
+   - Export to CSV
+
+2. **Demo Requests Page** (`/admin/agency/demos`)
+   - Calendar view of scheduled demos
+   - Table view with filters
+   - View request details modal
+   - Update status workflow
+   - Export to CSV
+
+**Integration Points:**
+- Add navigation items to AdminLayout
+- Use existing admin table components
+- Follow existing admin design patterns
+- Add routes to App.jsx
+
+### 10.6 Files to Create/Update
+
+**New Files (Backend):**
+- `supabase/migrations/XXXXXX_create_agency_tables.sql`
+- `supabase/functions/send-agency-inquiry/index.ts`
+- `supabase/functions/send-agency-inquiry/deno.json`
+- `supabase/functions/send-agency-inquiry/email-templates.ts`
+- `supabase/functions/schedule-demo/index.ts`
+- `supabase/functions/schedule-demo/deno.json`
+- `supabase/functions/schedule-demo/email-templates.ts`
+
+**New Files (Admin):**
+- `web/src/pages/admin/AgencyInquiries/AgencyInquiries.jsx`
+- `web/src/pages/admin/AgencyInquiries/AgencyInquiries.module.css`
+- `web/src/pages/admin/DemoRequests/DemoRequests.jsx`
+- `web/src/pages/admin/DemoRequests/DemoRequests.module.css`
+
+**Files to Update:**
+- `web/src/app/App.jsx` - Add `/agency` route, admin routes
+- `web/src/components/NavBar/NavBar.jsx` - Add Agency link
+- `web/src/hooks/usePageTitle.js` - Add agency page title
+- `web/src/features/admin/components/AdminLayout/AdminLayout.jsx` - Add navigation items
+
+### 10.7 Success Metrics
+
+**Technical Metrics:**
+- Contact form submission success rate: >95%
+- Demo request submission success rate: >95%
+- Email delivery rate: >98%
+- Edge Function response time: <500ms
+
+**Business Metrics:**
+- Contact form submissions per week
+- Demo requests per week
+- Conversion rate (visitor → inquiry)
+- Admin response time to inquiries
+
+### 10.8 Timeline
+
+**Step 1: Requirements Specification** - 1 day  
+**Step 2: Frontend Development** - External (frontend engineer)  
+**Step 3: Frontend Integration** - 2-3 days  
+**Step 4: Backend Implementation** - 3-5 days  
+**Step 5: Testing & Deployment** - 2-3 days
+
+**Total Timeline: ~2 weeks** (excluding frontend development time)
+
+### 10.9 Dependencies
+
+**Required:**
+- Phase 0 (Foundation) - Routing, styling system
+- Phase 8 (Admin Panel) - For admin dashboard integration
+- Resend API key configured
+- Supabase Edge Functions infrastructure
+
+**Optional:**
+- Phase 7 (Operations) - Analytics infrastructure
+- Phase 9 (Marketing) - Content marketing system
+
+---
+
 ## Dependencies & Critical Path
 
 ### Critical Path Analysis
@@ -3273,6 +3466,7 @@ Build comprehensive product launch and marketing communication systems that enab
 8. **Phase 7 (Operations)**: Required before production launch
 9. **Phase 8 (Advanced Features)**: Post-MVP
 10. **Phase 9 (Product Launches & Marketing)**: Growth phase, can proceed in parallel with Phase 8
+11. **Phase 10 (Agency Services Page)**: Revenue generation, requires Phase 0 and Phase 8
 
 ### Dependency Graph
 
@@ -3292,6 +3486,8 @@ Phase 7 (Operations) ────────────┘
 Phase 8 (Advanced Features)
     ↓
 Phase 9 (Product Launches & Marketing)
+    ↓
+Phase 10 (Agency Services Page)
 ```
 
 ---
@@ -3403,6 +3599,7 @@ Phase 9 (Product Launches & Marketing)
 **Full Feature Set (Phases 0-7)**: 12-18 months
 **Advanced Features (Phase 8)**: 6+ months (ongoing)
 **Growth & Marketing (Phase 9)**: 4-6 weeks
+**Agency Services (Phase 10)**: 2-3 weeks
 
 ### Phase Breakdown
 
@@ -3416,6 +3613,7 @@ Phase 9 (Product Launches & Marketing)
 - **Phase 7**: 4-6 weeks
 - **Phase 8**: 12+ weeks (ongoing)
 - **Phase 9**: 4-6 weeks
+- **Phase 10**: 2-3 weeks (backend integration)
 
 ### Critical Path Timeline
 
@@ -3539,6 +3737,7 @@ This Ultimate Roadmap provides a comprehensive, phase-by-phase plan for building
 - **Full Feature Set**: 12-18 months (Phases 0-7)
 - **Advanced Features**: 6+ months (Phase 8, ongoing)
 - **Growth & Marketing**: 4-6 weeks (Phase 9)
+- **Agency Services**: 2-3 weeks (Phase 10)
 - **Critical Path**: Foundation → Garage → Configurator → Commerce
 - **Success Metrics**: Defined for each phase
 - **Risk Mitigation**: Identified and planned

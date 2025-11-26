@@ -182,6 +182,7 @@
   max-width: 1280px;
   margin: 0 auto;
   height: 100%;
+  padding-top: 32px; /* Consistent top spacing for all admin pages */
 }
 
 @media (max-width: 768px) {

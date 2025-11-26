@@ -3,7 +3,9 @@ import { Canvas, useThree } from '@react-three/fiber';
 import { OrbitControls, useGLTF } from '@react-three/drei';
 import * as THREE from 'three';
 
-const CAR_MODEL_URL = new URL('../../assets/3DConfigurator/VolturianoGLB.glb', import.meta.url).href;
+// Use public folder path for reliable production builds
+// This ensures the GLB file is always accessible in both dev and production
+const CAR_MODEL_URL = '/VolturianoGLB.glb';
 
 function VolturianoCar({ bodyColor = '#FF4520', rimColor = '#111111', onMaterialsReady }) {
   const gltf = useGLTF(CAR_MODEL_URL);

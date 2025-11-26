@@ -1,0 +1,194 @@
+.card {
+  position: relative;
+  background-color: #0a0a0a;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 1rem;
+  padding: 2rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  overflow: hidden;
+  transition: all 0.5s;
+}
+
+.card:hover {
+  border-color: rgba(255, 69, 32, 0.5);
+  box-shadow: 0 25px 50px -12px rgba(255, 69, 32, 0.05);
+}
+
+.hoverGradient {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to bottom right, rgba(255, 69, 32, 0.1), transparent);
+  opacity: 0;
+  transition: opacity 0.5s;
+}
+
+.card:hover .hoverGradient {
+  opacity: 1;
+}
+
+.content {
+  position: relative;
+  z-index: 10;
+}
+
+.iconContainer {
+  width: 3rem;
+  height: 3rem;
+  border-radius: 9999px;
+  background-color: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 1.5rem;
+  color: #ffffff;
+  transition: all 0.3s;
+}
+
+.card:hover .iconContainer {
+  transform: scale(1.1);
+  background-color: #ff4520;
+  border-color: #ff4520;
+}
+
+.title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #ffffff;
+  margin-bottom: 0.75rem;
+  letter-spacing: -0.025em;
+}
+
+.description {
+  color: #d4d4d8;
+  font-size: 0.875rem;
+  line-height: 1.75;
+  max-width: 20rem;
+}
+
+.footer {
+  position: relative;
+  z-index: 10;
+  margin-top: 2rem;
+}
+
+.features {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.featureTag {
+  font-size: 0.625rem;
+  font-family: monospace;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.25rem;
+  background-color: rgba(255, 255, 255, 0.05);
+  color: #a1a1aa;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: 1rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.getQuoteButton {
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: #ffffff;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: color 0.15s;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.getQuoteButton:hover {
+  color: #ff4520;
+}
+
+.demoButton {
+  width: 2rem;
+  height: 2rem;
+  border-radius: 9999px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #ffffff;
+  background: transparent;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.demoButton:hover {
+  background-color: #ffffff;
+  color: #000000;
+}
+
+/* Bento Grid Layouts */
+.bentoLarge {
+  grid-column: span 1;
+  grid-row: span 1;
+}
+
+.bentoTall {
+  grid-column: span 1;
+  grid-row: span 1;
+}
+
+.bentoWide {
+  grid-column: span 1;
+  grid-row: span 1;
+}
+
+.bentoStandard {
+  grid-column: span 1;
+  grid-row: span 1;
+}
+
+.bentoFull {
+  grid-column: span 1;
+  grid-row: span 1;
+}
+
+@media (min-width: 768px) {
+  .bentoLarge {
+    grid-column: span 2;
+    grid-row: span 2;
+  }
+
+  .bentoTall {
+    grid-column: span 1;
+    grid-row: span 2;
+  }
+
+  .bentoWide {
+    grid-column: span 2;
+    grid-row: span 1;
+  }
+
+  .bentoStandard {
+    grid-column: span 1;
+    grid-row: span 1;
+  }
+
+  .bentoFull {
+    grid-column: span 3;
+    grid-row: span 1;
+  }
+}
+

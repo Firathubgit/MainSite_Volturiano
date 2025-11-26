@@ -162,3 +162,6 @@ Your setup follows:
 
 The visible information in the network tab is **expected and safe** for a client-side application. The improvements above add **defense-in-depth** layers to further harden your application.
 
+
+
+

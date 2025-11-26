@@ -15,6 +15,7 @@ import { usePageTitle } from '../hooks/usePageTitle';
 
 const Home = lazy(() => import('../pages/Home/Home'));
 const Models = lazy(() => import('../pages/Models/Models'));
+const Agency = lazy(() => import('../pages/Agency/Agency'));
 // Using new premium configurator - switch back to Configurator if needed
 const Configurator = lazy(() => import('../pages/Configurator/ConfiguratorNew'));
 const ConfiguratorFromGarage = lazy(() => import('../pages/Configurator/ConfiguratorFromGarage'));
@@ -243,6 +244,7 @@ export default function App() {
             <Route path="/" element={<IndexGate />} />
             <Route path="/start" element={<StartAnim />} />
             <Route path="/models" element={<Models />} />
+            <Route path="/agency" element={<Agency />} />
             <Route
               path="/configurator/:garageItemId"
               element={(

@@ -1,0 +1,248 @@
+.overlay {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(8px);
+  z-index: 50;
+}
+
+.modalContainer {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  pointer-events: none;
+}
+
+.modal {
+  background-color: rgba(15, 15, 15, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 1rem;
+  width: 100%;
+  max-width: 42rem;
+  max-height: 90vh;
+  overflow-y: auto;
+  pointer-events: auto;
+  backdrop-filter: blur(16px);
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+}
+
+.content {
+  padding: 1.5rem;
+  position: relative;
+}
+
+@media (min-width: 768px) {
+  .content {
+    padding: 2rem;
+  }
+}
+
+.closeButton {
+  position: absolute;
+  top: 1.5rem;
+  right: 1.5rem;
+  color: #a1a1aa;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: color 0.15s;
+  padding: 0.25rem;
+}
+
+.closeButton:hover {
+  color: #ffffff;
+}
+
+.successContainer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem 0;
+  text-align: center;
+}
+
+.successIcon {
+  width: 4rem;
+  height: 4rem;
+  background-color: rgba(16, 185, 129, 0.1);
+  border-radius: 9999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 1.5rem;
+  border: 1px solid rgba(16, 185, 129, 0.2);
+}
+
+.successIconInner {
+  color: #10b981;
+}
+
+.successTitle {
+  font-size: 1.875rem;
+  font-weight: 700;
+  color: #ffffff;
+  margin-bottom: 0.5rem;
+  letter-spacing: -0.025em;
+}
+
+.successMessage {
+  color: #d4d4d8;
+}
+
+.title {
+  font-size: 1.875rem;
+  font-weight: 700;
+  color: #ffffff;
+  margin-bottom: 0.5rem;
+  letter-spacing: -0.025em;
+}
+
+.subtitle {
+  color: #d4d4d8;
+  margin-bottom: 2rem;
+}
+
+.errorMessage {
+  background-color: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+  color: #ef4444;
+  padding: 0.75rem 1rem;
+  border-radius: 0.5rem;
+  margin-bottom: 1.5rem;
+  font-size: 0.875rem;
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.formRow {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1.5rem;
+}
+
+@media (min-width: 768px) {
+  .formRow {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.datetimeRow {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1.5rem;
+}
+
+@media (min-width: 768px) {
+  .datetimeRow {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+.selectContainer {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+}
+
+.selectLabel {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #a1a1aa;
+}
+
+.serviceSelect {
+  width: 100%;
+  background-color: rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #ffffff;
+  border-radius: 0.5rem;
+  padding: 0.625rem 1rem;
+  font-size: 0.875rem;
+  transition: all 0.15s;
+  outline: none;
+  appearance: none;
+}
+
+.serviceSelect:focus {
+  outline: none;
+  border-color: rgba(255, 69, 32, 0.5);
+}
+
+.serviceSelect option {
+  background-color: #1a1a1a;
+  color: #ffffff;
+}
+
+.meetingTypeContainer {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.meetingTypeLabel {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #a1a1aa;
+}
+
+.meetingTypeGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.75rem;
+}
+
+.meetingTypeButton {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 0.75rem;
+  border-radius: 0.5rem;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background-color: rgba(0, 0, 0, 0.4);
+  color: #a1a1aa;
+  transition: all 0.15s;
+  cursor: pointer;
+  gap: 0.5rem;
+}
+
+.meetingTypeButton:hover {
+  border-color: rgba(255, 255, 255, 0.3);
+  color: #ffffff;
+}
+
+.meetingTypeButtonActive {
+  border-color: #ff4520;
+  background-color: #ff4520;
+  color: #ffffff;
+}
+
+.textareaContainer {
+  position: relative;
+}
+
+.charCounter {
+  position: absolute;
+  bottom: 0.5rem;
+  right: 0.75rem;
+  font-size: 0.75rem;
+  color: #71717a;
+}
+
+.formActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  padding-top: 1rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+}
+

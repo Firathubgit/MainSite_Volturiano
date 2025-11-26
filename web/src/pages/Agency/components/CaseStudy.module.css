@@ -1,0 +1,298 @@
+.section {
+  padding: 8rem 0;
+  background-color: #0a0a0a;
+  position: relative;
+  overflow: hidden;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.gradient {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at 0% 0%, rgba(255, 69, 32, 0.15), transparent 40%);
+}
+
+.container {
+  max-width: 80rem;
+  margin: 0 auto;
+  padding: 0 1rem;
+  position: relative;
+  z-index: 10;
+}
+
+.grid {
+  display: grid;
+  gap: 5rem;
+  align-items: center;
+}
+
+@media (min-width: 1024px) {
+  .grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.content {
+  order: 2;
+}
+
+@media (min-width: 1024px) {
+  .content {
+    order: 1;
+  }
+}
+
+.contentInner {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+.label {
+  color: #ff4520;
+  font-family: monospace;
+  font-size: 0.875rem;
+  letter-spacing: 0.1em;
+  margin-bottom: 1rem;
+}
+
+.title {
+  font-size: 3rem;
+  font-weight: 700;
+  color: #ffffff;
+  letter-spacing: -0.05em;
+  margin-bottom: 1.5rem;
+  line-height: 1.1;
+}
+
+@media (min-width: 768px) {
+  .title {
+    font-size: 4.5rem;
+  }
+}
+
+.description {
+  font-size: 1.25rem;
+  color: #d4d4d8;
+  line-height: 1.75;
+  border-left: 2px solid rgba(255, 69, 32, 0.5);
+  padding-left: 1.5rem;
+}
+
+.stats {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 2rem;
+  padding: 2rem 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.statValue {
+  font-size: 1.875rem;
+  font-weight: 700;
+  color: #ffffff;
+  margin-bottom: 0.25rem;
+}
+
+.statLabel {
+  font-size: 0.75rem;
+  font-family: monospace;
+  color: #a1a1aa;
+  text-transform: uppercase;
+}
+
+.ctaButton {
+  border-radius: 9999px;
+}
+
+.visual {
+  order: 1;
+}
+
+@media (min-width: 1024px) {
+  .visual {
+    order: 2;
+  }
+}
+
+.visualContainer {
+  position: relative;
+  aspect-ratio: 1;
+  border-radius: 0.125rem;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background-color: #1a1a1a;
+}
+
+@media (min-width: 768px) {
+  .visualContainer {
+    aspect-ratio: 4 / 3;
+  }
+}
+
+.visualBackground {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to top right, #1a1a1a, #2a2a2a);
+}
+
+.shimmer {
+  position: absolute;
+  inset: 0;
+  opacity: 0.2;
+  background: linear-gradient(
+    45deg,
+    transparent 25%,
+    rgba(255, 255, 255, 0.05) 50%,
+    transparent 75%,
+    transparent 100%
+  );
+  background-size: 250% 250%;
+  animation: shimmer 3s infinite;
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: 0% 0%;
+  }
+  100% {
+    background-position: 100% 100%;
+  }
+}
+
+.mockup {
+  position: absolute;
+  inset: 1rem;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  background-color: rgba(5, 5, 5, 0.8);
+  backdrop-filter: blur(12px);
+  display: flex;
+  flex-direction: column;
+}
+
+.mockupHeader {
+  height: 3rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 1.5rem;
+}
+
+.mockupDots {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.mockupDotRed {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 9999px;
+  background-color: #ef4444;
+}
+
+.mockupDotYellow {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 9999px;
+  background-color: #eab308;
+}
+
+.mockupTitle {
+  font-family: monospace;
+  font-size: 0.625rem;
+  color: #a1a1aa;
+}
+
+.mockupContent {
+  flex: 1;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.mockupGrid {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+  gap: 0.25rem;
+  opacity: 0.1;
+}
+
+.mockupGridCell {
+  background-color: rgba(255, 255, 255, 0.1);
+  width: 100%;
+  height: 100%;
+}
+
+.mockupCenter {
+  width: 8rem;
+  height: 8rem;
+  border-radius: 9999px;
+  border: 1px solid rgba(255, 69, 32, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+@media (min-width: 768px) {
+  .mockupCenter {
+    width: 12rem;
+    height: 12rem;
+  }
+}
+
+.mockupSpinner {
+  position: absolute;
+  inset: 0;
+  border-radius: 9999px;
+  border-top: 1px solid #ff4520;
+  animation: spin 3s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.mockupCenterText {
+  font-weight: 700;
+  color: #ffffff;
+  letter-spacing: 0.1em;
+  font-size: 0.75rem;
+}
+
+.mockupFooter {
+  height: 4rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  border-left: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.mockupFooterItem {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.625rem;
+  font-weight: 500;
+  color: #d4d4d8;
+  cursor: pointer;
+  transition: background-color 0.15s;
+  border-right: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.mockupFooterItem:hover {
+  background-color: rgba(255, 255, 255, 0.05);
+}
+

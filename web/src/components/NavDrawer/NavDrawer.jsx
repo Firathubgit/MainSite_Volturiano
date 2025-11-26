@@ -110,6 +110,14 @@ export default function NavDrawer() {
                     <span>{t('nav:drawer.models')}</span>
                     <span className={styles.arrow}>›</span>
                   </button>
+                  <button
+                    type="button"
+                    onClick={() => goTo('/agency')}
+                    className={`${styles.navItem} ${location.pathname === '/agency' ? styles.navItemActive : ''}`}
+                  >
+                    <span>Agency</span>
+                    <span className={styles.arrow}>›</span>
+                  </button>
                   {worldEnabled && (
                     <button
                       type="button"

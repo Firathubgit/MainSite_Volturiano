@@ -1,0 +1,203 @@
+.hero {
+  position: relative;
+  padding-top: 8rem;
+  padding-bottom: 5rem;
+  padding-left: 1rem;
+  padding-right: 1rem;
+  z-index: 10;
+}
+
+@media (min-width: 768px) {
+  .hero {
+    padding-top: 12rem;
+    padding-bottom: 8rem;
+  }
+}
+
+.container {
+  max-width: 80rem;
+  margin: 0 auto;
+}
+
+.content {
+  max-width: 64rem;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.25rem 0.75rem;
+  border-radius: 9999px;
+  background-color: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  font-size: 0.75rem;
+  font-family: monospace;
+  color: #ff4520;
+  margin-bottom: 2rem;
+  backdrop-filter: blur(4px);
+}
+
+.badgeDot {
+  position: relative;
+  display: flex;
+  height: 0.5rem;
+  width: 0.5rem;
+}
+
+.badgePing {
+  position: absolute;
+  animation: ping 2s cubic-bezier(0, 0, 0.2, 1) infinite;
+  height: 100%;
+  width: 100%;
+  border-radius: 9999px;
+  background-color: #ff4520;
+  opacity: 0.75;
+}
+
+.badgeDotInner {
+  position: relative;
+  display: inline-flex;
+  border-radius: 9999px;
+  height: 0.5rem;
+  width: 0.5rem;
+  background-color: #ff4520;
+}
+
+@keyframes ping {
+  75%, 100% {
+    transform: scale(2);
+    opacity: 0;
+  }
+}
+
+.title {
+  font-size: 3.75rem;
+  font-weight: 700;
+  letter-spacing: -0.05em;
+  line-height: 0.9;
+  margin-bottom: 2rem;
+  color: #ffffff;
+}
+
+@media (min-width: 768px) {
+  .title {
+    font-size: 6rem;
+  }
+}
+
+.titleGradient {
+  background: linear-gradient(to right, #d4d4d8, #a1a1aa);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.description {
+  font-size: 1.25rem;
+  color: #d4d4d8;
+  max-width: 42rem;
+  line-height: 1.75;
+  font-weight: 300;
+  margin-bottom: 3rem;
+}
+
+@media (min-width: 768px) {
+  .description {
+    font-size: 1.5rem;
+  }
+}
+
+.descriptionHighlight {
+  color: #ffffff;
+  font-weight: 500;
+}
+
+.ctaContainer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.5rem;
+}
+
+@media (min-width: 640px) {
+  .ctaContainer {
+    flex-direction: row;
+  }
+}
+
+.primaryButton {
+  height: 3.5rem;
+  padding-left: 2rem;
+  padding-right: 2rem;
+  font-size: 1.125rem;
+  border-radius: 9999px;
+}
+
+.secondaryButton {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  color: #d4d4d8;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: color 0.15s;
+}
+
+.secondaryButton:hover {
+  color: #ffffff;
+}
+
+.secondaryButtonIcon {
+  width: 3rem;
+  height: 3rem;
+  border-radius: 9999px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s;
+}
+
+.secondaryButton:hover .secondaryButtonIcon {
+  border-color: rgba(255, 69, 32, 0.5);
+  background-color: rgba(255, 69, 32, 0.05);
+}
+
+.secondaryButton:hover .secondaryButtonIcon svg {
+  transform: translateX(0.25rem);
+}
+
+.secondaryButtonText {
+  font-size: 0.875rem;
+  font-weight: 500;
+  letter-spacing: 0.05em;
+}
+
+.backgroundElement {
+  position: absolute;
+  top: 50%;
+  right: 0;
+  transform: translateY(-50%);
+  width: 33.333333%;
+  height: 100%;
+  opacity: 0.3;
+  pointer-events: none;
+  display: none;
+}
+
+@media (min-width: 1024px) {
+  .backgroundElement {
+    display: block;
+  }
+}
+
+.backgroundElement::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to left, rgba(255, 69, 32, 0.2), transparent);
+  filter: blur(120px);
+}
+

@@ -93,6 +93,12 @@
   outline: none;
 }
 
+.navItemActive {
+  background: linear-gradient(120deg, rgba(255, 69, 32, 0.15), rgba(255, 69, 32, 0.05)) !important;
+  box-shadow: inset 0 0 0 1px rgba(255, 69, 32, 0.2);
+  color: #ff4520;
+}
+
 .navItem:first-child {
   background: linear-gradient(120deg, rgba(255, 255, 255, 0.15), rgba(255, 255, 255, 0.05));
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);

@@ -1,8 +1,33 @@
 /**
  * Image Path Resolver Utility
  * Converts manifest asset paths to Vite-compatible URLs
- * Uses the same approach as Viewer2D.jsx
+ * 
+ * In production, Vite needs to know about assets at build time.
+ * We use import.meta.glob with eager:true to preload all images so Vite can process them.
  */
+
+// Preload all configurator images at build time using Vite's glob import
+// eager: true ensures all images are loaded synchronously at build time
+// Use relative path from this file: ../../../assets/Configurator/volturiano/*.webp
+const imageModules = import.meta.glob('../../../assets/Configurator/volturiano/*.webp', { 
+  eager: true,
+  import: 'default' 
+});
+
+// Create a map of filename -> resolved URL for quick lookup
+const imageUrlMap = new Map();
+
+// Build the map from the glob results
+Object.entries(imageModules).forEach(([path, module]) => {
+  const filename = path.split('/').pop();
+  if (filename && module) {
+    // Extract URL from module (could be direct URL string or module.default)
+    const url = typeof module === 'string' ? module : (module.default || module);
+    if (url) {
+      imageUrlMap.set(filename, url);
+    }
+  }
+});
 
 /**
  * Resolve image path from manifest to Vite-compatible URL
@@ -28,26 +53,29 @@ export function resolveImagePath(manifestPath) {
     return null;
   }
   
-  // Use Vite's import.meta.url to resolve relative paths
-  // Path from utils/ to assets/Configurator/volturiano/
-  // Current file: web/src/features/configurator/utils/imagePathResolver.js
-  // Target: web/src/assets/Configurator/volturiano/${filename}
-  // Relative path: ../../../assets/Configurator/volturiano/${filename}
-  // (utils/ -> configurator/ -> features/ -> src/ -> assets/)
-  try {
-    const assetPath = `../../../assets/Configurator/volturiano/${filename}`;
-    const resolvedUrl = new URL(assetPath, import.meta.url).href;
-    
-    // Validate the URL was created successfully
-    if (!resolvedUrl || resolvedUrl.includes('undefined')) {
-      throw new Error('Invalid URL generated');
-    }
-    
+  // Look up in the preloaded map
+  const resolvedUrl = imageUrlMap.get(filename);
+  
+  if (resolvedUrl) {
     return resolvedUrl;
-  } catch (error) {
-    console.error('[ImagePathResolver] Failed to resolve path:', manifestPath, 'filename:', filename, 'error:', error);
-    return null;
   }
+  
+  // Fallback: try using new URL for development (works in dev, not in prod)
+  if (import.meta.env.DEV) {
+    try {
+      const assetPath = `../../../assets/Configurator/volturiano/${filename}`;
+      const resolvedUrl = new URL(assetPath, import.meta.url).href;
+      
+      if (resolvedUrl && !resolvedUrl.includes('undefined')) {
+        return resolvedUrl;
+      }
+    } catch (error) {
+      console.warn('[ImagePathResolver] Fallback URL resolution failed:', error);
+    }
+  }
+  
+  console.warn('[ImagePathResolver] Could not resolve image:', filename, 'Available files:', Array.from(imageUrlMap.keys()).slice(0, 5));
+  return null;
 }
 
 /**

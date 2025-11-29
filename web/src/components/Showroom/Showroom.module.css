@@ -414,13 +414,27 @@
 
 /* Base dash styles (always white, defined outside media query) */
 .dash {
+  /* Visual size - thin dash */
   width: 24px;
   height: 2px;
   background: rgba(255, 255, 255, 0.2);
   border: none;
   padding: 0;
+  position: relative;
   transition: all 0.3s ease;
   cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Invisible expanded touch target */
+.dash::before {
+  content: '';
+  position: absolute;
+  top: -20px;
+  left: -8px;
+  right: -8px;
+  bottom: -20px;
+  /* No background - completely invisible but clickable */
 }
 
 .dashActive {

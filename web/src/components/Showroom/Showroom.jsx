@@ -100,6 +100,9 @@ export default function Showroom({ initialIndex = 0 }) {
 
   return (
     <section className={styles.container} aria-label={t('showroom:aria.section')}>
+      <div className={styles.gridPattern} />
+      <div className={styles.vignette} />
+      
       <div className={styles.stage}>
         <header className={styles.header}>
           <h2 className={styles.title}>{active.name}</h2>
@@ -136,19 +139,19 @@ export default function Showroom({ initialIndex = 0 }) {
             )}
           </AnimatePresence>
 
-          <AnimatePresence initial={false} custom={direction}>
-              <motion.div
+          <AnimatePresence initial={false} custom={direction} mode="popLayout">
+            <motion.div
               key={active.id}
-                className={styles.slide}
+              className={styles.slide}
               custom={direction}
               variants={slideVariants}
               initial="enter"
               animate="center"
               exit="exit"
-              transition={{ type: 'spring', stiffness: 210, damping: 26 }}
+              transition={{ type: 'spring', stiffness: 280, damping: 28, mass: 1 }}
             >
               <img 
-                src={active.image} 
+                src={active.image}  
                 alt={active.name} 
                 className={styles.image}
                 onError={(e) => {
@@ -168,6 +171,20 @@ export default function Showroom({ initialIndex = 0 }) {
             <button className={styles.btn} onClick={next} aria-label={t('showroom:aria.next')} type="button">
               <img src={RightArrow} alt="" className={styles.btnIcon} />
             </button>
+          </div>
+
+          <div className={styles.mobilePagination}>
+            {items.map((_, i) => (
+              <button
+                key={i}
+                className={`${styles.dash} ${i === index ? styles.dashActive : ''}`}
+                onClick={() => {
+                  setDirection(i > index ? 1 : -1);
+                  setIndex(i);
+                }}
+                aria-label={`Go to slide ${i + 1}`}
+              />
+            ))}
           </div>
         </div>
 

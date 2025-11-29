@@ -214,29 +214,76 @@
   margin-left: 0; /* Align left */
 }
 
+/* VR Button - Exact match to Showroom buttons */
 .vrButton {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 1rem;
-  padding: 1.2rem 3rem;
-  background: #fff;
-  border: none;
-  color: #000;
-  font-family: var(--font-display);
-  font-size: 1.1rem;
+  border-radius: 0;
+  padding: 14px 32px;
+  letter-spacing: 0.15em;
   text-transform: uppercase;
-  letter-spacing: 2px;
-  cursor: pointer;
-  transition: all 0.3s ease;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1;
+  text-align: center;
   text-decoration: none;
-  clip-path: polygon(0 0, 100% 0, 95% 100%, 0% 100%); /* Aggressive angle */
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+  min-width: 220px;
+  cursor: pointer;
+  
+  /* Dark background, white text */
+  color: #ffffff;
+  background: linear-gradient(90deg, #111 0%, #1a1a1a 100%);
+  border: 1px solid rgba(255,255,255,0.2);
+  
+  /* Aggressive clip path */
+  clip-path: polygon(0 0, 100% 0, 95% 100%, 0% 100%);
+  
+  box-shadow: 0 10px 30px rgba(0,0,0,0.5);
 }
 
-.vrButton:hover {
-  background: var(--volt-accent);
-  color: #fff;
-  box-shadow: 0 0 40px rgba(255, 69, 32, 0.4);
-  transform: translateX(10px);
+/* Orange gradient accent on the right edge (dim/subtle) */
+.vrButton::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 60px;
+  background: linear-gradient(90deg, transparent 0%, rgba(255, 69, 32, 0.05) 40%, rgba(255, 69, 32, 0.25) 100%);
+  z-index: 0;
+  pointer-events: none;
+}
+
+/* Ensure text/icon is above the pseudo-element */
+.vrButton span,
+.vrButton svg {
+  position: relative;
+  z-index: 1;
+}
+
+/* Hover State */
+.vrButton:hover,
+.vrButton:focus-visible {
+  background: var(--volt-accent, #FF4520);
+  border-color: var(--volt-accent, #FF4520);
+  color: #ffffff;
+  transform: translateY(-2px) translateX(4px);
+  box-shadow: 0 15px 40px rgba(255,69,32,0.3);
+  outline: none;
+}
+
+/* Remove the gradient edge on hover so it becomes solid orange */
+.vrButton:hover::before {
+  opacity: 0;
+}
+
+.vrButton:active {
+  transform: translateY(0) translateX(0);
 }
 
 @media (max-width: 1024px) {

@@ -14,6 +14,11 @@ function resolveImage(slug, remoteUrl) {
     return local ? local.image : null;
   }
   
+  if (slug === 'volturiano-long') {
+    const local = showroomLocal.find(item => item.slug === 'volturiano-long');
+    return local ? local.image : null;
+  }
+
   if (slug === 'atlas-suv' || slug === 'volturiano-suv') {
     const local = showroomLocal.find(item => item.slug === 'volturiano-suv');
     return local ? local.image : null;
@@ -147,10 +152,30 @@ export function useShowroomData() {
           return;
         }
 
+        console.log('[Showroom] vehicles_catalog data from DB:', data);
         const mapped = (data ?? []).map(mapVehicle);
-        if (mapped.length > 0) {
-          setItems(mapped);
-        }
+        console.log('[Showroom] Mapped vehicles:', mapped);
+        
+        // Merge with local data to ensure all 3 cars are present
+        // This handles the case where DB only has 2 entries
+        const mergedItems = [...showroomLocal];
+        mapped.forEach(dbItem => {
+          const existingIdx = mergedItems.findIndex(local => 
+            local.slug === dbItem.slug || 
+            (dbItem.slug === 'tornado-gt' && local.slug === 'volturiano') ||
+            (dbItem.slug === 'atlas-suv' && local.slug === 'volturiano-suv')
+          );
+          if (existingIdx >= 0) {
+            // Update existing with DB data but keep local image
+            mergedItems[existingIdx] = { ...dbItem, image: mergedItems[existingIdx].image };
+          }
+        });
+        
+        // Sort by sortOrder
+        mergedItems.sort((a, b) => (a.sortOrder ?? 9999) - (b.sortOrder ?? 9999));
+        console.log('[Showroom] Final merged items:', mergedItems);
+        
+        setItems(mergedItems);
         setLoading(false);
       } catch (err) {
         if (!mounted) return;

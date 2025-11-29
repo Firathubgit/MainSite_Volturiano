@@ -1,10 +1,10 @@
 /* Fiverr-style Overlay Footer - Scaled down 30% */
 .footer {
-  position: absolute;
+  position: fixed;
   bottom: 0;
   left: 0;
   right: 0;
-  z-index: 30;
+  z-index: 40; /* Above canvas and category panel */
   pointer-events: none;
   padding: 0 1.4rem 1.4rem; /* 2rem * 0.7 */
 }

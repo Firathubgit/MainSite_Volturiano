@@ -7,7 +7,7 @@
   align-items: center;
   gap: 2.1rem; /* 3rem * 0.7 */
   padding: 1.4rem; /* 2rem * 0.7 */
-  z-index: 20;
+  z-index: 30; /* Higher z-index to be above canvas */
 }
 
 /* Vertical Navigation Sidebar */
@@ -222,22 +222,118 @@
 @media (max-width: 768px) {
   .overlayPanel {
     flex-direction: column;
-    align-items: flex-start;
+    align-items: stretch;
+    justify-content: flex-start;
+    padding: 0;
+    z-index: 32;
+    pointer-events: none;
   }
   
+/* Nav sidebar floats centered below canvas controls */
   .navSidebar {
-    flex-direction: row;
-    width: auto;
-    padding: 0.7rem 1.4rem; /* 1rem * 0.7, 2rem * 0.7 */
-    border-radius: 9999px;
+    position: fixed;
+  top: calc(4rem + 2.45rem + 1.3rem); /* Same baseline as controls + gap */
+  left: 50%;
+  transform: translateX(-50%);
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  width: auto;
+  padding: 0.55rem 1.2rem;
+  border-radius: 9999px;
+  z-index: 45; /* Above category panel and footer */
+  background: rgba(10, 10, 10, 0.96);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  gap: 0.8rem;
+  box-shadow: 0 15px 40px rgba(0, 0, 0, 0.45);
   }
   
+  .navButton {
+  width: 2.1rem;
+  height: 2.1rem;
+  }
+  
+  .navDot {
+  width: 0.55rem;
+  height: 0.55rem;
+  }
+  
+  .navDotActive {
+  width: 0.55rem;
+  height: 0.55rem;
+  }
+  
+  /* Hide tooltip on mobile */
+  .navButton::after {
+    display: none;
+  }
+  
+/* Category panel - bottom sheet above the pricing footer */
   .categoryPanel {
-    width: 100%;
-    max-width: calc(100vw - 1.4rem); /* 2rem * 0.7 */
+    position: fixed;
+    bottom: 7rem; /* Above the pricing footer (~6rem height) */
+    left: 0.5rem;
+    right: 0.5rem;
+    width: calc(100% - 1rem);
+    max-width: calc(100vw - 1rem);
+    max-height: 40vh; /* Reduced to not cover too much */
+    margin: 0;
+    border-radius: 12px;
+    background: rgba(10, 10, 10, 0.98);
+    backdrop-filter: blur(24px);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    z-index: 42; /* Above footer (30) but below nav (45) */
+    animation: slideUp 0.25s ease-out;
+    box-shadow: 0 -4px 30px rgba(0, 0, 0, 0.6);
+  }
+  
+  .categoryHeader {
+    padding: 0.8rem 1rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  }
+  
+  .categoryTitle {
+    font-size: 0.85rem;
+  }
+  
+  .categoryNumber {
+    font-size: 0.55rem;
+  }
+  
+  .categoryBody {
+    padding: 0.8rem;
+    max-height: calc(40vh - 3.5rem);
+    overflow-y: auto;
+  }
+  
+  .categoryLabel {
+    font-size: 0.6rem;
+    margin-bottom: 0.4rem;
+  }
+  
+  .paintGrid {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.25rem;
+  }
+  
+  .paintGrid button {
+    aspect-ratio: 1.3;
   }
   
   .optionsGrid {
     grid-template-columns: 1fr;
+    gap: 0.4rem;
+  }
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
   }
 }

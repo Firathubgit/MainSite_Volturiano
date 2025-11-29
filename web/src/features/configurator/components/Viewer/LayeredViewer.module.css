@@ -1,8 +1,8 @@
 .layeredViewer {
-  position: relative;
+  position: absolute;
+  inset: 0;
   width: 100%;
   height: 100%;
-  min-height: 100%;
   overflow: hidden;
   background: transparent;
   display: flex;
@@ -21,21 +21,38 @@
 
 .layerImage {
   position: absolute;
-  top: 0;
-  left: 0;
-  width: 100vw;
-  height: 100vh;
-  object-fit: cover;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
   object-position: center;
   user-select: none;
   pointer-events: none;
 }
 
+/* Mobile: Ensure full viewport coverage */
 @media (max-width: 768px) {
+  .layeredViewer {
+    position: absolute;
+    inset: 0;
+    width: 100vw;
+    height: 100vh;
+  }
+  
+  .layer {
+    position: absolute;
+    inset: 0;
+    width: 100vw;
+    height: 100vh;
+  }
+  
   .layerImage {
+    position: absolute;
+    inset: 0;
     width: 100vw;
     height: 100vh;
     object-fit: contain;
+    object-position: center;
   }
 }
 

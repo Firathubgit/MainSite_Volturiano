@@ -333,16 +333,24 @@ function GroundPlane() {
 
 export function Viewer3D({ bodyColor, rimColor, onMaterialsReady }) {
   return (
-    <div style={{ aspectRatio: '16/9', borderRadius: '10px', overflow: 'hidden', backgroundColor: '#000000' }}>
+    <div style={{ 
+      width: '100%', 
+      height: '100%', 
+      position: 'absolute',
+      inset: 0,
+      overflow: 'hidden', 
+      backgroundColor: '#000000' 
+    }}>
       <Canvas
         shadows
         dpr={[1, 2]}
-        camera={{ position: [6, 1.8, 8], fov: 50 }}
+        camera={{ position: [7.5, 2.2, 10], fov: 50 }} // Adjusted camera: further back (z:10, x:7.5) and slightly higher (y:2.2)
         gl={{ 
           toneMappingExposure: 1.2,
           toneMapping: THREE.ACESFilmicToneMapping,
           physicallyCorrectLights: true
         }}
+        style={{ width: '100%', height: '100%' }}
       >
         {/* Dark geometric environment background */}
         <color attach="background" args={['#000000']} />

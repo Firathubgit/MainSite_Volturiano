@@ -48,6 +48,26 @@
   z-index: 1;
 }
 
+/* Mobile: Make canvas responsive */
+@media (max-width: 768px) {
+  .viewerContainer {
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: 100vw;
+    height: 100vh;
+    min-height: 100vh;
+    padding: 0;
+  }
+  
+  .canvas {
+    width: 100vw;
+    height: 100vh;
+    min-height: 100vh;
+  }
+}
+
 .controls {
   position: absolute;
   top: calc(5.5rem + 2.45rem + 0.7rem); /* 6rem (ViewModeToggle top) + ~2.45rem (toggle height) + 0.7rem (gap) */
@@ -60,6 +80,16 @@
   justify-content: center;
   width: auto;
   margin-left: -4rem;
+}
+
+/* Mobile: Adjust controls position */
+@media (max-width: 768px) {
+  .controls {
+    top: calc(4rem + 2.45rem + 0.7rem); /* Account for navbar */
+    left: 50%;
+    transform: translateX(-50%);
+    margin-left: 0;
+  }
 }
 
 .controlButton {

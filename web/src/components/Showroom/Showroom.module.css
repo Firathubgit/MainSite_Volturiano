@@ -412,6 +412,23 @@
   display: none;
 }
 
+/* Base dash styles (always white, defined outside media query) */
+.dash {
+  width: 24px;
+  height: 2px;
+  background: rgba(255, 255, 255, 0.2);
+  border: none;
+  padding: 0;
+  transition: all 0.3s ease;
+  cursor: pointer;
+}
+
+.dashActive {
+  background: #e6e6ea !important;
+  width: 32px;
+  box-shadow: 0 0 10px rgba(255,255,255,0.3);
+}
+
 .dots {
   display: flex;
   gap: 8px;

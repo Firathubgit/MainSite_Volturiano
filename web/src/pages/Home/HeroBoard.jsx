@@ -87,11 +87,15 @@ export default function HeroBoard({ variant = 'panel', children }) {
 
   const handlePointerDown = (event) => {
     if (event.button !== 0 && event.pointerType !== 'touch') return;
-    setPointerActive(true);
-    lastSpawnRef.current = 0;
-    if (event.pointerType !== 'mouse' && boardRef.current?.setPointerCapture) {
+    
+    // On mobile/touch, do not capture pointer so scrolling works naturally.
+    // We only capture if it's a mouse to ensure dragging works outside the element bounds if needed.
+    if (event.pointerType === 'mouse' && boardRef.current?.setPointerCapture) {
       boardRef.current.setPointerCapture(event.pointerId);
     }
+
+    setPointerActive(true);
+    lastSpawnRef.current = 0;
     spawnSprite(event, true);
   };
 

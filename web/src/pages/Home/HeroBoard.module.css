@@ -3,7 +3,7 @@
   overflow: hidden;
   cursor: crosshair;
   user-select: none;
-  touch-action: none;
+  touch-action: pan-y;
   z-index: 0;
 }
 

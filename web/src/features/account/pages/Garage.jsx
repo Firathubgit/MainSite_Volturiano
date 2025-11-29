@@ -50,6 +50,7 @@ export default function Garage() {
 
   const [activeTab, setActiveTab] = useState('configurations');
   const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
 
   const worldEnabled = import.meta.env.VITE_ENABLE_WORLD === 'true';
 
@@ -289,6 +290,78 @@ export default function Garage() {
         >
           <FilterIcon />
         </motion.button>
+
+        {/* Mobile Dropdown Navigation (Polestar style) */}
+        <div className={styles.mobileNavDropdown}>
+          <button
+            type="button"
+            className={styles.mobileNavTrigger}
+            onClick={() => setIsMobileNavOpen(!isMobileNavOpen)}
+            aria-expanded={isMobileNavOpen}
+            aria-haspopup="listbox"
+          >
+            <span>{sideLinks.find(l => l.active)?.label || 'Översikt'}</span>
+            <svg
+              className={`${styles.mobileNavChevron} ${isMobileNavOpen ? styles.mobileNavChevronOpen : ''}`}
+              width="20"
+              height="20"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <polyline points="6 9 12 15 18 9" />
+            </svg>
+          </button>
+          <AnimatePresence>
+            {isMobileNavOpen && (
+              <motion.div
+                className={styles.mobileNavMenu}
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                transition={{ duration: 0.2 }}
+              >
+                {sideLinks.map((link) => {
+                  const handleClick = () => {
+                    setIsMobileNavOpen(false);
+                  };
+
+                  if (link.to && !link.disabled) {
+                    return (
+                      <Link
+                        key={link.key}
+                        to={link.to}
+                        className={styles.mobileNavItem}
+                        data-active={link.active ? 'true' : undefined}
+                        onClick={handleClick}
+                      >
+                        {link.label}
+                      </Link>
+                    );
+                  }
+
+                  return (
+                    <button
+                      key={link.key}
+                      type="button"
+                      className={styles.mobileNavItem}
+                      data-disabled={link.disabled ? 'true' : undefined}
+                      disabled={link.disabled}
+                      onClick={handleClick}
+                    >
+                      {link.label}
+                    </button>
+                  );
+                })}
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+
+        {/* Desktop Navigation */}
         <nav className={styles.sidebarNav} aria-label="Garage navigation">
           {sideLinks.map((link, index) => {
             const content = (

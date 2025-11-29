@@ -550,6 +550,91 @@
   color: rgba(255, 255, 255, 0.8);
 }
 
+/* Mobile Navigation Dropdown (Polestar style) - Hidden by default */
+.mobileNavDropdown {
+  display: none;
+  position: relative;
+  width: 100%;
+}
+
+.mobileNavTrigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 16px 20px;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid #303030;
+  color: #f7f7f7;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 160ms ease;
+}
+
+.mobileNavTrigger:hover {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.mobileNavChevron {
+  transition: transform 200ms ease;
+}
+
+.mobileNavChevronOpen {
+  transform: rotate(180deg);
+}
+
+.mobileNavMenu {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: #111111;
+  border: 1px solid #303030;
+  border-top: none;
+  z-index: 50;
+  max-height: 60vh;
+  overflow-y: auto;
+}
+
+.mobileNavItem {
+  display: block;
+  width: 100%;
+  padding: 16px 24px;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid rgba(48, 48, 48, 0.5);
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 15px;
+  font-weight: 500;
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background 160ms ease, color 160ms ease;
+}
+
+.mobileNavItem:last-child {
+  border-bottom: none;
+}
+
+.mobileNavItem:hover {
+  background: rgba(255, 255, 255, 0.05);
+  color: #ffffff;
+}
+
+.mobileNavItem[data-active="true"] {
+  color: #ff4520;
+  background: rgba(255, 69, 32, 0.08);
+}
+
+.mobileNavItem[data-disabled="true"],
+.mobileNavItem:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+/* Tablet & Mobile: Show dropdown, hide sidebar nav */
 @media (max-width: 1200px) {
   .garagePage {
     flex-direction: column;
@@ -559,27 +644,36 @@
   .sidebar {
     width: 100%;
     flex-direction: column;
-    gap: 24px;
+    gap: 16px;
   }
 
+  /* Hide the desktop/horizontal nav, show dropdown instead */
   .sidebarNav {
-    flex-direction: row;
-    gap: 12px;
-    overflow-x: auto;
-    border: 1px solid #303030;
-    border-radius: 16px;
-    padding: 4px 8px;
+    display: none;
   }
 
-  .sidebarButton,
-  .sidebarButton:first-of-type {
-    border: none;
-    padding: 10px 16px;
-    white-space: nowrap;
+  .mobileNavDropdown {
+    display: block;
   }
 
-  .sidebarButton:hover {
-    transform: translateY(-2px);
+  /* Ensure pageHeader stacks properly on tablet */
+  .pageHeader {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 20px;
+  }
+
+  /* Ensure Add Configuration button is visible */
+  .addConfiguration {
+    display: inline-flex;
+    font-size: 18px;
+  }
+}
+
+/* Extra small mobile adjustments */
+@media (max-width: 768px) {
+  .garagePage {
+    padding: 100px 20px 60px;
   }
 }
 

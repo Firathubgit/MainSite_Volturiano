@@ -46,6 +46,7 @@
   overflow: hidden;
   cursor: pointer;
   transition: z-index 0.3s ease;
+  touch-action: pan-y; /* Ensure vertical scroll works on touch */
 }
 
 .gridItem:hover {
@@ -98,6 +99,55 @@
   transform: translateY(0);
 }
 
+/* Brand Elements */
+.brandElements {
+  width: 100%;
+  padding: 2rem 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.brandIcons {
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 2rem;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.brandIconItem {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  color: #888;
+  transition: color 0.3s ease;
+}
+
+.brandIconItem:hover {
+  color: #fff;
+}
+
+.brandIconItem img {
+  width: 48px;
+  height: 48px;
+  opacity: 0.7;
+  transition: opacity 0.3s ease;
+}
+
+.brandIconItem:hover img {
+  opacity: 1;
+}
+
+.brandIconItem span {
+  font-family: var(--font-display);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  font-size: 0.9rem;
+}
+
 /* VR Section */
 .vrSection {
   position: relative;
@@ -109,6 +159,7 @@
   align-items: flex-end; /* Align content to bottom */
   justify-content: flex-start; /* Align content to left */
   margin-top: 1rem;
+  touch-action: pan-y; /* Ensure vertical scroll works on touch */
 }
 
 /* Gradient overlay for text readability */

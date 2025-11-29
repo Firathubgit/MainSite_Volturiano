@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { motion } from 'framer-motion';
 import styles from './HomeFeatures.module.css';
 
@@ -7,8 +7,31 @@ import swatchesImg from '../../assets/H1/Swatches.jpeg';
 import keyImg from '../../assets/H1/KeyImage.jpeg';
 import keyImg2 from '../../assets/H1/KeyImage2.jpeg';
 import vrImg from '../../assets/H1/VRGlassesUpcaled.jpeg';
+import exteriorIcon from '../../assets/Logo/ExteriorButtonIcon.png';
+import interiorIcon from '../../assets/Logo/InteriorButtonIcon.png';
+import languageIcon from '../../assets/Logo/ChangeLanguageicon.png';
 
 const FeatureGrid = () => {
+  // Add touch handling for scroll fix in feature sections
+  useEffect(() => {
+    const preventScrollLock = (e) => {
+      e.stopPropagation();
+    };
+    
+    // Find all scrollable elements in this component
+    const elements = document.querySelectorAll(`.${styles.gridItem}, .${styles.vrSection}`);
+    
+    elements.forEach(el => {
+      el.addEventListener('touchmove', preventScrollLock, { passive: true });
+    });
+    
+    return () => {
+      elements.forEach(el => {
+        el.removeEventListener('touchmove', preventScrollLock);
+      });
+    };
+  }, []);
+
   const features = [
     {
       id: 1,
@@ -63,6 +86,24 @@ const FeatureGrid = () => {
           ))}
         </div>
       </section>
+      
+      {/* Additional Brand Elements - "Additional Components" */}
+      <section className={styles.brandElements}>
+        <div className={styles.brandIcons}>
+           <div className={styles.brandIconItem}>
+             <img src={exteriorIcon} alt="Exterior" />
+             <span>Exterior Design</span>
+           </div>
+           <div className={styles.brandIconItem}>
+             <img src={interiorIcon} alt="Interior" />
+             <span>Interior Comfort</span>
+           </div>
+           <div className={styles.brandIconItem}>
+             <img src={languageIcon} alt="Global" />
+             <span>Global Presence</span>
+           </div>
+        </div>
+      </section>
 
       {/* VR Section */}
       <section className={styles.vrSection}>
@@ -96,6 +137,10 @@ const FeatureGrid = () => {
             whileTap={{ scale: 0.95 }}
           >
             Explore Feature
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M5 12h14"></path>
+              <path d="M12 5l7 7-7 7"></path>
+            </svg>
           </motion.button>
         </div>
       </section>

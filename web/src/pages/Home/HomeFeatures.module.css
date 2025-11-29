@@ -1,0 +1,230 @@
+.featuresContainer {
+  width: 100%;
+  padding: 0 1rem;
+  background-color: var(--color-bg);
+  color: var(--color-text);
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+/* customization Grid */
+.gridSection {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  align-items: center;
+  width: 100%;
+}
+
+.gridTitle {
+  font-family: var(--font-display);
+  font-size: 2.5rem;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  margin-top: 4rem;
+  margin-bottom: 0.5rem;
+  background: linear-gradient(to right, #fff, #666);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.gridContainer {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+  width: 100%;
+  max-width: 100%;
+  height: 80vh;
+  min-height: 600px;
+}
+
+.gridItem {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  cursor: pointer;
+  transition: z-index 0.3s ease;
+}
+
+.gridItem:hover {
+  z-index: 10;
+}
+
+.gridImage {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.7s ease;
+}
+
+.gridItem:hover .gridImage {
+  transform: scale(1.03);
+}
+
+.gridOverlay {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  padding: 2rem;
+  background: linear-gradient(to top, rgba(0,0,0,0.9), transparent);
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+}
+
+.itemTitle {
+  font-family: var(--font-display);
+  font-size: 1.8rem;
+  text-transform: uppercase;
+  margin-bottom: 0.5rem;
+  color: #fff;
+  letter-spacing: 1px;
+}
+
+.itemDesc {
+  font-family: var(--font-body);
+  font-size: 1rem;
+  color: #ccc;
+  opacity: 0;
+  transform: translateY(10px);
+  transition: all 0.3s ease;
+}
+
+.gridItem:hover .itemDesc {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* VR Section */
+.vrSection {
+  position: relative;
+  width: 100%;
+  height: 80vh;
+  min-height: 600px;
+  overflow: hidden;
+  display: flex;
+  align-items: flex-end; /* Align content to bottom */
+  justify-content: flex-start; /* Align content to left */
+  margin-top: 1rem;
+}
+
+/* Gradient overlay for text readability */
+.vrSection::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(to right, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0.4) 40%, transparent 100%);
+  z-index: 2;
+  pointer-events: none;
+}
+
+.vrImage {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  z-index: 1;
+}
+
+.vrOverlay {
+  position: relative;
+  z-index: 3;
+  text-align: left;
+  padding: 6rem 4rem;
+  max-width: 800px;
+  /* Removed background box styles */
+}
+
+.vrTitle {
+  font-family: var(--font-display);
+  font-size: 5rem; /* Larger title */
+  text-transform: uppercase;
+  margin-bottom: 1.5rem;
+  color: #fff;
+  line-height: 0.9;
+  text-shadow: 0 4px 30px rgba(0,0,0,0.5);
+}
+
+.vrSubtitle {
+  font-family: var(--font-body);
+  font-size: 1.2rem;
+  color: #e0e0e0;
+  margin-bottom: 3rem;
+  max-width: 500px;
+  line-height: 1.6;
+  margin-left: 0; /* Align left */
+}
+
+.vrButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1.2rem 3rem;
+  background: #fff;
+  border: none;
+  color: #000;
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  text-decoration: none;
+  clip-path: polygon(0 0, 100% 0, 95% 100%, 0% 100%); /* Aggressive angle */
+}
+
+.vrButton:hover {
+  background: var(--volt-accent);
+  color: #fff;
+  box-shadow: 0 0 40px rgba(255, 69, 32, 0.4);
+  transform: translateX(10px);
+}
+
+@media (max-width: 1024px) {
+  .gridContainer {
+    height: auto;
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+  
+  .gridItem {
+    height: 500px;
+  }
+  
+  .vrTitle {
+    font-size: 3rem;
+  }
+  
+  .vrOverlay {
+    padding: 3rem 2rem;
+  }
+  
+  .vrSection::after {
+    background: linear-gradient(to top, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0.4) 50%, transparent 100%);
+  }
+  
+  .vrSection {
+    align-items: flex-end;
+    justify-content: center;
+  }
+  
+  .vrOverlay {
+    text-align: center;
+    align-items: center;
+    display: flex;
+    flex-direction: column;
+  }
+  
+  .vrSubtitle {
+    margin-left: auto;
+    margin-right: auto;
+  }
+}

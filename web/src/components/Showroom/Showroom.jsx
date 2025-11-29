@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import styles from './Showroom.module.css';
 import { useShowroomData } from './useShowroomData';
+import { showroomLocal } from './showroomData';
 import LeftArrow from '../../assets/showroom/LeftArrowShowroomWhite.png';
 import RightArrow from '../../assets/showroom/RightArrowShowroomWhite.png';
 
@@ -146,7 +147,17 @@ export default function Showroom({ initialIndex = 0 }) {
               exit="exit"
               transition={{ type: 'spring', stiffness: 210, damping: 26 }}
             >
-              <img src={active.image} alt={active.name} className={styles.image} />
+              <img 
+                src={active.image} 
+                alt={active.name} 
+                className={styles.image}
+                onError={(e) => {
+                  const local = showroomLocal.find(item => item.slug === active.slug);
+                  if (local && local.image && e.currentTarget.src !== local.image) {
+                    e.currentTarget.src = local.image;
+                  }
+                }}
+              />
               </motion.div>
           </AnimatePresence>
 

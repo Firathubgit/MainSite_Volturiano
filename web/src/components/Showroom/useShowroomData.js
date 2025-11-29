@@ -6,6 +6,32 @@ function normaliseStatus(status) {
   return (status ?? '').toString().toLowerCase().replace(/[\s_]+/g, '-');
 }
 
+function resolveImage(slug, remoteUrl) {
+  // Map known bad/legacy slugs to valid local assets if needed
+  // "tornado-gt" in DB likely maps to our main "volturiano" asset
+  if (slug === 'tornado-gt' || slug === 'volturiano') {
+    const local = showroomLocal.find(item => item.slug === 'volturiano');
+    return local ? local.image : null;
+  }
+  
+  if (slug === 'atlas-suv' || slug === 'volturiano-suv') {
+    const local = showroomLocal.find(item => item.slug === 'volturiano-suv');
+    return local ? local.image : null;
+  }
+
+  // Check for known bad domains (CDN that is down) and ignore them
+  if (remoteUrl && remoteUrl.includes('cdn.volturiano.com')) {
+    const local = showroomLocal.find(item => item.slug === slug);
+    return local ? local.image : remoteUrl;
+  }
+
+  if (remoteUrl && remoteUrl.trim() !== '') {
+    return remoteUrl;
+  }
+  const local = showroomLocal.find(item => item.slug === slug);
+  return local ? local.image : null;
+}
+
 function mapVehicle(row) {
   const status = normaliseStatus(row.status);
   const defaultPrimaryKey = status === 'available' ? 'showroom:cta.explore' : 'showroom:cta.waitlist';
@@ -15,7 +41,7 @@ function mapVehicle(row) {
     slug: row.slug,
     name: row.name,
     status,
-    image: row.hero_image_url,
+    image: resolveImage(row.slug, row.hero_image_url),
     cta: {
       primaryLabelKey: defaultPrimaryKey,
       primaryLabel: row.primary_label ?? null,
@@ -95,7 +121,7 @@ export function useShowroomData() {
             slug: row.slug,
             name: row.name,
             status: 'available',
-            image: row.hero_image_url,
+            image: resolveImage(row.slug, row.hero_image_url),
             cta: {
               primaryLabelKey: 'showroom:cta.explore',
               primaryLabel: null,
@@ -147,6 +173,3 @@ export function useShowroomData() {
 
   return { items, loading, error };
 }
-
-
-

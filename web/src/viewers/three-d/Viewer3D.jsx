@@ -47,7 +47,7 @@ function VolturianoCar({ bodyColor = '#FF4520', rimColor = '#111111', onMaterial
     // Log all meshes and materials for debugging
     const allMaterials = new Set();
     const allMeshes = [];
-    
+
     gltf.scene.traverse((child) => {
       if (!child.isMesh) return;
       

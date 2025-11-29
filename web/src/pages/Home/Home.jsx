@@ -7,6 +7,7 @@ import slowZoom from '../../assets/H1/Video_Generation_Slow_Zoom_On_Rim.mp4';
 import heroBg from '../../assets/H1/BackgroundVolturiano.png';
 import Showroom from '../../components/Showroom/Showroom';
 import HeroBoard from './HeroBoard';
+import HomeFeatures from './HomeFeatures';
 
 export default function Home() {
   const { t } = useTranslation(['home', 'common']);
@@ -99,6 +100,7 @@ export default function Home() {
       </section>
 
       <Showroom />
+      <HomeFeatures />
     </PageTransition>
   );
 }

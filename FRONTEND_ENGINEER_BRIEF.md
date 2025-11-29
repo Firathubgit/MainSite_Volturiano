@@ -2,7 +2,7 @@
 
 ## About Volturiano
 
-**Volturiano** is a premium luxury sports automotive platform that combines cutting-edge 3D visualization technology with comprehensive vehicle configuration capabilities. The platform enables users to customize luxury vehicles (specifically the Tornado GT model) through an immersive web-based configurator, save configurations to a personal garage, manage orders, and interact with an AI-powered assistant.
+**Volturiano** is a premium luxury sports automotive platform that combines cutting-edge 3D visualization technology with comprehensive vehicle configuration capabilities. The platform enables users to customize luxury vehicles (specifically the Tornado GT model) through an immersive web-based configurator, save configurations to a personal garage, manage orders, and interact with an AI-powered assistant.x
 
 **Brand Identity:**
 - **Vision:** "Commission, not purchase" - elevating the car buying experience through immersive visualization and personalized ownership journeys

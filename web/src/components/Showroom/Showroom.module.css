@@ -1,4 +1,4 @@
- .container {
+.container {
   position: relative;
   width: 100vw;
   margin-left: calc(50% - 50vw);
@@ -22,6 +22,8 @@
 .header {
   text-align: center;
   margin-bottom: -140px; /* tighter header-to-car spacing */
+  position: relative;
+  z-index: 2; /* Ensure header stays on top */
 }
 
 .title {
@@ -223,10 +225,67 @@
 .primary:hover::after,
 .secondary:hover::after { left: 120%; }
 
-/* mobile stacking for CTAs */
+/* mobile stacking for CTAs and layout optimization */
 @media (max-width: 700px) {
-  .cta { flex-direction: column; }
-  .primary, .secondary { width: 100%; max-width: 360px; text-align: center; }
+  .container {
+    padding: 40px 16px 60px; /* Reduce vertical padding */
+    min-height: auto;
+  }
+
+  .stage {
+    gap: 0;
+  }
+
+  .header {
+    margin-bottom: 0; /* Remove negative margin to stack naturally */
+    padding-bottom: 20px;
+  }
+
+  .title {
+    font-size: 32px; /* Readable large title */
+  }
+
+  .track {
+    height: 280px; /* Fixed reasonable height for car */
+    margin-top: 0; /* Reset margins */
+    margin-bottom: 20px;
+  }
+
+  .image {
+    max-width: 95%; /* Make car bigger */
+    max-height: 85%;
+  }
+
+  .nav {
+    /* Position arrows closer to the edges or even slightly below */
+    top: 50%;
+    transform: translateY(-50%);
+    left: 0;
+    right: 0;
+    padding: 0 10px;
+  }
+
+  .btn {
+    width: 48px; /* Smaller touch targets for arrows */
+    height: 48px;
+  }
+
+  .peek {
+    display: none; /* Hide peek images on mobile to reduce clutter */
+  }
+
+  .cta {
+    flex-direction: column;
+    margin-top: 0; /* Remove huge spacer */
+    gap: 16px;
+  }
+
+  .primary, .secondary {
+    width: 100%;
+    max-width: 100%;
+    text-align: center;
+    padding: 16px 24px; /* Larger touch target for CTA */
+  }
 }
 
 .dots {
@@ -245,6 +304,3 @@
 .dotActive { background: #e6e6ea; }
 
 .visuallyHidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(1px,1px,1px,1px); white-space: nowrap; }
-
-
-

@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
@@ -31,6 +31,8 @@ export default function NavDrawer() {
   const worldEnabled = import.meta.env.VITE_ENABLE_WORLD === 'true';
   const languageButtonRef = useRef(null);
   const { t } = useTranslation(['nav', 'common', 'showroom']);
+  const [mobileView, setMobileView] = useState('menu'); // 'menu' or 'models'
+  const [isMobile, setIsMobile] = useState(false);
 
   useEffect(() => {
     if (!open) return undefined;
@@ -47,8 +49,19 @@ export default function NavDrawer() {
   useEffect(() => {
     if (!open) {
       closeLanguageMenu();
+      setMobileView('menu'); // Reset to menu when drawer closes
     }
   }, [open, closeLanguageMenu]);
+
+  // Detect mobile breakpoint
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth <= 640);
+    };
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   useEffect(() => {
     closeMenu();
@@ -63,6 +76,20 @@ export default function NavDrawer() {
   const goTo = (path) => {
     navigate(path);
     handleClose();
+  };
+
+  const handleModelsClick = () => {
+    if (isMobile) {
+      // On mobile, show models overlay instead of navigating
+      setMobileView('models');
+    } else {
+      // On desktop, navigate normally
+      goTo('/models');
+    }
+  };
+
+  const handleBackToMenu = () => {
+    setMobileView('menu');
   };
 
   const goToModel = (slug) => {
@@ -90,7 +117,7 @@ export default function NavDrawer() {
             transition={{ type: 'spring', stiffness: 260, damping: 26 }}
           >
             <div className={styles.layout}>
-              <div className={styles.leftPane}>
+              <div className={`${styles.leftPane} ${isMobile && mobileView === 'models' ? styles.leftPaneHidden : ''}`}>
                 <div className={styles.leftHeader}>
                   <button
                     type="button"
@@ -104,7 +131,15 @@ export default function NavDrawer() {
                 <nav className={styles.primaryNav}>
                   <button
                     type="button"
-                    onClick={() => goTo('/models')}
+                    onClick={() => goTo('/')}
+                    className={`${styles.navItem} ${location.pathname === '/' ? styles.navItemActive : ''}`}
+                  >
+                    <span>{t('nav:drawer.home')}</span>
+                    <span className={styles.arrow}>›</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleModelsClick}
                     className={styles.navItem}
                   >
                     <span>{t('nav:drawer.models')}</span>
@@ -118,22 +153,20 @@ export default function NavDrawer() {
                     <span>Agency</span>
                     <span className={styles.arrow}>›</span>
                   </button>
-                  {worldEnabled && (
-                    <button
-                      type="button"
-                      onClick={() => goTo('/world')}
-                      className={styles.navItem}
-                    >
-                      <span>{t('nav:drawer.world')}</span>
-                      <span className={styles.arrow}>›</span>
-                    </button>
-                  )}
                   <button
                     type="button"
                     onClick={() => goTo('/configurator')}
                     className={styles.navItem}
                   >
                     <span>{t('nav:drawer.configurator')}</span>
+                    <span className={styles.arrow}>›</span>
+                  </button>
+                  <button
+                    type="button"
+                    className={styles.navItem}
+                    disabled
+                  >
+                    <span>{t('nav:drawer.accessoriesShop')}</span>
                     <span className={styles.arrow}>›</span>
                   </button>
                 </nav>
@@ -162,31 +195,48 @@ export default function NavDrawer() {
                   </div>
                 </div>
               </div>
-              <div className={styles.rightPane}>
-                <h3 className={styles.sectionTitle}>{t('nav:drawer.models')}</h3>
-                <ul className={styles.modelList}>
-                  {items.map((model) => (
-                    <li key={model.id}>
-                      <button
-                        type="button"
-                        onClick={() => goToModel(model.slug)}
-                        className={styles.modelRow}
-                      >
-                        <div className={styles.modelCopy}>
-                          <span className={styles.modelName}>{model.name}</span>
-                          {model.status && (
-                            <span className={styles.modelBadge}>
-                              {mapModelStatus(model.status, t)}
-                            </span>
-                          )}
-                        </div>
-                        {model.image && (
-                          <img src={model.image} alt={model.name} className={styles.modelImage} />
-                        )}
-                      </button>
-                    </li>
-                  ))}
-                </ul>
+              <div className={`${styles.rightPane} ${isMobile && mobileView === 'menu' ? styles.rightPaneHidden : ''}`}>
+                {isMobile && mobileView === 'models' && (
+                  <div className={styles.modelsHeader}>
+                    <button
+                      type="button"
+                      className={styles.backButton}
+                      onClick={handleBackToMenu}
+                      aria-label={t('nav:aria.backToMenu')}
+                    >
+                      ←
+                    </button>
+                    <h3 className={styles.sectionTitle}>{t('nav:drawer.models')}</h3>
+                  </div>
+                )}
+                {(!isMobile || mobileView === 'models') && (
+                  <>
+                    {!isMobile && <h3 className={styles.sectionTitle}>{t('nav:drawer.models')}</h3>}
+                    <ul className={styles.modelList}>
+                      {items.map((model) => (
+                        <li key={model.id}>
+                          <button
+                            type="button"
+                            onClick={() => goToModel(model.slug)}
+                            className={styles.modelRow}
+                          >
+                            <div className={styles.modelCopy}>
+                              <span className={styles.modelName}>{model.name}</span>
+                              {model.status && (
+                                <span className={styles.modelBadge}>
+                                  {mapModelStatus(model.status, t)}
+                                </span>
+                              )}
+                            </div>
+                            {model.image && (
+                              <img src={model.image} alt={model.name} className={styles.modelImage} />
+                            )}
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  </>
+                )}
               </div>
             </div>
           </motion.aside>

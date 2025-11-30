@@ -20,6 +20,13 @@
   flex-direction: column;
 }
 
+@media (max-width: 640px) {
+  .drawer {
+    width: 100vw;
+    box-shadow: none;
+  }
+}
+
 .layout {
   flex: 1;
   display: grid;
@@ -33,6 +40,7 @@
   padding: 40px 34px;
   border-right: 1px solid rgba(255, 255, 255, 0.05);
   background: linear-gradient(180deg, rgba(20, 20, 20, 0.98), rgba(14, 14, 14, 0.92));
+  transition: transform 0.3s ease, opacity 0.3s ease;
 }
 
 .leftHeader {
@@ -99,9 +107,15 @@
   color: #ff4520;
 }
 
-.navItem:first-child {
-  background: linear-gradient(120deg, rgba(255, 255, 255, 0.15), rgba(255, 255, 255, 0.05));
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+.navItem:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.navItem:disabled:hover {
+  transform: none;
+  background: linear-gradient(120deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.03));
+  box-shadow: none;
 }
 
 .arrow {
@@ -124,6 +138,37 @@
   background: linear-gradient(180deg, rgba(28, 28, 28, 0.95), rgba(18, 18, 18, 0.92));
   padding: 0 40px 40px;
   overflow-y: auto;
+  transition: transform 0.3s ease, opacity 0.3s ease;
+}
+
+.modelsHeader {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 28px 0 18px;
+}
+
+.backButton {
+  background: rgba(255, 255, 255, 0.08);
+  color: #ffffff;
+  border: none;
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  cursor: pointer;
+  font-size: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 160ms ease, background 160ms ease;
+  flex-shrink: 0;
+}
+
+.backButton:hover,
+.backButton:focus-visible {
+  transform: translateX(-2px);
+  background: rgba(255, 255, 255, 0.16);
+  outline: none;
 }
 
 .modelList {
@@ -137,14 +182,14 @@
 
 .modelRow {
   display: grid;
-  grid-template-columns: minmax(220px, 280px) 1fr;
+  grid-template-columns: 1fr 1.8fr;
   align-items: center;
   gap: 24px;
   width: 100%;
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid rgba(255, 255, 255, 0.09);
   border-radius: 26px;
-  padding: 24px 28px;
+  padding: 28px 32px;
   cursor: pointer;
   text-align: left;
   transition: background 160ms ease, transform 160ms ease, border-color 160ms ease, box-shadow 160ms ease;
@@ -186,11 +231,27 @@
 }
 
 .modelImage {
-  width: 170px;
+  width: 120%;
+  max-width: none;
   height: auto;
   object-fit: contain;
   justify-self: end;
   filter: drop-shadow(0 18px 32px rgba(0, 0, 0, 0.45));
+  flex-shrink: 0;
+  margin-right: -10%;
+}
+
+@media (min-width: 768px) {
+  .modelRow {
+    grid-template-columns: 0.4fr 2.6fr;
+    overflow: hidden;
+  }
+}
+
+@media (min-width: 1024px) {
+  .modelRow {
+    grid-template-columns: 0.6fr 2.4fr;
+  }
 }
 
 .leftFooter {
@@ -244,24 +305,78 @@
 @media (max-width: 640px) {
   .layout {
     grid-template-columns: 1fr;
+    position: relative;
+    overflow: hidden;
   }
 
   .leftPane {
     border-right: none;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-    padding: 32px 28px;
+    border-bottom: none;
+    padding: 32px 20px;
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 1;
+  }
+
+  .leftPaneHidden {
+    transform: translateX(-100%);
+    opacity: 0;
+    pointer-events: none;
   }
 
   .rightPane {
-    padding: 28px;
+    padding: 0 20px 28px;
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 2;
+  }
+
+  .rightPaneHidden {
+    transform: translateX(100%);
+    opacity: 0;
+    pointer-events: none;
   }
 
   .sectionTitle {
-    padding: 28px 28px 18px;
+    padding: 0;
+    margin: 0;
+  }
+
+  .modelList {
+    padding: 0;
+    margin: 0;
+  }
+
+  .modelsHeader {
+    padding-top: 32px;
+    padding-left: 0;
+    padding-right: 0;
+    margin: 0;
+  }
+
+  .modelsHeader .sectionTitle {
+    flex: 1;
+    padding: 0;
   }
 
   .modelRow {
-    padding: 18px 20px;
+    padding: 18px 16px;
+    grid-template-columns: 1fr auto;
+    gap: 16px;
+  }
+
+  .modelImage {
+    width: 120px;
+  }
+
+  .modelName {
+    font-size: 22px;
   }
 }
 

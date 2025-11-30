@@ -8,9 +8,11 @@
   "sport": "Sport",
   "luxury": "Lyx",
   "drawer": {
+    "home": "Hem",
     "models": "Modeller",
     "world": "Volturiano World",
     "configurator": "Börja konfigurera",
+    "accessoriesShop": "Tillbehörs butik",
     "account": "Konto",
     "language": "Språk"
   },
@@ -22,7 +24,8 @@
     "openNavigation": "Öppna navigering",
     "closeNavigation": "Stäng navigering",
     "home": "Volturianos startsida",
-    "account": "Konto"
+    "account": "Konto",
+    "backToMenu": "Tillbaka till menyn"
   }
 }
 

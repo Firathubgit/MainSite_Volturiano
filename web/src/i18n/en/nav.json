@@ -8,9 +8,11 @@
   "sport": "Sport",
   "luxury": "Luxury",
   "drawer": {
+    "home": "Home",
     "models": "Models",
     "world": "Volturiano World",
     "configurator": "Start configuring",
+    "accessoriesShop": "Accessories Shop",
     "account": "Account",
     "language": "Language"
   },
@@ -22,7 +24,8 @@
     "openNavigation": "Open navigation",
     "closeNavigation": "Close navigation",
     "home": "Volturiano home",
-    "account": "Account"
+    "account": "Account",
+    "backToMenu": "Back to menu"
   }
 }
 

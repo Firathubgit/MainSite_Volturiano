@@ -239,29 +239,29 @@
   align-items: center;
   justify-content: center;
   width: auto;
-  padding: 0.4rem 0.85rem;
+  padding: 0.55rem 1.2rem;
   border-radius: 9999px;
   z-index: 45; /* Above category panel and footer */
   background: rgba(10, 10, 10, 0.96);
   backdrop-filter: blur(16px);
   border: 1px solid rgba(255, 255, 255, 0.2);
-  gap: 0.55rem;
+  gap: 0.8rem;
   box-shadow: 0 15px 40px rgba(0, 0, 0, 0.45);
   }
   
   .navButton {
-  width: 1.5rem;
-  height: 1.5rem;
+  width: 2.1rem;
+  height: 2.1rem;
   }
   
   .navDot {
-  width: 0.4rem;
-  height: 0.4rem;
+  width: 0.55rem;
+  height: 0.55rem;
   }
   
   .navDotActive {
-  width: 0.4rem;
-  height: 0.4rem;
+  width: 0.55rem;
+  height: 0.55rem;
   }
   
   /* Hide tooltip on mobile */
@@ -272,13 +272,12 @@
 /* Category panel - bottom sheet above the pricing footer */
   .categoryPanel {
     position: fixed;
-  bottom: 7rem; /* Above the pricing footer (~6rem height) */
-  left: 0.5rem;
-  right: 0.5rem;
-  transform: none;
-  width: calc(100% - 1rem);
-  max-width: calc(100vw - 1rem);
-  max-height: 200px;
+    bottom: 7rem; /* Above the pricing footer (~6rem height) */
+    left: 0.5rem;
+    right: 0.5rem;
+    width: calc(100% - 1rem);
+    max-width: calc(100vw - 1rem);
+    max-height: 40vh; /* Reduced to not cover too much */
     margin: 0;
     border-radius: 12px;
     background: rgba(10, 10, 10, 0.98);
@@ -290,41 +289,41 @@
   }
   
   .categoryHeader {
-  padding: 0.6rem 0.8rem;
+    padding: 0.8rem 1rem;
     border-bottom: 1px solid rgba(255, 255, 255, 0.08);
   }
   
   .categoryTitle {
-  font-size: 0.75rem;
+    font-size: 0.85rem;
   }
   
   .categoryNumber {
-  font-size: 0.45rem;
+    font-size: 0.55rem;
   }
   
   .categoryBody {
-  padding: 0.6rem 0.75rem;
-  max-height: calc(200px - 2.4rem);
+    padding: 0.8rem;
+    max-height: calc(40vh - 3.5rem);
     overflow-y: auto;
   }
   
   .categoryLabel {
-  font-size: 0.5rem;
-  margin-bottom: 0.3rem;
+    font-size: 0.6rem;
+    margin-bottom: 0.4rem;
   }
   
   .paintGrid {
     grid-template-columns: repeat(3, 1fr);
-  gap: 0.2rem;
+    gap: 0.25rem;
   }
   
   .paintGrid button {
-  aspect-ratio: 1.1;
+    aspect-ratio: 1.3;
   }
   
   .optionsGrid {
     grid-template-columns: 1fr;
-  gap: 0.3rem;
+    gap: 0.4rem;
   }
 }
 

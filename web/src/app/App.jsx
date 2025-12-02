@@ -46,6 +46,7 @@ const AuditLogs = lazy(() => import('../pages/Admin/Analytics/AuditLogs'));
 const UserActivity = lazy(() => import('../pages/Admin/Analytics/UserActivity'));
 const SystemSettings = lazy(() => import('../pages/Admin/Settings/SystemSettings'));
 const RoleManagement = lazy(() => import('../pages/Admin/Settings/RoleManagement'));
+const Infotainment = lazy(() => import('../pages/Infotainment/Infotainment'));
 const LoadingOverlayTest = import.meta.env.DEV
   ? lazy(() => import('../pages/Debug/LoadingOverlayTest'))
   : null;
@@ -245,6 +246,7 @@ export default function App() {
             <Route path="/start" element={<StartAnim />} />
             <Route path="/models" element={<Models />} />
             <Route path="/agency" element={<Agency />} />
+            <Route path="/infotainment" element={<Infotainment />} />
             <Route
               path="/configurator/:garageItemId"
               element={(

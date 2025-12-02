@@ -1,0 +1,289 @@
+.container {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  background: #050505;
+  overflow: hidden;
+  animation: fadeIn 0.7s ease-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* 3D Grid Plane */
+.gridPlane {
+  position: absolute;
+  inset: 0;
+  opacity: 0.4;
+  background-size: 80px 80px;
+  transform: perspective(1000px) rotateX(40deg) scale(2.5) translateY(-100px);
+  transform-origin: 50% 100%;
+}
+
+/* Roads SVG */
+.roadsSvg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.animatedRoad {
+  animation: pulse 2s ease-in-out infinite;
+  opacity: 0.5;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 0.3;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+
+/* Search Island */
+.searchIsland {
+  position: absolute;
+  top: 2rem;
+  left: 2rem;
+  z-index: 10;
+  width: 24rem;
+}
+
+.searchBar {
+  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(24px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 9999px;
+  height: 3.5rem;
+  display: flex;
+  align-items: center;
+  padding: 0 0.5rem;
+  gap: 1rem;
+  box-shadow: 0 25px 50px rgba(0, 0, 0, 0.5);
+  transition: background 0.2s;
+}
+
+.searchBar:hover {
+  background: rgba(0, 0, 0, 0.6);
+}
+
+.searchIconWrapper {
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+}
+
+.searchInput {
+  background: transparent;
+  color: white;
+  border: none;
+  outline: none;
+  flex: 1;
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 1.125rem;
+}
+
+.searchInput::placeholder {
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.menuButton {
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.menuButton:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+/* Suggestion Chips */
+.suggestionChips {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 1rem;
+  margin-left: 0.5rem;
+}
+
+.chip {
+  padding: 0.375rem 1rem;
+  border-radius: 9999px;
+  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  font-size: 0.75rem;
+  font-weight: bold;
+  color: rgba(255, 255, 255, 0.8);
+  cursor: pointer;
+  transition: background 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.chip:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+/* Map Layers */
+.mapLayers {
+  position: absolute;
+  top: 2rem;
+  right: 2rem;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.layerButton {
+  width: 3rem;
+  height: 3rem;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(24px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.layerButton:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+/* Guidance Card */
+.guidanceCard {
+  position: absolute;
+  bottom: 10rem;
+  left: 2rem;
+  z-index: 10;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(32px);
+  border-left: 4px solid;
+  padding: 1.5rem;
+  border-radius: 0 1rem 1rem 0;
+  box-shadow: 0 25px 50px rgba(0, 0, 0, 0.5);
+  min-width: 20rem;
+  animation: slideInFromLeft 0.7s ease-out;
+}
+
+@keyframes slideInFromLeft {
+  from {
+    opacity: 0;
+    transform: translateX(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.guidanceHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 0.5rem;
+}
+
+.guidanceDistance {
+  font-size: 1.875rem;
+  font-family: 'Orbitron', sans-serif;
+  font-weight: bold;
+  color: white;
+  margin: 0;
+}
+
+.distanceUnit {
+  font-size: 0.875rem;
+  font-family: 'Rajdhani', sans-serif;
+  font-weight: normal;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.navIcon {
+  color: white;
+}
+
+.guidanceText {
+  font-size: 1.125rem;
+  color: white;
+  font-family: 'Rajdhani', sans-serif;
+  margin: 0;
+}
+
+.gateName {
+  color: #9a9a9a;
+}
+
+.guidanceFooter {
+  margin-top: 1rem;
+  display: flex;
+  gap: 1rem;
+  font-size: 0.75rem;
+  font-family: monospace;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+/* Vehicle Cursor */
+.vehicleCursor {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 0;
+  pointer-events: none;
+}
+
+.cursorContainer {
+  position: relative;
+}
+
+.pulseRing {
+  position: absolute;
+  inset: 0;
+  margin: -2rem;
+  border-radius: 50%;
+  border: 1px solid;
+  animation: ping 1.5s cubic-bezier(0, 0, 0.2, 1) infinite;
+  opacity: 0.5;
+}
+
+@keyframes ping {
+  75%, 100% {
+    transform: scale(2);
+    opacity: 0;
+  }
+}
+
+.cursorArrow {
+  width: 0;
+  height: 0;
+  border-left: 15px solid transparent;
+  border-right: 15px solid transparent;
+  border-bottom: 40px solid;
+}
+

@@ -163,6 +163,14 @@ export default function NavDrawer() {
                   </button>
                   <button
                     type="button"
+                    onClick={() => goTo('/infotainment')}
+                    className={`${styles.navItem} ${location.pathname === '/infotainment' ? styles.navItemActive : ''}`}
+                  >
+                    <span>{t('nav:infotainment')} <span style={{ fontSize: '0.7em', opacity: 0.6, marginLeft: '0.5rem', textTransform: 'none' }}>(Under development)</span></span>
+                    <span className={styles.arrow}>›</span>
+                  </button>
+                  <button
+                    type="button"
                     className={styles.navItem}
                     disabled
                   >

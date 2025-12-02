@@ -13,7 +13,7 @@ import {
 } from '@react-three/drei';
 import * as THREE from 'three';
 import { DRIVE_MODES, CAMERA_VIEWS } from '../../constants/infotainmentConstants';
-import studioEnv from '../../../../assets/3DConfigurator/studio_small_06_4k.exr';
+// import studioEnv from '../../../../assets/3DConfigurator/studio_small_06_4k.exr';
 
 const CAR_MODEL_URL = '/VolturianoGLB.glb';
 
@@ -59,7 +59,7 @@ function Lights({ mode }) {
 
   return (
     <>
-      <ambientLight intensity={0.2} />
+      <ambientLight intensity={0.5} />
       <SpotLight
         position={[5, 10, 5]}
         angle={0.5}
@@ -200,7 +200,7 @@ export function Scene({ mode, carConfig, cameraView }) {
         <meshStandardMaterial color="#111111" roughness={0.1} metalness={0.5} />
       </mesh>
 
-      <Environment files={studioEnv} background={false} environmentIntensity={0.5} />
+      {/* <Environment files={studioEnv} background={false} environmentIntensity={0.5} /> */}
     </Canvas>
   );
 }

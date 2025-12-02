@@ -55,34 +55,66 @@ function Lights({ mode }) {
       : mode === DRIVE_MODES.COMFORT
         ? '#0036FF'
         : '#FFFFFF';
-  const intensity = mode === DRIVE_MODES.LUXURY ? 2 : 5;
-
+  
   return (
     <>
-      <ambientLight intensity={0.5} />
+      {/* Base Ambiance */}
+      <ambientLight intensity={1.5} />
+
+      {/* Key Light (Top-Right Front) */}
       <SpotLight
-        position={[5, 10, 5]}
+        position={[8, 12, 8]}
         angle={0.5}
         penumbra={0.5}
-        intensity={20}
+        intensity={80}
         castShadow
         shadow-bias={-0.0001}
+        distance={30}
       />
+
+      {/* Fill Light (Left) */}
       <SpotLight
-        position={[-5, 5, -5]}
-        angle={0.5}
+        position={[-8, 5, 5]}
+        angle={0.6}
         penumbra={1}
-        intensity={intensity}
-        color={color}
+        intensity={40}
         distance={20}
       />
+
+      {/* Rim Light (Back - Dynamic Color) */}
+      <SpotLight
+        position={[-5, 8, -8]}
+        angle={0.4}
+        penumbra={0.5}
+        intensity={100}
+        color={color}
+        distance={30}
+      />
+
+      {/* Studio Softboxes (RectAreaLights) for Reflections */}
       <rectAreaLight
-        width={10}
-        height={2}
-        intensity={10}
-        color={mode === DRIVE_MODES.SPORT ? '#ffdddd' : '#ffffff'}
+        width={15}
+        height={3}
+        intensity={50}
+        color="#ffffff"
         position={[0, 8, 0]}
         rotation={[-Math.PI / 2, 0, 0]}
+      />
+      <rectAreaLight
+        width={5}
+        height={10}
+        intensity={30}
+        color={color}
+        position={[-8, 4, 0]}
+        rotation={[0, Math.PI / 2, 0]}
+      />
+      <rectAreaLight
+        width={5}
+        height={10}
+        intensity={30}
+        color="#ffffff"
+        position={[8, 4, 0]}
+        rotation={[0, -Math.PI / 2, 0]}
       />
     </>
   );

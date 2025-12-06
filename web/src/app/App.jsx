@@ -238,7 +238,7 @@ export default function App() {
   return (
     <div>
       <CustomCursor />
-      <Analytics mode={import.meta.env.PROD ? 'production' : 'development'} />
+      <Analytics />
       <SpeedInsights />
       <LoadingOverlay
         show={forceOverlay || (!session && (status === 'loading' || status === 'idle'))}

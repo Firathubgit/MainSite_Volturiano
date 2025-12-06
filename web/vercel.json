@@ -1,7 +1,7 @@
 {
   "rewrites": [
     {
-      "source": "/(.*)",
+      "source": "/((?!assets|_vercel|.*\\.glb|favicon.ico).*)",
       "destination": "/index.html"
     }
   ],

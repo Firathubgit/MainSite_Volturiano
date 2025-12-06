@@ -12,6 +12,8 @@ import NavDrawer from '../components/NavDrawer/NavDrawer';
 import LoadingOverlay from '../components/LoadingOverlay/LoadingOverlay';
 import { useRenderLogger } from '../debug/useRenderLogger';
 import { usePageTitle } from '../hooks/usePageTitle';
+import CustomCursor from '../components/CustomCursor/CustomCursor';
+import { Analytics } from '@vercel/analytics/react';
 
 const Home = lazy(() => import('../pages/Home/Home'));
 const Models = lazy(() => import('../pages/Models/Models'));
@@ -234,6 +236,8 @@ export default function App() {
 
   return (
     <div>
+      <CustomCursor />
+      <Analytics />
       <LoadingOverlay
         show={forceOverlay || (!session && (status === 'loading' || status === 'idle'))}
       />

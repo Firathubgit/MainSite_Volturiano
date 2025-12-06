@@ -7,6 +7,12 @@ body {
   scrollbar-width: thin;
   scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
 }
+
+@media (pointer: fine) {
+  html, body, a, button, input, select, textarea {
+    cursor: none !important;
+  }
+}
 main { max-width: 100%; margin: 0 auto; padding: 0 0; }
 .accent { color: var(--accent); }
 

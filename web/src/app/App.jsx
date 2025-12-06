@@ -14,6 +14,7 @@ import { useRenderLogger } from '../debug/useRenderLogger';
 import { usePageTitle } from '../hooks/usePageTitle';
 import CustomCursor from '../components/CustomCursor/CustomCursor';
 import { Analytics } from '@vercel/analytics/react';
+import { SpeedInsights } from '@vercel/speed-insights/react';
 
 const Home = lazy(() => import('../pages/Home/Home'));
 const Models = lazy(() => import('../pages/Models/Models'));
@@ -237,7 +238,8 @@ export default function App() {
   return (
     <div>
       <CustomCursor />
-      <Analytics />
+      <Analytics mode={import.meta.env.PROD ? 'production' : 'development'} />
+      <SpeedInsights />
       <LoadingOverlay
         show={forceOverlay || (!session && (status === 'loading' || status === 'idle'))}
       />

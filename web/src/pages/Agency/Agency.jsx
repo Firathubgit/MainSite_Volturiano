@@ -61,16 +61,17 @@ export default function Agency() {
         <TechTicker />
 
         <DeviceShowcase />
-        <CaseStudy />
-
         <TeamShowcase />
+        <PortfolioGrid />
+        <CaseStudy />   
+
 
         <ServiceShowcase 
           onOpenContact={openContact}
           onOpenDemo={openDemo}
         />
 
-        <PortfolioGrid />
+
 
 
 

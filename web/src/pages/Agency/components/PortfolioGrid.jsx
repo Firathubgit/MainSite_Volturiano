@@ -1,14 +1,31 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { motion } from 'framer-motion';
-import { ArrowUpRight } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import furGloveThumbnail from '../../../assets/FurGloveThhumnail.png';
+import ipadStory from '../../../assets/Gemini_Generated_Image_hca7uhhca7uhhca7 (1).png';
+import ipadClarity from '../../../assets/Gemini_Generated_Image_z1w47wz1w47wz1w4 (1).png';
 import styles from './PortfolioGrid.module.css';
 
 export function PortfolioGrid() {
   const { t } = useTranslation('agency');
-  const projects = t('portfolio.projects', { returnObjects: true });
+  const [hoveredProject, setHoveredProject] = useState(null);
   
+  const projectsData = t('portfolio.projects', { returnObjects: true });
+  
+  // Enrich projects with images and IDs
+  const projects = projectsData.map((p, i) => {
+    let image = ipadStory; // Default
+    if (p.url && p.url.includes('furglove')) image = furGloveThumbnail;
+    else if (i === 1) image = ipadClarity;
+    
+    return {
+      ...p,
+      id: i,
+      year: '2024',
+      image
+    };
+  });
+
   const handleProjectClick = (url) => {
     if (url) {
       window.open(url, '_blank', 'noopener,noreferrer');
@@ -17,79 +34,73 @@ export function PortfolioGrid() {
 
   return (
     <section id="portfolio" className={styles.section}>
-      <div className={styles.gradient} />
-      
       <div className={styles.container}>
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          className={styles.header}
-        >
-          <h4 className={styles.label}>{t('portfolio.label')}</h4>
-          <h2 className={styles.title}>{t('portfolio.title')}</h2>
-          <p className={styles.description}>{t('portfolio.description')}</p>
-        </motion.div>
+        <div className={styles.header}>
+          <h2 className={styles.label}>{t('portfolio.label')}</h2>
+          <div className={styles.separator}></div>
+        </div>
 
-        <div className={styles.grid}>
-          {projects.map((project, index) => {
-            const isFurGlove = project.url && project.url.includes('furglove');
-            const projectImage = isFurGlove ? furGloveThumbnail : null;
-            
-            return (
-              <motion.div
-                key={index}
-                initial={{ opacity: 0, scale: 0.95 }}
-                whileInView={{ opacity: 1, scale: 1 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.5, delay: index * 0.1 }}
-                className={styles.projectCard}
-                data-clickable={!!project.url}
-                onClick={() => project.url && handleProjectClick(project.url)}
-              >
-                <div className={styles.projectImage}>
-                  {projectImage ? (
-                    <img 
-                      src={projectImage} 
-                      alt={project.name}
-                      className={styles.projectThumbnail}
-                    />
-                  ) : (
-                    <div className={styles.imagePlaceholder}>
-                      <div className={styles.imagePattern} />
-                    </div>
-                  )}
-                  <div className={styles.projectOverlay}>
-                    {/* View Button - Only visible if clickable */}
-                    {project.url ? (
-                      <button 
-                        className={styles.viewButton}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleProjectClick(project.url);
-                        }}
-                      >
-                        <ArrowUpRight size={24} />
-                      </button>
-                    ) : (
-                      <div className={styles.comingSoonBadge}>Coming Soon</div>
-                    )}
-
-                    <div className={styles.projectInfo}>
-                      <h3 className={styles.projectTitle}>{project.name}</h3>
-                      <div className={styles.projectCategory}>{project.category}</div>
-                      {/* Tags hidden via CSS */}
-                      <div className={styles.projectTags}>
-                        {project.tags.map((tag, i) => (
-                          <span key={i} className={styles.tag}>{tag}</span>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
+        <div className={styles.projectList}>
+          {projects.map((project) => (
+            <motion.div
+              key={project.id}
+              initial={{ opacity: 0.5 }}
+              whileHover={{ opacity: 1, x: 20 }}
+              onHoverStart={() => setHoveredProject(project.id)}
+              onHoverEnd={() => setHoveredProject(null)}
+              className={styles.projectItem}
+              onClick={() => project.url && handleProjectClick(project.url)}
+            >
+              <div className={styles.projectContent}>
+                <div>
+                  <h3 className={styles.projectTitle}>
+                    {project.name}
+                  </h3>
+                  <span className={styles.projectCategory}>{project.category}</span>
                 </div>
-              </motion.div>
-            );
-          })}
+                <span className={styles.projectYear}>({project.year})</span>
+
+                {/* Desktop Hover Image Reveal - Positioned absolutely within the content */}
+                <AnimatePresence mode="wait">
+                  {hoveredProject === project.id && (
+                    <motion.div
+                      key={project.id}
+                      className={styles.revealImageContainer}
+                      initial={{ scale: 0.8, opacity: 0 }}
+                      animate={{ 
+                        scale: 1,
+                        opacity: 1,
+                        rotate: Math.random() * 10 - 5
+                      }}
+                      exit={{ scale: 0.8, opacity: 0 }}
+                      transition={{ duration: 0.3, ease: "easeOut" }}
+                    >
+                      <img 
+                        src={project.image} 
+                        alt={project.name} 
+                        className={styles.revealImage}
+                      />
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+
+              {/* Mobile Image - Visible only on small screens */}
+              <div className={styles.mobileImage}>
+                <img 
+                  src={project.image} 
+                  alt={project.name} 
+                  className={styles.mobileImgElement}
+                />
+              </div>
+            </motion.div>
+          ))}
+        </div>
+        
+        <div className={styles.footer}>
+          <button className={styles.archiveButton}>
+            View Archive
+          </button>
         </div>
       </div>
     </section>

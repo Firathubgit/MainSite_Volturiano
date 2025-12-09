@@ -1,14 +1,16 @@
 import React, { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { X, Check } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { createPortal } from 'react-dom';
 import { Button } from '../ui/Button';
 import { Input, Select, TextArea } from '../ui/Input';
-import { SERVICES, BUDGET_RANGES, TIMELINES } from '../../constants';
+import { SERVICES } from '../../constants';
 import { supabase } from '../../../../lib/supabaseClient';
 import styles from './ContactFormModal.module.css';
 
 export function ContactFormModal({ isOpen, onClose, initialServiceId }) {
+  const { t } = useTranslation('agency');
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState(null);
@@ -52,12 +54,12 @@ export function ContactFormModal({ isOpen, onClose, initialServiceId }) {
     e.preventDefault();
     
     if (formData.service_interests.length === 0) {
-      setError("Please select at least one service.");
+      setError(t('contactModal.form.errors.selectService'));
       return;
     }
     
     if (!formData.privacy_consent) {
-      setError("Please agree to the privacy consent.");
+      setError(t('contactModal.form.errors.privacyConsent'));
       return;
     }
     
@@ -150,13 +152,13 @@ export function ContactFormModal({ isOpen, onClose, initialServiceId }) {
                     <div className={styles.successIcon}>
                       <Check className={styles.successCheck} size={32} />
                     </div>
-                    <h3 className={styles.successTitle}>Received.</h3>
-                    <p className={styles.successMessage}>We'll analyze your request and respond within 24 hours.</p>
+                    <h3 className={styles.successTitle}>{t('contactModal.success.title')}</h3>
+                    <p className={styles.successMessage}>{t('contactModal.success.message')}</p>
                   </div>
                 ) : (
                   <>
-                    <h2 className={styles.title}>Initiate Project</h2>
-                    <p className={styles.subtitle}>Tell us about your vision. We'll handle the engineering.</p>
+                    <h2 className={styles.title}>{t('contactModal.title')}</h2>
+                    <p className={styles.subtitle}>{t('contactModal.subtitle')}</p>
 
                     {error && (
                       <div className={styles.errorMessage}>
@@ -167,46 +169,46 @@ export function ContactFormModal({ isOpen, onClose, initialServiceId }) {
                     <form onSubmit={handleSubmit} className={styles.form}>
                       <div className={styles.formRow}>
                         <Input 
-                          label="Name *" 
+                          label={t('contactModal.form.name')} 
                           required 
                           value={formData.name}
                           onChange={e => setFormData({...formData, name: e.target.value})}
-                          placeholder="Your full name"
-                          error={error && !formData.name ? 'Name is required' : null}
+                          placeholder={t('contactModal.form.namePlaceholder')}
+                          error={error && !formData.name ? t('contactModal.form.errors.nameRequired') : null}
                         />
                         <Input 
-                          label="Email *" 
+                          label={t('contactModal.form.email')} 
                           type="email" 
                           required 
                           value={formData.email}
                           onChange={e => setFormData({...formData, email: e.target.value})}
-                          placeholder="your@email.com"
-                          error={error && !formData.email ? 'Email is required' : null}
+                          placeholder={t('contactModal.form.emailPlaceholder')}
+                          error={error && !formData.email ? t('contactModal.form.errors.emailRequired') : null}
                         />
                       </div>
                       
                       <Input 
-                        label="Company" 
+                        label={t('contactModal.form.company')} 
                         value={formData.company}
                         onChange={e => setFormData({...formData, company: e.target.value})}
-                        placeholder="Company name (optional)"
+                        placeholder={t('contactModal.form.companyPlaceholder')}
                       />
 
                       <div className={styles.serviceInterestContainer}>
-                        <label className={styles.serviceInterestLabel}>Service Interest *</label>
+                        <label className={styles.serviceInterestLabel}>{t('contactModal.form.serviceInterest')}</label>
                         <div className={styles.serviceGrid}>
                           {SERVICES.map(service => (
                             <button
                               type="button"
                               key={service.id}
-                              onClick={() => toggleService(service.title)}
+                              onClick={() => toggleService(t(`services.items.${service.id}.title`))}
                               className={`${styles.serviceButton} ${
-                                formData.service_interests.includes(service.title)
+                                formData.service_interests.includes(t(`services.items.${service.id}.title`))
                                   ? styles.serviceButtonActive
                                   : ''
                               }`}
                             >
-                              {service.title}
+                              {t(`services.items.${service.id}.title`)}
                             </button>
                           ))}
                         </div>
@@ -214,28 +216,28 @@ export function ContactFormModal({ isOpen, onClose, initialServiceId }) {
 
                       <div className={styles.formRow}>
                         <Select 
-                          label="Budget Range *" 
-                          options={BUDGET_RANGES}
+                          label={t('contactModal.form.budgetRange')} 
+                          options={t('contactModal.budgetRanges', { returnObjects: true })}
                           required
                           value={formData.budget_range}
                           onChange={e => setFormData({...formData, budget_range: e.target.value})}
-                          placeholder="Select budget range"
+                          placeholder={t('contactModal.form.budgetPlaceholder')}
                         />
                         <Select 
-                          label="Timeline *" 
-                          options={TIMELINES}
+                          label={t('contactModal.form.timeline')} 
+                          options={t('contactModal.timelines', { returnObjects: true })}
                           required
                           value={formData.project_timeline}
                           onChange={e => setFormData({...formData, project_timeline: e.target.value})}
-                          placeholder="Select timeline"
+                          placeholder={t('contactModal.form.timelinePlaceholder')}
                         />
                       </div>
 
                       <div className={styles.textareaContainer}>
                         <TextArea 
-                          label="Brief"
+                          label={t('contactModal.form.brief')}
                           maxLength={maxMessageLength}
-                          placeholder="Tell us about the project scope..."
+                          placeholder={t('contactModal.form.briefPlaceholder')}
                           value={formData.message}
                           onChange={e => setFormData({...formData, message: e.target.value})}
                         />
@@ -254,14 +256,14 @@ export function ContactFormModal({ isOpen, onClose, initialServiceId }) {
                           className={styles.checkbox}
                         />
                         <label htmlFor="privacy" className={styles.checkboxLabel}>
-                          I agree to be contacted by Volturiano regarding my inquiry.
+                          {t('contactModal.form.privacyConsent')}
                         </label>
                       </div>
 
                       <div className={styles.formActions}>
-                        <Button type="button" variant="ghost" onClick={onClose}>Cancel</Button>
+                        <Button type="button" variant="ghost" onClick={onClose}>{t('contactModal.form.cancel')}</Button>
                         <Button type="submit" disabled={loading}>
-                          {loading ? 'Processing...' : 'Submit Request'}
+                          {loading ? t('contactModal.form.processing') : t('contactModal.form.submit')}
                         </Button>
                       </div>
                     </form>

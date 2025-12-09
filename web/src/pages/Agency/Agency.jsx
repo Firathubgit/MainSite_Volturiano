@@ -1,9 +1,14 @@
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { usePageTitle } from '../../hooks/usePageTitle';
-import { HeroSection } from './components/HeroSection';
+import { HeroSection, MarqueeTicker } from './components/HeroSection';
+import { ClientLogos } from './components/ClientLogos';
 import { TechTicker } from './components/TechTicker';
 import { ServiceShowcase } from './components/ServiceShowcase';
+import { PortfolioGrid } from './components/PortfolioGrid';
+import { DeviceShowcase } from './components/DeviceShowcase';
 import { CaseStudy } from './components/CaseStudy';
+import { TeamShowcase } from './components/TeamShowcase';
 import { PricingOverview } from './components/PricingOverview';
 import { ContactFormModal } from './components/modals/ContactFormModal';
 import { DemoRequestModal } from './components/modals/DemoRequestModal';
@@ -11,7 +16,8 @@ import { SERVICES } from './constants';
 import styles from './Agency.module.css';
 
 export default function Agency() {
-  usePageTitle('Volturiano Agency – Premium Software Services');
+  const { t } = useTranslation(['agency', 'common']);
+  usePageTitle(t('agency:pageTitle'));
   
   const [activeModal, setActiveModal] = useState(null);
   const [selectedServiceId, setSelectedServiceId] = useState(null);
@@ -47,24 +53,40 @@ export default function Agency() {
         onScrollToServices={() => scrollToSection('services')}
       />
 
-      <TechTicker />
+      <div className={styles.contentWrapper}>
+        <MarqueeTicker />
 
-      <ServiceShowcase 
-        onOpenContact={openContact}
-        onOpenDemo={openDemo}
-      />
+        <ClientLogos />
 
-      <CaseStudy />
+        <TechTicker />
 
-      <PricingOverview onOpenContact={openContact} />
+        <DeviceShowcase />
+        <CaseStudy />
 
-      <footer className={styles.footer}>
+        <TeamShowcase />
+
+        <ServiceShowcase 
+          onOpenContact={openContact}
+          onOpenDemo={openDemo}
+        />
+
+        <PortfolioGrid />
+
+
+
+
+
+
+
+        <PricingOverview onOpenContact={openContact} />
+
+        <footer className={styles.footer}>
         <div className={styles.footerContainer}>
           <div className={styles.footerGrid}>
             <div className={styles.footerBrand}>
-              <a href="#" className={styles.footerLogo}>VOLTURIANO_AGENCY</a>
+              <a href="#" className={styles.footerLogo}>{t('agency:footer.logo')}</a>
               <p className={styles.footerDescription}>
-                Commissioning the future of digital luxury. Investor-grade assets for forward-thinking brands.
+                {t('agency:footer.description')}
               </p>
               <div className={styles.footerSocial}>
                 {['Twitter', 'LinkedIn', 'Instagram'].map(social => (
@@ -76,7 +98,7 @@ export default function Agency() {
             </div>
             
             <div className={styles.footerColumn}>
-              <h4 className={styles.footerTitle}>SERVICES</h4>
+              <h4 className={styles.footerTitle}>{t('agency:footer.servicesTitle')}</h4>
               <ul className={styles.footerList}>
                 {SERVICES.map(s => (
                   <li key={s.id}>
@@ -88,7 +110,7 @@ export default function Agency() {
                       }} 
                       className={styles.footerLink}
                     >
-                      {s.title}
+                      {t(`agency:services.items.${s.id}.title`)}
                     </a>
                   </li>
                 ))}
@@ -96,27 +118,28 @@ export default function Agency() {
             </div>
 
             <div className={styles.footerColumn}>
-              <h4 className={styles.footerTitle}>COMPANY</h4>
+              <h4 className={styles.footerTitle}>{t('agency:footer.companyTitle')}</h4>
               <ul className={styles.footerList}>
-                <li><a href="#" className={styles.footerLink}>About</a></li>
-                <li><a href="#" className={styles.footerLink}>Careers</a></li>
-                <li><a href="#" className={styles.footerLink}>Contact</a></li>
-                <li><a href="#" className={styles.footerLink}>Privacy Policy</a></li>
+                <li><a href="#" className={styles.footerLink}>{t('agency:footer.links.about')}</a></li>
+                <li><a href="#" className={styles.footerLink}>{t('agency:footer.links.careers')}</a></li>
+                <li><a href="#" className={styles.footerLink}>{t('agency:footer.links.contact')}</a></li>
+                <li><a href="#" className={styles.footerLink}>{t('agency:footer.links.privacyPolicy')}</a></li>
               </ul>
             </div>
           </div>
 
           <div className={styles.footerBottom}>
             <div className={styles.footerCopyright}>
-              © 2024 VOLTURIANO INC. ALL RIGHTS RESERVED.
+              {t('agency:footer.copyright')}
             </div>
             <div className={styles.footerStatus}>
               <span className={styles.statusDot}></span>
-              ALL SYSTEMS OPERATIONAL
+              {t('agency:footer.status')}
             </div>
           </div>
         </div>
       </footer>
+      </div>
 
       <ContactFormModal 
         isOpen={activeModal === 'contact'} 
@@ -131,6 +154,8 @@ export default function Agency() {
     </div>
   );
 }
+
+
 
 
 

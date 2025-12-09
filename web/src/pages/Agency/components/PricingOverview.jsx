@@ -1,38 +1,44 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { CheckCircle2 } from 'lucide-react';
 import { Button } from './ui/Button';
 import styles from './PricingOverview.module.css';
 
-const plans = [
-  { 
-    name: "PROTOTYPE", 
-    price: "$15k", 
-    desc: "For validation", 
-    features: ["Core MVP Features", "Standard UI System", "2 Weeks Sprint"] 
-  },
-  { 
-    name: "GROWTH", 
-    price: "$50k", 
-    desc: "For scaling", 
-    features: ["Full Platform", "Custom Design Language", "Admin Dashboard", "3 Months Support"], 
-    featured: true 
-  },
-  { 
-    name: "ENTERPRISE", 
-    price: "CUSTOM", 
-    desc: "For dominance", 
-    features: ["Bespoke Architecture", "Dedicated Team", "SLA Support", "Unlimited Revision"] 
-  }
-];
-
 export function PricingOverview({ onOpenContact }) {
+  const { t } = useTranslation('agency');
+  
+  const plans = [
+    { 
+      id: 'prototype',
+      name: t('pricing.plans.prototype.name'), 
+      price: t('pricing.plans.prototype.price'), 
+      desc: t('pricing.plans.prototype.desc'), 
+      features: t('pricing.plans.prototype.features', { returnObjects: true })
+    },
+    { 
+      id: 'growth',
+      name: t('pricing.plans.growth.name'), 
+      price: t('pricing.plans.growth.price'), 
+      desc: t('pricing.plans.growth.desc'), 
+      features: t('pricing.plans.growth.features', { returnObjects: true }),
+      featured: true 
+    },
+    { 
+      id: 'enterprise',
+      name: t('pricing.plans.enterprise.name'), 
+      price: t('pricing.plans.enterprise.price'), 
+      desc: t('pricing.plans.enterprise.desc'), 
+      features: t('pricing.plans.enterprise.features', { returnObjects: true })
+    }
+  ];
+
   return (
     <section className={styles.section}>
       <div className={styles.container}>
         <div className={styles.header}>
-          <h2 className={styles.title}>INVESTMENT</h2>
+          <h2 className={styles.title}>{t('pricing.title')}</h2>
           <p className={styles.subtitle}>
-            Clear pricing structures for premium deliverables. We don't do hidden fees or scope creep.
+            {t('pricing.subtitle')}
           </p>
         </div>
 
@@ -40,13 +46,13 @@ export function PricingOverview({ onOpenContact }) {
           {plans.map((plan, i) => (
             <div key={i} className={`${styles.card} ${plan.featured ? styles.cardFeatured : ''}`}>
               {plan.featured && (
-                <div className={styles.featuredBadge}>Recommended</div>
+                <div className={styles.featuredBadge}>{t('pricing.recommended')}</div>
               )}
               
               <h3 className={styles.planName}>{plan.name}</h3>
               <div className={styles.priceContainer}>
                 <span className={styles.price}>
-                  {plan.name === 'ENTERPRISE' ? '' : 'from '}{plan.price}
+                  {plan.id === 'enterprise' ? '' : t('pricing.from')}{plan.price}
                 </span>
               </div>
               <p className={styles.planDesc}>{plan.desc}</p>
@@ -66,7 +72,7 @@ export function PricingOverview({ onOpenContact }) {
                 className={plan.featured ? styles.featuredButton : styles.button}
                 onClick={() => onOpenContact(null)}
               >
-                Inquire Now
+                {t('pricing.inquireNow')}
               </Button>
             </div>
           ))}

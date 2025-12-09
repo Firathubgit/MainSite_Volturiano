@@ -3,7 +3,6 @@
   background-color: #050505;
   color: #ffffff;
   font-family: sans-serif;
-  overflow-x: hidden;
 }
 
 .page ::selection {
@@ -36,6 +35,12 @@
     rgba(5, 5, 5, 0.5) 50%,
     #050505
   );
+}
+
+.contentWrapper {
+  position: relative;
+  z-index: 10;
+  background-color: #050505;
 }
 
 .footer {
@@ -193,6 +198,10 @@
     opacity: 0.5;
   }
 }
+
+
+
+
 
 
 

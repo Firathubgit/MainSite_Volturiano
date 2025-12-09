@@ -1,0 +1,240 @@
+.section {
+  padding: 5rem 0;
+  background-color: #0a0a0a;
+  position: relative;
+  overflow: hidden;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.gradient {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at 50% 50%, rgba(255, 69, 32, 0.08), transparent 60%);
+}
+
+.container {
+  max-width: 80rem;
+  margin: 0 auto;
+  padding: 0 1rem;
+  position: relative;
+  z-index: 10;
+}
+
+.header {
+  text-align: center;
+  margin-bottom: 3rem;
+  max-width: 48rem;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.label {
+  color: #ff4520;
+  font-family: monospace;
+  font-size: 0.75rem;
+  letter-spacing: 0.1em;
+  margin-bottom: 0.75rem;
+  display: block;
+}
+
+.title {
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: #ffffff;
+  letter-spacing: -0.05em;
+  margin-bottom: 1rem;
+  line-height: 1.1;
+}
+
+@media (min-width: 768px) {
+  .title {
+    font-size: 3.5rem;
+  }
+}
+
+.description {
+  font-size: 1rem;
+  color: #d4d4d8;
+  line-height: 1.6;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 2rem;
+}
+
+@media (min-width: 768px) {
+  .grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (min-width: 1024px) {
+  .grid {
+    grid-template-columns: repeat(3, 1fr); /* Force 3 columns on desktop */
+  }
+}
+
+.projectCard {
+  position: relative;
+  background-color: #0a0a0a;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 0;
+  overflow: hidden;
+  cursor: pointer;
+  transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.projectCard:hover {
+  border-color: rgba(255, 69, 32, 0.5);
+  transform: translateY(-4px);
+  box-shadow: 0 20px 40px -12px rgba(255, 69, 32, 0.15);
+  z-index: 10;
+}
+
+.projectCard[data-clickable="true"] {
+  cursor: pointer;
+}
+
+.projectCard[data-clickable="false"] {
+  cursor: default;
+}
+
+.projectImage {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 3 / 4; /* Vertically prominent (portrait) */
+  overflow: hidden;
+}
+
+.projectThumbnail {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.projectCard:hover .projectThumbnail {
+  transform: scale(1.05);
+}
+
+.imagePlaceholder {
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(135deg, #1a1a1a 0%, #2a2a2a 100%);
+  position: relative;
+}
+
+.imagePattern {
+  position: absolute;
+  inset: 0;
+  background-image: 
+    linear-gradient(to right, rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+  background-size: 2rem 2rem;
+  opacity: 0.5;
+}
+
+.projectOverlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.9) 0%, rgba(0, 0, 0, 0.4) 50%, transparent 100%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end; /* Push content to bottom */
+  padding: 2rem;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.projectCard:hover .projectOverlay {
+  opacity: 1;
+}
+
+.projectInfo {
+  text-align: center;
+  transform: translateY(10px);
+  transition: transform 0.3s ease;
+  width: 100%;
+}
+
+.projectCard:hover .projectInfo {
+  transform: translateY(0);
+}
+
+.projectTitle {
+  font-size: 1.5rem;
+  font-weight: 500;
+  color: #ffffff;
+  margin-bottom: 0.25rem;
+  letter-spacing: -0.02em;
+}
+
+.projectCategory {
+  font-size: 0.75rem;
+  font-family: sans-serif;
+  color: rgba(255, 255, 255, 0.7);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin: 0;
+}
+
+/* Hide tags to match reference cleaner look */
+.projectTags {
+  display: none; 
+}
+
+.viewButton {
+  position: absolute;
+  top: 1.5rem;
+  right: 1.5rem;
+  width: auto;
+  height: auto;
+  border: none;
+  background: transparent;
+  color: #ffffff;
+  padding: 0;
+  opacity: 0;
+  transform: translate(10px, -10px);
+  transition: all 0.4s ease;
+}
+
+.projectCard:hover .viewButton {
+  opacity: 1;
+  transform: translate(0, 0);
+  background: transparent; /* Ensure no background on hover */
+}
+
+.viewButton:hover {
+  transform: scale(1.1); /* Simple scale on hover */
+  background: transparent;
+  border: none;
+}
+
+.comingSoonBadge {
+  position: absolute;
+  top: 1.5rem;
+  right: 1.5rem;
+  font-family: monospace;
+  font-size: 0.75rem;
+  color: rgba(255, 255, 255, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  padding: 0.25rem 0.5rem;
+  border-radius: 9999px;
+  opacity: 0;
+  transform: translate(10px, -10px);
+  transition: all 0.4s ease;
+  pointer-events: none;
+}
+
+.projectCard:hover .comingSoonBadge {
+  opacity: 1;
+  transform: translate(0, 0);
+}
+
+/* Removed Bento Grid Layouts */
+
+

@@ -1,57 +1,126 @@
-import React from 'react';
-import { motion } from 'framer-motion';
-import { ArrowRight } from 'lucide-react';
-import { Button } from './ui/Button';
+import React, { useRef } from 'react';
+import { useTranslation } from 'react-i18next';
+import { motion, useScroll, useTransform } from 'framer-motion';
+import { ArrowDownRight } from 'lucide-react';
 import styles from './HeroSection.module.css';
 
 export function HeroSection({ onOpenContact, onScrollToServices }) {
+  const { t } = useTranslation('agency');
+  const containerRef = useRef(null);
+  
+  const { scrollYProgress } = useScroll({
+    target: containerRef,
+    offset: ["start start", "end start"]
+  });
+  
+  const y = useTransform(scrollYProgress, [0, 0.5], [0, 150]);
+  const opacity = useTransform(scrollYProgress, [0, 0.4], [1, 0]);
+  const scale = useTransform(scrollYProgress, [0, 0.5], [1, 0.7]);
+  const bgY = useTransform(scrollYProgress, [0, 0.5], [0, 100]);
+  
   return (
-    <section className={styles.hero}>
-      <div className={styles.container}>
+    <section ref={containerRef} className={styles.hero}>
+      {/* Abstract Background Elements */}
+      <motion.div 
+        style={{ y: bgY }}
+        className={styles.backgroundWrapper}
+      >
         <motion.div 
-          initial={{ opacity: 0, y: 30 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
-          className={styles.content}
-        >
-          <div className={styles.badge}>
-            <span className={styles.badgeDot}>
-              <span className={styles.badgePing}></span>
-              <span className={styles.badgeDotInner}></span>
-            </span>
-            AVAILABLE FOR NEW COMMISSIONS
-          </div>
+          className={styles.backgroundBlob1}
+          animate={{ scale: [1, 1.2, 1], opacity: [0.3, 0.5, 0.3] }}
+          transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
+        />
+        <motion.div 
+          className={styles.backgroundBlob2}
+          animate={{ x: [0, 50, 0], opacity: [0.2, 0.4, 0.2] }}
+          transition={{ duration: 10, repeat: Infinity, ease: "easeInOut" }}
+        />
+      </motion.div>
 
-          <h1 className={styles.title}>
-            DIGITAL<br />
-            <span className={styles.titleGradient}>ATELIER.</span>
-          </h1>
-          
-          <p className={styles.description}>
-            We don't just build software. We engineer <span className={styles.descriptionHighlight}>investor-grade digital assets</span> that redefine premium automotive and luxury experiences.
-          </p>
+      <motion.div 
+        className={styles.container}
+        style={{ y, opacity, scale }}
+      >
+        <div className={styles.textWrapper}>
+          <motion.h1 
+            initial={{ y: 100 }}
+            animate={{ y: 0 }}
+            transition={{ duration: 1, ease: [0.22, 1, 0.36, 1] }}
+            className={styles.title1}
+          >
+            Volturiano
+          </motion.h1>
+        </div>
 
-          <div className={styles.ctaContainer}>
-            <Button onClick={() => onOpenContact(null)} className={styles.primaryButton}>
-              Start Project
-            </Button>
-            <button 
-              onClick={onScrollToServices}
-              className={styles.secondaryButton}
+        <div className={styles.bottomRow}>
+          <div className={styles.textWrapper}>
+            <motion.h1 
+              initial={{ y: 100 }}
+              animate={{ y: 0 }}
+              transition={{ duration: 1, delay: 0.1, ease: [0.22, 1, 0.36, 1] }}
+              className={styles.title2}
             >
-              <div className={styles.secondaryButtonIcon}>
-                <ArrowRight size={18} />
-              </div>
-              <span className={styles.secondaryButtonText}>EXPLORE SERVICES</span>
-            </button>
+              AGENCY.
+            </motion.h1>
           </div>
-        </motion.div>
-      </div>
-      
-      <div className={styles.backgroundElement}></div>
+
+          <motion.div 
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: 0.5 }}
+            className={styles.descriptionContainer}
+          >
+            <p className={styles.description}>
+              {t('hero.description').replace(/<[^>]*>/g, '')}
+            </p>
+            <a 
+              href="#work" 
+              onClick={(e) => {
+                e.preventDefault();
+                onScrollToServices();
+              }}
+              className={styles.exploreLink}
+            >
+              {t('hero.exploreServices')}
+              <ArrowDownRight className={styles.arrowIcon} />
+            </a>
+          </motion.div>
+        </div>
+      </motion.div>
+
+      {/* Spinning SVG Text */}
+      <motion.div 
+        style={{ opacity }}
+        className={styles.spinningText}
+      >
+        <svg width="120" height="120" viewBox="0 0 100 100">
+          <path id="curve" d="M 50 50 m -37 0 a 37 37 0 1 1 74 0 a 37 37 0 1 1 -74 0" fill="transparent" />
+          <text className={styles.curveText}>
+            <textPath href="#curve">
+              Scroll Down • Explore The Void • Digital • 
+            </textPath>
+          </text>
+        </svg>
+      </motion.div>
     </section>
   );
 }
+
+export function MarqueeTicker() {
+  return (
+    <div className={styles.marqueeWrapper}>
+      <div className={styles.marquee}>
+        {Array.from({ length: 10 }).map((_, i) => (
+          <span key={i} className={styles.marqueeText}>
+            Redefining Digital Experiences — Award Winning Agency — 
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+
 
 
 

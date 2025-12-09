@@ -1,0 +1,40 @@
+.section {
+  width: 100%;
+  overflow: hidden;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  background-color: rgba(255, 255, 255, 0.02);
+  padding: 2rem 0;
+}
+
+.container {
+  width: 100%;
+  overflow: hidden;
+}
+
+.ticker {
+  display: flex;
+  white-space: nowrap;
+}
+
+.logoItem {
+  margin: 0 4rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0.4;
+  transition: opacity 0.3s ease;
+}
+
+.logoItem:hover {
+  opacity: 0.8;
+}
+
+.logoImage {
+  height: 2rem; /* Consistent height for logos */
+  width: auto;
+  max-width: 150px;
+  filter: grayscale(100%) brightness(1.5); /* Make them white-ish gray */
+  object-fit: contain;
+}
+

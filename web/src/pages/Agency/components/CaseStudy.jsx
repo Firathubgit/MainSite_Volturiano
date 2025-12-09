@@ -1,9 +1,12 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
 import { Button } from './ui/Button';
 import styles from './CaseStudy.module.css';
 
 export function CaseStudy() {
+  const { t } = useTranslation('agency');
+  
   const handleLaunchExperience = () => {
     window.location.href = '/configurator';
   };
@@ -22,26 +25,33 @@ export function CaseStudy() {
               className={styles.contentInner}
             >
               <div>
-                <h4 className={styles.label}>SELECTED WORK</h4>
-                <h2 className={styles.title}>VOLTURIANO<br />CONFIGURATOR</h2>
+                <h4 className={styles.label}>{t('caseStudy.label')}</h4>
+                <h2 className={styles.title}>
+                  {t('caseStudy.title').split('\n').map((line, i) => (
+                    <React.Fragment key={i}>
+                      {i > 0 && <br />}
+                      {line}
+                    </React.Fragment>
+                  ))}
+                </h2>
                 <p className={styles.description}>
-                  A zero-latency 3D customization engine built to replace physical showrooms.
+                  {t('caseStudy.description')}
                 </p>
               </div>
               
               <div className={styles.stats}>
                 <div className={styles.stat}>
-                  <div className={styles.statValue}>60FPS</div>
-                  <div className={styles.statLabel}>Ray-traced Performance</div>
+                  <div className={styles.statValue}>{t('caseStudy.stats.fps.value')}</div>
+                  <div className={styles.statLabel}>{t('caseStudy.stats.fps.label')}</div>
                 </div>
                 <div className={styles.stat}>
-                  <div className={styles.statValue}>&lt;100ms</div>
-                  <div className={styles.statLabel}>Database Latency</div>
+                  <div className={styles.statValue}>{t('caseStudy.stats.latency.value')}</div>
+                  <div className={styles.statLabel}>{t('caseStudy.stats.latency.label')}</div>
                 </div>
               </div>
 
               <Button className={styles.ctaButton} onClick={handleLaunchExperience}>
-                Launch Experience
+                {t('caseStudy.launchExperience')}
               </Button>
             </motion.div>
           </div>
@@ -63,7 +73,7 @@ export function CaseStudy() {
                       <div className={styles.mockupDotRed} />
                       <div className={styles.mockupDotYellow} />
                     </div>
-                    <div className={styles.mockupTitle}>VOLTURIANO_ENGINE_V2.0</div>
+                    <div className={styles.mockupTitle}>{t('caseStudy.mockup.title')}</div>
                   </div>
                   <div className={styles.mockupContent}>
                     <div className={styles.mockupGrid}>
@@ -73,12 +83,12 @@ export function CaseStudy() {
                     </div>
                     <div className={styles.mockupCenter}>
                       <div className={styles.mockupSpinner} />
-                      <div className={styles.mockupCenterText}>RENDERING</div>
+                      <div className={styles.mockupCenterText}>{t('caseStudy.mockup.rendering')}</div>
                     </div>
                   </div>
                   <div className={styles.mockupFooter}>
-                    {['PAINT', 'WHEELS', 'INTERIOR', 'CARBON'].map(opt => (
-                      <div key={opt} className={styles.mockupFooterItem}>{opt}</div>
+                    {t('caseStudy.mockup.options', { returnObjects: true }).map((opt, idx) => (
+                      <div key={idx} className={styles.mockupFooterItem}>{opt}</div>
                     ))}
                   </div>
                 </div>

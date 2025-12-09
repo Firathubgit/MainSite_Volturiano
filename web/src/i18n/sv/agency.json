@@ -1,0 +1,260 @@
+{
+  "pageTitle": "Volturiano Agency – Premium Mjukvarutjänster",
+  "hero": {
+    "badge": "TILLGÄNGLIG FÖR NYA UPPDRAG",
+    "title": "DIGITAL\nATELJÉ.",
+    "titleGradient": "ATELJÉ.",
+    "description": "Vi förvandlar rå kod till prisbelönta digitala upplevelser. Abstrakt tänkande för konkreta resultat.",
+    "startProject": "Starta Projekt",
+    "exploreServices": "UTFORSKA ARBETEN"
+  },
+  "techTicker": {
+    "techs": ["REACT", "THREE.JS", "WEBGL", "SUPABASE", "NEXT.JS", "TYPESCRIPT", "TAILWIND", "FRAMER MOTION", "POSTGRESQL"]
+  },
+  "clientLogos": {
+    "clients": ["VOLTURIANO", "PREMIUM VARUMÄRKEN", "LYXBILAR", "INVESTOR KLASS", "DIGITAL ATELJÉ"]
+  },
+  "portfolio": {
+    "label": "UTVALT ARBETE",
+    "title": "Fallstudier",
+    "description": "Premium digitala upplevelser skapade för framtänkta varumärken.",
+    "projects": [
+      {
+        "name": "FurGlove Pro",
+        "category": "E-HANDEL",
+        "tags": ["React", "E-handel", "Premium"],
+        "url": "https://furglove-pro.vercel.app/"
+      },
+      {
+        "name": "Bilkonfigurator",
+        "category": "3D-VISUALISERING",
+        "tags": ["WebGL", "Three.js", "Realtid"]
+      },
+      {
+        "name": "Admin-instrumentpanelssvit",
+        "category": "INSTRUMENTPANEL",
+        "tags": ["Analys", "Realtid", "Skalbar"]
+      },
+      {
+        "name": "Varumärkesidentitetssystem",
+        "category": "VARUMÄRKESBYGGANDE",
+        "tags": ["Designsystem", "UI/UX", "Premium"]
+      }
+    ]
+  },
+  "team": {
+    "label": "TEAMET",
+    "title": "Ingenjörsexcellens",
+    "description": "En samling senioringenjörer och designers dedikerade till att skapa investeringsklassade digitala tillgångar.",
+    "members": [
+      {
+        "name": "Teammedlem 1",
+        "role": "Ledande Ingenjör"
+      },
+      {
+        "name": "Teammedlem 2",
+        "role": "Senior Designer"
+      },
+      {
+        "name": "Teammedlem 3",
+        "role": "Full Stack-utvecklare"
+      },
+      {
+        "name": "Teammedlem 4",
+        "role": "Kreativ Direktör"
+      },
+      {
+        "name": "Teammedlem 5",
+        "role": "Systemarkitekt"
+      }
+    ]
+  },
+  "services": {
+    "title": "VÅR EXPERTIS",
+    "subtitle": "Omfattande tekniska tjänster skräddarsydda för högpresterande varumärken.",
+    "bookConsultation": "Boka Konsultation",
+    "getQuote": "Få Offer",
+    "items": {
+      "luxury-ui-design": {
+        "title": "Lyxig UI-design",
+        "description": "Premium användargränssnitt och användarupplevelsedesign fokuserad på elegans.",
+        "features": ["Mörkt läge Estetik", "Mjuka Animationer", "Tillgänglighet (WCAG)", "Varumärkeskonsistens"]
+      },
+      "fullstack-websites": {
+        "title": "Fullstack Webbplatser",
+        "description": "Kompletta webbapplikationer från frontend till backend byggda för prestanda.",
+        "features": ["React/Next.js Arkitektur", "Supabase Integration", "SEO Optimerad", "Hög Prestanda"]
+      },
+      "3d-configurators": {
+        "title": "3D-konfiguratorer",
+        "description": "Interaktiva 3D-produktkonfiguratorer för e-handel med realtidsrendering.",
+        "features": ["Realtids WebGL-rendering", "Mobilresponsiv", "Anpassade integrationer", "Fotorealistiska material"]
+      },
+      "admin-dashboards": {
+        "title": "Admin-instrumentpaneler",
+        "description": "Omfattande adminpaneler och innehållshanteringssystem.",
+        "features": ["Rollbaserad Åtkomst", "Realtidsanalys", "Datavisualisering", "Intuitiv UX"]
+      },
+      "supabase-backends": {
+        "title": "Supabase Backends",
+        "description": "Skalbar backendinfrastruktur med Supabase för moderna appar.",
+        "features": ["PostgreSQL-databas", "Edge Functions", "Realtidsprenumerationer", "Säker Autentisering"]
+      }
+    }
+  },
+  "deviceShowcase": {
+    "label": "[VAD VI GÖR]",
+    "labelRight": "[I DRIFT]",
+    "title": "Berättelser Som Driver\nInvesteringar",
+    "description": "Premium webbupplevelser som engagerar användare och omvandlar besökare till kunder.",
+    "features": [
+      {
+        "title": "Strategisk UI/UX-design",
+        "description": "Vi designar inte bara gränssnitt; vi konstruerar användarresor. Varje interaktion är beräknad för att bygga förtroende, minska friktion och leda dina besökare mot konvertering. Det handlar om tydlighet, precision och känslan av kvalitet."
+      },
+      {
+        "title": "Full-Stack Ingenjörskonst",
+        "description": "Skönhet behöver en ryggrad. Vår full-stack-expertis säkerställer att din plattform är lika robust som den är vacker. Skalbar arkitektur, blixtsnabb prestanda och säkra integrationer innebär att din digitala tillgång är byggd för att hålla och växa."
+      },
+      {
+        "title": "Investera i Digitala Tillgångar",
+        "description": "En webbplats är inte en kostnad; det är en högpresterande tillgång. I den digitala ekonomin är din plattform din främsta butik, ambassadör och säljare. Att investera i premium webbutveckling ger avkastning i varumärkesvärde, kundlojalitet och intäkter."
+      }
+    ]
+  },
+  "caseStudy": {
+    "label": "UTVALT ARBETE",
+    "title": "VOLTURIANO\nKONFIGURATOR",
+    "description": "En noll-latens 3D-anpassningsmotor byggd för att ersätta fysiska showrooms.",
+    "stats": {
+      "fps": {
+        "value": "60FPS",
+        "label": "Ray-traced Prestanda"
+      },
+      "latency": {
+        "value": "<100ms",
+        "label": "Databaslatens"
+      }
+    },
+    "launchExperience": "Starta Upplevelse",
+    "mockup": {
+      "title": "VOLTURIANO_ENGINE_V2.0",
+      "rendering": "RENDERAR",
+      "options": ["FÄRG", "HJUL", "INTERIÖR", "KOLFIBER"]
+    }
+  },
+  "pricing": {
+    "title": "INVESTERING",
+    "subtitle": "Tydliga prissättningsstrukturer för premiumleveranser. Vi gör inga dolda avgifter eller omfattningsökningar.",
+    "recommended": "Rekommenderad",
+    "plans": {
+      "prototype": {
+        "name": "PROTOTYP",
+        "price": "$15k",
+        "desc": "För validering",
+        "features": ["Kärn-MVP-funktioner", "Standard UI-system", "2 veckors sprint"]
+      },
+      "growth": {
+        "name": "TILLVÄXT",
+        "price": "$50k",
+        "desc": "För skalning",
+        "features": ["Fullständig plattform", "Anpassat designspråk", "Admin-instrumentpanel", "3 månaders support"]
+      },
+      "enterprise": {
+        "name": "FÖRETAG",
+        "price": "ANPASSAD",
+        "desc": "För dominans",
+        "features": ["Skräddarsydd arkitektur", "Dedikerat team", "SLA-support", "Obegränsad revision"]
+      }
+    },
+    "from": "från ",
+    "inquireNow": "Förfråga Nu"
+  },
+  "footer": {
+    "logo": "VOLTURIANO_AGENCY",
+    "description": "Uppdragsgivare för framtidens digitala lyx. Investeringsklassade tillgångar för framtänkta varumärken.",
+    "servicesTitle": "TJÄNSTER",
+    "companyTitle": "FÖRETAG",
+    "links": {
+      "about": "Om oss",
+      "careers": "Karriär",
+      "contact": "Kontakt",
+      "privacyPolicy": "Integritetspolicy"
+    },
+    "copyright": "© 2024 VOLTURIANO INC. ALLA RÄTTIGHETER FÖRBEHÅLLNA.",
+    "status": "ALLA SYSTEM OPERATIVA"
+  },
+  "contactModal": {
+    "title": "Initiera Projekt",
+    "subtitle": "Berätta om din vision. Vi hanterar konstruktionen.",
+    "success": {
+      "title": "Mottagen.",
+      "message": "Vi analyserar din förfrågan och svarar inom 24 timmar."
+    },
+    "form": {
+      "name": "Namn *",
+      "namePlaceholder": "Ditt fullständiga namn",
+      "email": "E-post *",
+      "emailPlaceholder": "din@epost.com",
+      "company": "Företag",
+      "companyPlaceholder": "Företagsnamn (valfritt)",
+      "serviceInterest": "Tjänsteintresse *",
+      "budgetRange": "Budgetomfång *",
+      "budgetPlaceholder": "Välj budgetomfång",
+      "timeline": "Tidslinje *",
+      "timelinePlaceholder": "Välj tidslinje",
+      "brief": "Kortfattat",
+      "briefPlaceholder": "Berätta om projektomfattningen...",
+      "privacyConsent": "Jag samtycker till att Volturiano kontaktar mig angående min förfrågan.",
+      "cancel": "Avbryt",
+      "submit": "Skicka Förfrågan",
+      "processing": "Bearbetar...",
+      "errors": {
+        "selectService": "Vänligen välj minst en tjänst.",
+        "privacyConsent": "Vänligen godkänn integritetssamtycket.",
+        "nameRequired": "Namn krävs",
+        "emailRequired": "E-post krävs"
+      }
+    },
+    "budgetRanges": ["$5k-$10k", "$10k-$25k", "$25k-$50k", "$50k-$100k", "$100k+", "Anpassad"],
+    "timelines": ["1-2 månader", "3-4 månader", "5-6 månader", "6+ månader", "Flexibel"]
+  },
+  "demoModal": {
+    "title": "Boka Konsultation",
+    "subtitle": "Schemalägg en tid med våra ledande ingenjörer.",
+    "success": {
+      "title": "Bekräftad.",
+      "message": "Kontrollera din e-post för kalenderinbjudan."
+    },
+    "form": {
+      "name": "Namn *",
+      "namePlaceholder": "Ditt fullständiga namn",
+      "email": "E-post *",
+      "emailPlaceholder": "din@epost.com",
+      "company": "Företag",
+      "companyPlaceholder": "Företagsnamn (valfritt)",
+      "serviceFocus": "Tjänstfokus *",
+      "serviceFocusPlaceholder": "Välj intresseområde",
+      "date": "Datum *",
+      "time": "Tid *",
+      "timezone": "Tidszon *",
+      "timezonePlaceholder": "Välj tidszon",
+      "preference": "Preferens *",
+      "meetingTypes": {
+        "video": "Videosamtal",
+        "phone": "Telefonsamtal",
+        "inPerson": "På plats"
+      },
+      "topics": "Ämnen",
+      "topicsPlaceholder": "Vad vill du diskutera?",
+      "cancel": "Avbryt",
+      "submit": "Boka Tid",
+      "processing": "Bekräftar...",
+      "errors": {
+        "futureDateTime": "Vänligen välj ett datum och en tid i framtiden.",
+        "dateTimeRequired": "Vänligen välj både datum och tid"
+      }
+    },
+    "timezones": ["UTC", "EST (UTC-5)", "PST (UTC-8)", "CET (UTC+1)", "GMT (UTC+0)"]
+  }
+}

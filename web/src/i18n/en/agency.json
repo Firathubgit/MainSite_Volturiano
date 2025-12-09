@@ -1,0 +1,260 @@
+{
+  "pageTitle": "Volturiano Agency – Premium Software Services",
+  "hero": {
+    "badge": "AVAILABLE FOR NEW COMMISSIONS",
+    "title": "DIGITAL\nATELIER.",
+    "titleGradient": "ATELIER.",
+    "description": "We transmute raw code into award-winning digital experiences. Abstract thinking for concrete results.",
+    "startProject": "Start Project",
+    "exploreServices": "EXPLORE WORKS"
+  },
+  "techTicker": {
+    "techs": ["REACT", "THREE.JS", "WEBGL", "SUPABASE", "NEXT.JS", "TYPESCRIPT", "TAILWIND", "FRAMER MOTION", "POSTGRESQL"]
+  },
+  "clientLogos": {
+    "clients": ["VOLTURIANO", "PREMIUM BRANDS", "LUXURY AUTOMOTIVE", "INVESTOR GRADE", "DIGITAL ATELIER"]
+  },
+  "portfolio": {
+    "label": "SELECTED WORK",
+    "title": "Case Studies",
+    "description": "Premium digital experiences crafted for forward-thinking brands.",
+    "projects": [
+      {
+        "name": "FurGlove Pro",
+        "category": "E-COMMERCE",
+        "tags": ["React", "E-commerce", "Premium"],
+        "url": "https://furglove-pro.vercel.app/"
+      },
+      {
+        "name": "Automotive Configurator",
+        "category": "3D VISUALIZATION",
+        "tags": ["WebGL", "Three.js", "Real-time"]
+      },
+      {
+        "name": "Admin Dashboard Suite",
+        "category": "DASHBOARD",
+        "tags": ["Analytics", "Real-time", "Scalable"]
+      },
+      {
+        "name": "Brand Identity System",
+        "category": "BRANDING",
+        "tags": ["Design System", "UI/UX", "Premium"]
+      }
+    ]
+  },
+  "team": {
+    "label": "THE TEAM",
+    "title": "Engineering Excellence",
+    "description": "A collective of senior engineers and designers dedicated to crafting investor-grade digital assets.",
+    "members": [
+      {
+        "name": "Team Member 1",
+        "role": "Lead Engineer"
+      },
+      {
+        "name": "Team Member 2",
+        "role": "Senior Designer"
+      },
+      {
+        "name": "Team Member 3",
+        "role": "Full Stack Developer"
+      },
+      {
+        "name": "Team Member 4",
+        "role": "Creative Director"
+      },
+      {
+        "name": "Team Member 5",
+        "role": "System Architect"
+      }
+    ]
+  },
+  "services": {
+    "title": "OUR EXPERTISE",
+    "subtitle": "Comprehensive technical services tailored for high-performance brands.",
+    "bookConsultation": "Book a Consultation",
+    "getQuote": "Get Quote",
+    "items": {
+      "luxury-ui-design": {
+        "title": "Luxury UI Design",
+        "description": "Premium user interface and user experience design focused on elegance.",
+        "features": ["Dark Mode Aesthetics", "Smooth Animations", "Accessibility (WCAG)", "Brand Consistency"]
+      },
+      "fullstack-websites": {
+        "title": "Fullstack Websites",
+        "description": "Complete web applications from frontend to backend built for performance.",
+        "features": ["React/Next.js Architecture", "Supabase Integration", "SEO Optimized", "High Performance"]
+      },
+      "3d-configurators": {
+        "title": "3D Configurators",
+        "description": "Interactive 3D product configurators for e-commerce with real-time rendering.",
+        "features": ["Real-time WebGL rendering", "Mobile-responsive", "Custom integrations", "Photo-realistic materials"]
+      },
+      "admin-dashboards": {
+        "title": "Admin Dashboards",
+        "description": "Comprehensive admin panels and content management systems.",
+        "features": ["Role-based Access", "Real-time Analytics", "Data Visualization", "Intuitive UX"]
+      },
+      "supabase-backends": {
+        "title": "Supabase Backends",
+        "description": "Scalable backend infrastructure using Supabase for modern apps.",
+        "features": ["PostgreSQL Database", "Edge Functions", "Real-time Subscriptions", "Secure Auth"]
+      }
+    }
+  },
+  "deviceShowcase": {
+    "label": "[WHAT WE DO]",
+    "labelRight": "[IN USE]",
+    "title": "Storytelling That Drives\nInvestment",
+    "description": "Premium web experiences that engage users and convert visitors into customers.",
+    "features": [
+      {
+        "title": "Strategic UI/UX Design",
+        "description": "We don't just design interfaces; we engineer user journeys. Every interaction is calculated to build trust, reduce friction, and guide your visitors towards conversion. It's about clarity, precision, and the feeling of quality."
+      },
+      {
+        "title": "Full-Stack Engineering",
+        "description": "Beauty needs a backbone. Our full-stack expertise ensures your platform is as robust as it is beautiful. Scalable architecture, lightning-fast performance, and secure integrations mean your digital asset is built to last and grow."
+      },
+      {
+        "title": "Investing in Digital Assets",
+        "description": "A website isn't an expense; it's a high-performance asset. In the digital economy, your platform is your primary storefront, ambassador, and closer. Investing in premium web development yields returns in brand equity, customer loyalty, and revenue."
+      }
+    ]
+  },
+  "caseStudy": {
+    "label": "SELECTED WORK",
+    "title": "VOLTURIANO\nCONFIGURATOR",
+    "description": "A zero-latency 3D customization engine built to replace physical showrooms.",
+    "stats": {
+      "fps": {
+        "value": "60FPS",
+        "label": "Ray-traced Performance"
+      },
+      "latency": {
+        "value": "<100ms",
+        "label": "Database Latency"
+      }
+    },
+    "launchExperience": "Launch Experience",
+    "mockup": {
+      "title": "VOLTURIANO_ENGINE_V2.0",
+      "rendering": "RENDERING",
+      "options": ["PAINT", "WHEELS", "INTERIOR", "CARBON"]
+    }
+  },
+  "pricing": {
+    "title": "INVESTMENT",
+    "subtitle": "Clear pricing structures for premium deliverables. We don't do hidden fees or scope creep.",
+    "recommended": "Recommended",
+    "plans": {
+      "prototype": {
+        "name": "PROTOTYPE",
+        "price": "$15k",
+        "desc": "For validation",
+        "features": ["Core MVP Features", "Standard UI System", "2 Weeks Sprint"]
+      },
+      "growth": {
+        "name": "GROWTH",
+        "price": "$50k",
+        "desc": "For scaling",
+        "features": ["Full Platform", "Custom Design Language", "Admin Dashboard", "3 Months Support"]
+      },
+      "enterprise": {
+        "name": "ENTERPRISE",
+        "price": "CUSTOM",
+        "desc": "For dominance",
+        "features": ["Bespoke Architecture", "Dedicated Team", "SLA Support", "Unlimited Revision"]
+      }
+    },
+    "from": "from ",
+    "inquireNow": "Inquire Now"
+  },
+  "footer": {
+    "logo": "VOLTURIANO_AGENCY",
+    "description": "Commissioning the future of digital luxury. Investor-grade assets for forward-thinking brands.",
+    "servicesTitle": "SERVICES",
+    "companyTitle": "COMPANY",
+    "links": {
+      "about": "About",
+      "careers": "Careers",
+      "contact": "Contact",
+      "privacyPolicy": "Privacy Policy"
+    },
+    "copyright": "© 2024 VOLTURIANO INC. ALL RIGHTS RESERVED.",
+    "status": "ALL SYSTEMS OPERATIONAL"
+  },
+  "contactModal": {
+    "title": "Initiate Project",
+    "subtitle": "Tell us about your vision. We'll handle the engineering.",
+    "success": {
+      "title": "Received.",
+      "message": "We'll analyze your request and respond within 24 hours."
+    },
+    "form": {
+      "name": "Name *",
+      "namePlaceholder": "Your full name",
+      "email": "Email *",
+      "emailPlaceholder": "your@email.com",
+      "company": "Company",
+      "companyPlaceholder": "Company name (optional)",
+      "serviceInterest": "Service Interest *",
+      "budgetRange": "Budget Range *",
+      "budgetPlaceholder": "Select budget range",
+      "timeline": "Timeline *",
+      "timelinePlaceholder": "Select timeline",
+      "brief": "Brief",
+      "briefPlaceholder": "Tell us about the project scope...",
+      "privacyConsent": "I agree to be contacted by Volturiano regarding my inquiry.",
+      "cancel": "Cancel",
+      "submit": "Submit Request",
+      "processing": "Processing...",
+      "errors": {
+        "selectService": "Please select at least one service.",
+        "privacyConsent": "Please agree to the privacy consent.",
+        "nameRequired": "Name is required",
+        "emailRequired": "Email is required"
+      }
+    },
+    "budgetRanges": ["$5k-$10k", "$10k-$25k", "$25k-$50k", "$50k-$100k", "$100k+", "Custom"],
+    "timelines": ["1-2 months", "3-4 months", "5-6 months", "6+ months", "Flexible"]
+  },
+  "demoModal": {
+    "title": "Book Consultation",
+    "subtitle": "Schedule a time with our lead engineers.",
+    "success": {
+      "title": "Confirmed.",
+      "message": "Check your email for the calendar invite."
+    },
+    "form": {
+      "name": "Name *",
+      "namePlaceholder": "Your full name",
+      "email": "Email *",
+      "emailPlaceholder": "your@email.com",
+      "company": "Company",
+      "companyPlaceholder": "Company name (optional)",
+      "serviceFocus": "Service Focus *",
+      "serviceFocusPlaceholder": "Select area of interest",
+      "date": "Date *",
+      "time": "Time *",
+      "timezone": "Timezone *",
+      "timezonePlaceholder": "Select timezone",
+      "preference": "Preference *",
+      "meetingTypes": {
+        "video": "Video Call",
+        "phone": "Phone Call",
+        "inPerson": "In-Person"
+      },
+      "topics": "Topics",
+      "topicsPlaceholder": "What would you like to discuss?",
+      "cancel": "Cancel",
+      "submit": "Book Slot",
+      "processing": "Confirming...",
+      "errors": {
+        "futureDateTime": "Please select a date and time in the future.",
+        "dateTimeRequired": "Please select both date and time"
+      }
+    },
+    "timezones": ["UTC", "EST (UTC-5)", "PST (UTC-8)", "CET (UTC+1)", "GMT (UTC+0)"]
+  }
+}

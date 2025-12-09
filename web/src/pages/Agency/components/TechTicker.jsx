@@ -1,10 +1,12 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
 import styles from './TechTicker.module.css';
 
-const techs = ["REACT", "THREE.JS", "WEBGL", "SUPABASE", "NEXT.JS", "TYPESCRIPT", "TAILWIND", "FRAMER MOTION", "POSTGRESQL"];
-
 export function TechTicker() {
+  const { t } = useTranslation('agency');
+  const techs = t('techTicker.techs', { returnObjects: true });
+  
   return (
     <div className={styles.container}>
       <motion.div 
@@ -22,6 +24,8 @@ export function TechTicker() {
     </div>
   );
 }
+
+
 
 
 

@@ -1,20 +1,22 @@
 import React, { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { X, Calendar, Video, Phone, Users } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { createPortal } from 'react-dom';
 import { Button } from '../ui/Button';
 import { Input, Select, TextArea } from '../ui/Input';
-import { SERVICES, TIMEZONES } from '../../constants';
+import { SERVICES } from '../../constants';
 import { supabase } from '../../../../lib/supabaseClient';
 import styles from './DemoRequestModal.module.css';
 
-const meetingTypes = [
-  { id: 'video', label: 'Video Call', icon: Video },
-  { id: 'phone', label: 'Phone Call', icon: Phone },
-  { id: 'in-person', label: 'In-Person', icon: Users },
-];
-
 export function DemoRequestModal({ isOpen, onClose, initialServiceId }) {
+  const { t } = useTranslation('agency');
+  
+  const meetingTypes = [
+    { id: 'video', label: t('demoModal.form.meetingTypes.video'), icon: Video },
+    { id: 'phone', label: t('demoModal.form.meetingTypes.phone'), icon: Phone },
+    { id: 'in-person', label: t('demoModal.form.meetingTypes.inPerson'), icon: Users },
+  ];
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState(null);
@@ -51,7 +53,7 @@ export function DemoRequestModal({ isOpen, onClose, initialServiceId }) {
       const now = new Date();
       if (selectedDateTime <= now) {
         setLoading(false);
-        setError('Please select a date and time in the future.');
+        setError(t('demoModal.form.errors.futureDateTime'));
         return;
       }
     }
@@ -67,7 +69,7 @@ export function DemoRequestModal({ isOpen, onClose, initialServiceId }) {
         : null;
 
       if (!datetime) {
-        throw new Error('Please select both date and time');
+        throw new Error(t('demoModal.form.errors.dateTimeRequired'));
       }
 
       const { data, error: apiError } = await supabase.functions.invoke('schedule-demo', {
@@ -153,13 +155,13 @@ export function DemoRequestModal({ isOpen, onClose, initialServiceId }) {
                     <div className={styles.successIcon}>
                       <Calendar className={styles.successIconInner} size={32} />
                     </div>
-                    <h3 className={styles.successTitle}>Confirmed.</h3>
-                    <p className={styles.successMessage}>Check your email for the calendar invite.</p>
+                    <h3 className={styles.successTitle}>{t('demoModal.success.title')}</h3>
+                    <p className={styles.successMessage}>{t('demoModal.success.message')}</p>
                   </div>
                 ) : (
                   <>
-                    <h2 className={styles.title}>Book Consultation</h2>
-                    <p className={styles.subtitle}>Schedule a time with our lead engineers.</p>
+                    <h2 className={styles.title}>{t('demoModal.title')}</h2>
+                    <p className={styles.subtitle}>{t('demoModal.subtitle')}</p>
 
                     {error && (
                       <div className={styles.errorMessage}>
@@ -170,47 +172,47 @@ export function DemoRequestModal({ isOpen, onClose, initialServiceId }) {
                     <form onSubmit={handleSubmit} className={styles.form}>
                       <div className={styles.formRow}>
                         <Input 
-                          label="Name *" 
+                          label={t('demoModal.form.name')} 
                           required 
                           value={formData.name}
                           onChange={e => setFormData({...formData, name: e.target.value})}
-                          placeholder="Your full name"
+                          placeholder={t('demoModal.form.namePlaceholder')}
                         />
                         <Input 
-                          label="Email *" 
+                          label={t('demoModal.form.email')} 
                           type="email" 
                           required 
                           value={formData.email}
                           onChange={e => setFormData({...formData, email: e.target.value})}
-                          placeholder="your@email.com"
+                          placeholder={t('demoModal.form.emailPlaceholder')}
                         />
                       </div>
 
                       <Input 
-                        label="Company" 
+                        label={t('demoModal.form.company')} 
                         value={formData.company}
                         onChange={e => setFormData({...formData, company: e.target.value})}
-                        placeholder="Company name (optional)"
+                        placeholder={t('demoModal.form.companyPlaceholder')}
                       />
 
                       <div className={styles.selectContainer}>
-                        <label className={styles.selectLabel}>Service Focus *</label>
+                        <label className={styles.selectLabel}>{t('demoModal.form.serviceFocus')}</label>
                         <select 
                           className={styles.serviceSelect}
                           required
                           value={formData.preferred_service}
                           onChange={e => setFormData({...formData, preferred_service: e.target.value})}
                         >
-                          <option value="" disabled>Select area of interest</option>
+                          <option value="" disabled>{t('demoModal.form.serviceFocusPlaceholder')}</option>
                           {SERVICES.map(s => (
-                            <option key={s.id} value={s.id}>{s.title}</option>
+                            <option key={s.id} value={s.id}>{t(`services.items.${s.id}.title`)}</option>
                           ))}
                         </select>
                       </div>
 
                       <div className={styles.datetimeRow}>
                         <Input 
-                          label="Date *" 
+                          label={t('demoModal.form.date')} 
                           type="date"
                           required
                           min={new Date().toISOString().split('T')[0]}
@@ -218,24 +220,24 @@ export function DemoRequestModal({ isOpen, onClose, initialServiceId }) {
                           onChange={e => setFormData({...formData, preferred_date: e.target.value})}
                         />
                         <Input 
-                          label="Time *" 
+                          label={t('demoModal.form.time')} 
                           type="time"
                           required
                           value={formData.preferred_time}
                           onChange={e => setFormData({...formData, preferred_time: e.target.value})}
                         />
                         <Select 
-                          label="Timezone *"
-                          options={TIMEZONES}
+                          label={t('demoModal.form.timezone')}
+                          options={t('demoModal.timezones', { returnObjects: true })}
                           required
                           value={formData.timezone}
                           onChange={e => setFormData({...formData, timezone: e.target.value})}
-                          placeholder="Select timezone"
+                          placeholder={t('demoModal.form.timezonePlaceholder')}
                         />
                       </div>
 
                       <div className={styles.meetingTypeContainer}>
-                        <label className={styles.meetingTypeLabel}>Preference *</label>
+                        <label className={styles.meetingTypeLabel}>{t('demoModal.form.preference')}</label>
                         <div className={styles.meetingTypeGrid}>
                           {meetingTypes.map(type => {
                             const IconComponent = type.icon;
@@ -260,9 +262,9 @@ export function DemoRequestModal({ isOpen, onClose, initialServiceId }) {
 
                       <div className={styles.textareaContainer}>
                         <TextArea 
-                          label="Topics"
+                          label={t('demoModal.form.topics')}
                           maxLength={maxNotesLength}
-                          placeholder="What would you like to discuss?"
+                          placeholder={t('demoModal.form.topicsPlaceholder')}
                           value={formData.additional_notes}
                           onChange={e => setFormData({...formData, additional_notes: e.target.value})}
                         />
@@ -272,9 +274,9 @@ export function DemoRequestModal({ isOpen, onClose, initialServiceId }) {
                       </div>
 
                       <div className={styles.formActions}>
-                        <Button type="button" variant="ghost" onClick={onClose}>Cancel</Button>
+                        <Button type="button" variant="ghost" onClick={onClose}>{t('demoModal.form.cancel')}</Button>
                         <Button type="submit" disabled={loading}>
-                          {loading ? 'Confirming...' : 'Book Slot'}
+                          {loading ? t('demoModal.form.processing') : t('demoModal.form.submit')}
                         </Button>
                       </div>
                     </form>

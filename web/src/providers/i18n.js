@@ -10,6 +10,7 @@ import enShowroom from '../i18n/en/showroom.json';
 import enAccount from '../i18n/en/account.json';
 import enWorld from '../i18n/en/world.json';
 import enInvestor from '../i18n/en/investor.json';
+import enAgency from '../i18n/en/agency.json';
 import svCommon from '../i18n/sv/common.json';
 import svNav from '../i18n/sv/nav.json';
 import svHome from '../i18n/sv/home.json';
@@ -20,6 +21,7 @@ import svShowroom from '../i18n/sv/showroom.json';
 import svAccount from '../i18n/sv/account.json';
 import svWorld from '../i18n/sv/world.json';
 import svInvestor from '../i18n/sv/investor.json';
+import svAgency from '../i18n/sv/agency.json';
 
 const STORAGE_KEY = 'volt_language';
 
@@ -48,7 +50,8 @@ i18n
         showroom: enShowroom,
         account: enAccount,
         world: enWorld,
-        investor: enInvestor
+        investor: enInvestor,
+        agency: enAgency
       },
       sv: {
         common: svCommon,
@@ -60,7 +63,8 @@ i18n
         showroom: svShowroom,
         account: svAccount,
         world: svWorld,
-        investor: svInvestor
+        investor: svInvestor,
+        agency: svAgency
       }
     },
     lng: initialLanguage,
@@ -75,7 +79,8 @@ i18n
       'showroom',
       'account',
       'world',
-      'investor'
+      'investor',
+      'agency'
     ],
     defaultNS: 'common',
     interpolation: { escapeValue: false }

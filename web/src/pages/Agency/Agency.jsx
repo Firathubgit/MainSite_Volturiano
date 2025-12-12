@@ -9,9 +9,10 @@ import { PortfolioGrid } from './components/PortfolioGrid';
 import { DeviceShowcase } from './components/DeviceShowcase';
 import { CaseStudy } from './components/CaseStudy';
 import { TeamShowcase } from './components/TeamShowcase';
-import { PricingOverview } from './components/PricingOverview';
+import { PackageCards } from './components/PackageCards';
 import { ContactFormModal } from './components/modals/ContactFormModal';
 import { DemoRequestModal } from './components/modals/DemoRequestModal';
+import VisionDump from '../../components/VisionDump/VisionDump';
 import { SERVICES } from './constants';
 import styles from './Agency.module.css';
 
@@ -79,7 +80,7 @@ export default function Agency() {
 
 
 
-        <PricingOverview onOpenContact={openContact} />
+        <PackageCards onOpenContact={openContact} />
 
         <footer className={styles.footer}>
         <div className={styles.footerContainer}>
@@ -152,6 +153,9 @@ export default function Agency() {
         onClose={closeModal}
         initialServiceId={selectedServiceId}
       />
+
+      {/* Vision Dump - Internal Developer Tool */}
+      <VisionDump />
     </div>
   );
 }

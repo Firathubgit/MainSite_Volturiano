@@ -13,13 +13,13 @@ export function DeviceShowcase() {
   const features = [
     {
       image: ipadStory,
-      title: t('deviceShowcase.features.0.title', 'Strategic UI/UX Design'),
-      description: t('deviceShowcase.features.0.description', 'We don\'t just design interfaces; we engineer user journeys. Every interaction is calculated to build trust, reduce friction, and guide your visitors towards conversion.'),
+      title: t('deviceShowcase.features.0.title', 'What We Do'),
+      description: t('deviceShowcase.features.0.description', 'We transform businesses through premium digital solutions. Specializing in the automotive industry and hospitality sector, we deliver comprehensive platforms that drive growth and enhance customer experiences. From car dealership ecosystems to hotel booking platforms, we build the digital infrastructure your business needs.'),
     },
     {
       image: ipadClarity,
-      title: t('deviceShowcase.features.1.title', 'Full-Stack Engineering'),
-      description: t('deviceShowcase.features.1.description', 'Beauty needs a backbone. Our full-stack expertise ensures your platform is as robust as it is beautiful. Scalable architecture, lightning-fast performance, and secure integrations.'),
+      title: t('deviceShowcase.features.1.title', 'Strategic UI/UX Design'),
+      description: t('deviceShowcase.features.1.description', 'We don\'t just design interfaces; we engineer user journeys. Every interaction is calculated to build trust, reduce friction, and guide your visitors towards conversion.'),
     },
     {
       image: ipadExploration,

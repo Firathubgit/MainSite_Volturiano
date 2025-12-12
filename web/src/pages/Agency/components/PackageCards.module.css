@@ -1,0 +1,195 @@
+.section {
+  padding: 8rem 1rem;
+  position: relative;
+  z-index: 10;
+}
+
+.container {
+  max-width: 80rem;
+  margin: 0 auto;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 2rem;
+  perspective: 1000px;
+}
+
+@media (min-width: 768px) {
+  .grid {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 4rem;
+    align-items: center;
+  }
+}
+
+.card {
+  position: relative;
+  cursor: pointer;
+  transform-style: preserve-3d;
+  transition: transform 0.1s ease-out;
+  --rotate-x: 0deg;
+  --rotate-y: 0deg;
+  transform: rotateX(var(--rotate-x)) rotateY(var(--rotate-y));
+  overflow: hidden;
+}
+
+.cardPrimary {
+  --scale: 1.15;
+  transform: scale(var(--scale)) translateZ(30px) translateY(-30px) rotateX(var(--rotate-x)) rotateY(var(--rotate-y));
+  z-index: 15;
+}
+
+.card:hover {
+  z-index: 20;
+}
+
+.cardPrimary:hover {
+  z-index: 25;
+}
+
+.cardInner {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  border-radius: 1rem;
+  overflow: hidden;
+  background: linear-gradient(135deg, #1a1a1a 0%, #0a0a0a 100%);
+  box-shadow: 
+    0 10px 30px rgba(0, 0, 0, 0.5),
+    0 0 0 1px rgba(255, 255, 255, 0.05),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  backdrop-filter: blur(10px);
+}
+
+.card:hover .cardInner {
+  box-shadow: 
+    0 25px 70px rgba(0, 0, 0, 0.9),
+    0 0 0 1px rgba(255, 255, 255, 0.15),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  background: linear-gradient(135deg, #1f1f1f 0%, #0f0f0f 100%);
+}
+
+.cardImage {
+  width: 100%;
+  height: auto;
+  display: block;
+  pointer-events: none;
+}
+
+.shine {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(
+    135deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.1) 45%,
+    rgba(255, 255, 255, 0.2) 50%,
+    rgba(255, 255, 255, 0.1) 55%,
+    transparent 100%
+  );
+  opacity: 0;
+  transform: translateX(-100%) translateY(-100%) rotate(45deg);
+  transition: opacity 0.3s ease, transform 0.6s ease;
+  pointer-events: none;
+  z-index: 10;
+  mix-blend-mode: overlay;
+}
+
+.card:hover .shine {
+  opacity: 1;
+  transform: translateX(100%) translateY(100%) rotate(45deg);
+  transition: transform 0.6s ease, opacity 0.3s ease;
+}
+
+/* Metallic reflection effect */
+.card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100%;
+  height: 100%;
+  background: radial-gradient(
+    circle 200px at var(--mouse-x, 50%) var(--mouse-y, 50%),
+    rgba(255, 255, 255, 0.2) 0%,
+    rgba(255, 255, 255, 0.1) 30%,
+    transparent 60%
+  );
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  pointer-events: none;
+  z-index: 5;
+  border-radius: 1rem;
+  mix-blend-mode: soft-light;
+  overflow: hidden;
+}
+
+.card:hover::before {
+  opacity: 1;
+}
+
+/* Additional metallic sheen */
+.card::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    45deg,
+    transparent 30%,
+    rgba(255, 255, 255, 0.15) 50%,
+    transparent 70%
+  );
+  opacity: 0;
+  transform: rotate(calc(var(--rotate-y, 0deg) + 45deg)) translateY(calc(var(--rotate-x, 0deg) * 0.5px));
+  transition: opacity 0.3s ease, transform 0.1s ease-out;
+  pointer-events: none;
+  z-index: 6;
+  border-radius: 1rem;
+  overflow: hidden;
+}
+
+.card:hover::after {
+  opacity: 0.6;
+}
+
+/* Smooth transitions for all transforms */
+.card,
+.cardInner,
+.cardImage {
+  will-change: transform;
+}
+
+/* Responsive adjustments */
+@media (max-width: 767px) {
+  .card {
+    --rotate-x: 0deg;
+    --rotate-y: 0deg;
+  }
+  
+  .cardPrimary {
+    --scale: 1.08;
+    transform: scale(var(--scale)) translateZ(15px) translateY(-20px);
+  }
+  
+  .card:hover {
+    transform: scale(1.02);
+  }
+  
+  .cardPrimary:hover {
+    transform: scale(1.12) translateZ(15px) translateY(-15px);
+  }
+}
+

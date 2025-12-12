@@ -9,7 +9,8 @@
   margin: 0 auto;
 }
 
-.grid {
+/* Desktop grid */
+.desktopGrid {
   display: grid;
   grid-template-columns: 1fr;
   gap: 2rem;
@@ -17,7 +18,7 @@
 }
 
 @media (min-width: 768px) {
-  .grid {
+  .desktopGrid {
     grid-template-columns: repeat(3, 1fr);
     gap: 4rem;
     align-items: center;
@@ -172,24 +173,280 @@
   will-change: transform;
 }
 
-/* Responsive adjustments */
+/* -------- Mobile (iPhone-style) -------- */
+.mobilePhone {
+  display: none;
+}
+
 @media (max-width: 767px) {
+  .desktopGrid {
+    display: none;
+  }
+
+  .mobilePhone {
+    display: flex;
+    justify-content: center;
+  }
+
+  /* Phone frame sized like iPhone Pro Max proportions */
+  .phoneFrame {
+    width: min(430px, 100%);
+    aspect-ratio: 9 / 19.5;
+    border-radius: 2.25rem;
+    /* Reduce frame padding so carousel can show side-card peeks like Figma */
+    padding: 0.75rem;
+    background: radial-gradient(120% 120% at 50% 0%, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.02) 40%, rgba(0, 0, 0, 0.6) 100%);
+    box-shadow:
+      0 30px 90px rgba(0, 0, 0, 0.75),
+      inset 0 1px 0 rgba(255, 255, 255, 0.08),
+      0 0 0 1px rgba(255, 255, 255, 0.06);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  /* When collapsed we visually shorten the phone to emphasize cards */
+  .phoneCollapsed {
+    /* Slightly taller collapsed state so bottom text/CTA has breathing room */
+    aspect-ratio: 9 / 17.3;
+  }
+
+  .phoneTop {
+    flex: 1 1 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 0.9rem;
+    justify-content: flex-start;
+    padding-top: 0.25rem;
+  }
+
+  /* Horizontal snapping carousel */
+  .carousel {
+    width: 100%;
+    height: 100%;
+    overflow-x: auto;
+    overflow-y: hidden;
+    display: flex;
+    scroll-snap-type: x mandatory;
+    scroll-behavior: smooth;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    gap: 1rem;
+  }
+  .carousel::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Edge spacers allow first/last slide to center without huge visible side gutters */
+  .carousel::before,
+  .carousel::after {
+    content: '';
+    flex: 0 0 11%;
+  }
+
+  .slide {
+    flex: 0 0 78%;
+    scroll-snap-align: center;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.25rem 0;
+  }
+
+  .mobileCard {
+    width: 100%;
+    border-radius: 1.25rem;
+    overflow: hidden;
+    background: #0b0b0b;
+    box-shadow:
+      0 20px 60px rgba(0, 0, 0, 0.7),
+      inset 0 1px 0 rgba(255, 255, 255, 0.06),
+      0 0 0 1px rgba(255, 255, 255, 0.06);
+    transition: transform 220ms ease, opacity 220ms ease, box-shadow 220ms ease;
+  }
+
+  .mobileCardImage {
+    width: 100%;
+    height: auto;
+    display: block;
+  }
+
+  /* Center card prominence (Figma-like) */
+  .slideActive .mobileCard {
+    transform: scale(1.06) translateY(-10px);
+    opacity: 1;
+    box-shadow:
+      0 26px 80px rgba(0, 0, 0, 0.8),
+      inset 0 1px 0 rgba(255, 255, 255, 0.07),
+      0 0 0 1px rgba(255, 255, 255, 0.08);
+  }
+
+  .slideInactive .mobileCard {
+    transform: scale(0.94);
+    opacity: 0.9;
+  }
+
+  /* Figma-like indicator bars */
+  .indicator {
+    display: flex;
+    justify-content: center;
+    gap: 0.6rem;
+    padding: 0.35rem 0 0.95rem;
+  }
+
+  .dot {
+    width: 54px;
+    height: 6px;
+    border-radius: 9999px;
+    border: 0;
+    padding: 0;
+    background: rgba(255, 255, 255, 0.22);
+  }
+
+  .dotActive {
+    background: rgba(255, 255, 255, 0.9);
+  }
+
+  /* Bottom sheet (collapsible) */
+  .sheet {
+    flex: 0 0 auto;
+    background: rgba(5, 5, 5, 0.92);
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 1.5rem;
+    padding: 0.75rem 0.9rem 1rem;
+    box-shadow:
+      0 -20px 70px rgba(0, 0, 0, 0.7),
+      inset 0 1px 0 rgba(255, 255, 255, 0.06);
+    overflow: hidden;
+    transition: max-height 260ms ease, transform 260ms ease;
+    max-height: 46%;
+  }
+
+  .sheetCollapsed {
+    /* Collapsed should show only the header (no features) */
+    max-height: 12%;
+    padding-bottom: 0.75rem;
+  }
+
+  .sheetToggle {
+    width: 100%;
+    border: 0;
+    background: transparent;
+    padding: 0.15rem 0 0.5rem;
+  }
+
+  .sheetHandle {
+    display: block;
+    width: 52px;
+    height: 6px;
+    border-radius: 9999px;
+    margin: 0 auto;
+    background: rgba(255, 255, 255, 0.22);
+  }
+
+  .sheetContent {
+    display: flex;
+    flex-direction: column;
+    gap: 0.9rem;
+  }
+
+  .sheetHeader {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+  }
+
+  .sheetMeta {
+    min-width: 0;
+  }
+
+  .sheetLabel {
+    font-size: 0.75rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: rgba(255, 255, 255, 0.55);
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
+  }
+
+  .sheetTitle {
+    font-size: 1.15rem;
+    font-weight: 700;
+    color: rgba(255, 255, 255, 0.92);
+    line-height: 1.1;
+  }
+
+  .sheetCta {
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    background: rgba(255, 255, 255, 0.06);
+    color: rgba(255, 255, 255, 0.92);
+    border-radius: 9999px;
+    padding: 0.55rem 0.9rem;
+    font-weight: 600;
+    font-size: 0.85rem;
+    white-space: nowrap;
+  }
+
+  .featureList {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 0.75rem;
+    /* Prevent layout jumps when switching package */
+    max-height: 220px;
+    overflow: auto;
+    padding-right: 0.2rem;
+  }
+
+  /* In collapsed mode: hide features completely + tighten spacing */
+  .sheetCollapsed .sheetContent {
+    gap: 0.5rem;
+  }
+
+  .sheetCollapsed .featureList {
+    display: none;
+  }
+
+  .featureItem {
+    display: grid;
+    grid-template-columns: 10px 1fr;
+    align-items: start;
+    gap: 0.65rem;
+    padding: 0.65rem 0.7rem;
+    border-radius: 1rem;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+  }
+
+  .featureBullet {
+    width: 8px;
+    height: 8px;
+    border-radius: 9999px;
+    margin-top: 0.35rem;
+    background: rgba(255, 255, 255, 0.9);
+  }
+
+  .featureText {
+    font-size: 0.92rem;
+    line-height: 1.25;
+    color: rgba(255, 255, 255, 0.82);
+  }
+}
+
+/* Disable hover/tilt effects on touch devices */
+@media (hover: none) {
   .card {
-    --rotate-x: 0deg;
-    --rotate-y: 0deg;
+    transform: none !important;
   }
-  
   .cardPrimary {
-    --scale: 1.08;
-    transform: scale(var(--scale)) translateZ(15px) translateY(-20px);
+    transform: none !important;
   }
-  
-  .card:hover {
-    transform: scale(1.02);
-  }
-  
-  .cardPrimary:hover {
-    transform: scale(1.12) translateZ(15px) translateY(-15px);
+  .card::before,
+  .card::after,
+  .shine {
+    display: none;
   }
 }
 

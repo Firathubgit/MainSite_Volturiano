@@ -4,20 +4,25 @@
     "badge": "AVAILABLE FOR NEW COMMISSIONS",
     "title": "DIGITAL\nATELIER.",
     "titleGradient": "ATELIER.",
+    "agencyTitle": "AGENCY.",
+    "spinningText": "Scroll Down • Explore The Void • Digital •",
+    "marqueeText": "Redefining Digital Experiences — Award Winning Agency —",
     "description": "We transmute raw code into award-winning digital experiences. Abstract thinking for concrete results.",
     "startProject": "Start Project",
-    "exploreServices": "EXPLORE WORKS"
+    "exploreServices": "REDEEM CARD CODE"
   },
   "techTicker": {
     "techs": ["REACT", "THREE.JS", "WEBGL", "SUPABASE", "NEXT.JS", "TYPESCRIPT", "TAILWIND", "FRAMER MOTION", "POSTGRESQL"]
   },
   "clientLogos": {
-    "clients": ["VOLTURIANO", "PREMIUM BRANDS", "LUXURY AUTOMOTIVE", "INVESTOR GRADE", "DIGITAL ATELIER"]
+    "clients": ["VOLTURIANO", "PREMIUM BRANDS", "LUXURY AUTOMOTIVE", "INVESTOR GRADE", "DIGITAL ATELIER"],
+    "logoAlt": "Client logo {{index}}"
   },
   "portfolio": {
     "label": "SELECTED WORK",
     "title": "Case Studies",
     "description": "Premium digital experiences crafted for forward-thinking brands.",
+    "viewArchive": "View Archive",
     "projects": [
       {
         "name": "FurGlove Pro",
@@ -45,6 +50,27 @@
   "team": {
     "label": "THE TEAM",
     "title": "Engineering Excellence",
+    "operativesTitle": "Operatives",
+    "status": "STATUS:",
+    "statusOnline": "ONLINE",
+    "location": "Loc: Sector 7G",
+    "memberCodes": ["SYS_ADMIN", "PX_WITCH", "10X_Dev_mf", "MIND_MAP", "FPS_LORD"],
+    "memberBios": [
+      "Constructing digital realities from the void up. Obsessed with the space between pixels.",
+      "Turning abstract concepts into retinal candy. Reality is just a suggestion.",
+      "Speaking the languages machines dream in. Optimizing the fabric of the web.",
+      "Mapping the user psyche. Predicting trends before they manifest in this dimension.",
+      "Breathing life into static voids. Physics is optional."
+    ],
+    "memberStats": [
+      [{"label": "Vision", "value": 98}, {"label": "Chaos", "value": 45}],
+      [{"label": "Aesthetics", "value": 100}, {"label": "Reality", "value": 12}],
+      [{"label": "Logic", "value": 99}, {"label": "Bugs", "value": 0}],
+      [{"label": "Insight", "value": 95}, {"label": "Empathy", "value": 90}],
+      [{"label": "Timing", "value": 97}, {"label": "Smoothness", "value": 100}]
+    ],
+    "defaultBio": "Crafting digital excellence.",
+    "defaultStats": [{"label": "Skill", "value": 85}, {"label": "Experience", "value": 90}],
     "description": "A collective of senior engineers and designers dedicated to crafting investor-grade digital assets.",
     "members": [
       {
@@ -104,6 +130,7 @@
   },
   "deviceShowcase": {
     "label": "[WHAT WE DO]",
+    "labelLeft": "[WHAT WE DO]",
     "labelRight": "[IN USE]",
     "title": "Storytelling That Drives\nInvestment",
     "description": "Premium web experiences that engage users and convert visitors into customers.",
@@ -256,5 +283,59 @@
       }
     },
     "timezones": ["UTC", "EST (UTC-5)", "PST (UTC-8)", "CET (UTC+1)", "GMT (UTC+0)"]
+  },
+  "packageCards": {
+    "packages": {
+      "silver": {
+        "name": "Silver Package",
+        "label": "Web Presence",
+        "features": [
+          "Luxury UI-design (premium UX/UI)",
+          "Dark mode aesthetics",
+          "WCAG accessibility",
+          "SEO-optimized delivery"
+        ]
+      },
+      "titanium": {
+        "name": "Titanium Package",
+        "label": "Immersive 3D",
+        "features": [
+          "Real-time WebGL rendering",
+          "Mobile-responsive 3D experience",
+          "Custom integrations",
+          "Performance optimized"
+        ]
+      },
+      "gold": {
+        "name": "Gold Package",
+        "label": "SaaS & Scaling",
+        "features": [
+          "Fullstack (React/Next.js)",
+          "Supabase backend integration",
+          "Admin panel / dashboard",
+          "Scalable architecture & SEO"
+        ]
+      }
+    },
+    "redeem": {
+      "hoverText": "Redeem",
+      "title": "Redeem Card",
+      "subtitle": "Redeem website package via code",
+      "modalTitle": "Redeem",
+      "cardCode": "Card code",
+      "cardCodePlaceholder": "Enter your card code",
+      "businessName": "Business name",
+      "businessNamePlaceholder": "Enter your business name",
+      "submitButton": "Redeem Package",
+      "close": "Close",
+      "carouselLabel": "Package carousel",
+      "goToPackage": "Go to {{package}}"
+    },
+    "success": {
+      "title": "Successful!",
+      "emailText": "Contact the following email:",
+      "email": "Firat05_@hotmail.com",
+      "instructions": "Write the code in the email to redeem the package for the following agency development cycle to begin."
+    }
   }
 }

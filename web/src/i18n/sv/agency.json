@@ -1,23 +1,28 @@
 {
-  "pageTitle": "Volturiano Agency – Premium Mjukvarutjänster",
+  "pageTitle": "Volturiano Web Byro – Premium Mjukvarutjänster",
   "hero": {
     "badge": "TILLGÄNGLIG FÖR NYA UPPDRAG",
     "title": "DIGITAL\nATELJÉ.",
     "titleGradient": "ATELJÉ.",
+    "agencyTitle": "WEB BYRO.",
+    "spinningText": "Scrolla ner • Utforska tomrummet • Digital •",
+    "marqueeText": "Omdefinierar digitala upplevelser — Prisbelönt Web Byro —",
     "description": "Vi förvandlar rå kod till prisbelönta digitala upplevelser. Abstrakt tänkande för konkreta resultat.",
     "startProject": "Starta Projekt",
-    "exploreServices": "UTFORSKA ARBETEN"
+    "exploreServices": "LÖS IN KORT KOD"
   },
   "techTicker": {
     "techs": ["REACT", "THREE.JS", "WEBGL", "SUPABASE", "NEXT.JS", "TYPESCRIPT", "TAILWIND", "FRAMER MOTION", "POSTGRESQL"]
   },
   "clientLogos": {
-    "clients": ["VOLTURIANO", "PREMIUM VARUMÄRKEN", "LYXBILAR", "INVESTOR KLASS", "DIGITAL ATELJÉ"]
+    "clients": ["VOLTURIANO", "PREMIUM VARUMÄRKEN", "LYXBILAR", "INVESTOR KLASS", "DIGITAL ATELJÉ"],
+    "logoAlt": "Klientlogotyp {{index}}"
   },
   "portfolio": {
     "label": "UTVALT ARBETE",
     "title": "Fallstudier",
     "description": "Premium digitala upplevelser skapade för framtänkta varumärken.",
+    "viewArchive": "Visa arkiv",
     "projects": [
       {
         "name": "FurGlove Pro",
@@ -45,6 +50,27 @@
   "team": {
     "label": "TEAMET",
     "title": "Ingenjörsexcellens",
+    "operativesTitle": "Operatörer",
+    "status": "STATUS:",
+    "statusOnline": "ONLINE",
+    "location": "Plats: Sektor 7G",
+    "memberCodes": ["SYS_ADMIN", "PX_WITCH", "10X_Dev_mf", "MIND_MAP", "FPS_LORD"],
+    "memberBios": [
+      "Konstruerar digitala verkligheter från tomrummet. Besatt av utrymmet mellan pixlar.",
+      "Förvandlar abstrakta koncept till retinal godis. Verkligheten är bara ett förslag.",
+      "Talar språken maskiner drömmer på. Optimerar webbens väv.",
+      "Kartlägger användarpsykologin. Förutsäger trender innan de manifesteras i denna dimension.",
+      "Andar liv i statiska tomrum. Fysik är valfritt."
+    ],
+    "memberStats": [
+      [{"label": "Vision", "value": 98}, {"label": "Kaos", "value": 45}],
+      [{"label": "Estetik", "value": 100}, {"label": "Verklighet", "value": 12}],
+      [{"label": "Logik", "value": 99}, {"label": "Bugg", "value": 0}],
+      [{"label": "Insikt", "value": 95}, {"label": "Empati", "value": 90}],
+      [{"label": "Timing", "value": 97}, {"label": "Mjukhet", "value": 100}]
+    ],
+    "defaultBio": "Skapar digital excellens.",
+    "defaultStats": [{"label": "Färdighet", "value": 85}, {"label": "Erfarenhet", "value": 90}],
     "description": "En samling senioringenjörer och designers dedikerade till att skapa investeringsklassade digitala tillgångar.",
     "members": [
       {
@@ -104,7 +130,8 @@
   },
   "deviceShowcase": {
     "label": "[VAD VI GÖR]",
-    "labelRight": "[I DRIFT]",
+    "labelLeft": "[VAD VI GÖR]",
+    "labelRight": "[I ANVÄNDNING]",
     "title": "Berättelser Som Driver\nInvesteringar",
     "description": "Premium webbupplevelser som engagerar användare och omvandlar besökare till kunder.",
     "features": [
@@ -171,7 +198,7 @@
     "inquireNow": "Förfråga Nu"
   },
   "footer": {
-    "logo": "VOLTURIANO_AGENCY",
+    "logo": "VOLTURIANO_WEB_BYRO",
     "description": "Uppdragsgivare för framtidens digitala lyx. Investeringsklassade tillgångar för framtänkta varumärken.",
     "servicesTitle": "TJÄNSTER",
     "companyTitle": "FÖRETAG",
@@ -256,5 +283,59 @@
       }
     },
     "timezones": ["UTC", "EST (UTC-5)", "PST (UTC-8)", "CET (UTC+1)", "GMT (UTC+0)"]
+  },
+  "packageCards": {
+    "packages": {
+      "silver": {
+        "name": "Silver Package",
+        "label": "Web Presence",
+        "features": [
+          "Lyxig UI-design (premium UX/UI)",
+          "Mörkt läge estetik",
+          "WCAG-tillgänglighet",
+          "SEO-optimerad leverans"
+        ]
+      },
+      "titanium": {
+        "name": "Titanium Package",
+        "label": "Immersive 3D",
+        "features": [
+          "Realtids WebGL-rendering",
+          "Mobilresponsiv 3D-upplevelse",
+          "Anpassade integrationer",
+          "Optimerad för prestanda"
+        ]
+      },
+      "gold": {
+        "name": "Gold Package",
+        "label": "SaaS & Scaling",
+        "features": [
+          "Fullstack (React/Next.js)",
+          "Supabase backend-integration",
+          "Adminpanel / instrumentpanel",
+          "Skalbar arkitektur & SEO"
+        ]
+      }
+    },
+    "redeem": {
+      "hoverText": "Lös in",
+      "title": "Lös in kort",
+      "subtitle": "Lös in webbplatspaket via kod",
+      "modalTitle": "Lös in",
+      "cardCode": "Kortkod",
+      "cardCodePlaceholder": "Ange din kortkod",
+      "businessName": "Företagsnamn",
+      "businessNamePlaceholder": "Ange ditt företagsnamn",
+      "submitButton": "Lös in paket",
+      "close": "Stäng",
+      "carouselLabel": "Paketkarusell",
+      "goToPackage": "Gå till {{package}}"
+    },
+    "success": {
+      "title": "Lyckades!",
+      "emailText": "Kontakta följande e-post:",
+      "email": "Firat05_@hotmail.com",
+      "instructions": "Skriv koden i e-posten för att lösa in paketet för att påbörja följande utvecklingscykel för Web Byro."
+    }
   }
 }

@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
 import styles from './ClientLogos.module.css';
 
@@ -18,6 +19,7 @@ const logos = [
 ];
 
 export function ClientLogos() {
+  const { t } = useTranslation('agency');
   
   return (
     <section className={styles.section}>
@@ -30,7 +32,7 @@ export function ClientLogos() {
           {/* Duplicate list multiple times for seamless loop */}
           {[...logos, ...logos, ...logos, ...logos].map((logo, i) => (
             <div key={i} className={styles.logoItem}>
-              <img src={logo} alt={`Client logo ${i}`} className={styles.logoImage} />
+              <img src={logo} alt={t('clientLogos.logoAlt', { index: i })} className={styles.logoImage} />
             </div>
           ))}
         </motion.div>

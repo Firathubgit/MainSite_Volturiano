@@ -99,7 +99,7 @@ export function PortfolioGrid() {
         
         <div className={styles.footer}>
           <button className={styles.archiveButton}>
-            View Archive
+            {t('portfolio.viewArchive')}
           </button>
         </div>
       </div>

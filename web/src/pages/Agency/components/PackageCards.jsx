@@ -1,10 +1,12 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import styles from './PackageCards.module.css';
 import GoldPackage from '../../../assets/Logo/GOLDPackage.png';
 import SilverPackage from '../../../assets/Logo/SilverPackage.png';
 import TitaniumPackage from '../../../assets/Logo/TitaniumPackage.png';
 
 export function PackageCards({ onOpenContact }) {
+  const { t } = useTranslation('agency');
   const [hoveredCard, setHoveredCard] = useState(null);
   const [activeIndex, setActiveIndex] = useState(1); // titanium default
   const [committedIndex, setCommittedIndex] = useState(1);
@@ -25,44 +27,29 @@ export function PackageCards({ onOpenContact }) {
   const packages = useMemo(() => ([
     {
       id: 'silver',
-      name: 'Silver Package',
-      label: 'Web Presence',
+      name: t('packageCards.packages.silver.name'),
+      label: t('packageCards.packages.silver.label'),
       image: SilverPackage,
       ref: cardRefs.silver,
-      features: [
-        'Lyxig UI-design (premium UX/UI)',
-        'Mörkt läge estetik',
-        'WCAG-tillgänglighet',
-        'SEO-optimerad leverans',
-      ],
+      features: t('packageCards.packages.silver.features', { returnObjects: true }),
     },
     {
       id: 'titanium',
-      name: 'Titanium Package',
-      label: 'Immersive 3D',
+      name: t('packageCards.packages.titanium.name'),
+      label: t('packageCards.packages.titanium.label'),
       image: TitaniumPackage,
       ref: cardRefs.titanium,
-      features: [
-        'Realtids WebGL-rendering',
-        'Mobilresponsiv 3D-upplevelse',
-        'Anpassade integrationer',
-        'Optimerad för prestanda',
-      ],
+      features: t('packageCards.packages.titanium.features', { returnObjects: true }),
     },
     {
       id: 'gold',
-      name: 'Gold Package',
-      label: 'SaaS & Scaling',
+      name: t('packageCards.packages.gold.name'),
+      label: t('packageCards.packages.gold.label'),
       image: GoldPackage,
       ref: cardRefs.gold,
-      features: [
-        'Fullstack (React/Next.js)',
-        'Supabase backend-integration',
-        'Adminpanel / instrumentpanel',
-        'Skalbar arkitektur & SEO',
-      ],
+      features: t('packageCards.packages.gold.features', { returnObjects: true }),
     },
-  ]), []);
+  ]), [t]);
 
   const handleMouseMove = (e, cardId) => {
     const card = cardRefs[cardId].current;
@@ -177,7 +164,7 @@ export function PackageCards({ onOpenContact }) {
 
   return (
     <>
-    <section className={styles.section}>
+    <section id="package-cards" className={styles.section}>
       <div className={styles.container}>
         {/* Desktop layout */}
         <div className={styles.desktopGrid}>
@@ -205,7 +192,7 @@ export function PackageCards({ onOpenContact }) {
                 />
                 {/* Minimal redeem overlay on hover */}
                 <div className={`${styles.redeemOverlay} ${hoveredCard === pkg.id ? styles.redeemOverlayVisible : ''}`}>
-                  <span className={styles.redeemText}>Redeem</span>
+                  <span className={styles.redeemText}>{t('packageCards.redeem.hoverText')}</span>
                 </div>
               </div>
             </div>
@@ -217,13 +204,13 @@ export function PackageCards({ onOpenContact }) {
           <div className={styles.phoneFrame}>
             {/* Form Header - Above the card */}
             <div className={styles.formHeader}>
-              <h2 className={styles.formTitle}>Redeem Card</h2>
-              <p className={styles.formSubtitle}>Redeem website package via code</p>
+              <h2 className={styles.formTitle}>{t('packageCards.redeem.title')}</h2>
+              <p className={styles.formSubtitle}>{t('packageCards.redeem.subtitle')}</p>
             </div>
 
             {/* Package Card Carousel */}
             <div className={styles.phoneTop}>
-              <div className={styles.carousel} ref={carouselRef} aria-label="Package carousel">
+              <div className={styles.carousel} ref={carouselRef} aria-label={t('packageCards.redeem.carouselLabel')}>
                 {packages.map((pkg, idx) => (
                   <div
                     key={pkg.id}
@@ -246,7 +233,7 @@ export function PackageCards({ onOpenContact }) {
                     type="button"
                     className={`${styles.dot} ${idx === activeIndex ? styles.dotActive : ''}`}
                     onClick={() => scrollToIndex(idx)}
-                    aria-label={`Go to ${pkg.name}`}
+                    aria-label={t('packageCards.redeem.goToPackage', { package: pkg.name })}
                   />
                 ))}
               </div>
@@ -255,33 +242,33 @@ export function PackageCards({ onOpenContact }) {
             {/* Input Form - Directly below card, same space */}
             <form onSubmit={handleRedeem} className={styles.form}>
               <div className={styles.formGroup}>
-                <label htmlFor="cardCode" className={styles.label}>Card code</label>
+                <label htmlFor="cardCode" className={styles.label}>{t('packageCards.redeem.cardCode')}</label>
                 <input
                   id="cardCode"
                   type="text"
                   className={styles.input}
                   value={cardCode}
                   onChange={(e) => setCardCode(e.target.value)}
-                  placeholder="Enter your card code"
+                  placeholder={t('packageCards.redeem.cardCodePlaceholder')}
                   required
                 />
               </div>
 
               <div className={styles.formGroup}>
-                <label htmlFor="businessName" className={styles.label}>Business name</label>
+                <label htmlFor="businessName" className={styles.label}>{t('packageCards.redeem.businessName')}</label>
                 <input
                   id="businessName"
                   type="text"
                   className={styles.input}
                   value={businessName}
                   onChange={(e) => setBusinessName(e.target.value)}
-                  placeholder="Enter your business name"
+                  placeholder={t('packageCards.redeem.businessNamePlaceholder')}
                   required
                 />
               </div>
 
               <button type="submit" className={styles.submitButton}>
-                Redeem Package
+                {t('packageCards.redeem.submitButton')}
               </button>
             </form>
           </div>
@@ -297,40 +284,40 @@ export function PackageCards({ onOpenContact }) {
           <button
             className={styles.modalClose}
             onClick={() => setShowRedeemModal(false)}
-            aria-label="Close"
+            aria-label={t('packageCards.redeem.close')}
           >
             ×
           </button>
           <div className={styles.redeemModalHeader}>
-            <h2 className={styles.redeemModalTitle}>Redeem</h2>
+            <h2 className={styles.redeemModalTitle}>{t('packageCards.redeem.modalTitle')}</h2>
           </div>
           <form onSubmit={handleRedeem} className={styles.redeemModalForm}>
             <div className={styles.formGroup}>
-              <label htmlFor="desktopCardCode" className={styles.label}>Card code</label>
+              <label htmlFor="desktopCardCode" className={styles.label}>{t('packageCards.redeem.cardCode')}</label>
               <input
                 id="desktopCardCode"
                 type="text"
                 className={styles.input}
                 value={cardCode}
                 onChange={(e) => setCardCode(e.target.value)}
-                placeholder="Enter your card code"
+                placeholder={t('packageCards.redeem.cardCodePlaceholder')}
                 required
               />
             </div>
             <div className={styles.formGroup}>
-              <label htmlFor="desktopBusinessName" className={styles.label}>Business name</label>
+              <label htmlFor="desktopBusinessName" className={styles.label}>{t('packageCards.redeem.businessName')}</label>
               <input
                 id="desktopBusinessName"
                 type="text"
                 className={styles.input}
                 value={businessName}
                 onChange={(e) => setBusinessName(e.target.value)}
-                placeholder="Enter your business name"
+                placeholder={t('packageCards.redeem.businessNamePlaceholder')}
                 required
               />
             </div>
             <button type="submit" className={styles.submitButton}>
-              Redeem Package
+              {t('packageCards.redeem.submitButton')}
             </button>
           </form>
         </div>
@@ -344,17 +331,17 @@ export function PackageCards({ onOpenContact }) {
           <button
             className={styles.modalClose}
             onClick={() => setShowSuccessModal(false)}
-            aria-label="Close"
+            aria-label={t('packageCards.redeem.close')}
           >
             ×
           </button>
           <div className={styles.modalIcon}>✓</div>
-          <h3 className={styles.modalTitle}>Successful!</h3>
+          <h3 className={styles.modalTitle}>{t('packageCards.success.title')}</h3>
           <p className={styles.modalText}>
-            Contact the following email: <a href="mailto:Firat05_@hotmail.com" className={styles.modalEmail}>Firat05_@hotmail.com</a>
+            {t('packageCards.success.emailText')} <a href={`mailto:${t('packageCards.success.email')}`} className={styles.modalEmail}>{t('packageCards.success.email')}</a>
           </p>
           <p className={styles.modalText}>
-            Write the code in the email to redeem the package for the following agency development cycle to begin.
+            {t('packageCards.success.instructions')}
           </p>
         </div>
       </div>

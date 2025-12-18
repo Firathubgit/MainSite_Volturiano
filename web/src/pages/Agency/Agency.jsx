@@ -51,7 +51,7 @@ export default function Agency() {
 
       <HeroSection 
         onOpenContact={openContact}
-        onScrollToServices={() => scrollToSection('services')}
+        onScrollToServices={() => scrollToSection('package-cards')}
       />
 
       <div className={styles.contentWrapper}>

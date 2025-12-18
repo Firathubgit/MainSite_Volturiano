@@ -13,18 +13,18 @@ export function DeviceShowcase() {
   const features = [
     {
       image: ipadStory,
-      title: t('deviceShowcase.features.0.title', 'What We Do'),
-      description: t('deviceShowcase.features.0.description', 'We transform businesses through premium digital solutions. Specializing in the automotive industry and hospitality sector, we deliver comprehensive platforms that drive growth and enhance customer experiences. From car dealership ecosystems to hotel booking platforms, we build the digital infrastructure your business needs.'),
+      title: t('deviceShowcase.features.0.title'),
+      description: t('deviceShowcase.features.0.description'),
     },
     {
       image: ipadClarity,
-      title: t('deviceShowcase.features.1.title', 'Strategic UI/UX Design'),
-      description: t('deviceShowcase.features.1.description', 'We don\'t just design interfaces; we engineer user journeys. Every interaction is calculated to build trust, reduce friction, and guide your visitors towards conversion.'),
+      title: t('deviceShowcase.features.1.title'),
+      description: t('deviceShowcase.features.1.description'),
     },
     {
       image: ipadExploration,
-      title: t('deviceShowcase.features.2.title', 'Investing in Digital Assets'),
-      description: t('deviceShowcase.features.2.description', 'A website isn\'t an expense; it\'s a high-performance asset. In the digital economy, your platform is your primary storefront, ambassador, and closer.'),
+      title: t('deviceShowcase.features.2.title'),
+      description: t('deviceShowcase.features.2.description'),
     },
   ];
   
@@ -32,7 +32,7 @@ export function DeviceShowcase() {
     <section className={styles.section}>
       {/* Left Column */}
       <div className={styles.leftColumn}>
-        <span className={styles.labelLeft}>[WHAT WE DO]</span>
+        <span className={styles.labelLeft}>{t('deviceShowcase.labelLeft')}</span>
         <div className={styles.accordionList}>
         {features.map((feature, index) => (
           <button
@@ -66,7 +66,7 @@ export function DeviceShowcase() {
 
       {/* Right Column */}
       <div className={styles.rightColumn}>
-        <span className={styles.labelRight}>[IN USE]</span>
+        <span className={styles.labelRight}>{t('deviceShowcase.labelRight')}</span>
         <div className={styles.ipadContainer}>
           <div className={styles.ipadWrapper}>
             {features.map((feature, index) => (

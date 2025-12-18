@@ -8,33 +8,22 @@ import styles from './TeamShowcase.module.css';
 export function TeamShowcase() {
   const { t } = useTranslation('agency');
   const teamMembersData = t('team.members', { returnObjects: true });
+  const memberCodes = t('team.memberCodes', { returnObjects: true });
+  const memberBios = t('team.memberBios', { returnObjects: true });
+  const memberStats = t('team.memberStats', { returnObjects: true });
+  const defaultBio = t('team.defaultBio');
+  const defaultStats = t('team.defaultStats', { returnObjects: true });
   const [activeId, setActiveId] = useState(null); // No default active state
   
   // Enrich team members with additional data
   const teamMembers = teamMembersData.map((member, index) => {
-    const codes = ['SYS_ADMIN', 'PX_WITCH', '10X_Dev_mf', 'MIND_MAP', 'FPS_LORD'];
-    const bios = [
-      'Constructing digital realities from the void up. Obsessed with the space between pixels.',
-      'Turning abstract concepts into retinal candy. Reality is just a suggestion.',
-      'Speaking the languages machines dream in. Optimizing the fabric of the web.',
-      'Mapping the user psyche. Predicting trends before they manifest in this dimension.',
-      'Breathing life into static voids. Physics is optional.'
-    ];
-    const statsOptions = [
-      [{ label: 'Vision', value: 98 }, { label: 'Chaos', value: 45 }],
-      [{ label: 'Aesthetics', value: 100 }, { label: 'Reality', value: 12 }],
-      [{ label: 'Logic', value: 99 }, { label: 'Bugs', value: 0 }],
-      [{ label: 'Insight', value: 95 }, { label: 'Empathy', value: 90 }],
-      [{ label: 'Timing', value: 97 }, { label: 'Smoothness', value: 100 }]
-    ];
-    
     return {
       ...member,
       id: String(index + 1).padStart(2, '0'),
-      code: codes[index] || 'UNKNOWN',
-      bio: bios[index] || 'Crafting digital excellence.',
+      code: memberCodes[index] || 'UNKNOWN',
+      bio: memberBios[index] || defaultBio,
       image: silhouetteImage,
-      stats: statsOptions[index] || [{ label: 'Skill', value: 85 }, { label: 'Experience', value: 90 }]
+      stats: memberStats[index] || defaultStats
     };
   });
 
@@ -43,14 +32,14 @@ export function TeamShowcase() {
       <div className={styles.header}>
         <div>
           <h2 className={styles.label}>{t('team.label')}</h2>
-          <h3 className={styles.title}>Operatives</h3>
+          <h3 className={styles.title}>{t('team.operativesTitle')}</h3>
         </div>
         <div className={styles.statusContainer}>
           <p className={styles.status}>
-            STATUS: <span className={styles.statusOnline}>ONLINE</span>
+            {t('team.status')} <span className={styles.statusOnline}>{t('team.statusOnline')}</span>
           </p>
           <p className={styles.location}>
-            Loc: Sector 7G
+            {t('team.location')}
           </p>
         </div>
       </div>

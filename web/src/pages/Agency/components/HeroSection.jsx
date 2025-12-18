@@ -60,7 +60,7 @@ export function HeroSection({ onOpenContact, onScrollToServices }) {
               transition={{ duration: 1, delay: 0.1, ease: [0.22, 1, 0.36, 1] }}
               className={styles.title2}
             >
-              AGENCY.
+              {t('hero.agencyTitle')}
             </motion.h1>
           </div>
 
@@ -74,7 +74,7 @@ export function HeroSection({ onOpenContact, onScrollToServices }) {
               {t('hero.description').replace(/<[^>]*>/g, '')}
             </p>
             <a 
-              href="#work" 
+              href="#package-cards" 
               onClick={(e) => {
                 e.preventDefault();
                 onScrollToServices();
@@ -97,7 +97,7 @@ export function HeroSection({ onOpenContact, onScrollToServices }) {
           <path id="curve" d="M 50 50 m -37 0 a 37 37 0 1 1 74 0 a 37 37 0 1 1 -74 0" fill="transparent" />
           <text className={styles.curveText}>
             <textPath href="#curve">
-              Scroll Down • Explore The Void • Digital • 
+              {t('hero.spinningText')}
             </textPath>
           </text>
         </svg>
@@ -107,12 +107,13 @@ export function HeroSection({ onOpenContact, onScrollToServices }) {
 }
 
 export function MarqueeTicker() {
+  const { t } = useTranslation('agency');
   return (
     <div className={styles.marqueeWrapper}>
       <div className={styles.marquee}>
         {Array.from({ length: 10 }).map((_, i) => (
           <span key={i} className={styles.marqueeText}>
-            Redefining Digital Experiences — Award Winning Agency — 
+            {t('hero.marqueeText')}
           </span>
         ))}
       </div>

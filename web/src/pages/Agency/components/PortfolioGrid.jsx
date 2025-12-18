@@ -44,7 +44,7 @@ export function PortfolioGrid() {
           {projects.map((project) => (
             <motion.div
               key={project.id}
-              initial={{ opacity: 0.5 }}
+              initial={{ opacity: 1 }}
               whileHover={{ opacity: 1, x: 20 }}
               onHoverStart={() => setHoveredProject(project.id)}
               onHoverEnd={() => setHoveredProject(null)}

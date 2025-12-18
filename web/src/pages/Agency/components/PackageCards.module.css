@@ -4,9 +4,24 @@
   z-index: 10;
 }
 
+@media (max-width: 767px) {
+  .section {
+    padding-left: 0;
+    padding-right: 0;
+  }
+}
+
 .container {
   max-width: 80rem;
   margin: 0 auto;
+}
+
+@media (max-width: 767px) {
+  .container {
+    padding: 0;
+    margin: 0;
+    max-width: 100%;
+  }
 }
 
 /* Desktop grid */
@@ -173,6 +188,267 @@
   will-change: transform;
 }
 
+/* Hover indicator - desktop only */
+.redeemOverlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(2px);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  pointer-events: none;
+  z-index: 15;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 1rem;
+}
+
+.redeemOverlayVisible {
+  opacity: 1;
+}
+
+.redeemText {
+  font-size: 1rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.95);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 0.75rem 1.5rem;
+  border: 2px solid rgba(255, 255, 255, 0.4);
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.redeemOverlayVisible .redeemText {
+  border-color: rgba(255, 255, 255, 0.6);
+  background: rgba(255, 255, 255, 0.15);
+  transform: scale(1.05);
+}
+
+@media (max-width: 767px) {
+  .redeemOverlay {
+    display: none;
+  }
+}
+
+/* -------- Popup overlay + redeem modal (global, incl. desktop) -------- */
+.modalOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.85);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  padding: 1rem;
+  backdrop-filter: blur(8px);
+  animation: fadeIn 0.2s ease;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.modalContent {
+  background: rgba(10, 10, 10, 0.98);
+  border-radius: 1.5rem;
+  padding: 2rem 1.5rem;
+  max-width: 400px;
+  width: 100%;
+  position: relative;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.8);
+}
+
+.modalClose {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  background: transparent;
+  border: none;
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 2rem;
+  line-height: 1;
+  cursor: pointer;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: all 0.2s ease;
+}
+
+.modalClose:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.modalIcon {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: rgba(34, 197, 94, 0.2);
+  color: #22c55e;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2rem;
+  font-weight: bold;
+  margin: 0 auto 1.5rem;
+  border: 2px solid rgba(34, 197, 94, 0.3);
+}
+
+.modalTitle {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.95);
+  text-align: center;
+  margin: 0 0 1rem 0;
+}
+
+.modalText {
+  font-size: 0.95rem;
+  color: rgba(255, 255, 255, 0.8);
+  line-height: 1.6;
+  margin: 0 0 1rem 0;
+  text-align: center;
+}
+
+.modalText:last-child {
+  margin-bottom: 0;
+}
+
+.modalEmail {
+  color: rgba(255, 255, 255, 0.95);
+  text-decoration: underline;
+  font-weight: 500;
+}
+
+.modalEmail:hover {
+  color: rgba(255, 255, 255, 1);
+}
+
+.redeemModalContent {
+  background: rgba(10, 10, 10, 0.98);
+  border-radius: 0;
+  padding: 2.5rem 2rem;
+  max-width: 420px;
+  width: 100%;
+  position: relative;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.9), 0 0 0 1px rgba(255, 255, 255, 0.05);
+  animation: slideUp 0.3s ease;
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.redeemModalHeader {
+  margin-bottom: 2rem;
+  text-align: center;
+}
+
+.redeemModalTitle {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.95);
+  margin: 0;
+  line-height: 1.2;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.redeemModalForm {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+/* Form controls (used by desktop popup) */
+.formGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.label {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.8);
+  margin: 0;
+}
+
+.input {
+  width: 100%;
+  padding: 0.875rem 1rem;
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 0;
+  color: rgba(255, 255, 255, 0.95);
+  font-size: 1rem;
+  transition: all 0.2s ease;
+  box-sizing: border-box;
+}
+
+.input:focus {
+  outline: none;
+  border-color: rgba(255, 255, 255, 0.4);
+  background: transparent;
+}
+
+.input::placeholder {
+  color: rgba(255, 255, 255, 0.4);
+}
+
+.submitButton {
+  width: 100%;
+  padding: 0.875rem 1.5rem;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.95);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 0;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  margin-top: 0.5rem;
+  margin-bottom: 0;
+}
+
+.submitButton:hover {
+  background: transparent;
+  border-color: rgba(255, 255, 255, 0.5);
+  transform: translateY(-1px);
+}
+
+.submitButton:active {
+  transform: translateY(0);
+  border-color: rgba(255, 255, 255, 0.4);
+}
+
 /* -------- Mobile (iPhone-style) -------- */
 .mobilePhone {
   display: none;
@@ -185,16 +461,15 @@
 
   .mobilePhone {
     display: flex;
-    justify-content: center;
+    width: 100%;
   }
 
-  /* Phone frame sized like iPhone Pro Max proportions */
+  /* Phone frame - content-based height */
   .phoneFrame {
-    width: min(430px, 100%);
-    aspect-ratio: 9 / 19.5;
-    border-radius: 2.25rem;
-    /* Reduce frame padding so carousel can show side-card peeks like Figma */
-    padding: 0.75rem;
+    width: 100%;
+    border-radius: 2.25rem 2.25rem 0 0;
+    /* No horizontal padding - touches viewport edges */
+    padding: 0.75rem 0 1.5rem;
     background: radial-gradient(120% 120% at 50% 0%, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.02) 40%, rgba(0, 0, 0, 0.6) 100%);
     box-shadow:
       0 30px 90px rgba(0, 0, 0, 0.75),
@@ -202,28 +477,26 @@
       0 0 0 1px rgba(255, 255, 255, 0.06);
     display: flex;
     flex-direction: column;
-    overflow: hidden;
-  }
-
-  /* When collapsed we visually shorten the phone to emphasize cards */
-  .phoneCollapsed {
-    /* Slightly taller collapsed state so bottom text/CTA has breathing room */
-    aspect-ratio: 9 / 17.3;
+    overflow: visible;
   }
 
   .phoneTop {
-    flex: 1 1 auto;
+    flex: 0 0 auto;
     display: flex;
     flex-direction: column;
     gap: 0.9rem;
     justify-content: flex-start;
-    padding-top: 0.25rem;
+    padding-top: 0;
+    padding-bottom: 1.5rem;
+    padding-left: 0.75rem;
+    padding-right: 0.75rem;
   }
 
   /* Horizontal snapping carousel */
   .carousel {
     width: 100%;
-    height: 100%;
+    height: auto;
+    min-height: 280px;
     overflow-x: auto;
     overflow-y: hidden;
     display: flex;
@@ -307,131 +580,308 @@
     background: rgba(255, 255, 255, 0.9);
   }
 
-  /* Bottom sheet (collapsible) */
-  .sheet {
-    flex: 0 0 auto;
-    background: rgba(5, 5, 5, 0.92);
-    border-top: 1px solid rgba(255, 255, 255, 0.08);
-    border-radius: 1.5rem;
-    padding: 0.75rem 0.9rem 1rem;
-    box-shadow:
-      0 -20px 70px rgba(0, 0, 0, 0.7),
-      inset 0 1px 0 rgba(255, 255, 255, 0.06);
-    overflow: hidden;
-    transition: max-height 260ms ease, transform 260ms ease;
-    max-height: 46%;
+  /* Form Header - Above card */
+  .formHeader {
+    padding: 1.5rem 1.75rem 1rem;
+    margin: 0;
   }
 
-  .sheetCollapsed {
-    /* Collapsed should show only the header (no features) */
-    max-height: 12%;
-    padding-bottom: 0.75rem;
+  .formTitle {
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: rgba(255, 255, 255, 0.95);
+    margin: 0 0 0.5rem 0;
+    line-height: 1.2;
   }
 
-  .sheetToggle {
-    width: 100%;
-    border: 0;
-    background: transparent;
-    padding: 0.15rem 0 0.5rem;
+  .formSubtitle {
+    font-size: 0.875rem;
+    color: rgba(255, 255, 255, 0.6);
+    margin: 0;
+    line-height: 1.4;
   }
 
-  .sheetHandle {
-    display: block;
-    width: 52px;
-    height: 6px;
-    border-radius: 9999px;
-    margin: 0 auto;
-    background: rgba(255, 255, 255, 0.22);
-  }
-
-  .sheetContent {
+  /* Form - Directly below card, same space */
+  .form {
     display: flex;
     flex-direction: column;
-    gap: 0.9rem;
-  }
-
-  .sheetHeader {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 0.75rem;
-  }
-
-  .sheetMeta {
-    min-width: 0;
-  }
-
-  .sheetLabel {
-    font-size: 0.75rem;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-    color: rgba(255, 255, 255, 0.55);
-    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
-  }
-
-  .sheetTitle {
-    font-size: 1.15rem;
-    font-weight: 700;
-    color: rgba(255, 255, 255, 0.92);
-    line-height: 1.1;
-  }
-
-  .sheetCta {
-    border: 1px solid rgba(255, 255, 255, 0.18);
-    background: rgba(255, 255, 255, 0.06);
-    color: rgba(255, 255, 255, 0.92);
-    border-radius: 9999px;
-    padding: 0.55rem 0.9rem;
-    font-weight: 600;
-    font-size: 0.85rem;
-    white-space: nowrap;
-  }
-
-  .featureList {
-    list-style: none;
-    padding: 0;
+    gap: 1.25rem;
+    padding: 0 0.75rem;
     margin: 0;
-    display: grid;
-    grid-template-columns: 1fr;
-    gap: 0.75rem;
-    /* Prevent layout jumps when switching package */
-    max-height: 220px;
-    overflow: auto;
-    padding-right: 0.2rem;
+    padding-bottom: 0;
   }
 
-  /* In collapsed mode: hide features completely + tighten spacing */
-  .sheetCollapsed .sheetContent {
+  .formGroup {
+    display: flex;
+    flex-direction: column;
     gap: 0.5rem;
   }
 
-  .sheetCollapsed .featureList {
-    display: none;
+  .label {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: rgba(255, 255, 255, 0.8);
+    margin: 0;
   }
 
-  .featureItem {
-    display: grid;
-    grid-template-columns: 10px 1fr;
-    align-items: start;
-    gap: 0.65rem;
-    padding: 0.65rem 0.7rem;
-    border-radius: 1rem;
-    background: rgba(255, 255, 255, 0.04);
-    border: 1px solid rgba(255, 255, 255, 0.06);
+  .input {
+    width: 100%;
+    padding: 0.875rem 1rem;
+    background: transparent;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 0;
+    color: rgba(255, 255, 255, 0.95);
+    font-size: 1rem;
+    transition: all 0.2s ease;
+    box-sizing: border-box;
   }
 
-  .featureBullet {
-    width: 8px;
-    height: 8px;
-    border-radius: 9999px;
-    margin-top: 0.35rem;
-    background: rgba(255, 255, 255, 0.9);
+  .input:focus {
+    outline: none;
+    border-color: rgba(255, 255, 255, 0.4);
+    background: transparent;
   }
 
-  .featureText {
-    font-size: 0.92rem;
-    line-height: 1.25;
-    color: rgba(255, 255, 255, 0.82);
+  .input::placeholder {
+    color: rgba(255, 255, 255, 0.4);
+  }
+
+  .submitButton {
+    width: 100%;
+    padding: 0.875rem 1.5rem;
+    background: transparent;
+    color: rgba(255, 255, 255, 0.95);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    border-radius: 0;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    margin-top: 0.5rem;
+    margin-bottom: 0;
+  }
+
+  .submitButton:hover {
+    background: transparent;
+    border-color: rgba(255, 255, 255, 0.5);
+    transform: translateY(-1px);
+  }
+
+  .submitButton:active {
+    transform: translateY(0);
+    border-color: rgba(255, 255, 255, 0.4);
+  }
+
+  /* Popup Overlay */
+  .modalOverlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.85);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+    padding: 1rem;
+    backdrop-filter: blur(8px);
+    animation: fadeIn 0.2s ease;
+  }
+
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+
+  .modalContent {
+    background: rgba(10, 10, 10, 0.98);
+    border-radius: 1.5rem;
+    padding: 2rem 1.5rem;
+    max-width: 400px;
+    width: 100%;
+    position: relative;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.8);
+  }
+
+  .modalClose {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    background: transparent;
+    border: none;
+    color: rgba(255, 255, 255, 0.6);
+    font-size: 2rem;
+    line-height: 1;
+    cursor: pointer;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    transition: all 0.2s ease;
+  }
+
+  .modalClose:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: rgba(255, 255, 255, 0.9);
+  }
+
+  .modalIcon {
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    background: rgba(34, 197, 94, 0.2);
+    color: #22c55e;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2rem;
+    font-weight: bold;
+    margin: 0 auto 1.5rem;
+    border: 2px solid rgba(34, 197, 94, 0.3);
+  }
+
+  .modalTitle {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: rgba(255, 255, 255, 0.95);
+    text-align: center;
+    margin: 0 0 1rem 0;
+  }
+
+  .modalText {
+    font-size: 0.95rem;
+    color: rgba(255, 255, 255, 0.8);
+    line-height: 1.6;
+    margin: 0 0 1rem 0;
+    text-align: center;
+  }
+
+  .modalText:last-child {
+    margin-bottom: 0;
+  }
+
+  .modalEmail {
+    color: rgba(255, 255, 255, 0.95);
+    text-decoration: underline;
+    font-weight: 500;
+  }
+
+  .modalEmail:hover {
+    color: rgba(255, 255, 255, 1);
+  }
+
+  /* Desktop Redeem Modal - Simple Popup */
+  .redeemModalContent {
+    background: rgba(10, 10, 10, 0.98);
+    border-radius: 0;
+    padding: 2.5rem 2rem;
+    max-width: 420px;
+    width: 100%;
+    position: relative;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.9), 0 0 0 1px rgba(255, 255, 255, 0.05);
+    animation: slideUp 0.3s ease;
+  }
+
+  @keyframes slideUp {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .redeemModalHeader {
+    margin-bottom: 2rem;
+    text-align: center;
+  }
+
+  .redeemModalTitle {
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.95);
+    margin: 0;
+    line-height: 1.2;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+
+  .redeemModalForm {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+  }
+
+  .redeemModalForm .formGroup {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .redeemModalForm .label {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: rgba(255, 255, 255, 0.8);
+    margin: 0;
+  }
+
+  .redeemModalForm .input {
+    width: 100%;
+    padding: 0.875rem 1rem;
+    background: transparent;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 0;
+    color: rgba(255, 255, 255, 0.95);
+    font-size: 1rem;
+    transition: all 0.2s ease;
+    box-sizing: border-box;
+  }
+
+  .redeemModalForm .input:focus {
+    outline: none;
+    border-color: rgba(255, 255, 255, 0.4);
+    background: transparent;
+  }
+
+  .redeemModalForm .input::placeholder {
+    color: rgba(255, 255, 255, 0.4);
+  }
+
+  .redeemModalForm .submitButton {
+    width: 100%;
+    padding: 0.875rem 1.5rem;
+    background: transparent;
+    color: rgba(255, 255, 255, 0.95);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    border-radius: 0;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    margin-top: 0.5rem;
+    margin-bottom: 0;
+  }
+
+  .redeemModalForm .submitButton:hover {
+    background: transparent;
+    border-color: rgba(255, 255, 255, 0.5);
+    transform: translateY(-1px);
+  }
+
+  .redeemModalForm .submitButton:active {
+    transform: translateY(0);
+    border-color: rgba(255, 255, 255, 0.4);
   }
 }
 

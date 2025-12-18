@@ -7,8 +7,12 @@ import TitaniumPackage from '../../../assets/Logo/TitaniumPackage.png';
 export function PackageCards({ onOpenContact }) {
   const [hoveredCard, setHoveredCard] = useState(null);
   const [activeIndex, setActiveIndex] = useState(1); // titanium default
-  const [committedIndex, setCommittedIndex] = useState(1); // drives sheet content (no twitch)
-  const [sheetCollapsed, setSheetCollapsed] = useState(false);
+  const [committedIndex, setCommittedIndex] = useState(1);
+  const [cardCode, setCardCode] = useState('');
+  const [businessName, setBusinessName] = useState('');
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [showRedeemModal, setShowRedeemModal] = useState(false);
+  const [selectedPackage, setSelectedPackage] = useState(null);
   const carouselRef = useRef(null);
   const slideElsRef = useRef([]);
   const scrollEndTimerRef = useRef(null);
@@ -156,7 +160,23 @@ export function PackageCards({ onOpenContact }) {
 
   const activePackage = packages[committedIndex] ?? packages[1];
 
+  const handleRedeem = (e) => {
+    e.preventDefault();
+    if (cardCode.trim() && businessName.trim()) {
+      setShowSuccessModal(true);
+      setShowRedeemModal(false);
+      setCardCode('');
+      setBusinessName('');
+    }
+  };
+
+  const handleCardClick = (pkg) => {
+    setSelectedPackage(pkg);
+    setShowRedeemModal(true);
+  };
+
   return (
+    <>
     <section className={styles.section}>
       <div className={styles.container}>
         {/* Desktop layout */}
@@ -171,7 +191,7 @@ export function PackageCards({ onOpenContact }) {
                 handleMouseMove(e, pkg.id);
               }}
               onMouseLeave={() => handleMouseLeave(pkg.id)}
-              onClick={() => onOpenContact && onOpenContact(null)}
+              onClick={() => handleCardClick(pkg)}
               role="button"
               tabIndex={0}
             >
@@ -183,6 +203,10 @@ export function PackageCards({ onOpenContact }) {
                   className={styles.cardImage}
                   draggable="false"
                 />
+                {/* Minimal redeem overlay on hover */}
+                <div className={`${styles.redeemOverlay} ${hoveredCard === pkg.id ? styles.redeemOverlayVisible : ''}`}>
+                  <span className={styles.redeemText}>Redeem</span>
+                </div>
               </div>
             </div>
           ))}
@@ -190,7 +214,14 @@ export function PackageCards({ onOpenContact }) {
 
         {/* Mobile layout (iPhone-style) */}
         <div className={styles.mobilePhone}>
-          <div className={`${styles.phoneFrame} ${sheetCollapsed ? styles.phoneCollapsed : ''}`}>
+          <div className={styles.phoneFrame}>
+            {/* Form Header - Above the card */}
+            <div className={styles.formHeader}>
+              <h2 className={styles.formTitle}>Redeem Card</h2>
+              <p className={styles.formSubtitle}>Redeem website package via code</p>
+            </div>
+
+            {/* Package Card Carousel */}
             <div className={styles.phoneTop}>
               <div className={styles.carousel} ref={carouselRef} aria-label="Package carousel">
                 {packages.map((pkg, idx) => (
@@ -201,7 +232,7 @@ export function PackageCards({ onOpenContact }) {
                       slideElsRef.current[idx] = node;
                     }}
                   >
-                    <div className={styles.mobileCard} onClick={() => onOpenContact && onOpenContact(null)} role="button" tabIndex={0}>
+                    <div className={styles.mobileCard} role="button" tabIndex={0}>
                       <img src={pkg.image} alt={pkg.name} className={styles.mobileCardImage} draggable="false" />
                     </div>
                   </div>
@@ -221,41 +252,114 @@ export function PackageCards({ onOpenContact }) {
               </div>
             </div>
 
-            <div className={`${styles.sheet} ${sheetCollapsed ? styles.sheetCollapsed : ''}`}>
-              <button
-                type="button"
-                className={styles.sheetToggle}
-                onClick={() => setSheetCollapsed((v) => !v)}
-                aria-expanded={!sheetCollapsed}
-              >
-                <span className={styles.sheetHandle} />
-              </button>
-
-              <div className={styles.sheetContent}>
-                <div className={styles.sheetHeader}>
-                  <div className={styles.sheetMeta}>
-                    <div className={styles.sheetLabel}>{activePackage.label}</div>
-                    <div className={styles.sheetTitle}>{activePackage.name}</div>
-                  </div>
-                  <button type="button" className={styles.sheetCta} onClick={() => onOpenContact && onOpenContact(null)}>
-                    Få Offer
-                  </button>
-                </div>
-
-                <ul className={styles.featureList}>
-                  {activePackage.features.map((f) => (
-                    <li key={f} className={styles.featureItem}>
-                      <span className={styles.featureBullet} />
-                      <span className={styles.featureText}>{f}</span>
-                    </li>
-                  ))}
-                </ul>
+            {/* Input Form - Directly below card, same space */}
+            <form onSubmit={handleRedeem} className={styles.form}>
+              <div className={styles.formGroup}>
+                <label htmlFor="cardCode" className={styles.label}>Card code</label>
+                <input
+                  id="cardCode"
+                  type="text"
+                  className={styles.input}
+                  value={cardCode}
+                  onChange={(e) => setCardCode(e.target.value)}
+                  placeholder="Enter your card code"
+                  required
+                />
               </div>
-            </div>
+
+              <div className={styles.formGroup}>
+                <label htmlFor="businessName" className={styles.label}>Business name</label>
+                <input
+                  id="businessName"
+                  type="text"
+                  className={styles.input}
+                  value={businessName}
+                  onChange={(e) => setBusinessName(e.target.value)}
+                  placeholder="Enter your business name"
+                  required
+                />
+              </div>
+
+              <button type="submit" className={styles.submitButton}>
+                Redeem Package
+              </button>
+            </form>
           </div>
         </div>
+
       </div>
     </section>
+
+    {/* Desktop Redeem Modal - Outside container for proper overlay */}
+    {showRedeemModal && selectedPackage && (
+      <div className={styles.modalOverlay} onClick={() => setShowRedeemModal(false)}>
+        <div className={styles.redeemModalContent} onClick={(e) => e.stopPropagation()}>
+          <button
+            className={styles.modalClose}
+            onClick={() => setShowRedeemModal(false)}
+            aria-label="Close"
+          >
+            ×
+          </button>
+          <div className={styles.redeemModalHeader}>
+            <h2 className={styles.redeemModalTitle}>Redeem</h2>
+          </div>
+          <form onSubmit={handleRedeem} className={styles.redeemModalForm}>
+            <div className={styles.formGroup}>
+              <label htmlFor="desktopCardCode" className={styles.label}>Card code</label>
+              <input
+                id="desktopCardCode"
+                type="text"
+                className={styles.input}
+                value={cardCode}
+                onChange={(e) => setCardCode(e.target.value)}
+                placeholder="Enter your card code"
+                required
+              />
+            </div>
+            <div className={styles.formGroup}>
+              <label htmlFor="desktopBusinessName" className={styles.label}>Business name</label>
+              <input
+                id="desktopBusinessName"
+                type="text"
+                className={styles.input}
+                value={businessName}
+                onChange={(e) => setBusinessName(e.target.value)}
+                placeholder="Enter your business name"
+                required
+              />
+            </div>
+            <button type="submit" className={styles.submitButton}>
+              Redeem Package
+            </button>
+          </form>
+        </div>
+      </div>
+    )}
+
+    {/* Success Modal - Outside container */}
+    {showSuccessModal && (
+      <div className={styles.modalOverlay} onClick={() => setShowSuccessModal(false)}>
+        <div className={styles.modalContent} onClick={(e) => e.stopPropagation()}>
+          <button
+            className={styles.modalClose}
+            onClick={() => setShowSuccessModal(false)}
+            aria-label="Close"
+          >
+            ×
+          </button>
+          <div className={styles.modalIcon}>✓</div>
+          <h3 className={styles.modalTitle}>Successful!</h3>
+          <p className={styles.modalText}>
+            Contact the following email: <a href="mailto:Firat05_@hotmail.com" className={styles.modalEmail}>Firat05_@hotmail.com</a>
+          </p>
+          <p className={styles.modalText}>
+            Write the code in the email to redeem the package for the following agency development cycle to begin.
+          </p>
+        </div>
+      </div>
+    )}
+    </>
   );
 }
 

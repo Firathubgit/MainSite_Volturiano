@@ -197,18 +197,108 @@
     "from": "from ",
     "inquireNow": "Inquire Now"
   },
+  "philosophy": {
+    "label": "Mission",
+    "title": {
+      "part1": "Digital presence is the new horsepower.",
+      "part2": "We fuse",
+      "highlight1": "automotive DNA",
+      "part3": "with",
+      "highlight2": "software engineering",
+      "part4": "to build brands that don't just exist—they dominate."
+    },
+    "feature1": {
+      "title": "Precision Engineering",
+      "description": "We apply the same rigor to code as engineers do to chassis dynamics. Every interaction is calculated, every pixel weighed."
+    },
+    "feature2": {
+      "title": "Cinematic Immersion",
+      "description": "Motion, sound, and visual fidelity combined to create digital experiences that rival the feeling of being behind the wheel."
+    }
+  },
+  "pedestalShowcase": {
+    "imageAlt": "Volturiano Atmosphere",
+    "text": "Quiet power."
+  },
+  "twoImageSolution": {
+    "image1": {
+      "alt": "Volturiano Atmosphere I",
+      "figure": "Fig. 01",
+      "caption": "Quiet power."
+    },
+    "image2": {
+      "alt": "Volturiano Atmosphere II",
+      "figure": "Fig. 02",
+      "caption": "Controlled chaos."
+    }
+  },
+  "systemMetrics": {
+    "metrics": [
+      {
+        "label": "Global Uptime",
+        "value": "99.99%",
+        "desc": "Redundant edge network active"
+      },
+      {
+        "label": "Render Cycles",
+        "value": "4.2M+",
+        "desc": "Polygons processed daily"
+      },
+      {
+        "label": "Avg. Latency",
+        "value": "<12ms",
+        "desc": "Global response time"
+      }
+    ]
+  },
+  "conceptGrid": {
+    "header": {
+      "label": "Research & Development",
+      "figure": "FIG. 04 — MATERIALS"
+    },
+    "texture": {
+      "alt": "Carbon Fiber Texture",
+      "label": "Ref_Carbon_01"
+    },
+    "colorBlock": {
+      "label": "ACCENT.HEX"
+    },
+    "typography": {
+      "title": "ZERO\nONE",
+      "description": "Exploring the friction between physical materials and digital planes.",
+      "number": "04"
+    }
+  },
   "footer": {
     "logo": "VOLTURIANO_AGENCY",
     "description": "Commissioning the future of digital luxury. Investor-grade assets for forward-thinking brands.",
     "servicesTitle": "SERVICES",
     "companyTitle": "COMPANY",
+    "ctaLabel": "Ready to make a change?",
+    "ctaTitle": "START YOUR\nPROJECT",
+    "designStudio": {
+      "title": "Design Studio",
+      "address1": "Via Emilia Centro, 42",
+      "address2": "Modena, Italy"
+    },
+    "engineeringLab": {
+      "title": "Engineering Lab",
+      "address1": "543 Howard St",
+      "address2": "San Francisco, CA"
+    },
+    "social": {
+      "linkedin": "LinkedIn",
+      "twitter": "Twitter / X",
+      "instagram": "Instagram"
+    },
+    "copyright": "© 2024 Volturiano Agency.",
+    "tagline": "Engineered for the future.",
     "links": {
       "about": "About",
       "careers": "Careers",
       "contact": "Contact",
       "privacyPolicy": "Privacy Policy"
     },
-    "copyright": "© 2024 VOLTURIANO INC. ALL RIGHTS RESERVED.",
     "status": "ALL SYSTEMS OPERATIONAL"
   },
   "contactModal": {

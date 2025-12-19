@@ -66,18 +66,20 @@ export default function Agency() {
         <ClientLogos />
 
         <TechTicker />
-        <ConceptGrid />
-        <DeviceShowcase />
+        <Philosophy />
+        <PedestalShowcase />
+        <TwoImageSolution />
+        {/* <ConceptGrid /> */}
+        {/* <DeviceShowcase /> */}
         <PortfolioGrid />
 
         {/* TeamShowcase - Commented out for now... */}
         {/* <TeamShowcase /> */}
         {/* CaseStudy - Commented out for now... */}
         {/* <CaseStudy /> */}
-        <Philosophy />
-        <PedestalShowcase />
-        <TwoImageSolution />
-        <SystemMetrics />
+
+
+        {/* <SystemMetrics /> */}
 
         {/* ServiceShowcase - Commented out for now... */}
         {/* <ServiceShowcase 

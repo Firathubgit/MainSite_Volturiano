@@ -1,0 +1,152 @@
+.section {
+  position: relative;
+  width: 100%;
+  padding: 10rem 1.5rem 4rem 1.5rem;
+  background-color: #0b0b0b;
+  color: #f5f5f5;
+}
+
+@media (min-width: 768px) {
+  .section {
+    padding: 16rem 3rem 6rem 3rem;
+  }
+}
+
+.container {
+  max-width: 1800px;
+  margin: 0 auto;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap-y: 3rem;
+}
+
+@media (min-width: 768px) {
+  .grid {
+    grid-template-columns: repeat(12, 1fr);
+  }
+}
+
+.labelColumn {
+  grid-column: span 1;
+}
+
+@media (min-width: 768px) {
+  .labelColumn {
+    grid-column: span 3;
+  }
+}
+
+@media (min-width: 1024px) {
+  .labelColumn {
+    grid-column: span 2;
+  }
+}
+
+.stickyLabel {
+  position: sticky;
+  top: 8rem;
+}
+
+.labelContainer {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.dot {
+  display: block;
+  width: 0.375rem;
+  height: 0.375rem;
+  background-color: #e10600;
+}
+
+.label {
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+  color: #6b7280;
+}
+
+.contentColumn {
+  grid-column: span 1;
+}
+
+@media (min-width: 768px) {
+  .contentColumn {
+    grid-column: span 9;
+  }
+}
+
+@media (min-width: 1024px) {
+  .contentColumn {
+    grid-column: span 10;
+  }
+}
+
+.title {
+  font-size: 2.25rem;
+  font-weight: 400;
+  line-height: 1.05;
+  letter-spacing: -0.02em;
+  color: #ffffff;
+}
+
+@media (min-width: 768px) {
+  .title {
+    font-size: 3.75rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .title {
+    font-size: 5rem;
+  }
+}
+
+.grayText {
+  color: #6b7280;
+}
+
+.whiteText {
+  color: #ffffff;
+}
+
+.featuresGrid {
+  margin-top: 4rem;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 3rem;
+  padding-top: 3rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+@media (min-width: 768px) {
+  .featuresGrid {
+    margin-top: 6rem;
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.feature {
+  display: flex;
+  flex-direction: column;
+}
+
+.featureTitle {
+  font-size: 1.125rem;
+  font-weight: 500;
+  margin-bottom: 1rem;
+  color: #ffffff;
+}
+
+.featureDescription {
+  color: #9ca3af;
+  font-weight: 300;
+  line-height: 1.75;
+  max-width: 24rem;
+}
+

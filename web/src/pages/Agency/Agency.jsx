@@ -9,7 +9,13 @@ import { PortfolioGrid } from './components/PortfolioGrid';
 import { DeviceShowcase } from './components/DeviceShowcase';
 import { CaseStudy } from './components/CaseStudy';
 import { TeamShowcase } from './components/TeamShowcase';
+import { Philosophy } from './components/Philosophy';
+import { ConceptGrid } from './components/ConceptGrid';
+import { PedestalShowcase } from './components/PedestalShowcase';
+import { TwoImageSolution } from './components/TwoImageSolution';
+import { SystemMetrics } from './components/SystemMetrics';
 import { PackageCards } from './components/PackageCards';
+import { Footer } from './components/Footer';
 import { ContactFormModal } from './components/modals/ContactFormModal';
 import { DemoRequestModal } from './components/modals/DemoRequestModal';
 import VisionDump from '../../components/VisionDump/VisionDump';
@@ -60,17 +66,24 @@ export default function Agency() {
         <ClientLogos />
 
         <TechTicker />
-
+        <ConceptGrid />
         <DeviceShowcase />
-        <TeamShowcase />
         <PortfolioGrid />
-        <CaseStudy />   
 
+        {/* TeamShowcase - Commented out for now... */}
+        {/* <TeamShowcase /> */}
+        {/* CaseStudy - Commented out for now... */}
+        {/* <CaseStudy /> */}
+        <Philosophy />
+        <PedestalShowcase />
+        <TwoImageSolution />
+        <SystemMetrics />
 
-        <ServiceShowcase 
+        {/* ServiceShowcase - Commented out for now... */}
+        {/* <ServiceShowcase 
           onOpenContact={openContact}
           onOpenDemo={openDemo}
-        />
+        /> */}
 
 
 
@@ -82,65 +95,7 @@ export default function Agency() {
 
         <PackageCards onOpenContact={openContact} />
 
-        <footer className={styles.footer}>
-        <div className={styles.footerContainer}>
-          <div className={styles.footerGrid}>
-            <div className={styles.footerBrand}>
-              <a href="#" className={styles.footerLogo}>{t('agency:footer.logo')}</a>
-              <p className={styles.footerDescription}>
-                {t('agency:footer.description')}
-              </p>
-              <div className={styles.footerSocial}>
-                {['Twitter', 'LinkedIn', 'Instagram'].map(social => (
-                  <a key={social} href="#" className={styles.socialLink}>
-                    {social}
-                  </a>
-                ))}
-              </div>
-            </div>
-            
-            <div className={styles.footerColumn}>
-              <h4 className={styles.footerTitle}>{t('agency:footer.servicesTitle')}</h4>
-              <ul className={styles.footerList}>
-                {SERVICES.map(s => (
-                  <li key={s.id}>
-                    <a 
-                      href="#" 
-                      onClick={(e) => { 
-                        e.preventDefault(); 
-                        openDemo(s.id); 
-                      }} 
-                      className={styles.footerLink}
-                    >
-                      {t(`agency:services.items.${s.id}.title`)}
-                    </a>
-                  </li>
-                ))}
-              </ul>
-            </div>
-
-            <div className={styles.footerColumn}>
-              <h4 className={styles.footerTitle}>{t('agency:footer.companyTitle')}</h4>
-              <ul className={styles.footerList}>
-                <li><a href="#" className={styles.footerLink}>{t('agency:footer.links.about')}</a></li>
-                <li><a href="#" className={styles.footerLink}>{t('agency:footer.links.careers')}</a></li>
-                <li><a href="#" className={styles.footerLink}>{t('agency:footer.links.contact')}</a></li>
-                <li><a href="#" className={styles.footerLink}>{t('agency:footer.links.privacyPolicy')}</a></li>
-              </ul>
-            </div>
-          </div>
-
-          <div className={styles.footerBottom}>
-            <div className={styles.footerCopyright}>
-              {t('agency:footer.copyright')}
-            </div>
-            <div className={styles.footerStatus}>
-              <span className={styles.statusDot}></span>
-              {t('agency:footer.status')}
-            </div>
-          </div>
-        </div>
-      </footer>
+        <Footer />
       </div>
 
       <ContactFormModal 

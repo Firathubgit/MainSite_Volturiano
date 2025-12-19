@@ -1,0 +1,264 @@
+.section {
+  width: 100%;
+  padding: 6rem 1.5rem;
+  background-color: #0b0b0b;
+  overflow: hidden;
+}
+
+@media (min-width: 768px) {
+  .section {
+    padding-left: 3rem;
+    padding-right: 3rem;
+  }
+}
+
+.container {
+  max-width: 1800px;
+  margin: 0 auto;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 4rem;
+  padding-top: 1rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.headerLabel {
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+  color: #e10600;
+}
+
+.headerFigure {
+  font-family: monospace;
+  font-size: 0.75rem;
+  color: #4b5563;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1.5rem;
+  height: auto;
+}
+
+@media (min-width: 768px) {
+  .grid {
+    grid-template-columns: repeat(12, 1fr);
+    height: 600px;
+  }
+}
+
+.textureColumn {
+  position: relative;
+  overflow: hidden;
+  height: 400px;
+  background-color: #111827;
+}
+
+@media (min-width: 768px) {
+  .textureColumn {
+    grid-column: span 5;
+    height: 100%;
+  }
+}
+
+.textureImage {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0.6;
+  filter: grayscale(100%);
+  transition: opacity 0.7s, filter 0.7s;
+}
+
+.textureColumn:hover .textureImage {
+  opacity: 1;
+  filter: grayscale(0%);
+}
+
+.textureLabel {
+  position: absolute;
+  top: 1rem;
+  left: 1rem;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  padding: 0.25rem 0.5rem;
+  font-size: 0.625rem;
+  font-family: monospace;
+  color: rgba(255, 255, 255, 0.8);
+  text-transform: uppercase;
+}
+
+.textureArrow {
+  position: absolute;
+  bottom: 1rem;
+  right: 1rem;
+}
+
+.arrowIcon {
+  width: 1rem;
+  height: 1rem;
+  color: #ffffff;
+  animation: bounce 1s infinite;
+}
+
+@keyframes bounce {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-0.5rem);
+  }
+}
+
+.stackColumn {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+@media (min-width: 768px) {
+  .stackColumn {
+    grid-column: span 3;
+  }
+}
+
+.colorBlock {
+  flex: 1;
+  background-color: #e10600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  padding: 2rem;
+}
+
+.colorBlockLabel {
+  position: absolute;
+  top: 1rem;
+  left: 1rem;
+  font-size: 0.625rem;
+  font-family: monospace;
+  color: rgba(0, 0, 0, 0.5);
+}
+
+.colorBlockValue {
+  font-size: 2.25rem;
+  font-weight: 700;
+  color: #000000;
+  mix-blend-mode: overlay;
+}
+
+.codeBlock {
+  flex: 1;
+  background-color: #111111;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  padding: 1.5rem;
+  font-family: monospace;
+  font-size: 0.625rem;
+  color: #6b7280;
+  line-height: 1.75;
+  overflow: hidden;
+  position: relative;
+}
+
+.codeBlockGradient {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(to bottom left, #000000, transparent);
+  pointer-events: none;
+}
+
+.codeText {
+  opacity: 0.5;
+}
+
+.codeIndicator {
+  margin-top: 1rem;
+  width: 0.5rem;
+  height: 0.5rem;
+  background-color: #10b981;
+  border-radius: 50%;
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+.typographyColumn {
+  position: relative;
+  border-left: 1px solid rgba(255, 255, 255, 0.05);
+  padding-left: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+@media (min-width: 768px) {
+  .typographyColumn {
+    grid-column: span 4;
+    padding-left: 1.5rem;
+  }
+}
+
+.typographyTitle {
+  font-size: 3.75rem;
+  font-weight: 300;
+  letter-spacing: -0.05em;
+  line-height: 1;
+  color: rgba(255, 255, 255, 0.2);
+  user-select: none;
+}
+
+@media (min-width: 768px) {
+  .typographyTitle {
+    font-size: 5rem;
+  }
+}
+
+.typographyFooter {
+  margin-top: auto;
+}
+
+.typographyDivider {
+  width: 100%;
+  height: 1px;
+  background-color: rgba(255, 255, 255, 0.1);
+  margin-bottom: 1rem;
+}
+
+.typographyFooterContent {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+}
+
+.typographyDescription {
+  font-size: 0.75rem;
+  color: #9ca3af;
+  max-width: 150px;
+  line-height: 1.75;
+}
+
+.typographyNumber {
+  font-size: 2.25rem;
+  font-family: monospace;
+  color: rgba(255, 255, 255, 0.1);
+}
+

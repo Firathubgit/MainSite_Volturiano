@@ -2,8 +2,7 @@ import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { motion, AnimatePresence } from 'framer-motion';
 import furGloveThumbnail from '../../../assets/FurGloveThhumnail.png';
-import ipadStory from '../../../assets/Gemini_Generated_Image_hca7uhhca7uhhca7 (1).png';
-import ipadClarity from '../../../assets/Gemini_Generated_Image_z1w47wz1w47wz1w4 (1).png';
+import replacementImage from '../../../assets/Replacement image.png';
 import styles from './PortfolioGrid.module.css';
 
 export function PortfolioGrid() {
@@ -14,9 +13,10 @@ export function PortfolioGrid() {
   
   // Enrich projects with images and IDs
   const projects = projectsData.map((p, i) => {
-    let image = ipadStory; // Default
-    if (p.url && p.url.includes('furglove')) image = furGloveThumbnail;
-    else if (i === 1) image = ipadClarity;
+    // Use FurGlove thumbnail for FurGlove, replacement image for others without real links
+    const image = (p.url && p.url.includes('furglove')) 
+      ? furGloveThumbnail 
+      : replacementImage;
     
     return {
       ...p,

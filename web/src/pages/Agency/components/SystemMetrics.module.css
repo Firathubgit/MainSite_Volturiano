@@ -72,6 +72,10 @@
   letter-spacing: 0.1em;
 }
 
+body[data-theme="light"] .label {
+  color: #000000;
+}
+
 .value {
   font-size: 5rem;
   font-weight: 500;

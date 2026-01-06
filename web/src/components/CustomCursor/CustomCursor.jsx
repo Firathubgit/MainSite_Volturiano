@@ -6,6 +6,7 @@ const CustomCursor = () => {
   const [position, setPosition] = useState({ x: 0, y: 0 });
   const [isHovering, setIsHovering] = useState(false);
   const [isClicking, setIsClicking] = useState(false);
+  const [theme, setTheme] = useState('dark');
 
   useEffect(() => {
     const updatePosition = (e) => {
@@ -31,12 +32,23 @@ const CustomCursor = () => {
     const handleMouseDown = () => setIsClicking(true);
     const handleMouseUp = () => setIsClicking(false);
 
+    // Check theme from body's data-theme attribute
+    const checkTheme = () => {
+      const bodyTheme = document.body.getAttribute('data-theme');
+      setTheme(bodyTheme === 'light' ? 'light' : 'dark');
+    };
+
+    checkTheme();
+    const themeObserver = new MutationObserver(checkTheme);
+    themeObserver.observe(document.body, { attributes: true, attributeFilter: ['data-theme'] });
+
     window.addEventListener('mousemove', updatePosition);
     window.addEventListener('mouseover', handleMouseOver);
     window.addEventListener('mousedown', handleMouseDown);
     window.addEventListener('mouseup', handleMouseUp);
 
     return () => {
+      themeObserver.disconnect();
       window.removeEventListener('mousemove', updatePosition);
       window.removeEventListener('mouseover', handleMouseOver);
       window.removeEventListener('mousedown', handleMouseDown);
@@ -65,7 +77,11 @@ const CustomCursor = () => {
           y: position.y - 24,
           scale: isHovering ? 1.5 : 1,
           rotate: isHovering ? 45 : 0,
-          borderColor: isHovering ? '#FF3B14' : '#FFFFFF',
+          borderColor: isHovering 
+            ? '#FF3B14' 
+            : theme === 'light' 
+              ? '#000000' 
+              : '#FFFFFF',
         }}
         transition={{
           type: "tween",

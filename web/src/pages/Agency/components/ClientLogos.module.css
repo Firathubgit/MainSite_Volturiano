@@ -1,10 +1,18 @@
 .section {
   width: 100%;
   overflow: hidden;
-  border-top: 1px solid rgba(255, 255, 255, 0.05);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-  background-color: rgba(255, 255, 255, 0.02);
+  border-top: 1px solid rgba(255, 255, 255, 0.05); /* Original dark mode */
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05); /* Original dark mode */
+  background-color: rgba(255, 255, 255, 0.02); /* Original dark mode */
   padding: 2rem 0;
+  transition: border-color 0.3s ease, background-color 0.3s ease;
+}
+
+/* Light mode override */
+body[data-theme="light"] .section {
+  border-top: 1px solid var(--border-color-subtle);
+  border-bottom: 1px solid var(--border-color-subtle);
+  background-color: var(--overlay-color);
 }
 
 .container {

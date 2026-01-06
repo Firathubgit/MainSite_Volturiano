@@ -68,6 +68,10 @@
   max-width: 20rem;
 }
 
+body[data-theme="light"] .description {
+  color: #000000;
+}
+
 .footer {
   position: relative;
   z-index: 10;
@@ -91,6 +95,10 @@
   background-color: rgba(255, 255, 255, 0.05);
   color: #a1a1aa;
   border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+body[data-theme="light"] .featureTag {
+  color: #000000;
 }
 
 .actions {

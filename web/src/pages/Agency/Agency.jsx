@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { usePageTitle } from '../../hooks/usePageTitle';
+import { ThemeProvider, useTheme } from './context/ThemeContext';
 import { HeroSection, MarqueeTicker } from './components/HeroSection';
 import { ClientLogos } from './components/ClientLogos';
 import { TechTicker } from './components/TechTicker';
@@ -9,7 +10,7 @@ import { PortfolioGrid } from './components/PortfolioGrid';
 import { DeviceShowcase } from './components/DeviceShowcase';
 import { CaseStudy } from './components/CaseStudy';
 import { TeamShowcase } from './components/TeamShowcase';
-import { Philosophy } from './components/Philosophy';
+import { AgencyPurpose } from './components/AgencyPurpose';
 import { ConceptGrid } from './components/ConceptGrid';
 import { PedestalShowcase } from './components/PedestalShowcase';
 import { TwoImageSolution } from './components/TwoImageSolution';
@@ -22,7 +23,7 @@ import VisionDump from '../../components/VisionDump/VisionDump';
 import { SERVICES } from './constants';
 import styles from './Agency.module.css';
 
-export default function Agency() {
+function AgencyContent() {
   const { t } = useTranslation(['agency', 'common']);
   usePageTitle(t('agency:pageTitle'));
   
@@ -48,8 +49,18 @@ export default function Agency() {
     document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' });
   };
 
+  const { theme } = useTheme();
+
+  // Set data-theme on body so NavBar can access it
+  useEffect(() => {
+    document.body.setAttribute('data-theme', theme);
+    return () => {
+      document.body.removeAttribute('data-theme');
+    };
+  }, [theme]);
+
   return (
-    <div className={styles.page}>
+    <div className={styles.page} data-theme={theme}>
       <div className={styles.backgroundEffects}>
         <div className={styles.gridPattern} />
         <div className={styles.vignette} />
@@ -64,9 +75,9 @@ export default function Agency() {
         <MarqueeTicker />
 
         <ClientLogos />
-
+        
         <TechTicker />
-        <Philosophy />
+        <AgencyPurpose />
         <PedestalShowcase />
         <TwoImageSolution />
         {/* <ConceptGrid /> */}
@@ -114,6 +125,14 @@ export default function Agency() {
       {/* Vision Dump - Internal Developer Tool */}
       <VisionDump />
     </div>
+  );
+}
+
+export default function Agency() {
+  return (
+    <ThemeProvider>
+      <AgencyContent />
+    </ThemeProvider>
   );
 }
 

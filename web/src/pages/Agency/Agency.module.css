@@ -1,13 +1,73 @@
+/* CSS Variables - Dark Theme (default) */
+.page {
+  --bg-primary: #050505;
+  --bg-secondary: #0B0B0B;
+  --bg-tertiary: #111111;
+  --bg-quaternary: #1F1F1F;
+  --bg-footer: #0A0A0A;
+  
+  --text-primary: #FFFFFF;
+  --text-secondary: #858585;
+  --text-tertiary: #A1A1AA;
+  --text-quaternary: #D4D4D8;
+  --text-graphite: #3A3A3A;
+  
+  --accent-primary: #FF4520;
+  --accent-secondary: #E10600;
+  --accent-primary-rgba: rgba(255, 42, 0, 0.6);
+  
+  --border-color: rgba(255, 255, 255, 0.1);
+  --border-color-subtle: rgba(255, 255, 255, 0.05);
+  --overlay-color: rgba(255, 255, 255, 0.1);
+  
+  --canvas-bg: #0B0B0B;
+  --canvas-blob-color: rgba(255, 42, 0, 0.6);
+  
+  --selection-bg: #ff4520;
+  --selection-color: #ffffff;
+  
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* CSS Variables - Light Theme */
+.page[data-theme="light"] {
+  --bg-primary: #F5F5F5;
+  --bg-secondary: #F5F5F5;
+  --bg-tertiary: #F5F5F5;
+  --bg-quaternary: #E8E8E8;
+  --bg-footer: #F5F5F5;
+  
+  --text-primary: #111111;
+  --text-secondary: #000000;
+  --text-tertiary: #000000;
+  --text-quaternary: #000000;
+  --text-graphite: #000000;
+  
+  --accent-primary: #0087E0;
+  --accent-secondary: #2134FF;
+  --accent-primary-rgba: rgba(0, 135, 224, 0.6);
+  
+  --border-color: rgba(0, 0, 0, 0.1);
+  --border-color-subtle: rgba(0, 0, 0, 0.05);
+  --overlay-color: rgba(0, 0, 0, 0.1);
+  
+  --canvas-bg: #E8E8E8;
+  --canvas-blob-color: rgba(0, 135, 224, 0.6);
+  
+  --selection-bg: #0087E0;
+  --selection-color: #ffffff;
+}
+
 .page {
   min-height: 100vh;
-  background-color: #050505;
-  color: #ffffff;
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
   font-family: sans-serif;
 }
 
 .page ::selection {
-  background-color: #ff4520;
-  color: #ffffff;
+  background-color: var(--selection-bg);
+  color: var(--selection-color);
 }
 
 .backgroundEffects {
@@ -32,20 +92,21 @@
   background: linear-gradient(
     to bottom,
     transparent,
-    rgba(5, 5, 5, 0.5) 50%,
-    #050505
+    var(--bg-primary) 50%,
+    var(--bg-primary)
   );
+  opacity: 0.5;
 }
 
 .contentWrapper {
   position: relative;
   z-index: 10;
-  background-color: #050505;
+  background-color: var(--bg-primary);
 }
 
 .footer {
-  background-color: #0a0a0a;
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  background-color: var(--bg-footer);
+  border-top: 1px solid var(--border-color);
   padding-top: 5rem;
   padding-bottom: 2.5rem;
   padding-left: 1rem;
@@ -84,14 +145,14 @@
   font-size: 1.875rem;
   font-weight: 700;
   letter-spacing: -0.05em;
-  color: #ffffff;
+  color: var(--text-primary);
   margin-bottom: 1.5rem;
   display: block;
   text-decoration: none;
 }
 
 .footerDescription {
-  color: #a1a1aa;
+  color: var(--text-tertiary);
   max-width: 24rem;
   margin-bottom: 2rem;
 }
@@ -104,7 +165,7 @@
 .socialLink {
   font-size: 0.75rem;
   font-family: monospace;
-  color: #a1a1aa;
+  color: var(--text-tertiary);
   text-transform: uppercase;
   border-bottom: 1px solid transparent;
   text-decoration: none;
@@ -112,8 +173,8 @@
 }
 
 .socialLink:hover {
-  color: #ff4520;
-  border-bottom-color: #ff4520;
+  color: var(--accent-primary);
+  border-bottom-color: var(--accent-primary);
 }
 
 .footerColumn {
@@ -123,7 +184,7 @@
 
 .footerTitle {
   font-weight: 700;
-  color: #ffffff;
+  color: var(--text-primary);
   margin-bottom: 1.5rem;
 }
 
@@ -135,17 +196,17 @@
   flex-direction: column;
   gap: 1rem;
   font-size: 0.875rem;
-  color: #d4d4d8;
+  color: var(--text-quaternary);
 }
 
 .footerLink {
-  color: #d4d4d8;
+  color: var(--text-quaternary);
   text-decoration: none;
   transition: color 0.15s;
 }
 
 .footerLink:hover {
-  color: #ffffff;
+  color: var(--text-primary);
 }
 
 .footerBottom {
@@ -154,9 +215,9 @@
   justify-content: space-between;
   align-items: center;
   padding-top: 2rem;
-  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  border-top: 1px solid var(--border-color-subtle);
   font-size: 0.75rem;
-  color: #a1a1aa;
+  color: var(--text-tertiary);
   font-family: monospace;
 }
 

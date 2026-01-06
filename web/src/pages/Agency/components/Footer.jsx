@@ -2,13 +2,14 @@ import React from 'react';
 import { ArrowUpRight } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
+import { ThemeToggle } from './ThemeToggle';
 import styles from './Footer.module.css';
 
 export function Footer() {
   const { t } = useTranslation('agency');
   
   return (
-    <footer className={styles.footer}>
+    <footer id="footer" className={styles.footer}>
       
       {/* Main CTA */}
       <div className={styles.ctaSection}>
@@ -76,6 +77,9 @@ export function Footer() {
           <p className={styles.tagline}>
             {t('footer.tagline', { defaultValue: 'Engineered for the future.' })}
           </p>
+          <div className={styles.themeToggleWrapper}>
+            <ThemeToggle />
+          </div>
         </div>
 
       </div>

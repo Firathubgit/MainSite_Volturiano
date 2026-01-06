@@ -80,6 +80,10 @@
   padding-left: 1.5rem;
 }
 
+body[data-theme="light"] .description {
+  color: #000000;
+}
+
 .stats {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
@@ -101,6 +105,10 @@
   font-family: monospace;
   color: #a1a1aa;
   text-transform: uppercase;
+}
+
+body[data-theme="light"] .statLabel {
+  color: #000000;
 }
 
 .ctaButton {
@@ -206,6 +214,10 @@
   color: #a1a1aa;
 }
 
+body[data-theme="light"] .mockupTitle {
+  color: #000000;
+}
+
 .mockupContent {
   flex: 1;
   position: relative;
@@ -290,6 +302,10 @@
   cursor: pointer;
   transition: background-color 0.15s;
   border-right: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+body[data-theme="light"] .mockupFooterItem {
+  color: #000000;
 }
 
 .mockupFooterItem:hover {

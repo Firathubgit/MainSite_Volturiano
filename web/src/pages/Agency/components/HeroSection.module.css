@@ -8,7 +8,8 @@
   padding: 3rem 1.5rem 2rem;
   overflow: hidden;
   z-index: 0;
-  background-color: #0b0b0b;
+  background-color: var(--canvas-bg);
+  transition: background-color 0.3s ease;
 }
 
 @media (min-width: 768px) {
@@ -29,9 +30,10 @@
   left: 0;
   width: 100%;
   height: 8rem;
-  background: linear-gradient(to top, #0b0b0b, transparent);
+  background: linear-gradient(to top, var(--canvas-bg), transparent);
   z-index: 10;
   pointer-events: none;
+  transition: background 0.3s ease;
 }
 
 .container {
@@ -51,10 +53,11 @@
   line-height: 0.9;
   font-weight: 700;
   letter-spacing: -0.05em;
-  color: #ffffff;
+  color: var(--text-primary);
   mix-blend-mode: difference;
   font-family: 'Syne', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   margin-bottom: -0.1em;
+  transition: color 0.3s ease;
 }
 
 @media (min-width: 768px) {
@@ -75,7 +78,7 @@
   .bottomRow {
     flex-direction: row;
     align-items: flex-end;
-    gap: 2.5rem;
+    gap: 4rem;
   }
 }
 
@@ -85,16 +88,29 @@
   font-weight: 700;
   letter-spacing: -0.05em;
   color: transparent;
-  -webkit-text-stroke: 1px #ffffff;
-  text-stroke: 1px #ffffff;
-  transition: color 0.5s ease;
+  -webkit-text-stroke: 1px var(--text-primary);
+  text-stroke: 1px var(--text-primary);
+  transition: color 0.5s ease, -webkit-text-stroke 0.5s ease, text-stroke 0.5s ease;
   font-family: 'Syne', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 }
 
 .title2:hover {
-  color: #ff4520;
-  -webkit-text-stroke: 1px #ff4520;
-  text-stroke: 1px #ff4520;
+  color: var(--accent-primary);
+  -webkit-text-stroke: 1px var(--accent-primary);
+  text-stroke: 1px var(--accent-primary);
+}
+
+/* Light mode: title2 always in hovered state */
+body[data-theme="light"] .title2 {
+  color: var(--accent-primary);
+  -webkit-text-stroke: 1px var(--accent-primary);
+  text-stroke: 1px var(--accent-primary);
+}
+
+body[data-theme="light"] .title2:hover {
+  color: var(--accent-primary);
+  -webkit-text-stroke: 1px var(--accent-primary);
+  text-stroke: 1px var(--accent-primary);
 }
 
 @media (min-width: 768px) {
@@ -106,41 +122,62 @@
 .descriptionContainer {
   padding-bottom: 1.5rem;
   max-width: 20rem;
-  font-size: 0.875rem;
-  color: #3a3a3a;
+  font-size: 1rem;
+  color: var(--text-graphite);
   font-weight: 300;
   letter-spacing: 0.025em;
   font-family: 'Manrope', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  transition: color 0.3s ease;
 }
 
 @media (min-width: 768px) {
   .descriptionContainer {
-    font-size: 0.9375rem;
+    font-size: 1.125rem;
     padding-bottom: 1.5rem;
+    max-width: 24rem;
+    margin-left: 2rem;
+  }
+  
+  /* More spacing to the right for English */
+  html[lang="en"] .descriptionContainer,
+  body[lang="en"] .descriptionContainer {
+    margin-left: 4rem;
   }
 }
 
 .description {
   margin-bottom: 1.25rem;
   line-height: 1.6;
+  color: #FFFFFF;
+  transition: color 0.3s ease;
+}
+
+body[data-theme="light"] .description {
+  color: #000000;
 }
 
 .exploreLink {
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
-  color: #ffffff;
-  border-bottom: 1px solid #ff4520;
+  color: var(--text-primary);
+  border-bottom: 1px solid var(--accent-primary);
   padding-bottom: 0.25rem;
   text-decoration: none;
   transition: all 0.3s ease;
-  font-size: 0.875rem;
-  font-weight: 400;
+  font-size: 1rem;
+  font-weight: 700;
   letter-spacing: 0.05em;
 }
 
+@media (min-width: 768px) {
+  .exploreLink {
+    font-size: 1.125rem;
+  }
+}
+
 .exploreLink:hover {
-  color: #ff4520;
+  color: var(--accent-primary);
 }
 
 .arrowIcon {
@@ -183,21 +220,30 @@
   text-transform: uppercase;
   font-weight: 700;
   letter-spacing: 0.15em;
-  fill: #ff4520;
+  fill: var(--accent-primary);
   font-family: 'Manrope', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  transition: fill 0.3s ease;
 }
 
 /* Marquee Ticker */
 .marqueeWrapper {
   width: 100%;
   overflow: hidden;
-  background-color: #ff4520;
+  background-color: #FF4520; /* Original red color for dark mode */
   padding: 1rem 0;
   transform: rotate(-2deg) scale(1.05);
   position: relative;
   mix-blend-mode: hard-light;
   border-top: 1px solid #000000;
   border-bottom: 1px solid #000000;
+  transition: background-color 0.3s ease, border-color 0.3s ease;
+}
+
+/* Light mode override */
+body[data-theme="light"] .marqueeWrapper {
+  background-color: var(--accent-primary);
+  border-top: 1px solid var(--bg-primary);
+  border-bottom: 1px solid var(--bg-primary);
 }
 
 .marquee {
@@ -213,8 +259,14 @@
   font-family: 'Syne', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   font-weight: 900;
   text-transform: uppercase;
-  color: #000000;
+  color: #000000; /* Original black color for dark mode */
   flex-shrink: 0;
+  transition: color 0.3s ease;
+}
+
+/* Light mode override */
+body[data-theme="light"] .marqueeText {
+  color: var(--bg-primary);
 }
 
 @keyframes marquee {

@@ -190,10 +190,6 @@ export function PackageCards({ onOpenContact }) {
                   className={styles.cardImage}
                   draggable="false"
                 />
-                {/* Minimal redeem overlay on hover */}
-                <div className={`${styles.redeemOverlay} ${hoveredCard === pkg.id ? styles.redeemOverlayVisible : ''}`}>
-                  <span className={styles.redeemText}>{t('packageCards.redeem.hoverText')}</span>
-                </div>
               </div>
             </div>
           ))}

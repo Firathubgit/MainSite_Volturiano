@@ -1,7 +1,8 @@
 .section {
   width: 100%;
   padding: 8rem 1.5rem 3rem 1.5rem;
-  background-color: #0b0b0b;
+  background-color: var(--bg-secondary);
+  transition: background-color 0.3s ease;
 }
 
 @media (min-width: 768px) {
@@ -59,8 +60,9 @@
 .gradientOverlay {
   position: absolute;
   inset: 0;
-  background: linear-gradient(to top, #0b0b0b, transparent, transparent);
+  background: linear-gradient(to top, var(--bg-secondary), transparent, transparent);
   opacity: 0.6;
+  transition: background 0.3s ease;
 }
 
 .textureOverlay {
@@ -79,20 +81,22 @@
 }
 
 .figureLabel {
-  color: #ff2a00;
+  color: var(--accent-primary);
   font-size: 0.75rem;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.2em;
   margin-bottom: 0.5rem;
+  transition: color 0.3s ease;
 }
 
 .captionText {
-  color: #ffffff;
+  color: var(--text-primary);
   font-size: 1.5rem;
   font-weight: 300;
   letter-spacing: -0.02em;
   mix-blend-mode: difference;
+  transition: color 0.3s ease;
 }
 
 @media (min-width: 768px) {

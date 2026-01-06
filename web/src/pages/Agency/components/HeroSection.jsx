@@ -2,10 +2,12 @@ import React, { useRef, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { motion, useScroll, useTransform } from 'framer-motion';
 import { ArrowDownRight } from 'lucide-react';
+import { useTheme } from '../context/ThemeContext';
 import styles from './HeroSection.module.css';
 
 export function HeroSection({ onOpenContact, onScrollToServices }) {
   const { t } = useTranslation('agency');
+  const { theme } = useTheme();
   const containerRef = useRef(null);
   const canvasRef = useRef(null);
   const mouseRef = useRef({ x: -1000, y: -1000 });
@@ -28,6 +30,13 @@ export function HeroSection({ onOpenContact, onScrollToServices }) {
 
     let width = canvas.width = window.innerWidth;
     let height = canvas.height = window.innerHeight;
+
+    // Theme-aware colors
+    const isDark = theme === 'dark';
+    const bgColor = isDark ? '#0B0B0B' : '#F5F5F5';
+    const blobColor = isDark ? 'rgba(255, 42, 0, 0.6)' : 'rgba(0, 135, 224, 0.6)';
+    const particleHueBase = isDark ? 10 : 200; // Orange for dark, blue for light
+    const particleHueRange = isDark ? 10 : 20;
 
     // --- Configuration ---
     const particleCountX = 80;
@@ -78,7 +87,7 @@ export function HeroSection({ onOpenContact, onScrollToServices }) {
       blobTime += blobSpeed;
       
       // 1. Clear & Background
-      ctx.fillStyle = '#0B0B0B';
+      ctx.fillStyle = bgColor;
       ctx.fillRect(0, 0, width, height);
 
       // 2. Abstract Morphing Blob
@@ -98,7 +107,7 @@ export function HeroSection({ onOpenContact, onScrollToServices }) {
       const offset3x = Math.sin(blobTime * 0.3) * 30;
       const offset3y = Math.cos(blobTime * 0.4) * 40;
 
-      ctx.fillStyle = 'rgba(255, 42, 0, 0.6)'; 
+      ctx.fillStyle = blobColor; 
 
       ctx.beginPath();
       ctx.arc(cx + offset1x, cy + offset1y, 140 + Math.sin(blobTime)*10, 0, Math.PI * 2);
@@ -150,8 +159,8 @@ export function HeroSection({ onOpenContact, onScrollToServices }) {
               ctx.beginPath();
               
               const heightFactor = (waveY + 100) / 200; 
-              const hue = 10 + heightFactor * 10; 
-              let lightness = 50 + heightFactor * 10;
+              const hue = particleHueBase + heightFactor * particleHueRange; 
+              let lightness = isDark ? (50 + heightFactor * 10) : (40 + heightFactor * 15);
 
               lightness = Math.min(90, lightness + hoverBrightness);
 
@@ -174,7 +183,7 @@ export function HeroSection({ onOpenContact, onScrollToServices }) {
       window.removeEventListener('mousemove', handleMouseMove);
       cancelAnimationFrame(animId);
     };
-  }, []);
+  }, [theme]);
   
   return (
     <section ref={containerRef} className={styles.hero}>
@@ -195,7 +204,7 @@ export function HeroSection({ onOpenContact, onScrollToServices }) {
             transition={{ duration: 1, ease: [0.22, 1, 0.36, 1] }}
             className={styles.title1}
           >
-            Volturiano
+            Volturio Studios
           </motion.h1>
         </div>
 
@@ -221,10 +230,10 @@ export function HeroSection({ onOpenContact, onScrollToServices }) {
               {t('hero.description').replace(/<[^>]*>/g, '')}
             </p>
             <a 
-              href="#package-cards" 
+              href="#footer" 
               onClick={(e) => {
                 e.preventDefault();
-                onScrollToServices();
+                document.getElementById('footer')?.scrollIntoView({ behavior: 'smooth' });
               }}
               className={styles.exploreLink}
             >

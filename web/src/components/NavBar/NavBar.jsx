@@ -4,7 +4,10 @@ import { useTranslation } from 'react-i18next';
 import s from './NavBar.module.css';
 import tornadoLogo from '../../assets/Logo/TornadoLogo.png';
 import accountIcon from '../../assets/Logo/LoginAccountIcon.png';
+import accountIconBlack from '../../assets/Logo/LoginAccountIconBlack.png';
 import hamburgerIcon from '../../assets/Logo/HamburgerIcon.png';
+import hamburgerIconBlack from '../../assets/Logo/HamburgerIconBlack.png';
+import blackVolturianoLogo from '../../assets/Logo/BlackvolturianoLogo.png';
 import { useUserStore } from '../../stores/userStore';
 import { useUiStore } from '../../stores/uiStore';
 import AccountMenu from '../../features/account/components/AccountMenu';
@@ -15,7 +18,9 @@ export function NavBar() {
   const navigate = useNavigate();
   const { t } = useTranslation(['nav', 'common']);
   const [opacity, setOpacity] = useState(1);
+  const [theme, setTheme] = useState('dark');
   const isHome = location.pathname === '/';
+  const isAgency = location.pathname === '/agency';
   const session = useUserStore((state) => state.session);
   const toggleAccountMenu = useUiStore((state) => state.toggleAccountMenu);
   const closeAccountMenu = useUiStore((state) => state.closeAccountMenu);
@@ -24,6 +29,34 @@ export function NavBar() {
   const accountButtonRef = useRef(null);
   
   useRenderLogger('NavBar', { pathname: location.pathname, isHome, hasSession: !!session, accountMenuOpen });
+
+  // Check theme from body's data-theme attribute (set by Agency page)
+  useEffect(() => {
+    if (!isAgency) {
+      setTheme('dark');
+      return;
+    }
+
+    const checkTheme = () => {
+      const bodyTheme = document.body.getAttribute('data-theme');
+      if (bodyTheme) {
+        setTheme(bodyTheme);
+      } else {
+        setTheme('dark');
+      }
+    };
+
+    checkTheme();
+    const observer = new MutationObserver(checkTheme);
+    observer.observe(document.body, { attributes: true, attributeFilter: ['data-theme'] });
+
+    return () => observer.disconnect();
+  }, [isAgency]);
+
+  // Determine which icons to use based on theme
+  const currentLogo = isAgency && theme === 'light' ? blackVolturianoLogo : tornadoLogo;
+  const currentAccountIcon = isAgency && theme === 'light' ? accountIconBlack : accountIcon;
+  const currentHamburgerIcon = isAgency && theme === 'light' ? hamburgerIconBlack : hamburgerIcon;
 
   useEffect(() => {
     function onScroll() {
@@ -55,7 +88,7 @@ export function NavBar() {
             aria-label={t('nav:aria.openNavigation')}
             onClick={toggleNavMenu}
           >
-            <img src={hamburgerIcon} alt="" className={s.menuIcon} />
+            <img src={currentHamburgerIcon} alt="" className={s.menuIcon} />
           </button>
         </div>
 
@@ -63,11 +96,11 @@ export function NavBar() {
         <div className={s.center}>
           {isHome ? (
             <div className={s.logo} aria-label={t('nav:aria.home')}>
-              <img src={tornadoLogo} alt={t('common:brand')} className={s.logoImg} />
+              <img src={currentLogo} alt={t('common:brand')} className={s.logoImg} />
             </div>
           ) : (
             <Link to="/" className={s.logo} aria-label={t('nav:aria.home')}>
-              <img src={tornadoLogo} alt={t('common:brand')} className={s.logoImg} />
+              <img src={currentLogo} alt={t('common:brand')} className={s.logoImg} />
             </Link>
           )}
         </div>
@@ -82,7 +115,7 @@ export function NavBar() {
               aria-haspopup="menu"
               aria-expanded={accountMenuOpen}
             >
-              <img src={accountIcon} alt={t('common:account')} className={s.accountIcon} />
+              <img src={currentAccountIcon} alt={t('common:account')} className={s.accountIcon} />
             </button>
             <AccountMenu anchorRef={accountButtonRef} />
           </div>

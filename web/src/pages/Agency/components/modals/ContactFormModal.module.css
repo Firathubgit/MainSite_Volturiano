@@ -56,6 +56,10 @@
   z-index: 10;
 }
 
+body[data-theme="light"] .closeButton {
+  color: #000000;
+}
+
 .closeButton:hover {
   color: #ffffff;
 }
@@ -97,6 +101,10 @@
   color: #d4d4d8;
 }
 
+body[data-theme="light"] .successMessage {
+  color: #000000;
+}
+
 .title {
   font-size: 1.875rem;
   font-weight: 700;
@@ -108,6 +116,10 @@
 .subtitle {
   color: #d4d4d8;
   margin-bottom: 2rem;
+}
+
+body[data-theme="light"] .subtitle {
+  color: #000000;
 }
 
 .errorMessage {
@@ -150,6 +162,10 @@
   color: #a1a1aa;
 }
 
+body[data-theme="light"] .serviceInterestLabel {
+  color: #000000;
+}
+
 .serviceGrid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
@@ -172,6 +188,10 @@
   text-align: left;
   transition: all 0.15s;
   cursor: pointer;
+}
+
+body[data-theme="light"] .serviceButton {
+  color: #000000;
 }
 
 .serviceButton:hover {
@@ -226,6 +246,10 @@
   font-size: 0.875rem;
   color: #d4d4d8;
   cursor: pointer;
+}
+
+body[data-theme="light"] .checkboxLabel {
+  color: #000000;
 }
 
 .formActions {

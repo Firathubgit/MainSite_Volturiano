@@ -34,6 +34,10 @@
   mix-blend-mode: difference;
 }
 
+body[data-theme="light"] .mainDot {
+  background-color: black;
+}
+
 .reticle {
   width: 3rem; /* 48px / w-12 */
   height: 3rem; /* 48px / h-12 */
@@ -43,6 +47,10 @@
   justify-content: center;
   mix-blend-mode: difference;
   position: relative;
+}
+
+body[data-theme="light"] .reticle {
+  border-color: black;
 }
 
 .reticleLineVertical {
@@ -55,6 +63,10 @@
   transform: translateX(-50%);
 }
 
+body[data-theme="light"] .reticleLineVertical {
+  background-color: rgba(0, 0, 0, 0.3);
+}
+
 .reticleLineHorizontal {
   width: 100%;
   height: 1px;
@@ -63,6 +75,10 @@
   top: 50%;
   left: 0;
   transform: translateY(-50%);
+}
+
+body[data-theme="light"] .reticleLineHorizontal {
+  background-color: rgba(0, 0, 0, 0.3);
 }
 
 .trailingTag {

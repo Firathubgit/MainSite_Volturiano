@@ -7,9 +7,9 @@
     "agencyTitle": "WEB BYRO.",
     "spinningText": "Scrolla ner • Utforska tomrummet • Digital •",
     "marqueeText": "Omdefinierar digitala upplevelser — Prisbelönt Web Byro —",
-    "description": "Vi förvandlar rå kod till prisbelönta digitala upplevelser. Abstrakt tänkande för konkreta resultat.",
+    "description": "Vi hjälper Företag att Växa genom Professionella Webbplatser som syns, fungerar och får in nya Kunder.",
     "startProject": "Starta Projekt",
-    "exploreServices": "LÖS IN KORT KOD"
+    "exploreServices": "STARTA DITT PROJEKT"
   },
   "techTicker": {
     "techs": ["REACT", "THREE.JS", "WEBGL", "SUPABASE", "NEXT.JS", "TYPESCRIPT", "TAILWIND", "FRAMER MOTION", "POSTGRESQL"]
@@ -216,6 +216,17 @@
       "description": "Rörelse, ljud och visuell trohet kombinerat för att skapa digitala upplevelser som kan mäta sig med känslan av att sitta bakom ratten."
     }
   },
+  "purpose": {
+    "label": "VÅRT SYFTE",
+    "statement": "Vi bygger webbsidor till företag, från göteborg till oslo.",
+    "substatement": "Premium design, strategi och marknads analys som driver företag upp.",
+    "cta": "Börja din resa",
+    "stats": {
+      "projects": "Slutförda Projekt",
+      "clients": "Aktiva Kunder",
+      "customers": "Sidvisningar"
+    }
+  },
   "pedestalShowcase": {
     "imageAlt": "Volturiano Atmosfär",
     "text": "Tyst kraft."
@@ -378,10 +389,10 @@
     "packages": {
       "silver": {
         "name": "Silver Package",
-        "label": "Web Presence",
+        "label": "Webbnärvaro",
         "features": [
           "Lyxig UI-design (premium UX/UI)",
-          "Mörkt läge estetik",
+          "Mörkt läge Estetik",
           "WCAG-tillgänglighet",
           "SEO-optimerad leverans"
         ]
@@ -405,27 +416,27 @@
           "Adminpanel / instrumentpanel",
           "Skalbar arkitektur & SEO"
         ]
+      },
+      "redeem": {
+        "hoverText": "Lös in",
+        "title": "Lös in kort",
+        "subtitle": "Lös in webbplatspaket via kod",
+        "modalTitle": "Lös in",
+        "cardCode": "Kortkod",
+        "cardCodePlaceholder": "Ange din kortkod",
+        "businessName": "Företagsnamn",
+        "businessNamePlaceholder": "Ange ditt företagsnamn",
+        "submitButton": "Lös in paket",
+        "close": "Stäng",
+        "carouselLabel": "Paketkarusell",
+        "goToPackage": "Gå till {{package}}"
+      },
+      "success": {
+        "title": "Lyckades!",
+        "emailText": "Kontakta följande e-post:",
+        "email": "Firat05_@hotmail.com",
+        "instructions": "Skriv koden i e-posten för att lösa in paketet för att påbörja följande utvecklingscykel för Web Byro."
       }
-    },
-    "redeem": {
-      "hoverText": "Lös in",
-      "title": "Lös in kort",
-      "subtitle": "Lös in webbplatspaket via kod",
-      "modalTitle": "Lös in",
-      "cardCode": "Kortkod",
-      "cardCodePlaceholder": "Ange din kortkod",
-      "businessName": "Företagsnamn",
-      "businessNamePlaceholder": "Ange ditt företagsnamn",
-      "submitButton": "Lös in paket",
-      "close": "Stäng",
-      "carouselLabel": "Paketkarusell",
-      "goToPackage": "Gå till {{package}}"
-    },
-    "success": {
-      "title": "Lyckades!",
-      "emailText": "Kontakta följande e-post:",
-      "email": "Firat05_@hotmail.com",
-      "instructions": "Skriv koden i e-posten för att lösa in paketet för att påbörja följande utvecklingscykel för Web Byro."
     }
   }
 }

@@ -7,9 +7,9 @@
     "agencyTitle": "AGENCY.",
     "spinningText": "Scroll Down • Explore The Void • Digital •",
     "marqueeText": "Redefining Digital Experiences — Award Winning Agency —",
-    "description": "We transmute raw code into award-winning digital experiences. Abstract thinking for concrete results.",
+    "description": "We help Businesses Grow through Professional Websites that are visible, functional, and bring in new Customers.",
     "startProject": "Start Project",
-    "exploreServices": "REDEEM CARD CODE"
+    "exploreServices": "START YOUR PROJECT"
   },
   "techTicker": {
     "techs": ["REACT", "THREE.JS", "WEBGL", "SUPABASE", "NEXT.JS", "TYPESCRIPT", "TAILWIND", "FRAMER MOTION", "POSTGRESQL"]
@@ -216,6 +216,17 @@
       "description": "Motion, sound, and visual fidelity combined to create digital experiences that rival the feeling of being behind the wheel."
     }
   },
+  "purpose": {
+    "label": "OUR PURPOSE",
+    "statement": "We build websites for businesses, from Gothenburg to Oslo.",
+    "substatement": "Premium design, strategy and market analysis that drives businesses up.",
+    "cta": "Start your journey",
+    "stats": {
+      "projects": "Projects Completed",
+      "clients": "Active Clients",
+      "customers": "Page Visits"
+    }
+  },
   "pedestalShowcase": {
     "imageAlt": "Volturiano Atmosphere",
     "text": "Quiet power."
@@ -405,27 +416,27 @@
           "Admin panel / dashboard",
           "Scalable architecture & SEO"
         ]
+      },
+      "redeem": {
+        "hoverText": "Redeem",
+        "title": "Redeem Card",
+        "subtitle": "Redeem website package via code",
+        "modalTitle": "Redeem",
+        "cardCode": "Card code",
+        "cardCodePlaceholder": "Enter your card code",
+        "businessName": "Business name",
+        "businessNamePlaceholder": "Enter your business name",
+        "submitButton": "Redeem Package",
+        "close": "Close",
+        "carouselLabel": "Package carousel",
+        "goToPackage": "Go to {{package}}"
+      },
+      "success": {
+        "title": "Successful!",
+        "emailText": "Contact the following email:",
+        "email": "Firat05_@hotmail.com",
+        "instructions": "Write the code in the email to redeem the package for the following agency development cycle to begin."
       }
-    },
-    "redeem": {
-      "hoverText": "Redeem",
-      "title": "Redeem Card",
-      "subtitle": "Redeem website package via code",
-      "modalTitle": "Redeem",
-      "cardCode": "Card code",
-      "cardCodePlaceholder": "Enter your card code",
-      "businessName": "Business name",
-      "businessNamePlaceholder": "Enter your business name",
-      "submitButton": "Redeem Package",
-      "close": "Close",
-      "carouselLabel": "Package carousel",
-      "goToPackage": "Go to {{package}}"
-    },
-    "success": {
-      "title": "Successful!",
-      "emailText": "Contact the following email:",
-      "email": "Firat05_@hotmail.com",
-      "instructions": "Write the code in the email to redeem the package for the following agency development cycle to begin."
     }
   }
 }

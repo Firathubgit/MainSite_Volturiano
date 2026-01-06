@@ -125,6 +125,10 @@
   transition: color 0.3s ease;
 }
 
+body[data-theme="light"] .accordionTitle {
+  color: #000000;
+}
+
 .accordionItem:hover .accordionTitle {
   color: #ff4520;
 }
@@ -160,6 +164,10 @@
   padding: 0;
   max-width: 50ch;
   overflow: hidden;
+}
+
+body[data-theme="light"] .accordionDescription {
+  color: #000000;
 }
 
 @media (min-width: 1024px) {

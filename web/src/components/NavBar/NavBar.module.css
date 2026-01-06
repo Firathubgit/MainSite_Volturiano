@@ -9,7 +9,12 @@
   background-image: linear-gradient(rgb(24, 24, 24), rgba(24, 24, 24, 0));
   border-bottom: 0; /* remove solid line */
   box-shadow: none; /* remove shadow entirely to avoid hard cutoff appearance */
-  transition: opacity 300ms ease;
+  transition: opacity 300ms ease, background-image 0.3s ease;
+}
+
+/* Theme-aware background for Agency page */
+body[data-theme="light"] .header {
+  background-image: linear-gradient(#F5F5F5, rgba(245, 245, 245, 0));
 }
 .container {
   display: grid;

@@ -62,6 +62,10 @@
   border: none;
 }
 
+body[data-theme="light"] .ghost {
+  color: #000000;
+}
+
 .ghost:hover:not(:disabled) {
   color: #ffffff;
   background-color: rgba(255, 255, 255, 0.05);

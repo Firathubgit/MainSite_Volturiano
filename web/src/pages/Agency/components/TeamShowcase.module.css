@@ -78,6 +78,10 @@
   margin-bottom: 0.25rem;
 }
 
+body[data-theme="light"] .status {
+  color: #000000;
+}
+
 .statusOnline {
   color: #22c55e;
   animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
@@ -97,6 +101,10 @@
   font-size: 0.75rem;
   font-family: monospace;
   opacity: 0.5;
+}
+
+body[data-theme="light"] .location {
+  color: #000000;
 }
 
 .teamContainer {
@@ -211,6 +219,10 @@
   letter-spacing: 0.1em;
   color: #a1a1aa;
   transition: color 0.3s;
+}
+
+body[data-theme="light"] .headerInfo {
+  color: #000000;
 }
 
 .memberCard:hover .headerInfo {

@@ -48,6 +48,10 @@
   max-width: 28rem;
 }
 
+body[data-theme="light"] .subtitle {
+  color: #000000;
+}
+
 .consultationButton {
   border-radius: 9999px;
 }

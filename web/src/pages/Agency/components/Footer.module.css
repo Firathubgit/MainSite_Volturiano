@@ -1,15 +1,16 @@
 .footer {
   width: 100%;
-  background-color: #0b0b0b;
+  background-color: var(--bg-footer);
   padding-top: 8rem;
   padding-bottom: 3rem;
   padding-left: 1.5rem;
   padding-right: 1.5rem;
-  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  border-top: 1px solid var(--border-color-subtle);
   display: flex;
   flex-direction: column;
   justify-content: space-between;
   min-height: 80vh;
+  transition: background-color 0.3s ease, border-color 0.3s ease;
 }
 
 @media (min-width: 768px) {
@@ -27,21 +28,23 @@
 }
 
 .ctaLabel {
-  color: #e10600;
+  color: var(--accent-secondary);
   font-size: 0.875rem;
   font-weight: 700;
   letter-spacing: 0.2em;
   margin-bottom: 1.5rem;
   text-transform: uppercase;
+  transition: color 0.3s ease;
 }
 
 .ctaTitle {
   font-size: 3rem;
   font-weight: 700;
   letter-spacing: -0.05em;
-  color: #ffffff;
+  color: var(--text-primary);
   margin-bottom: 3rem;
   line-height: 1;
+  transition: color 0.3s ease;
 }
 
 @media (min-width: 768px) {
@@ -62,16 +65,16 @@
   gap: 1rem;
   font-size: 1.5rem;
   font-weight: 300;
-  color: #d1d5db;
+  color: var(--text-quaternary);
   text-decoration: none;
-  border-bottom: 1px solid #374151;
+  border-bottom: 1px solid var(--border-color);
   padding-bottom: 0.5rem;
   transition: color 0.3s, border-color 0.3s;
 }
 
 .emailLink:hover {
-  color: #ffffff;
-  border-color: #e10600;
+  color: var(--text-primary);
+  border-color: var(--accent-secondary);
 }
 
 @media (min-width: 768px) {
@@ -84,8 +87,8 @@
 .emailIcon {
   width: 2rem;
   height: 2rem;
-  color: #e10600;
-  transition: transform 0.3s;
+  color: var(--accent-secondary);
+  transition: transform 0.3s, color 0.3s;
 }
 
 .emailLink:hover .emailIcon {
@@ -105,10 +108,11 @@
   gap: 0.75rem;
   margin-top: 1.5rem;
   padding-top: 0.75rem;
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  border-top: 1px solid var(--border-color);
   font-size: 0.75rem;
-  color: #6b7280;
+  color: var(--text-secondary);
   font-family: monospace;
+  transition: border-color 0.3s ease, color 0.3s ease;
 }
 
 @media (min-width: 768px) {
@@ -146,9 +150,10 @@
 }
 
 .infoTitle {
-  color: #ffffff;
+  color: var(--text-primary);
   margin-bottom: 0.125rem;
   font-size: 0.75rem;
+  transition: color 0.3s ease;
 }
 
 @media (min-width: 768px) {
@@ -159,16 +164,28 @@
 }
 
 .socialLink {
-  color: #6b7280;
+  color: var(--text-secondary);
   text-decoration: none;
   transition: color 0.3s;
 }
 
 .socialLink:hover {
-  color: #e10600;
+  color: var(--accent-secondary);
 }
 
 .tagline {
   opacity: 0.5;
+}
+
+.themeToggleWrapper {
+  margin-top: 0.5rem;
+  display: flex;
+  align-items: center;
+}
+
+@media (min-width: 768px) {
+  .themeToggleWrapper {
+    margin-top: 0.75rem;
+  }
 }
 

@@ -167,6 +167,10 @@
   position: relative;
 }
 
+body[data-theme="light"] .codeBlock {
+  color: #000000;
+}
+
 .codeBlockGradient {
   position: absolute;
   top: 0;
@@ -254,6 +258,10 @@
   color: #9ca3af;
   max-width: 150px;
   line-height: 1.75;
+}
+
+body[data-theme="light"] .typographyDescription {
+  color: #000000;
 }
 
 .typographyNumber {

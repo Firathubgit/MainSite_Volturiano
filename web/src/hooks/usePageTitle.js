@@ -12,7 +12,7 @@ const PAGE_TITLES = {
   '/': 'Volturiano – Redefining Performance', // Hero/landing page
   '/start': 'Volturiano – Redefining Performance', // Hero/landing page
   '/models': 'Volturiano – Luxury Sports Automotive', // Models page
-  '/agency': 'Volturiano Agency – Premium Software Services', // Agency page
+  '/agency': 'Volturio Studios | Premium Webbyrå i Göteborg – Skräddarsydda system', // Agency page
   '/configurator': 'Volturiano Configurator – Build Your Car', // 3D Configurator
   '/world': 'Volturiano | Performance. Precision. Identity.', // Dark premium feel
   '/investor': 'Volturiano – Luxury Sports Automotive',

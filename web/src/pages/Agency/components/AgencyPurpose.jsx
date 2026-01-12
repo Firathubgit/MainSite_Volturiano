@@ -26,9 +26,9 @@ export function AgencyPurpose() {
             transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
             viewport={{ once: true }}
           >
-            <h2 className={styles.statement}>
+            <h1 className={styles.statement}>
               {t('purpose.statement')}
-            </h2>
+            </h1>
             
             <p className={styles.substatement}>
               {t('purpose.substatement')}

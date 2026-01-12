@@ -1,5 +1,5 @@
 {
-  "pageTitle": "Volturiano Agency – Premium Software Services",
+  "pageTitle": "Volturio Studios | Premium Web Agency in Gothenburg – Custom Systems",
   "hero": {
     "badge": "AVAILABLE FOR NEW COMMISSIONS",
     "title": "DIGITAL\nATELIER.",
@@ -15,7 +15,7 @@
     "techs": ["REACT", "THREE.JS", "WEBGL", "SUPABASE", "NEXT.JS", "TYPESCRIPT", "TAILWIND", "FRAMER MOTION", "POSTGRESQL"]
   },
   "clientLogos": {
-    "clients": ["VOLTURIANO", "PREMIUM BRANDS", "LUXURY AUTOMOTIVE", "INVESTOR GRADE", "DIGITAL ATELIER"],
+    "clients": ["VOLTURIANO", "PREMIUM BRANDS", "WEB AGENCY GOTHENBURG", "INVESTOR GRADE", "DIGITAL ATELIER"],
     "logoAlt": "Client logo {{index}}"
   },
   "portfolio": {
@@ -143,7 +143,7 @@
     "features": [
       {
         "title": "What We Do",
-        "description": "We transform businesses through premium digital solutions. Specializing in the automotive industry and hospitality sector, we deliver comprehensive platforms that drive growth and enhance customer experiences. From car dealership ecosystems to hotel booking platforms, we build the digital infrastructure your business needs."
+        "description": "We transform businesses through premium digital solutions. Specializing in advanced web solutions, we deliver comprehensive platforms that drive growth and enhance customer experiences. From e-commerce platforms to customer portals, we build the digital infrastructure your business needs."
       },
       {
         "title": "Strategic UI/UX Design",
@@ -208,7 +208,7 @@
     "title": {
       "part1": "Digital presence is the new horsepower.",
       "part2": "We fuse",
-      "highlight1": "automotive DNA",
+      "highlight1": "digital DNA",
       "part3": "with",
       "highlight2": "software engineering",
       "part4": "to build brands that don't just exist—they dominate."

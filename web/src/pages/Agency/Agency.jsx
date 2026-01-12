@@ -27,6 +27,128 @@ function AgencyContent() {
   const { t } = useTranslation(['agency', 'common']);
   usePageTitle(t('agency:pageTitle'));
   
+  // SEO Meta Description and Open Graph tags
+  useEffect(() => {
+    const isSwedish = t('common:language', { defaultValue: 'sv' }) === 'sv' || 
+                      document.documentElement.lang === 'sv' ||
+                      localStorage.getItem('volt_language') === 'sv';
+    
+    const description = isSwedish 
+      ? 'Vi bygger avancerade webblösningar, från 3D-konfiguratorer till kundportaler. Paket från 30k till 100k för företag som vill växa.'
+      : 'We build advanced web solutions, from 3D configurators to customer portals. Packages from 30k to 100k for businesses that want to grow.';
+    
+    const title = isSwedish
+      ? 'Volturio Studios | Premium Webbyrå i Göteborg – Skräddarsydda system'
+      : 'Volturio Studios | Premium Web Agency in Gothenburg – Custom Systems';
+    
+    // Meta description
+    let metaDescription = document.querySelector('meta[name="description"]');
+    if (metaDescription) {
+      metaDescription.setAttribute('content', description);
+    } else {
+      metaDescription = document.createElement('meta');
+      metaDescription.name = 'description';
+      metaDescription.content = description;
+      document.head.appendChild(metaDescription);
+    }
+    
+    // Open Graph description
+    let ogDescription = document.querySelector('meta[property="og:description"]');
+    if (ogDescription) {
+      ogDescription.setAttribute('content', description);
+    } else {
+      ogDescription = document.createElement('meta');
+      ogDescription.setAttribute('property', 'og:description');
+      ogDescription.content = description;
+      document.head.appendChild(ogDescription);
+    }
+    
+    // Open Graph title
+    let ogTitle = document.querySelector('meta[property="og:title"]');
+    if (ogTitle) {
+      ogTitle.setAttribute('content', title);
+    } else {
+      ogTitle = document.createElement('meta');
+      ogTitle.setAttribute('property', 'og:title');
+      ogTitle.content = title;
+      document.head.appendChild(ogTitle);
+    }
+    
+    // Open Graph URL
+    let ogUrl = document.querySelector('meta[property="og:url"]');
+    if (ogUrl) {
+      ogUrl.setAttribute('content', 'https://volturiano.com/agency');
+    } else {
+      ogUrl = document.createElement('meta');
+      ogUrl.setAttribute('property', 'og:url');
+      ogUrl.content = 'https://volturiano.com/agency';
+      document.head.appendChild(ogUrl);
+    }
+    
+    // Set canonical URL
+    let canonical = document.querySelector('link[rel="canonical"]');
+    if (canonical) {
+      canonical.setAttribute('href', 'https://volturiano.com/agency');
+    } else {
+      canonical = document.createElement('link');
+      canonical.rel = 'canonical';
+      canonical.href = 'https://volturiano.com/agency';
+      document.head.appendChild(canonical);
+    }
+    
+    // Add Schema.org LocalBusiness structured data for local SEO
+    let schemaScript = document.querySelector('script[type="application/ld+json"][data-agency-schema]');
+    if (!schemaScript) {
+      const schema = {
+        "@context": "https://schema.org",
+        "@type": "LocalBusiness",
+        "@id": "https://volturiano.com/agency",
+        "name": "Volturio Studios",
+        "alternateName": "Volturiano Agency",
+        "description": isSwedish 
+          ? "Premium webbyrå i Göteborg som bygger avancerade webblösningar, från 3D-konfiguratorer till kundportaler. Skräddarsydda system för företag som vill växa."
+          : "Premium web agency in Gothenburg building advanced web solutions, from 3D configurators to customer portals. Custom systems for businesses that want to grow.",
+        "url": "https://volturiano.com/agency",
+        "logo": "https://volturiano.com/logo.png",
+        "image": "https://volturiano.com/og-image.jpg",
+        "address": {
+          "@type": "PostalAddress",
+          "addressLocality": "Göteborg",
+          "addressRegion": "Västra Götaland",
+          "addressCountry": "SE"
+        },
+        "geo": {
+          "@type": "GeoCoordinates",
+          "latitude": "57.7089",
+          "longitude": "11.9746"
+        },
+        "areaServed": {
+          "@type": "City",
+          "name": "Göteborg"
+        },
+        "priceRange": "30000-100000 SEK",
+        "serviceType": [
+          "Webbutveckling",
+          "Webbyrå",
+          "E-handel",
+          "3D-konfiguratorer",
+          "Kundportaler",
+          "Webblösningar"
+        ],
+        "sameAs": [
+          "https://www.linkedin.com/company/volturiano",
+          "https://github.com/volturiano"
+        ]
+      };
+      
+      schemaScript = document.createElement('script');
+      schemaScript.type = 'application/ld+json';
+      schemaScript.setAttribute('data-agency-schema', 'true');
+      schemaScript.textContent = JSON.stringify(schema);
+      document.head.appendChild(schemaScript);
+    }
+  }, [t]);
+  
   const [activeModal, setActiveModal] = useState(null);
   const [selectedServiceId, setSelectedServiceId] = useState(null);
 

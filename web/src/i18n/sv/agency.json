@@ -1,5 +1,5 @@
 {
-  "pageTitle": "Volturiano Web Byro – Premium Mjukvarutjänster",
+  "pageTitle": "Volturio Studios | Premium Webbyrå i Göteborg – Skräddarsydda system",
   "hero": {
     "badge": "TILLGÄNGLIG FÖR NYA UPPDRAG",
     "title": "DIGITAL\nATELJÉ.",
@@ -15,7 +15,7 @@
     "techs": ["REACT", "THREE.JS", "WEBGL", "SUPABASE", "NEXT.JS", "TYPESCRIPT", "TAILWIND", "FRAMER MOTION", "POSTGRESQL"]
   },
   "clientLogos": {
-    "clients": ["VOLTURIANO", "PREMIUM VARUMÄRKEN", "LYXBILAR", "INVESTOR KLASS", "DIGITAL ATELJÉ"],
+    "clients": ["VOLTURIANO", "PREMIUM VARUMÄRKEN", "WEBBYRÅ GÖTEBORG", "INVESTOR KLASS", "DIGITAL ATELJÉ"],
     "logoAlt": "Klientlogotyp {{index}}"
   },
   "portfolio": {
@@ -143,7 +143,7 @@
     "features": [
       {
         "title": "Vad Vi Gör",
-        "description": "Vi transformerar företag genom premium digitala lösningar. Vi specialiserar oss på bilindustrin och hotell- och restaurangsektorn, och levererar omfattande plattformar som driver tillväxt och förbättrar kundupplevelser. Från bilhandlarekosystem till hotellbokningsplattformar bygger vi den digitala infrastrukturen som ditt företag behöver."
+        "description": "Vi transformerar företag genom premium digitala lösningar. Vi specialiserar oss på avancerade webblösningar och levererar omfattande plattformar som driver tillväxt och förbättrar kundupplevelser. Från e-handelsplattformar till kundportaler bygger vi den digitala infrastrukturen som ditt företag behöver."
       },
       {
         "title": "Strategisk UI/UX-design",
@@ -208,7 +208,7 @@
     "title": {
       "part1": "Digital närvaro är den nya hästkraften.",
       "part2": "Vi smälter samman",
-      "highlight1": "bil-DNA",
+      "highlight1": "digital DNA",
       "part3": "med",
       "highlight2": "mjukvaruutveckling",
       "part4": "för att bygga varumärken som inte bara existerar—de dominerar."
@@ -224,7 +224,7 @@
   },
   "purpose": {
     "label": "VÅRT SYFTE",
-    "statement": "Vi bygger webbsidor till företag, från göteborg till oslo.",
+    "statement": "Vi bygger webbsidor till företag i Göteborg.",
     "substatement": "Premium design, strategi och marknads analys som driver företag upp.",
     "cta": "Börja din resa",
     "stats": {

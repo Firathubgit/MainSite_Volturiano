@@ -25,6 +25,12 @@
     "viewArchive": "Visa arkiv",
     "projects": [
       {
+        "name": "Euro Taxi",
+        "category": "TAXIBOKNING",
+        "tags": ["React", "TypeScript", "Leaflet"],
+        "url": "https://euro-taxi-as.vercel.app/#/"
+      },
+      {
         "name": "FurGlove Pro",
         "category": "E-HANDEL",
         "tags": ["React", "E-handel", "Premium"],
@@ -438,5 +444,120 @@
         "instructions": "Skriv koden i e-posten för att lösa in paketet för att påbörja följande utvecklingscykel för Web Byro."
       }
     }
+  },
+  "about": {
+    "title": "Om Volturiano",
+    "subtitle": "Digitalt hantverk baserat i Göteborg.",
+    "storyTitle": "Vår Historia",
+    "storyText": "Volturiano startade med ett enkelt uppdrag: att bygga digitala upplevelser som betyder något. Vi kombinerar teknisk excellens med konstnärlig vision för att hjälpa varumärken att sticka ut i ett trångt digitalt landskap.",
+    "philosophy": "Vi tror på ren kod, djärv design och användarcentrerade strategier. Varje pixel har ett syfte, varje interaktion är skapad med omsorg."
+  },
+  "references": {
+    "title": "Några av våra arbeten",
+    "replacementProject": "Ersättningsprojekt",
+    "replacementProjectPage": "Personlig Ersättningsprojektsida",
+    "replacementLearnMore": "Ersättning Läs Mer"
+  },
+  "caseStudy": {
+    "overview": "Projektöversikt",
+    "improvements": "Vad vi förbättrade",
+    "doneWork": "Genomfört arbete",
+    "viewLive": "Besök Live Sida",
+    "projects": {
+      "furglove-pro": {
+        "overview": "FurGlove Pro är en premium e-handelsplattform för ett innovativt produktsortiment. Vi skapade en modern, användarvänlig webbplats med interaktiva funktioner och smidig shoppingupplevelse.",
+        "improvements": [
+          "Förbättrad produktvisning med interaktiva demos",
+          "Optimerad checkout-process för högre konvertering",
+          "Responsiv design för alla enheter",
+          "Förbättrad laddningstid och prestanda"
+        ],
+        "doneWork": [
+          {
+            "title": "E-handelsplattform",
+            "description": "Fullständig e-handelslösning med React, TypeScript och Next.js"
+          },
+          {
+            "title": "Interaktiva Demo-funktioner",
+            "description": "Magic Demo slider för att visa produktens effektivitet"
+          },
+          {
+            "title": "UI/UX Design",
+            "description": "Modern och ren design med Tailwind CSS för konsekvent användarupplevelse"
+          },
+          {
+            "title": "Produktvisning",
+            "description": "Optimerad produktvisning med bildgalleri och detaljerad information"
+          }
+        ]
+      },
+      "euro-taxi": {
+        "overview": "Euro Taxi är en komplett taxibokningsplattform för Oslo och Viken. Vi utvecklade en modern applikation med realtidsbokning, kartintegration och smidig användarupplevelse.",
+        "improvements": [
+          "Implementerad kartintegration med Leaflet för visuell bokning",
+          "Förbättrad bokningsprocess med realtidsprissättning",
+          "Responsiv design för mobil och desktop",
+          "Optimerad användarupplevelse med intuitivt gränssnitt"
+        ],
+        "doneWork": [
+          {
+            "title": "Bokningssystem",
+            "description": "Komplett taxibokningssystem med React och TypeScript"
+          },
+          {
+            "title": "Kartintegration",
+            "description": "Leaflet-kartor för visuell bokning och ruttvisning"
+          },
+          {
+            "title": "Realtidsprissättning",
+            "description": "Automatisk prissättning baserat på avstånd och tid"
+          },
+          {
+            "title": "Responsiv Design",
+            "description": "Optimerad för både mobil och desktop med Tailwind CSS"
+          }
+        ]
+      },
+      "replacement-project-1": {
+        "overview": "Detta är en ersättningsprojektplatshållare som visar våra kapaciteter. Detta projekt representerar vårt engagemang för att leverera kvalitativa digitala lösningar.",
+        "improvements": [
+          "Platshållare förbättring 1",
+          "Platshållare förbättring 2",
+          "Platshållare förbättring 3"
+        ],
+        "doneWork": [
+          {
+            "title": "Platshållare Arbetsuppgift 1",
+            "description": "Beskrivning av platshållare arbete som slutförts"
+          },
+          {
+            "title": "Platshållare Arbetsuppgift 2",
+            "description": "Beskrivning av platshållare arbete som slutförts"
+          }
+        ]
+      },
+      "replacement-project-2": {
+        "overview": "Detta är en ersättningsprojektplatshållare som visar våra kapaciteter. Detta projekt representerar vårt engagemang för att leverera kvalitativa digitala lösningar.",
+        "improvements": [
+          "Platshållare förbättring 1",
+          "Platshållare förbättring 2",
+          "Platshållare förbättring 3"
+        ],
+        "doneWork": [
+          {
+            "title": "Platshållare Arbetsuppgift 1",
+            "description": "Beskrivning av platshållare arbete som slutförts"
+          },
+          {
+            "title": "Platshållare Arbetsuppgift 2",
+            "description": "Beskrivning av platshållare arbete som slutförts"
+          }
+        ]
+      }
+    }
+  },
+  "services": {
+    "title": "Våra Tjänster",
+    "subtitle": "Omfattande digitala lösningar för moderna företag."
   }
 }

@@ -5,7 +5,7 @@ import GoldPackage from '../../../assets/Logo/GOLDPackage.png';
 import SilverPackage from '../../../assets/Logo/SilverPackage.png';
 import TitaniumPackage from '../../../assets/Logo/TitaniumPackage.png';
 
-export function PackageCards({ onOpenContact }) {
+export function PackageCards({ onOpenContact, onActiveIndexChange }) {
   const { t } = useTranslation('agency');
   const [hoveredCard, setHoveredCard] = useState(null);
   const [activeIndex, setActiveIndex] = useState(1); // titanium default
@@ -110,6 +110,9 @@ export function PackageCards({ onOpenContact }) {
         if (scrollEndTimerRef.current) window.clearTimeout(scrollEndTimerRef.current);
         scrollEndTimerRef.current = window.setTimeout(() => {
           setCommittedIndex(bestIdx);
+          if (onActiveIndexChange) {
+            onActiveIndexChange(bestIdx);
+          }
         }, 140);
       });
     };
@@ -122,6 +125,10 @@ export function PackageCards({ onOpenContact }) {
       if (!slide) return;
       const target = slide.offsetLeft - (el.clientWidth - slide.clientWidth) / 2;
       el.scrollTo({ left: target, behavior: 'auto' });
+      // Notify parent of initial active index
+      if (onActiveIndexChange) {
+        onActiveIndexChange(activeIndex);
+      }
     });
 
     return () => {
@@ -138,6 +145,9 @@ export function PackageCards({ onOpenContact }) {
     const clamped = Math.max(0, Math.min(packages.length - 1, idx));
     setActiveIndex(clamped);
     setCommittedIndex(clamped);
+    if (onActiveIndexChange) {
+      onActiveIndexChange(clamped);
+    }
     const slides = slideElsRef.current.filter(Boolean);
     const slide = slides[clamped];
     if (!slide) return;
@@ -198,12 +208,6 @@ export function PackageCards({ onOpenContact }) {
         {/* Mobile layout (iPhone-style) */}
         <div className={styles.mobilePhone}>
           <div className={styles.phoneFrame}>
-            {/* Form Header - Above the card */}
-            <div className={styles.formHeader}>
-              <h2 className={styles.formTitle}>{t('packageCards.redeem.title')}</h2>
-              <p className={styles.formSubtitle}>{t('packageCards.redeem.subtitle')}</p>
-            </div>
-
             {/* Package Card Carousel */}
             <div className={styles.phoneTop}>
               <div className={styles.carousel} ref={carouselRef} aria-label={t('packageCards.redeem.carouselLabel')}>
@@ -234,39 +238,6 @@ export function PackageCards({ onOpenContact }) {
                 ))}
               </div>
             </div>
-
-            {/* Input Form - Directly below card, same space */}
-            <form onSubmit={handleRedeem} className={styles.form}>
-              <div className={styles.formGroup}>
-                <label htmlFor="cardCode" className={styles.label}>{t('packageCards.redeem.cardCode')}</label>
-                <input
-                  id="cardCode"
-                  type="text"
-                  className={styles.input}
-                  value={cardCode}
-                  onChange={(e) => setCardCode(e.target.value)}
-                  placeholder={t('packageCards.redeem.cardCodePlaceholder')}
-                  required
-                />
-              </div>
-
-              <div className={styles.formGroup}>
-                <label htmlFor="businessName" className={styles.label}>{t('packageCards.redeem.businessName')}</label>
-                <input
-                  id="businessName"
-                  type="text"
-                  className={styles.input}
-                  value={businessName}
-                  onChange={(e) => setBusinessName(e.target.value)}
-                  placeholder={t('packageCards.redeem.businessNamePlaceholder')}
-                  required
-                />
-              </div>
-
-              <button type="submit" className={styles.submitButton}>
-                {t('packageCards.redeem.submitButton')}
-              </button>
-            </form>
           </div>
         </div>
 

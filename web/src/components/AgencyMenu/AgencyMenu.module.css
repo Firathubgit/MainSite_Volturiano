@@ -1,0 +1,251 @@
+.menuOverlay {
+  position: fixed;
+  inset: 0;
+  background-color: #000000;
+  z-index: 1300;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  overflow: hidden;
+}
+
+.decorativeBackground {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.2;
+}
+
+.blurCircle1 {
+  position: absolute;
+  top: 2.5rem;
+  left: 2.5rem;
+  width: 24rem;
+  height: 24rem;
+  background-color: rgba(31, 41, 55, 0.8);
+  border-radius: 50%;
+  filter: blur(80px);
+  mix-blend-mode: screen;
+  animation: pulse 4s ease-in-out infinite;
+}
+
+.blurCircle2 {
+  position: absolute;
+  bottom: 2.5rem;
+  right: 2.5rem;
+  width: 16rem;
+  height: 16rem;
+  background-color: rgba(55, 65, 81, 0.8);
+  border-radius: 50%;
+  filter: blur(80px);
+  mix-blend-mode: screen;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 0.2;
+  }
+  50% {
+    opacity: 0.3;
+  }
+}
+
+.closeButton {
+  position: absolute;
+  top: 2rem;
+  left: 2rem;
+  right: auto;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  background: transparent;
+  border: none;
+  color: #ffffff;
+  cursor: pointer;
+  font-family: var(--font-body, 'Inter', sans-serif);
+  font-size: 0.875rem;
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  z-index: 10;
+  transition: opacity 0.3s ease;
+}
+
+.languageButton {
+  position: absolute;
+  top: 2rem;
+  right: 2rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 2rem;
+  padding: 0.5rem 1.25rem;
+  color: #ffffff;
+  cursor: pointer;
+  font-family: var(--font-body, 'Inter', sans-serif);
+  font-size: 0.875rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  z-index: 10;
+  transition: all 0.3s ease;
+}
+
+.languageButton:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: #ffffff;
+}
+
+.closeButton:hover {
+  opacity: 0.7;
+}
+
+.closeIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  background-color: rgba(255, 255, 255, 0.1);
+  border-radius: 50%;
+  font-size: 1.5rem;
+  font-weight: 300;
+  line-height: 1;
+}
+
+.closeText {
+  font-weight: 500;
+}
+
+.menuContainer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.5rem;
+  z-index: 10;
+  width: 100%;
+  max-width: 90vw;
+}
+
+.menuItemWrapper {
+  overflow: hidden;
+  width: 100%;
+  display: flex;
+  justify-content: center;
+}
+
+.menuItem {
+  position: relative;
+  background: transparent;
+  border: none;
+  color: #ffffff;
+  font-family: var(--font-display, 'Oswald', sans-serif);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: -0.02em;
+  cursor: pointer;
+  padding: 0.5rem 0;
+  transition: color 0.3s ease;
+  text-align: center;
+  width: fit-content;
+}
+
+.menuItem:hover {
+  color: #9ca3af;
+}
+
+.menuItemActive {
+  color: #ff4520;
+}
+
+.menuItemText {
+  position: relative;
+  z-index: 10;
+  display: block;
+}
+
+.menuItemUnderline {
+  position: absolute;
+  left: 0;
+  bottom: 0.5rem;
+  width: 100%;
+  height: 2px;
+  background-color: #ffffff;
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 0.5s cubic-bezier(0.19, 1, 0.22, 1);
+}
+
+.menuItem:hover .menuItemUnderline {
+  transform: scaleX(1);
+}
+
+.menuItemActive .menuItemUnderline {
+  background-color: #ff4520;
+  transform: scaleX(1);
+}
+
+.footerText {
+  position: absolute;
+  bottom: 2.5rem;
+  left: 50%;
+  transform: translateX(-50%);
+  color: rgba(255, 255, 255, 0.5);
+  font-family: var(--font-body, 'Inter', sans-serif);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+  z-index: 10;
+}
+
+/* Responsive Typography */
+.menuItem {
+  font-size: 3rem; /* Mobile: text-5xl */
+}
+
+@media (min-width: 768px) {
+  .menuItem {
+    font-size: 4.5rem; /* Tablet: text-7xl */
+  }
+}
+
+@media (min-width: 1024px) {
+  .menuItem {
+    font-size: 6rem; /* Desktop: text-8xl */
+  }
+}
+
+/* Mobile adjustments */
+@media (max-width: 640px) {
+  .closeButton {
+    top: 1.5rem;
+    left: 1.5rem;
+    font-size: 0.75rem;
+  }
+
+  .languageButton {
+    top: 1.5rem;
+    right: 1.5rem;
+    padding: 0.35rem 0.85rem;
+    font-size: 0.75rem;
+  }
+
+  .closeIcon {
+    width: 2rem;
+    height: 2rem;
+    font-size: 1.25rem;
+  }
+
+  .menuContainer {
+    gap: 1rem;
+    padding: 0 1rem;
+  }
+
+  .footerText {
+    bottom: 1.5rem;
+    font-size: 0.625rem;
+  }
+}
+

@@ -9,16 +9,22 @@ import { fetchProfile } from '../features/account/api';
 import RequireAuth from '../features/account/RequireAuth';
 import RequireAdmin from '../features/admin/components/RequireAdmin';
 import NavDrawer from '../components/NavDrawer/NavDrawer';
+import AgencyMenu from '../components/AgencyMenu/AgencyMenu';
 import LoadingOverlay from '../components/LoadingOverlay/LoadingOverlay';
 import { useRenderLogger } from '../debug/useRenderLogger';
 import { usePageTitle } from '../hooks/usePageTitle';
 import CustomCursor from '../components/CustomCursor/CustomCursor';
 import { Analytics } from '@vercel/analytics/react';
 import { SpeedInsights } from '@vercel/speed-insights/react';
+import { PAUSE_MODE_ENABLED } from '../config/pauseMode';
 
 const Home = lazy(() => import('../pages/Home/Home'));
 const Models = lazy(() => import('../pages/Models/Models'));
 const Agency = lazy(() => import('../pages/Agency/Agency'));
+const About = lazy(() => import('../pages/Agency/pages/About/About'));
+const References = lazy(() => import('../pages/Agency/pages/References/References'));
+const CaseStudy = lazy(() => import('../pages/Agency/pages/References/CaseStudy/CaseStudy'));
+const Services = lazy(() => import('../pages/Agency/pages/Services/Services'));
 // Using new premium configurator - switch back to Configurator if needed
 const Configurator = lazy(() => import('../pages/Configurator/ConfiguratorNew'));
 const ConfiguratorFromGarage = lazy(() => import('../pages/Configurator/ConfiguratorFromGarage'));
@@ -244,14 +250,22 @@ export default function App() {
         show={forceOverlay || (!session && (status === 'loading' || status === 'idle'))}
       />
       <NavBar />
-      <NavDrawer />
+      {PAUSE_MODE_ENABLED ? <AgencyMenu /> : <NavDrawer />}
       <main>
         <Suspense fallback={<LoadingOverlay />}>
           <Routes>
-            <Route path="/" element={<IndexGate />} />
+            {PAUSE_MODE_ENABLED ? (
+              <Route path="/" element={<Navigate to="/agency" replace />} />
+            ) : (
+              <Route path="/" element={<IndexGate />} />
+            )}
             <Route path="/start" element={<StartAnim />} />
             <Route path="/models" element={<Models />} />
             <Route path="/agency" element={<Agency />} />
+            <Route path="/agency/about" element={<About />} />
+            <Route path="/agency/references" element={<References />} />
+            <Route path="/agency/references/:projectId" element={<CaseStudy />} />
+            <Route path="/agency/services" element={<Services />} />
             <Route path="/infotainment" element={<Infotainment />} />
             <Route
               path="/configurator/:garageItemId"

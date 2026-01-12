@@ -1,5 +1,5 @@
 .section {
-  padding: 8rem 1rem;
+  padding: 4rem 1rem; /* Reduced by half */
   position: relative;
   z-index: 10;
 }
@@ -487,14 +487,10 @@
   /* Phone frame - content-based height */
   .phoneFrame {
     width: 100%;
-    border-radius: 2.25rem 2.25rem 0 0;
     /* No horizontal padding - touches viewport edges */
     padding: 0.75rem 0 1.5rem;
-    background: radial-gradient(120% 120% at 50% 0%, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.02) 40%, rgba(0, 0, 0, 0.6) 100%);
-    box-shadow:
-      0 30px 90px rgba(0, 0, 0, 0.75),
-      inset 0 1px 0 rgba(255, 255, 255, 0.08),
-      0 0 0 1px rgba(255, 255, 255, 0.06);
+    background: transparent;
+    box-shadow: none;
     display: flex;
     flex-direction: column;
     overflow: visible;

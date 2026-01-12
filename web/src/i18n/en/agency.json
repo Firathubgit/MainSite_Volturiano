@@ -25,6 +25,12 @@
     "viewArchive": "View Archive",
     "projects": [
       {
+        "name": "Euro Taxi",
+        "category": "TAXI BOOKING",
+        "tags": ["React", "TypeScript", "Leaflet"],
+        "url": "https://euro-taxi-as.vercel.app/#/"
+      },
+      {
         "name": "FurGlove Pro",
         "category": "E-COMMERCE",
         "tags": ["React", "E-commerce", "Premium"],
@@ -438,5 +444,120 @@
         "instructions": "Write the code in the email to redeem the package for the following agency development cycle to begin."
       }
     }
+  },
+  "about": {
+    "title": "About Volturiano",
+    "subtitle": "Digital craftsmanship based in Gothenburg.",
+    "storyTitle": "Our Story",
+    "storyText": "Volturiano started with a simple mission: to build digital experiences that matter. We combine technical excellence with artistic vision to help brands stand out in a crowded digital landscape.",
+    "philosophy": "We believe in clean code, bold design, and user-centric strategies. Every pixel has a purpose, every interaction is crafted with care."
+  },
+  "references": {
+    "title": "Some of our work",
+    "replacementProject": "Replacement Project",
+    "replacementProjectPage": "Personal Replacement Project Page",
+    "replacementLearnMore": "Replacement Learn More"
+  },
+  "caseStudy": {
+    "overview": "Project Overview",
+    "improvements": "What We Improved",
+    "doneWork": "Work Completed",
+    "viewLive": "View Live Site",
+    "projects": {
+      "furglove-pro": {
+        "overview": "FurGlove Pro is a premium e-commerce platform for an innovative product line. We created a modern, user-friendly website with interactive features and seamless shopping experience.",
+        "improvements": [
+          "Enhanced product display with interactive demos",
+          "Optimized checkout process for higher conversion",
+          "Responsive design for all devices",
+          "Improved loading time and performance"
+        ],
+        "doneWork": [
+          {
+            "title": "E-commerce Platform",
+            "description": "Complete e-commerce solution with React, TypeScript, and Next.js"
+          },
+          {
+            "title": "Interactive Demo Features",
+            "description": "Magic Demo slider to showcase product effectiveness"
+          },
+          {
+            "title": "UI/UX Design",
+            "description": "Modern and clean design with Tailwind CSS for consistent user experience"
+          },
+          {
+            "title": "Product Display",
+            "description": "Optimized product showcase with image gallery and detailed information"
+          }
+        ]
+      },
+      "euro-taxi": {
+        "overview": "Euro Taxi is a complete taxi booking platform for Oslo and Viken. We developed a modern application with real-time booking, map integration, and seamless user experience.",
+        "improvements": [
+          "Implemented map integration with Leaflet for visual booking",
+          "Enhanced booking process with real-time pricing",
+          "Responsive design for mobile and desktop",
+          "Optimized user experience with intuitive interface"
+        ],
+        "doneWork": [
+          {
+            "title": "Booking System",
+            "description": "Complete taxi booking system with React and TypeScript"
+          },
+          {
+            "title": "Map Integration",
+            "description": "Leaflet maps for visual booking and route display"
+          },
+          {
+            "title": "Real-time Pricing",
+            "description": "Automatic pricing based on distance and time"
+          },
+          {
+            "title": "Responsive Design",
+            "description": "Optimized for both mobile and desktop with Tailwind CSS"
+          }
+        ]
+      },
+      "replacement-project-1": {
+        "overview": "This is a replacement project placeholder showcasing our capabilities. This project represents our commitment to delivering quality digital solutions.",
+        "improvements": [
+          "Placeholder improvement 1",
+          "Placeholder improvement 2",
+          "Placeholder improvement 3"
+        ],
+        "doneWork": [
+          {
+            "title": "Placeholder Work Item 1",
+            "description": "Description of placeholder work completed"
+          },
+          {
+            "title": "Placeholder Work Item 2",
+            "description": "Description of placeholder work completed"
+          }
+        ]
+      },
+      "replacement-project-2": {
+        "overview": "This is a replacement project placeholder showcasing our capabilities. This project represents our commitment to delivering quality digital solutions.",
+        "improvements": [
+          "Placeholder improvement 1",
+          "Placeholder improvement 2",
+          "Placeholder improvement 3"
+        ],
+        "doneWork": [
+          {
+            "title": "Placeholder Work Item 1",
+            "description": "Description of placeholder work completed"
+          },
+          {
+            "title": "Placeholder Work Item 2",
+            "description": "Description of placeholder work completed"
+          }
+        ]
+      }
+    }
+  },
+  "services": {
+    "title": "Our Services",
+    "subtitle": "Comprehensive digital solutions for modern businesses."
   }
 }

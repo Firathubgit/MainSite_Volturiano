@@ -27,7 +27,7 @@ const STORAGE_KEY = 'volt_language';
 
 const storedLanguage =
   typeof window !== 'undefined' ? window.localStorage.getItem(STORAGE_KEY) : null;
-const initialLanguage = storedLanguage || 'en';
+const initialLanguage = storedLanguage || 'sv'; // Default to Swedish
 
 const languageLabels = {
   en: 'English',

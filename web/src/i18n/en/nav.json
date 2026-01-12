@@ -27,6 +27,13 @@
     "home": "Volturiano home",
     "account": "Account",
     "backToMenu": "Back to menu"
+  },
+  "agencyMenu": {
+    "home": "HOME",
+    "about": "ABOUT US",
+    "references": "REFERENCES",
+    "services": "SERVICES",
+    "basedIn": "Based in Gothenburg"
   }
 }
 

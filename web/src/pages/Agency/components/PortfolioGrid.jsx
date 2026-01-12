@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { motion, AnimatePresence } from 'framer-motion';
 import furGloveThumbnail from '../../../assets/FurGloveThhumnail.png';
+import euroTaxiThumbnail from '../../../assets/EuroTaxi1.png';
 import replacementImage from '../../../assets/Replacement image.png';
 import styles from './PortfolioGrid.module.css';
 
@@ -13,10 +14,15 @@ export function PortfolioGrid() {
   
   // Enrich projects with images and IDs
   const projects = projectsData.map((p, i) => {
-    // Use FurGlove thumbnail for FurGlove, replacement image for others without real links
-    const image = (p.url && p.url.includes('furglove')) 
-      ? furGloveThumbnail 
-      : replacementImage;
+    // Use appropriate thumbnail based on project URL
+    let image = replacementImage;
+    if (p.url) {
+      if (p.url.includes('euro-taxi')) {
+        image = euroTaxiThumbnail;
+      } else if (p.url.includes('furglove')) {
+        image = furGloveThumbnail;
+      }
+    }
     
     return {
       ...p,

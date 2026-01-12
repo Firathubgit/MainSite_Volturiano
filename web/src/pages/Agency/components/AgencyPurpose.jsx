@@ -8,7 +8,7 @@ export function AgencyPurpose() {
   const { t } = useTranslation('agency');
 
   return (
-    <section className={styles.section}>
+    <section id="about" className={styles.section}>
       <div className={styles.container}>
         <div className={styles.grid}>
           

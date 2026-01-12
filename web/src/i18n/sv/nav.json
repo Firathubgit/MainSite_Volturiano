@@ -27,6 +27,13 @@
     "home": "Volturianos startsida",
     "account": "Konto",
     "backToMenu": "Tillbaka till menyn"
+  },
+  "agencyMenu": {
+    "home": "HEM",
+    "about": "OM OSS",
+    "references": "REFERENSER",
+    "services": "TJÄNSTER",
+    "basedIn": "Baserad i Göteborg"
   }
 }
 

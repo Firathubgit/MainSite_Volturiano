@@ -200,8 +200,8 @@ function AgencyContent() {
         
         <TechTicker />
         <AgencyPurpose />
-        <PedestalShowcase />
-        <TwoImageSolution />
+        {/* <PedestalShowcase /> */}
+        {/* <TwoImageSolution /> */}
         {/* <ConceptGrid /> */}
         {/* <DeviceShowcase /> */}
         <PortfolioGrid />

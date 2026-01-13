@@ -75,7 +75,7 @@ function CaseStudyContent() {
     }
   }, [project, navigate]);
 
-  usePageTitle(`${project?.title || 'Case Study'} | Volturiano Agency`);
+  usePageTitle(`${project?.title || 'Case Study'} | Volturio Studios – Webbyrå i Göteborg`);
 
   useEffect(() => {
     document.body.setAttribute('data-theme', theme);

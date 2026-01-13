@@ -19,7 +19,7 @@ import replacementImage from '../../../../assets/Replacement image.png';
 function ReferencesContent() {
   const { t } = useTranslation(['agency', 'common']);
   const { theme } = useTheme();
-  usePageTitle(`${t('agencyMenu.references')} | Volturiano Agency`);
+  usePageTitle(`${t('agencyMenu.references')} | Volturio Studios – Webbyrå i Göteborg`);
 
   // Scroll to top on page enter - use immediate scroll
   useEffect(() => {

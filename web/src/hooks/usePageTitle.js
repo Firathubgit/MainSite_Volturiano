@@ -6,21 +6,21 @@ import { useLocation } from 'react-router-dom';
  */
 const PAGE_TITLES = {
   // General/default title
-  default: 'Volturiano – Luxury Sports Automotive',
+  default: 'Volturio Studios | Premium Webbyrå i Göteborg – Skräddarsydda system',
   
-  // Route-specific titles
-  '/': 'Volturiano – Redefining Performance', // Hero/landing page
-  '/start': 'Volturiano – Redefining Performance', // Hero/landing page
-  '/models': 'Volturiano – Luxury Sports Automotive', // Models page
+  // Route-specific titles - All focused on agency/webbyrå göteborg
+  '/': 'Volturio Studios | Premium Webbyrå i Göteborg – Skräddarsydda system', // Agency focus
+  '/start': 'Volturio Studios | Premium Webbyrå i Göteborg – Skräddarsydda system', // Agency focus
+  '/models': 'Volturio Studios | Premium Webbyrå i Göteborg – Skräddarsydda system', // Updated to agency focus
   '/agency': 'Volturio Studios | Premium Webbyrå i Göteborg – Skräddarsydda system', // Agency page
-  '/configurator': 'Volturiano Configurator – Build Your Car', // 3D Configurator
-  '/world': 'Volturiano | Performance. Precision. Identity.', // Dark premium feel
-  '/investor': 'Volturiano – Luxury Sports Automotive',
-  '/garage': 'Volturiano – Customize Your Style', // Garage (material/colour selector feel)
-  '/account/profile': 'Volturiano – Luxury Sports Automotive',
-  '/account/login': 'Volturiano – Luxury Sports Automotive',
-  '/account/signup': 'Volturiano – Luxury Sports Automotive',
-  '/admin': 'Volturiano Admin – Luxury Sports Automotive',
+  '/configurator': 'Volturio Studios | Premium Webbyrå i Göteborg – Skräddarsydda system', // Updated to agency focus
+  '/world': 'Volturio Studios | Premium Webbyrå i Göteborg – Skräddarsydda system', // Updated to agency focus
+  '/investor': 'Volturio Studios | Premium Webbyrå i Göteborg – Skräddarsydda system', // Updated to agency focus
+  '/garage': 'Volturio Studios | Premium Webbyrå i Göteborg – Skräddarsydda system', // Updated to agency focus
+  '/account/profile': 'Volturio Studios – Profil',
+  '/account/login': 'Volturio Studios – Logga in',
+  '/account/signup': 'Volturio Studios – Skapa konto',
+  '/admin': 'Volturio Studios – Admin',
 };
 
 /**
@@ -96,4 +96,3 @@ export function usePageTitle(customTitle = null) {
 export function setPageTitle(title) {
   document.title = title;
 }
-

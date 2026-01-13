@@ -15,7 +15,7 @@ import officeImage from '../../../../assets/H1/Rectangle 11.png';
 function AboutContent() {
   const { t } = useTranslation(['agency', 'common']);
   const { theme } = useTheme();
-  usePageTitle(`${t('agencyMenu.about')} | Volturiano Agency`);
+  usePageTitle(`${t('agencyMenu.about')} | Volturio Studios – Webbyrå i Göteborg`);
 
   useEffect(() => {
     document.body.setAttribute('data-theme', theme);

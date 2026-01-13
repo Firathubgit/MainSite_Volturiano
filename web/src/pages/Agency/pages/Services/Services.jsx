@@ -25,7 +25,7 @@ function ServicesContent() {
   const { t } = useTranslation(['agency', 'common']);
   const { theme } = useTheme();
   const [activeDetailIndex, setActiveDetailIndex] = useState(1); // Default to titanium (index 1)
-  usePageTitle(`${t('agencyMenu.services')} | Volturiano Agency`);
+  usePageTitle(`${t('agencyMenu.services')} | Volturio Studios – Webbyrå i Göteborg`);
 
   useEffect(() => {
     document.body.setAttribute('data-theme', theme);

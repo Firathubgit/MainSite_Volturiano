@@ -36,7 +36,7 @@ export function TwoImageSolution() {
               {t('twoImageSolution.image1.figure', { defaultValue: 'Fig. 01' })}
             </p>
             <p className={styles.captionText}>
-              {t('twoImageSolution.image1.caption', { defaultValue: 'Quiet power.' })}
+              Digital Blender Render Artifact II
             </p>
           </div>
         </motion.div>
@@ -65,7 +65,7 @@ export function TwoImageSolution() {
               {t('twoImageSolution.image2.figure', { defaultValue: 'Fig. 02' })}
             </p>
             <p className={styles.captionText}>
-              {t('twoImageSolution.image2.caption', { defaultValue: 'Controlled chaos.' })}
+              Digital Blender Render Artifact III
             </p>
           </div>
         </motion.div>

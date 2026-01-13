@@ -33,7 +33,7 @@ export function PedestalShowcase() {
               transition={{ delay: 0.5, duration: 1 }}
               className={styles.text}
             >
-              {t('pedestalShowcase.text', { defaultValue: 'Quiet power.' })}
+              Digital Blender Render Artifact I
             </motion.p>
           </div>
 

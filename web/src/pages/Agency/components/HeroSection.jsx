@@ -258,6 +258,19 @@ export function HeroSection({ onOpenContact, onScrollToServices }) {
           </text>
         </svg>
       </motion.div>
+
+      {/* Scroll Indicator */}
+      <motion.div 
+        style={{ opacity }}
+        className={styles.scrollIndicator}
+      >
+        <span className={styles.scrollText}>Scroll</span>
+        <div className={styles.arrowContainer}>
+          <div className={styles.arrow}></div>
+          <div className={styles.arrow}></div>
+          <div className={styles.arrow}></div>
+        </div>
+      </motion.div>
     </section>
   );
 }

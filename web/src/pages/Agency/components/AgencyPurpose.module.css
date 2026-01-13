@@ -97,8 +97,14 @@
   font-size: 2.43rem; /* Scaled down another 10% from 2.7rem */
   font-weight: 600;
   line-height: 1.1;
-  color: var(--text-primary);
-  margin-bottom: 2.43rem; /* Scaled down */
+  /* Apply gradient to entire headline */
+  background: linear-gradient(to right, #ffffff, #e5e5e5, #a3a3a3);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+  padding-bottom: 0.1em; /* Add padding for descenders */
+  margin-bottom: 2.33rem; /* Adjusted for padding */
   letter-spacing: -0.02em;
   word-wrap: break-word;
   overflow-wrap: break-word;
@@ -131,15 +137,15 @@
   }
 }
 
+/* gradientText class is no longer needed but kept for potential future use or if structure changes back */
 .gradientText {
-  display: inline-block;
-  background: linear-gradient(to right, #ffffff, #e5e5e5, #a3a3a3);
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
-  color: transparent;
-  padding-bottom: 0.1em;
-  margin-bottom: -0.1em;
+  display: inline; /* Changed to inline to flow naturally */
+  /* Inherit from parent headline */
+  background: inherit;
+  -webkit-background-clip: inherit;
+  background-clip: inherit;
+  -webkit-text-fill-color: inherit;
+  color: inherit;
 }
 
 .description {
@@ -231,6 +237,12 @@
   letter-spacing: -0.02em;
   line-height: 1;
   transition: all 1s ease-in-out;
+  background: linear-gradient(to right, #ffffff, #e5e5e5, #a3a3a3);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+  padding-bottom: 0.1em;
 }
 
 @media (min-width: 768px) {
@@ -246,16 +258,14 @@
 }
 
 .statNumberActive {
-  color: var(--text-primary);
   filter: blur(0);
   opacity: 1;
   transform: scale(1);
 }
 
 .statNumberInactive {
-  color: rgba(255, 255, 255, 0.2);
   filter: blur(2px);
-  opacity: 0.4;
+  opacity: 0.3;
   transform: scale(0.98);
 }
 
@@ -296,7 +306,12 @@
   text-transform: uppercase;
   letter-spacing: 0.2em;
   margin-bottom: 0.25rem;
-  transition: color 1s ease-in-out;
+  transition: opacity 1s ease-in-out, filter 1s ease-in-out;
+  background: linear-gradient(to right, #ffffff, #e5e5e5, #a3a3a3);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
 }
 
 @media (max-width: 640px) {
@@ -308,35 +323,28 @@
 }
 
 .statLabelActive {
-  color: rgba(255, 255, 255, 0.6);
+  opacity: 0.8;
+  filter: blur(0);
 }
 
 .statLabelInactive {
-  color: rgba(255, 255, 255, 0.2);
+  opacity: 0.3;
+  filter: blur(1px);
 }
 
 @media (max-width: 640px) {
   .statLabelInactive {
-    color: rgba(255, 255, 255, 0.4);
-  }
-}
-
-.statDesc {
-  font-size: 0.78rem; /* Scaled down 10% */
-  color: rgba(255, 255, 255, 0.5);
-  line-height: 1.6;
-  transition: opacity 1s ease-in-out;
-}
-
-@media (max-width: 640px) {
-  .statDesc {
-    display: none; /* Hide descriptions on mobile grid to save space */
+    opacity: 0.4;
   }
 }
 
 /* Light Mode Overrides */
 body[data-theme='light'] .headline {
-  color: #000000;
+  background: linear-gradient(to right, #000000, #333333, #666666);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
 }
 
 body[data-theme='light'] .description {
@@ -351,16 +359,26 @@ body[data-theme='light'] .gradientText {
   -webkit-text-fill-color: transparent;
 }
 
+body[data-theme='light'] .statNumber {
+  background: linear-gradient(to right, #000000, #333333, #666666);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+body[data-theme='light'] .statLabel {
+  background: linear-gradient(to right, #000000, #333333, #666666);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
 body[data-theme='light'] .statNumberActive {
-  color: #000000;
+  /* color: #000000; removed due to gradient */
 }
 
 body[data-theme='light'] .statLabelActive {
-  color: rgba(0, 0, 0, 0.6);
-}
-
-body[data-theme='light'] .statDescActive {
-  color: rgba(0, 0, 0, 0.5);
+  /* color: rgba(0, 0, 0, 0.6); removed due to gradient */
 }
 
 body[data-theme='light'] .statsGrid {

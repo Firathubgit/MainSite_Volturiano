@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import furGloveThumbnail from '../../../assets/FurGloveThhumnail.png';
 import euroTaxiThumbnail from '../../../assets/EuroTaxi1.png';
@@ -8,6 +9,7 @@ import styles from './PortfolioGrid.module.css';
 
 export function PortfolioGrid() {
   const { t } = useTranslation('agency');
+  const navigate = useNavigate();
   const [hoveredProject, setHoveredProject] = useState(null);
   
   const projectsData = t('portfolio.projects', { returnObjects: true });
@@ -104,7 +106,13 @@ export function PortfolioGrid() {
         </div>
         
         <div className={styles.footer}>
-          <button className={styles.archiveButton}>
+          <button 
+            className={styles.archiveButton}
+            onClick={() => {
+              navigate('/agency/references');
+              window.scrollTo({ top: 0, behavior: 'smooth' });
+            }}
+          >
             {t('portfolio.viewArchive')}
           </button>
         </div>

@@ -10,18 +10,15 @@ export function AgencyPurpose() {
   const stats = [
     { 
       value: "4+", 
-      label: t('purpose.stats.projects'), 
-      desc: t('purpose.stats.projectsDesc', 'Levererade med precision.') 
+      label: t('purpose.stats.projects')
     },
     { 
       value: "5+", 
-      label: t('purpose.stats.clients'), 
-      desc: t('purpose.stats.clientsDesc', 'Långsiktiga partnerskap.') 
+      label: t('purpose.stats.clients')
     },
     { 
       value: "7k", 
-      label: t('purpose.stats.customers'), 
-      desc: t('purpose.stats.customersDesc', 'Organisk trafikväxt.') 
+      label: t('purpose.stats.customers')
     }
   ];
 
@@ -54,18 +51,12 @@ export function AgencyPurpose() {
               {t('purpose.statement').includes('Göteborg') ? (
                 <>
                   Vi bygger webbsidor till <br />
-                  företag i{' '}
-                  <span className={styles.gradientText}>
-                    Göteborg.
-                  </span>
+                  företag i Göteborg.
                 </>
               ) : (
                 <>
                   We build websites for <br />
-                  businesses in{' '}
-                  <span className={styles.gradientText}>
-                    Gothenburg.
-                  </span>
+                  businesses in Gothenburg.
                 </>
               )}
             </h1>
@@ -98,11 +89,6 @@ export function AgencyPurpose() {
                     <h3 className={`${styles.statLabel} ${isActive ? styles.statLabelActive : styles.statLabelInactive}`}>
                       {stat.label}
                     </h3>
-                    
-                    {/* Description: Slow fade in */}
-                    <p className={`${styles.statDesc} ${isActive ? styles.statDescActive : styles.statDescInactive}`}>
-                      {stat.desc}
-                    </p>
                   </div>
                 );
               })}

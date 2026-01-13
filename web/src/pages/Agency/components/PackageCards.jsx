@@ -113,7 +113,7 @@ export function PackageCards({ onOpenContact, onActiveIndexChange }) {
           if (onActiveIndexChange) {
             onActiveIndexChange(bestIdx);
           }
-        }, 140);
+        }, 50);
       });
     };
 

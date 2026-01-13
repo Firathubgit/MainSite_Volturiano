@@ -12,14 +12,14 @@ const menuVariants = {
   animate: {
     y: '0%',
     transition: {
-      duration: 0.8,
+      duration: 0.5,
       ease: [0.76, 0, 0.24, 1],
     },
   },
   exit: {
     y: '-100%',
     transition: {
-      duration: 0.8,
+      duration: 0.5,
       ease: [0.76, 0, 0.24, 1],
     },
   },
@@ -32,8 +32,8 @@ const containerVariants = {
   animate: {
     opacity: 1,
     transition: {
-      staggerChildren: 0.1,
-      delayChildren: 0.3,
+      staggerChildren: 0.05,
+      delayChildren: 0.2,
     },
   },
   exit: {
@@ -43,7 +43,7 @@ const containerVariants = {
 
 const itemVariants = {
   initial: {
-    y: 100,
+    y: 50,
     opacity: 0,
     skewY: 5,
   },
@@ -52,12 +52,12 @@ const itemVariants = {
     opacity: 1,
     skewY: 0,
     transition: {
-      duration: 0.8,
+      duration: 0.5,
       ease: [0.19, 1, 0.22, 1],
     },
   },
   exit: {
-    y: -50,
+    y: -30,
     opacity: 0,
     transition: {
       duration: 0.3,

@@ -245,7 +245,7 @@ function AgencyContent() {
       />
 
       {/* Vision Dump - Internal Developer Tool */}
-      <VisionDump />
+      {/* <VisionDump /> */}
     </div>
   );
 }

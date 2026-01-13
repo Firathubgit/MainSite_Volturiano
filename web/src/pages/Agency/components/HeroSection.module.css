@@ -294,6 +294,12 @@ body[data-theme="light"] .marqueeText {
   z-index: 10;
 }
 
+@media (max-width: 768px) {
+  .scrollIndicator {
+    bottom: 8rem;
+  }
+}
+
 .scrollIndicator:hover {
   opacity: 1;
 }

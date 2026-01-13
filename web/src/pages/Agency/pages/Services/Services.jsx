@@ -99,10 +99,10 @@ function ServicesContent() {
                 className={styles.detailItemWrapper}
               >
                 <PackageDetailItem 
-                  title={pkg.name}
-                  description={pkg.description}
-                  features={pkg.features}
-                />
+                title={pkg.name}
+                description={pkg.description}
+                features={pkg.features}
+              />
               </motion.div>
             ))}
           </div>

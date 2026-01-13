@@ -224,13 +224,16 @@
   },
   "purpose": {
     "label": "OUR PURPOSE",
-    "statement": "We build websites for businesses, from Gothenburg to Oslo.",
+    "statement": "We build websites for businesses in Gothenburg.",
     "substatement": "Premium design, strategy and market analysis that drives businesses up.",
     "cta": "Start your journey",
     "stats": {
       "projects": "Projects Completed",
+      "projectsDesc": "Delivered with precision.",
       "clients": "Active Clients",
-      "customers": "Page Visits"
+      "clientsDesc": "Long-term partnerships.",
+      "customers": "Page Visits",
+      "customersDesc": "Organic traffic growth."
     }
   },
   "pedestalShowcase": {

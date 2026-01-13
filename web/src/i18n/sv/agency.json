@@ -225,12 +225,15 @@
   "purpose": {
     "label": "VÅRT SYFTE",
     "statement": "Vi bygger webbsidor till företag i Göteborg.",
-    "substatement": "Premium design, strategi och marknads analys som driver företag upp.",
+    "substatement": "Premium design, strategi och marknadsanalys som driver företag upp.",
     "cta": "Börja din resa",
     "stats": {
       "projects": "Slutförda Projekt",
+      "projectsDesc": "Levererade med precision.",
       "clients": "Aktiva Kunder",
-      "customers": "Sidvisningar"
+      "clientsDesc": "Långsiktiga partnerskap.",
+      "customers": "Sidvisningar",
+      "customersDesc": "Organisk trafikväxt."
     }
   },
   "pedestalShowcase": {

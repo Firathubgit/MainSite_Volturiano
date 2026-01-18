@@ -41,11 +41,11 @@ export function AgencyPurpose() {
           <div className={styles.leftColumn}>
             
             {/* Label */}
-            <div className={styles.labelContainer}>
+          <div className={styles.labelContainer}>
               <span className={styles.labelLine}></span>
-              <span className={styles.label}>{t('purpose.label')}</span>
-            </div>
-            
+            <span className={styles.label}>{t('purpose.label')}</span>
+          </div>
+
             {/* Headline */}
             <h1 className={styles.headline}>
               {t('purpose.statement').includes('Göteborg') ? (
@@ -60,7 +60,7 @@ export function AgencyPurpose() {
                 </>
               )}
             </h1>
-
+            
             {/* Description */}
             <p className={styles.description}>
               {t('purpose.substatement')}
@@ -89,13 +89,13 @@ export function AgencyPurpose() {
                     <h3 className={`${styles.statLabel} ${isActive ? styles.statLabelActive : styles.statLabelInactive}`}>
                       {stat.label}
                     </h3>
-                  </div>
+            </div>
                 );
               })}
 
             </div>
-          </div>
-
+            </div>
+          
         </div>
       </div>
     </section>

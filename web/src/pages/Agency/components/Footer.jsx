@@ -3,6 +3,7 @@ import { ArrowUpRight } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
 import { ThemeToggle } from './ThemeToggle';
+import tornadoLogo from '../../../assets/Logo/TornadoLogo.png';
 import styles from './Footer.module.css';
 
 export function Footer() {
@@ -32,10 +33,10 @@ export function Footer() {
           </h2>
           
           <a 
-            href="mailto:create@volturiano.agency" 
+            href="mailto:create@volturiano.com" 
             className={styles.emailLink}
           >
-            create@volturiano.agency
+            create@volturiano.com
             <ArrowUpRight className={styles.emailIcon} />
           </a>
         </motion.div>
@@ -77,6 +78,25 @@ export function Footer() {
           <p className={styles.tagline}>
             {t('footer.tagline', { defaultValue: 'Engineered for the future.' })}
           </p>
+          
+          {/* Volturiano Stamp - Expand on Hover */}
+          <a 
+            href="https://volturiano.com" 
+            target="_blank" 
+            rel="noopener noreferrer" 
+            className={styles.volturianoStamp}
+          >
+            <div className={styles.stampContent}>
+              <span className={styles.stampText}>POWERED BY</span>
+              <div className={styles.stampSeparator} />
+            </div>
+            <img 
+              src={tornadoLogo} 
+              alt="Volturiano" 
+              className={styles.stampLogo} 
+            />
+          </a>
+
           <div className={styles.themeToggleWrapper}>
             <ThemeToggle />
           </div>
@@ -86,4 +106,3 @@ export function Footer() {
     </footer>
   );
 }
-

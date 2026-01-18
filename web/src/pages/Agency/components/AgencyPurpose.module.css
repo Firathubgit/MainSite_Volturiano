@@ -128,7 +128,7 @@
   .headline {
     font-size: 5.26rem; /* Scaled down from 5.85rem */
     max-width: 85%;
-  }
+}
 }
 
 @media (max-width: 640px) {
@@ -255,8 +255,8 @@
   .statNumber {
     font-size: 2.75rem; /* Scaled up 10% from 2.5rem */
   }
-}
-
+  }
+  
 .statNumberActive {
   filter: blur(0);
   opacity: 1;
@@ -288,17 +288,17 @@
   .statLine {
     display: none; /* Hide lines in mobile horizontal layout */
   }
-}
+  }
 
 .statLineActive {
   width: 5.94rem; /* Scaled up 10% from 5.4rem */
   background-color: rgba(255, 69, 32, 0.8);
-}
+  }
 
 .statLineInactive {
   width: 2.97rem; /* Scaled up 10% from 2.7rem */
   background-color: rgba(255, 255, 255, 0.1);
-}
+  }
 
 .statLabel {
   font-family: monospace;
@@ -320,13 +320,13 @@
     margin-bottom: 0;
     white-space: nowrap;
   }
-}
+  }
 
 .statLabelActive {
   opacity: 0.8;
   filter: blur(0);
-}
-
+  }
+  
 .statLabelInactive {
   opacity: 0.3;
   filter: blur(1px);

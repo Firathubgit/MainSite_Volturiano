@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { usePageTitle } from '../../hooks/usePageTitle';
 import { ThemeProvider, useTheme } from './context/ThemeContext';
@@ -21,7 +21,17 @@ import { ContactFormModal } from './components/modals/ContactFormModal';
 import { DemoRequestModal } from './components/modals/DemoRequestModal';
 import VisionDump from '../../components/VisionDump/VisionDump';
 import { SERVICES } from './constants';
+import { usePreload, usePreloadOnIntersect } from './hooks/usePreload';
 import styles from './Agency.module.css';
+
+// Import images for preloading
+import furGloveThumbnail from '../../assets/FurGloveThhumnail.png';
+import euroTaxiThumbnail from '../../assets/EuroTaxi1.png';
+import replacementImage from '../../assets/Replacement image.png';
+import GoldPackage from '../../assets/Logo/GOLDPackage.png';
+import SilverPackage from '../../assets/Logo/SilverPackage.png';
+import TitaniumPackage from '../../assets/Logo/TitaniumPackage.png';
+import TornadoLogo from '../../assets/Logo/TornadoLogo.png';
 
 function AgencyContent() {
   const { t } = useTranslation(['agency', 'common']);
@@ -173,6 +183,50 @@ function AgencyContent() {
 
   const { theme } = useTheme();
 
+  // Refs for intersection-based preloading
+  const portfolioRef = useRef(null);
+  const packageCardsRef = useRef(null);
+
+  // Preload images immediately (high priority)
+  usePreload(
+    [
+      TornadoLogo, // Footer logo - always visible
+    ],
+    { delay: 100, priority: 1 }
+  );
+
+  // Preload images when user scrolls near components (medium priority)
+  usePreload(
+    [
+      GoldPackage,
+      SilverPackage,
+      TitaniumPackage,
+    ],
+    { delay: 500, priority: 2 }
+  );
+
+  // Preload portfolio images when near viewport
+  usePreloadOnIntersect(
+    portfolioRef,
+    [
+      furGloveThumbnail,
+      euroTaxiThumbnail,
+      replacementImage,
+    ],
+    { rootMargin: '300px', delay: 0 }
+  );
+
+  // Preload package images when near viewport
+  usePreloadOnIntersect(
+    packageCardsRef,
+    [
+      GoldPackage,
+      SilverPackage,
+      TitaniumPackage,
+    ],
+    { rootMargin: '400px', delay: 0 }
+  );
+
   // Set data-theme on body so NavBar can access it
   useEffect(() => {
     document.body.setAttribute('data-theme', theme);
@@ -204,7 +258,9 @@ function AgencyContent() {
         {/* <TwoImageSolution /> */}
         {/* <ConceptGrid /> */}
         {/* <DeviceShowcase /> */}
-        <PortfolioGrid />
+        <div ref={portfolioRef}>
+          <PortfolioGrid />
+        </div>
 
         {/* TeamShowcase - Commented out for now... */}
         {/* <TeamShowcase /> */}
@@ -228,7 +284,9 @@ function AgencyContent() {
 
 
 
-        <PackageCards onOpenContact={openContact} />
+        <div ref={packageCardsRef}>
+          <PackageCards onOpenContact={openContact} />
+        </div>
 
         <Footer />
       </div>

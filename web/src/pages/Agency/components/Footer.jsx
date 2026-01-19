@@ -9,6 +9,54 @@ import styles from './Footer.module.css';
 export function Footer() {
   const { t } = useTranslation('agency');
   
+  // Email template with pre-filled subject and body
+  const emailSubject = encodeURIComponent('Project Inquiry - Volturio Studios');
+  const emailBody = encodeURIComponent(`Hej!
+
+Jag är intresserad av att starta ett projekt med Volturio Studios.
+
+Företagsinformation:
+Företagsnamn: [Ditt företagsnamn]
+Kontaktperson: [Ditt namn]
+Telefon: [Ditt telefonnummer]
+E-post: [Din e-post]
+
+Befintlig webbplats:
+Har ni redan en webbplats? [Ja/Nej]
+Om ja, kan ni lämna in länk: [Webbplats-URL]
+Har ni tillgång till befintlig design/branding? [Ja/Nej]
+
+Projektbeskrivning:
+[Beskriv ditt projekt, vad ni vill uppnå och vilka funktioner som behövs]
+
+Önskad design/känsla:
+[Beskriv önskad designstil, känsla, inspiration eller referenser]
+
+Budget:
+[Ange budgetomfång]
+
+Tidslinje:
+[När vill ni att projektet ska vara klart?]
+
+Boka möte (30 min):
+Vi erbjuder ett snabbt 30-minuters möte för att diskutera er idé och behov.
+Tillgängliga tider: Måndag - Söndag, 08:00 - 17:30
+
+Föredragna tider/tidsperioder:
+[Ange en eller flera tider/tidsperioder som passar er. Exempel: "Tisdag 14:00", "Onsdag 10:00-12:00", eller "Nästa vecka efter 15:00"]
+Vi återkopplar med bekräftad tid inom 24 timmar.
+
+Context inför mötet:
+[Kort beskrivning av vad ni vill diskutera eller några punkter ni vill gå igenom]
+
+Övrig information:
+[Lägg till annan relevant information här]
+
+Med vänliga hälsningar,
+[Ditt namn]`);
+  
+  const mailtoLink = `mailto:create@volturiano.com?subject=${emailSubject}&body=${emailBody}`;
+  
   return (
     <footer id="footer" className={styles.footer}>
       
@@ -33,7 +81,7 @@ export function Footer() {
           </h2>
           
           <a 
-            href="mailto:create@volturiano.com" 
+            href={mailtoLink}
             className={styles.emailLink}
           >
             create@volturiano.com

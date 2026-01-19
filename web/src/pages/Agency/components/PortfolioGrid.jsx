@@ -29,7 +29,7 @@ export function PortfolioGrid() {
     return {
       ...p,
       id: i,
-      year: '2024',
+      year: '2026',
       image
     };
   });

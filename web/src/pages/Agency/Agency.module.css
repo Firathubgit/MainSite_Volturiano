@@ -104,6 +104,14 @@
   position: relative;
   z-index: 10;
   background-color: var(--bg-primary);
+  /* Force hardware acceleration and maintain background during scroll */
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  /* Ensure background stays opaque - create new stacking context */
+  isolation: isolate;
+  /* Explicitly set opacity to prevent transparency issues */
+  opacity: 1;
 }
 
 .footer {

@@ -8,6 +8,7 @@
     "spinningText": "Scrolla ner • Utforska tomrummet • Digital •",
     "marqueeText": "Omdefinierar digitala upplevelser — Prisbelönt Web Byro —",
     "description": "Vi hjälper Företag att Växa genom Professionella Webbplatser som syns, fungerar och får in nya Kunder.",
+    "descriptionMobile": "Vi hjälper företag att växa genom premium Webbplatser",
     "startProject": "Starta Projekt",
     "exploreServices": "STARTA DITT PROJEKT"
   },
@@ -297,21 +298,21 @@
     "ctaLabel": "Redo att göra en förändring?",
     "ctaTitle": "STARTA DITT\nPROJEKT",
     "designStudio": {
-      "title": "Design Studio",
-      "address1": "Via Emilia Centro, 42",
-      "address2": "Modena, Italien"
+      "title": "Huvudkontor",
+      "address1": "Göteborg, Sverige",
+      "address2": "Nordisk Innovation"
     },
     "engineeringLab": {
-      "title": "Ingenjörslabb",
-      "address1": "543 Howard St",
-      "address2": "San Francisco, CA"
+      "title": "Studio",
+      "address1": "Digitalt Ekosystem",
+      "address2": "Global Räckvidd"
     },
     "social": {
       "linkedin": "LinkedIn",
       "twitter": "Twitter / X",
       "instagram": "Instagram"
     },
-    "copyright": "© 2024 Volturiano Web Byro.",
+    "copyright": "© 2026 Volturio Web Byrå.",
     "tagline": "Konstruerad för framtiden.",
     "links": {
       "about": "Om oss",

@@ -47,18 +47,18 @@ export function Footer() {
         
         <div className={styles.infoColumn}>
           <p className={styles.infoTitle}>
-            {t('footer.designStudio.title', { defaultValue: 'Design Studio' })}
+            {t('footer.designStudio.title', { defaultValue: 'Headquarters' })}
           </p>
-          <p>{t('footer.designStudio.address1', { defaultValue: 'Via Emilia Centro, 42' })}</p>
-          <p>{t('footer.designStudio.address2', { defaultValue: 'Modena, Italy' })}</p>
+          <p>{t('footer.designStudio.address1', { defaultValue: 'Gothenburg, Sweden' })}</p>
+          <p>{t('footer.designStudio.address2', { defaultValue: 'Nordic Innovation' })}</p>
         </div>
 
         <div className={styles.infoColumn}>
           <p className={styles.infoTitle}>
-            {t('footer.engineeringLab.title', { defaultValue: 'Engineering Lab' })}
+            {t('footer.engineeringLab.title', { defaultValue: 'Studio' })}
           </p>
-          <p>{t('footer.engineeringLab.address1', { defaultValue: '543 Howard St' })}</p>
-          <p>{t('footer.engineeringLab.address2', { defaultValue: 'San Francisco, CA' })}</p>
+          <p>{t('footer.engineeringLab.address1', { defaultValue: 'Digital Ecosystem' })}</p>
+          <p>{t('footer.engineeringLab.address2', { defaultValue: 'Global Reach' })}</p>
         </div>
 
         <div className={styles.infoColumn}>
@@ -74,7 +74,7 @@ export function Footer() {
         </div>
 
         <div className={`${styles.infoColumn} ${styles.infoColumnRight}`}>
-          <p>{t('footer.copyright', { defaultValue: '© 2024 Volturiano Agency.' })}</p>
+          <p>{t('footer.copyright', { defaultValue: '© 2026 Volturio Web Agency.' })}</p>
           <p className={styles.tagline}>
             {t('footer.tagline', { defaultValue: 'Engineered for the future.' })}
           </p>

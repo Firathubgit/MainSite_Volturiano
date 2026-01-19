@@ -152,6 +152,23 @@ body[data-theme="light"] .title2:hover {
   transition: color 0.3s ease;
 }
 
+.mobileText {
+  display: inline;
+}
+
+.desktopText {
+  display: none;
+}
+
+@media (min-width: 768px) {
+  .mobileText {
+    display: none;
+  }
+  .desktopText {
+    display: inline;
+  }
+}
+
 body[data-theme="light"] .description {
   color: #000000;
 }

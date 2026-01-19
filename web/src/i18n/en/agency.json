@@ -8,6 +8,7 @@
     "spinningText": "Scroll Down • Explore The Void • Digital •",
     "marqueeText": "Redefining Digital Experiences — Award Winning Agency —",
     "description": "We help Businesses Grow through Professional Websites that are visible, functional, and bring in new Customers.",
+    "descriptionMobile": "We help businesses grow through premium Websites",
     "startProject": "Start Project",
     "exploreServices": "START YOUR PROJECT"
   },
@@ -297,21 +298,21 @@
     "ctaLabel": "Ready to make a change?",
     "ctaTitle": "START YOUR\nPROJECT",
     "designStudio": {
-      "title": "Design Studio",
-      "address1": "Via Emilia Centro, 42",
-      "address2": "Modena, Italy"
+      "title": "Headquarters",
+      "address1": "Gothenburg, Sweden",
+      "address2": "Nordic Innovation"
     },
     "engineeringLab": {
-      "title": "Engineering Lab",
-      "address1": "543 Howard St",
-      "address2": "San Francisco, CA"
+      "title": "Studio",
+      "address1": "Digital Ecosystem",
+      "address2": "Global Reach"
     },
     "social": {
       "linkedin": "LinkedIn",
       "twitter": "Twitter / X",
       "instagram": "Instagram"
     },
-    "copyright": "© 2024 Volturiano Agency.",
+    "copyright": "© 2026 Volturio Web Agency.",
     "tagline": "Engineered for the future.",
     "links": {
       "about": "About",

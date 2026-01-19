@@ -91,9 +91,7 @@ export function HeroSection({ onOpenContact, onScrollToServices }) {
       ctx.fillRect(0, 0, width, height);
 
       // 2. Abstract Morphing Blob
-      ctx.save();
-      ctx.filter = 'blur(60px)';
-      ctx.globalCompositeOperation = 'screen'; 
+      // Using radial gradients instead of filter: blur() for better mobile support
       
       const cx = width * 0.8;
       const cy = height * 0.5;
@@ -107,13 +105,33 @@ export function HeroSection({ onOpenContact, onScrollToServices }) {
       const offset3x = Math.sin(blobTime * 0.3) * 30;
       const offset3y = Math.cos(blobTime * 0.4) * 40;
 
-      ctx.fillStyle = blobColor; 
+      // Extract RGB values from rgba string for gradient stops
+      // Assuming format rgba(R, G, B, A)
+      const rgbValues = blobColor.match(/\d+/g);
+      const r = rgbValues ? rgbValues[0] : 0;
+      const g = rgbValues ? rgbValues[1] : 0;
+      const b = rgbValues ? rgbValues[2] : 0;
+      const baseAlpha = 0.6; 
 
-      ctx.beginPath();
-      ctx.arc(cx + offset1x, cy + offset1y, 140 + Math.sin(blobTime)*10, 0, Math.PI * 2);
-      ctx.arc(cx + offset2x, cy + offset2y, 120 + Math.cos(blobTime)*15, 0, Math.PI * 2);
-      ctx.arc(cx - 40 + offset3x, cy + 40 + offset3y, 100, 0, Math.PI * 2);
-      ctx.fill();
+      const drawGlowingBlob = (x, y, radius) => {
+        const gradient = ctx.createRadialGradient(x, y, 0, x, y, radius);
+        gradient.addColorStop(0, `rgba(${r}, ${g}, ${b}, ${baseAlpha})`);
+        gradient.addColorStop(0.5, `rgba(${r}, ${g}, ${b}, ${baseAlpha * 0.5})`);
+        gradient.addColorStop(1, `rgba(${r}, ${g}, ${b}, 0)`);
+        
+        ctx.fillStyle = gradient;
+        ctx.beginPath();
+        ctx.arc(x, y, radius, 0, Math.PI * 2);
+        ctx.fill();
+      };
+
+      ctx.save();
+      ctx.globalCompositeOperation = 'screen'; 
+
+      // Draw gradients instead of solid shapes with blur
+      drawGlowingBlob(cx + offset1x, cy + offset1y, 250);
+      drawGlowingBlob(cx + offset2x, cy + offset2y, 220);
+      drawGlowingBlob(cx - 40 + offset3x, cy + 40 + offset3y, 200);
 
       ctx.restore();
 
@@ -227,7 +245,12 @@ export function HeroSection({ onOpenContact, onScrollToServices }) {
             className={styles.descriptionContainer}
           >
             <p className={styles.description}>
-              {t('hero.description').replace(/<[^>]*>/g, '')}
+              <span className={styles.desktopText}>
+                {t('hero.description').replace(/<[^>]*>/g, '')}
+              </span>
+              <span className={styles.mobileText}>
+                {t('hero.descriptionMobile', { defaultValue: 'Vi hjälper företag att växa genom premium Webbplatser' })}
+              </span>
             </p>
             <a 
               href="#footer" 

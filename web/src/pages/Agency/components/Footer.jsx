@@ -1,5 +1,5 @@
 import React from 'react';
-import { ArrowUpRight } from 'lucide-react';
+import { ArrowUpRight, Linkedin, Twitter, Instagram, Phone } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
 import { ThemeToggle } from './ThemeToggle';
@@ -99,6 +99,10 @@ Med vänliga hälsningar,
           </p>
           <p>{t('footer.designStudio.address1', { defaultValue: 'Gothenburg, Sweden' })}</p>
           <p>{t('footer.designStudio.address2', { defaultValue: 'Nordic Innovation' })}</p>
+          <a href="tel:+46763032964" className={styles.phoneLink}>
+            <Phone className={styles.phoneIcon} />
+            <span>0763032964</span>
+          </a>
         </div>
 
         <div className={styles.infoColumn}>
@@ -110,15 +114,31 @@ Med vänliga hälsningar,
         </div>
 
         <div className={styles.infoColumn}>
-          <a href="#" className={styles.socialLink}>
-            {t('footer.social.linkedin', { defaultValue: 'LinkedIn' })}
-          </a>
-          <a href="#" className={styles.socialLink}>
-            {t('footer.social.twitter', { defaultValue: 'Twitter / X' })}
-          </a>
-          <a href="#" className={styles.socialLink}>
-            {t('footer.social.instagram', { defaultValue: 'Instagram' })}
-          </a>
+          <div className={styles.socialLinks}>
+            <a 
+              href="#" 
+              className={styles.socialLink}
+              aria-label={t('footer.social.linkedin', { defaultValue: 'LinkedIn' })}
+            >
+              <Linkedin className={styles.socialIcon} />
+            </a>
+            <a 
+              href="#" 
+              className={styles.socialLink}
+              aria-label={t('footer.social.twitter', { defaultValue: 'Twitter / X' })}
+            >
+              <Twitter className={styles.socialIcon} />
+            </a>
+            <a 
+              href="https://www.instagram.com/volturiano/" 
+              target="_blank"
+              rel="noopener noreferrer"
+              className={styles.socialLink}
+              aria-label={t('footer.social.instagram', { defaultValue: 'Instagram' })}
+            >
+              <Instagram className={styles.socialIcon} />
+            </a>
+          </div>
         </div>
 
         <div className={`${styles.infoColumn} ${styles.infoColumnRight}`}>

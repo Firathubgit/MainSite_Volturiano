@@ -19,6 +19,24 @@
     "clients": ["VOLTURIANO", "PREMIUM BRANDS", "WEB AGENCY GOTHENBURG", "INVESTOR GRADE", "DIGITAL ATELIER"],
     "logoAlt": "Client logo {{index}}"
   },
+  "selectedWork": {
+    "title": "Case Studies",
+    "showAll": "[ SHOW-ALL ]",
+    "projects": {
+      "volturiano": {
+        "title": "Volturio Studios",
+        "category": "AGENCY PORTFOLIO"
+      },
+      "euro-taxi": {
+        "title": "Euro Taxi",
+        "category": "TRANSPORT SERVICE"
+      },
+      "furglove-pro": {
+        "title": "Fur Glove",
+        "category": "E-COMMERCE PRODUCT"
+      }
+    }
+  },
   "portfolio": {
     "label": "SELECTED WORK",
     "title": "Case Studies",
@@ -522,6 +540,33 @@
           }
         ]
       },
+      "volturiano": {
+        "overview": "Volturio Studios is our own premium web agency portfolio showcasing our expertise in creating modern, high-performance digital experiences. This site demonstrates our capabilities in luxury UI design, advanced web development, and immersive 3D experiences.",
+        "improvements": [
+          "Created a sophisticated dark-themed design system with theme switching",
+          "Implemented smooth animations and transitions using Framer Motion",
+          "Built a comprehensive portfolio showcase with case study pages",
+          "Developed responsive layouts optimized for all device sizes"
+        ],
+        "doneWork": [
+          {
+            "title": "Agency Portfolio Website",
+            "description": "Complete portfolio website built with React, TypeScript, and Next.js showcasing our services and projects"
+          },
+          {
+            "title": "Theme System",
+            "description": "Custom theme context with dark/light mode switching and smooth transitions"
+          },
+          {
+            "title": "Case Study Pages",
+            "description": "Detailed project showcase pages with image carousels and comprehensive project information"
+          },
+          {
+            "title": "UI/UX Design",
+            "description": "Premium design system with modern aesthetics, smooth animations, and intuitive navigation"
+          }
+        ]
+      },
       "replacement-project-1": {
         "overview": "This is a replacement project placeholder showcasing our capabilities. This project represents our commitment to delivering quality digital solutions.",
         "improvements": [
@@ -562,6 +607,17 @@
   },
   "services": {
     "title": "Our Services",
-    "subtitle": "Comprehensive digital solutions for modern businesses."
+    "subtitle": "Comprehensive digital solutions for modern businesses.",
+    "items": {
+      "luxury-ui-design": {
+        "description": "Premium interfaces designed to captivate and convert. We focus on aesthetics, usability, and brand alignment to create digital experiences that leave a lasting impression."
+      },
+      "3d-configurators": {
+        "description": "Interactive 3D experiences that allow customers to customize products in real-time. Boost engagement and sales with immersive product visualization."
+      },
+      "fullstack-websites": {
+        "description": "Robust, scalable, and high-performance websites built with modern technologies. From backend logic to frontend finesse, we handle the entire stack."
+      }
+    }
   }
 }

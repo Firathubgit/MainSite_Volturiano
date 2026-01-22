@@ -1,14 +1,16 @@
 .page {
   --bg-primary: #000000;
-  --accent-primary: #FF4520;
+  --text-primary: #ffffff;
+  --text-secondary: rgba(255, 255, 255, 0.7);
+  --accent-primary: #ffffff;
   
   background-color: var(--bg-primary);
   color: var(--text-primary);
   min-height: 100vh;
   width: 100%;
-  transition: background-color 0.3s ease, color 0.3s ease;
-  padding-top: 60px;
+  padding-top: 80px;
   position: relative;
+  overflow-x: hidden;
 }
 
 .backgroundEffects {
@@ -42,185 +44,153 @@
 }
 
 .main {
-  width: 100%;
-  padding-bottom: 80px;
   position: relative;
   z-index: 1;
+  padding-bottom: 8rem;
 }
 
 .container {
-  max-width: 900px;
+  max-width: 1400px;
   margin: 0 auto;
-  padding: 0 20px;
-  padding-top: 2rem; /* Add top padding to prevent navbar overlap */
-  margin-top: 1rem; /* Additional top margin for spacing */
+  padding: 0 2rem;
 }
 
 .backButton {
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
-  color: var(--text-primary);
+  color: var(--text-secondary);
   text-decoration: none;
+  font-family: 'Inter', sans-serif;
+  text-transform: uppercase;
   font-size: 0.9rem;
-  margin-top: 1rem;
-  margin-bottom: 2rem;
-  transition: opacity 0.3s ease;
-  position: relative;
-  z-index: 10;
+  margin-bottom: 3rem;
+  transition: color 0.3s ease;
+  letter-spacing: 0.05em;
 }
 
 .backButton:hover {
-  opacity: 0.7;
+  color: var(--text-primary);
 }
 
 .hero {
-  margin-bottom: 4rem;
-}
-
-.carouselWrapper {
-  width: 100%;
-  margin-bottom: 2rem;
-}
-
-.carouselContainer {
+  display: flex;
+  flex-direction: column;
+  gap: 4rem;
+  margin-bottom: 8rem;
   position: relative;
-  width: 100%;
-  height: 500px;
-  border-radius: 12px;
-  overflow: hidden;
-  background: #1a1a1a;
 }
 
-.heroImage {
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
-  background: #1a1a1a;
-}
-
-.carouselButton {
-  position: absolute;
-  top: 50%;
-  transform: translateY(-50%);
-  background: rgba(0, 0, 0, 0.6);
-  border: none;
-  color: #ffffff;
-  width: 48px;
-  height: 48px;
-  border-radius: 50%;
+.heroHeader {
   display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  z-index: 10;
-  backdrop-filter: blur(10px);
-}
-
-.carouselButton:hover {
-  background: rgba(0, 0, 0, 0.8);
-  transform: translateY(-50%) scale(1.1);
-}
-
-.carouselButtonRight {
-  right: 1rem;
-}
-
-.carouselButton:first-of-type {
-  left: 1rem;
-}
-
-.carouselIndicators {
-  position: absolute;
-  bottom: 1rem;
-  left: 50%;
-  transform: translateX(-50%);
-  display: flex;
-  gap: 0.5rem;
-  z-index: 10;
-}
-
-.indicator {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  border: none;
-  background: rgba(255, 255, 255, 0.4);
-  cursor: pointer;
-  transition: all 0.3s ease;
-  padding: 0;
-}
-
-.indicatorActive {
-  background: #ffffff;
-  width: 24px;
-  border-radius: 4px;
-}
-
-.heroContent {
-  text-align: left;
+  flex-direction: column;
+  gap: 2rem;
+  max-width: 900px;
 }
 
 .heroTitle {
-  font-family: var(--font-primary, 'Inter', sans-serif);
-  font-size: 3.5rem;
+  font-family: 'Inter', sans-serif;
+  font-size: 6rem;
   font-weight: 900;
-  margin-bottom: 1rem;
+  line-height: 1;
+  letter-spacing: -0.03em;
+  text-transform: uppercase;
+  margin: 0;
   color: var(--text-primary);
-  letter-spacing: -0.02em;
 }
 
-.heroStack {
-  font-family: var(--font-secondary, 'Inter', sans-serif);
-  font-size: 1.1rem;
+.heroMeta {
+  display: flex;
+  align-items: center;
+  gap: 2rem;
+  flex-wrap: wrap;
+}
+
+.projectStack {
+  font-family: 'Inter', sans-serif;
   color: var(--text-secondary);
-  font-weight: 400;
-  margin-bottom: 1.5rem;
+  font-size: 1rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  font-weight: 500;
 }
 
 .liveLinkButton {
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
-  padding: 12px 24px;
-  background-color: var(--accent-primary);
-  color: #ffffff;
+  padding: 14px 36px;
+  background-color: transparent;
+  color: var(--text-primary);
+  border: 2px solid var(--text-primary);
   text-decoration: none;
-  border-radius: 8px;
+  border-radius: 100px;
+  font-family: 'Inter', sans-serif;
   font-weight: 600;
-  font-size: 0.95rem;
+  text-transform: uppercase;
+  font-size: 0.9rem;
+  letter-spacing: 0.05em;
   transition: all 0.3s ease;
-  margin-top: 1rem;
 }
 
 .liveLinkButton:hover {
-  background-color: var(--accent-secondary);
+  background-color: var(--text-primary);
+  color: var(--bg-primary);
   transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(255, 69, 32, 0.4);
 }
 
-.section {
-  margin-bottom: 4rem;
+.heroImageContainer {
+  width: 100%;
+  border-radius: 24px;
+  overflow: hidden;
+  background-color: #1a1a1a;
+  box-shadow: 0 30px 80px -20px rgba(0, 0, 0, 0.6);
+  position: relative;
+  aspect-ratio: 16/9;
+  /* Orange gradient background behind the image */
+  background: 
+    radial-gradient(circle at 50% 0%, rgba(255, 69, 32, 0.25) 0%, transparent 70%),
+    radial-gradient(circle at 100% 50%, rgba(255, 69, 32, 0.15) 0%, transparent 60%),
+    #1a1a1a;
+}
+
+.heroImage {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  position: relative;
+  z-index: 1;
+}
+
+/* Content Sections */
+.contentGrid {
+  display: grid;
+  grid-template-columns: 1fr 1.5fr;
+  gap: 4rem;
+  margin-bottom: 6rem;
 }
 
 .sectionTitle {
-  font-family: var(--font-primary, 'Inter', sans-serif);
-  font-size: 2rem;
-  font-weight: 800;
-  margin-bottom: 1.5rem;
+  font-family: 'Inter', sans-serif;
+  font-size: 1.5rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  margin-bottom: 1rem;
   color: var(--text-primary);
-  letter-spacing: -0.01em;
+  position: sticky;
+  top: 100px;
+  align-self: start;
 }
 
 .sectionContent {
-  color: var(--text-secondary);
+  font-size: 1.1rem;
   line-height: 1.7;
+  color: var(--text-secondary);
 }
 
 .text {
-  font-size: 1.1rem;
-  margin-bottom: 1rem;
+  margin-bottom: 1.5rem;
 }
 
 .improvementsList {
@@ -229,38 +199,45 @@
   margin: 0;
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: 1.25rem;
 }
 
 .improvementItem {
-  font-size: 1.05rem;
   padding-left: 1.5rem;
   position: relative;
+  font-size: 1.05rem;
 }
 
 .improvementItem::before {
-  content: '→';
+  content: '—';
   position: absolute;
   left: 0;
-  color: var(--accent-primary);
+  color: var(--text-primary);
   font-weight: 700;
 }
 
 .workGrid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  grid-template-columns: repeat(2, 1fr);
   gap: 2rem;
 }
 
 .workItem {
-  padding: 1.5rem;
   background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  padding: 2rem;
+  transition: all 0.3s ease;
+}
+
+.workItem:hover {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.12);
+  transform: translateY(-2px);
 }
 
 .workTitle {
-  font-family: var(--font-primary, 'Inter', sans-serif);
+  font-family: 'Inter', sans-serif;
   font-size: 1.25rem;
   font-weight: 700;
   margin-bottom: 0.75rem;
@@ -273,66 +250,36 @@
   line-height: 1.6;
 }
 
-/* Light Mode Overrides */
-body[data-theme='light'] .page {
-  background-color: var(--bg-primary);
-}
-
-body[data-theme='light'] .heroTitle,
-body[data-theme='light'] .sectionTitle,
-body[data-theme='light'] .workTitle {
-  color: #000000;
-}
-
-body[data-theme='light'] .text,
-body[data-theme='light'] .improvementItem,
-body[data-theme='light'] .workDescription {
-  color: #444;
-}
-
-/* Responsive */
-@media (max-width: 768px) {
-  .page {
-    padding-top: 50px;
-  }
-
-  .container {
-    padding-top: 1.5rem;
-    margin-top: 0.5rem;
-  }
-
+@media (max-width: 1024px) {
   .heroTitle {
-    font-size: 2.5rem;
+    font-size: 4rem;
   }
-
+  
+  .contentGrid {
+    grid-template-columns: 1fr;
+    gap: 2rem;
+  }
+  
   .sectionTitle {
-    font-size: 1.75rem;
+    position: static;
+    margin-bottom: 1.5rem;
   }
+}
 
-  .carouselContainer {
-    height: 350px;
+@media (max-width: 768px) {
+  .heroTitle {
+    font-size: 3rem;
   }
-
-  .carouselButton {
-    width: 40px;
-    height: 40px;
-  }
-
-  .carouselButton:first-of-type {
-    left: 0.5rem;
-  }
-
-  .carouselButtonRight {
-    right: 0.5rem;
-  }
-
+  
   .workGrid {
     grid-template-columns: 1fr;
   }
-
-  .liveLinkButton {
-    padding: 10px 20px;
-    font-size: 0.85rem;
+  
+  .container {
+    padding: 0 1.5rem;
+  }
+  
+  .heroImageContainer {
+    border-radius: 16px;
   }
 }
-

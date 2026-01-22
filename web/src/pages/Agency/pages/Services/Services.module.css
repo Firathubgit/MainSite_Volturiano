@@ -51,7 +51,7 @@
 .headerContainer {
   max-width: 1200px;
   margin: 0 auto;
-  padding: 0 20px 40px; /* Reduced bottom padding */
+  padding: 0 20px 40px;
   text-align: center;
 }
 
@@ -73,23 +73,23 @@
 }
 
 .sectionWrapper {
-  margin-bottom: 40px; /* Reduced spacing */
+  margin-bottom: 80px; /* Increased spacing to separate from cards */
 }
 
 .detailsContainer {
-  max-width: 1200px;
+  max-width: 1400px; /* Wider container for more air */
   margin: 0 auto;
-  padding: 0 20px;
+  padding: 0 40px;
 }
 
 .detailsGrid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 40px;
+  gap: 60px; /* Large gap for separation without borders */
 }
 
 .detailsGridMobile {
-  display: none; /* Hidden on desktop */
+  display: none;
 }
 
 .detailItemWrapper {
@@ -97,40 +97,42 @@
 }
 
 .detailItem {
-  padding: 30px; /* Reduced padding */
-  background: linear-gradient(145deg, rgba(255, 255, 255, 0.03) 0%, rgba(255, 255, 255, 0.01) 100%);
-  border: 1px solid var(--border-color-subtle);
-  border-radius: 24px;
-  backdrop-filter: blur(20px);
-  transition: transform 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+  padding: 40px; /* Padding for content inside border */
+  background: transparent;
+  border: 2px solid rgba(255, 255, 255, 0.15); /* Broader border line */
+  border-radius: 0; /* Square corners */
   height: 100%;
   display: flex;
   flex-direction: column;
   width: 100%;
+  position: relative;
+  transition: border-color 0.3s ease;
 }
 
 .detailItem:hover {
-  transform: translateY(-5px);
-  border-color: rgba(255, 69, 32, 0.3);
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+  border-color: rgba(255, 255, 255, 0.4); /* Highlight border on hover */
 }
 
 .detailTitle {
   font-family: var(--font-primary, 'Inter', sans-serif);
-  font-size: 1.25rem;
-  font-weight: 700;
-  margin-bottom: 16px;
-  color: var(--accent-primary);
+  font-size: 1.1rem; /* Smaller, more elegant */
+  font-weight: 500;
+  margin-bottom: 24px;
+  color: var(--text-primary);
   text-transform: uppercase;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.15em; /* Tracking for premium feel */
+  opacity: 0.9;
 }
 
 .detailDescription {
-  font-size: 1.05rem;
-  color: var(--text-secondary);
-  margin-bottom: 32px;
-  line-height: 1.7;
-  flex-grow: 1; /* Pushes features to bottom if needed, or keeps spacing consistent */
+  font-family: var(--font-secondary, 'Inter', sans-serif);
+  font-size: 1.25rem; /* Larger reading size */
+  font-weight: 300; /* Light weight */
+  color: rgba(255, 255, 255, 0.7);
+  margin-bottom: 48px;
+  line-height: 1.6;
+  flex-grow: 1;
+  max-width: 90%; /* Prevent full width for better readability */
 }
 
 .featureList {
@@ -140,53 +142,52 @@
   display: flex;
   flex-direction: column;
   gap: 16px;
-  border-top: 1px solid var(--border-color-subtle);
+  border-top: 1px solid rgba(255, 255, 255, 0.1); /* Very subtle divider, can remove if too much */
   padding-top: 24px;
 }
 
 .featureItem {
   display: flex;
-  align-items: flex-start;
-  gap: 12px;
-  font-size: 0.95rem;
-  color: var(--text-primary);
+  align-items: center;
+  gap: 0; /* No gap needed as no icon */
+  font-family: var(--font-secondary, 'Inter', sans-serif);
+  font-size: 1rem;
+  color: rgba(255, 255, 255, 0.5); /* Muted color */
   line-height: 1.5;
+  transition: color 0.3s ease;
 }
 
+.detailItem:hover .featureItem {
+  color: rgba(255, 255, 255, 0.9); /* Highlight on hover */
+}
+
+/* Removed ::before completely for no dots/emojis */
 .featureItem::before {
-  content: '✓';
-  color: var(--accent-primary);
-  font-weight: 900;
-  margin-top: 2px; /* Align with text */
+  display: none;
 }
 
 /* Light Mode Overrides */
 body[data-theme='light'] .page {
   background-color: var(--bg-primary);
 }
-
-body[data-theme='light'] .title {
-  color: #000000;
+body[data-theme='light'] .detailTitle {
+  color: #000;
 }
-
-body[data-theme='light'] .subtitle {
-  color: #000000;
-}
-
-body[data-theme='light'] .detailItem {
-  background: rgba(0, 0, 0, 0.03);
-  border-color: rgba(0, 0, 0, 0.1);
-}
-
 body[data-theme='light'] .detailDescription {
-  color: #444;
+  color: #333;
+}
+body[data-theme='light'] .featureList {
+  border-top-color: rgba(0, 0, 0, 0.1);
+}
+body[data-theme='light'] .featureItem {
+  color: rgba(0, 0, 0, 0.6);
 }
 
 /* Responsive */
 @media (max-width: 1024px) {
   .detailsGrid {
     grid-template-columns: repeat(2, 1fr);
-    gap: 30px;
+    gap: 40px;
   }
 }
 
@@ -199,16 +200,8 @@ body[data-theme='light'] .detailDescription {
     font-size: 2.5rem;
   }
   
-  .subtitle {
-    font-size: 1.125rem;
-  }
-
-  .sectionWrapper {
-    margin-bottom: 30px; /* Even less spacing on mobile */
-  }
-
-  .headerContainer {
-    padding: 0 20px 30px; /* Reduced padding on mobile */
+  .detailsContainer {
+    padding: 0 20px;
   }
 
   /* Hide desktop grid on mobile */
@@ -218,15 +211,24 @@ body[data-theme='light'] .detailDescription {
 
   /* Show mobile grid on mobile */
   .detailsGridMobile {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    gap: 0;
-    position: relative;
+    display: block; /* Standard block for mobile slider if needed, or flex */
+    width: 100%;
   }
 
   .detailItem {
-    padding: 24px; /* Less padding on mobile */
+    padding: 30px; /* Restore padding inside the border for mobile */
+    max-width: 100%;
+    border-width: 1px; /* Slightly thinner border on mobile for elegance */
+  }
+  
+  .detailTitle {
+    font-size: 1rem; /* Slightly smaller title on mobile */
+    margin-bottom: 20px;
+  }
+
+  .detailDescription {
+    font-size: 1.1rem; /* Slightly smaller text for better flow */
+    margin-bottom: 32px;
     max-width: 100%;
   }
 }

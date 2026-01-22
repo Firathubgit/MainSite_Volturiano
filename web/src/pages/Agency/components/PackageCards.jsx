@@ -188,9 +188,8 @@ export function PackageCards({ onOpenContact, onActiveIndexChange }) {
                 handleMouseMove(e, pkg.id);
               }}
               onMouseLeave={() => handleMouseLeave(pkg.id)}
-              onClick={() => handleCardClick(pkg)}
-              role="button"
-              tabIndex={0}
+              role="presentation"
+              tabIndex={-1}
             >
               <div className={styles.cardInner}>
                 <div className={styles.shine} />

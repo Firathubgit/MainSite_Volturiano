@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronLeft, ChevronRight, ExternalLink } from 'lucide-react';
+import { ExternalLink, ArrowLeft } from 'lucide-react';
 import { ThemeProvider, useTheme } from '../../../context/ThemeContext';
 import { NavBar } from '../../../../../components/NavBar/NavBar';
 import { Footer } from '../../../components/Footer';
@@ -11,46 +11,47 @@ import VisionDump from '../../../../../components/VisionDump/VisionDump';
 import styles from './CaseStudy.module.css';
 
 // Import project images
-import furgloveThumbnail from '../../../../../assets/FurGloveThhumnail.png';
-import furglove2 from '../../../../../assets/Furglove2.png';
-import furglove3 from '../../../../../assets/Furglove3.png';
-import euroTaxi1 from '../../../../../assets/EuroTaxi1.png';
-import euroTaxi2 from '../../../../../assets/Eurotaxi2.png';
-import euroTaxi3 from '../../../../../assets/EuroTaxi3.png';
+import furgloveThumbnail from '../../../../../assets/FurGloveExample.png';
+import euroTaxiThumbnail from '../../../../../assets/EuroTaxiExample.png';
+import volturianoAgencyMockup from '../../../../../assets/VolturianoAgencyMockupExample.png';
 import replacementImage from '../../../../../assets/Replacement image.png';
 
+// Fallback images if needed, though we seem to have one main image per project now in the examples
+// I'll use the example images as the main hero images.
+
 const ProjectsData = {
+  'volturiano': {
+    id: 'volturiano',
+    thumbnail: volturianoAgencyMockup,
+    images: [volturianoAgencyMockup],
+    // Title/Stack will be pulled from i18n
+    liveUrl: 'https://volturiano.com/agency'
+  },
   'furglove-pro': {
     id: 'furglove-pro',
     thumbnail: furgloveThumbnail,
-    images: [furgloveThumbnail, furglove2, furglove3],
-    title: 'FurGlove Pro',
-    stack: 'React | TypeScript | Next.js | Tailwind CSS',
+    images: [furgloveThumbnail],
     liveUrl: 'https://furglove-pro.vercel.app/'
   },
   'euro-taxi': {
     id: 'euro-taxi',
-    thumbnail: euroTaxi1,
-    images: [euroTaxi1, euroTaxi2, euroTaxi3],
-    title: 'Euro Taxi',
-    stack: 'React | TypeScript | Next.js | Tailwind CSS | Leaflet',
+    thumbnail: euroTaxiThumbnail,
+    images: [euroTaxiThumbnail],
     liveUrl: 'https://euro-taxi-as.vercel.app/#/'
   },
   'replacement-project-1': {
     id: 'replacement-project-1',
     thumbnail: replacementImage,
     images: [replacementImage],
-    title: 'Replacement Project',
-    stack: 'Personal Replacement Project Page',
-    liveUrl: null
+    liveUrl: null,
+    isPlaceholder: true
   },
   'replacement-project-2': {
     id: 'replacement-project-2',
     thumbnail: replacementImage,
     images: [replacementImage],
-    title: 'Replacement Project',
-    stack: 'Personal Replacement Project Page',
-    liveUrl: null
+    liveUrl: null,
+    isPlaceholder: true
   },
 };
 
@@ -59,7 +60,6 @@ function CaseStudyContent() {
   const navigate = useNavigate();
   const { t } = useTranslation(['agency', 'common']);
   const { theme } = useTheme();
-  const [currentImageIndex, setCurrentImageIndex] = useState(0);
   
   const project = ProjectsData[projectId];
 
@@ -75,7 +75,18 @@ function CaseStudyContent() {
     }
   }, [project, navigate]);
 
-  usePageTitle(`${project?.title || 'Case Study'} | Volturio Studios – Webbyrå i Göteborg`);
+  // Get project details from i18n
+  // Use selectedWork keys for title/category (stack)
+  // Use caseStudy keys for overview/improvements/doneWork
+  const projectTitle = project?.isPlaceholder 
+    ? t('references.replacementProject', 'Replacement Project')
+    : t(`selectedWork.projects.${projectId}.title`, project?.title);
+    
+  const projectStack = project?.isPlaceholder
+    ? t('references.replacementProjectPage', 'Concept')
+    : t(`selectedWork.projects.${projectId}.category`, project?.stack);
+
+  usePageTitle(`${projectTitle || 'Case Study'} | Volturio Studios`);
 
   useEffect(() => {
     document.body.setAttribute('data-theme', theme);
@@ -83,14 +94,6 @@ function CaseStudyContent() {
       document.body.removeAttribute('data-theme');
     };
   }, [theme]);
-
-  const nextImage = () => {
-    setCurrentImageIndex((prev) => (prev + 1) % project.images.length);
-  };
-
-  const prevImage = () => {
-    setCurrentImageIndex((prev) => (prev - 1 + project.images.length) % project.images.length);
-  };
 
   if (!project) {
     return null;
@@ -109,7 +112,8 @@ function CaseStudyContent() {
         <div className={styles.container}>
           {/* Back Button */}
           <Link to="/agency/references" className={styles.backButton}>
-            ← {t('common:previous', 'Previous')}
+            <ArrowLeft size={16} />
+            <span>{t('common:backToArchive', 'Back to Archive')}</span>
           </Link>
 
           {/* Hero Section */}
@@ -119,134 +123,77 @@ function CaseStudyContent() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8 }}
           >
-            {/* Image Carousel */}
-            <div className={styles.carouselWrapper}>
-              <div className={styles.carouselContainer}>
-                <AnimatePresence mode="wait">
-                  <motion.img
-                    key={currentImageIndex}
-                    src={project.images[currentImageIndex]}
-                    alt={`${project.title} - Image ${currentImageIndex + 1}`}
-                    className={styles.heroImage}
-                    initial={{ opacity: 0, x: 20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    exit={{ opacity: 0, x: -20 }}
-                    transition={{ duration: 0.3 }}
-                  />
-                </AnimatePresence>
+            <div className={styles.heroHeader}>
+              <h1 className={styles.heroTitle}>
+                {projectTitle}
+              </h1>
+              
+              <div className={styles.heroMeta}>
+                <span className={styles.projectStack}>{projectStack}</span>
                 
-                {/* Carousel Controls */}
-                {project.images.length > 1 && (
-                  <>
-                    <button
-                      className={styles.carouselButton}
-                      onClick={prevImage}
-                      aria-label="Previous image"
-                    >
-                      <ChevronLeft size={24} />
-                    </button>
-                    <button
-                      className={`${styles.carouselButton} ${styles.carouselButtonRight}`}
-                      onClick={nextImage}
-                      aria-label="Next image"
-                    >
-                      <ChevronRight size={24} />
-                    </button>
-                    
-                    {/* Carousel Indicators */}
-                    <div className={styles.carouselIndicators}>
-                      {project.images.map((_, index) => (
-                        <button
-                          key={index}
-                          className={`${styles.indicator} ${index === currentImageIndex ? styles.indicatorActive : ''}`}
-                          onClick={() => setCurrentImageIndex(index)}
-                          aria-label={`Go to image ${index + 1}`}
-                        />
-                      ))}
-                    </div>
-                  </>
+                {/* Live Link Button - PREVIEW style */}
+                {project.liveUrl && (
+                  <a
+                    href={project.liveUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={styles.liveLinkButton}
+                  >
+                    <span>{t('caseStudy.viewLive', 'PREVIEW')}</span>
+                  </a>
                 )}
               </div>
             </div>
-            
-            <div className={styles.heroContent}>
-              <h1 className={styles.heroTitle}>
-                {project.id.startsWith('replacement-project') 
-                  ? t('references.replacementProject', 'Replacement Project')
-                  : project.title}
-              </h1>
-              <p className={styles.heroStack}>
-                {project.id.startsWith('replacement-project')
-                  ? t('references.replacementProjectPage', 'Personal Replacement Project Page')
-                  : project.stack}
-              </p>
-              
-              {/* Live Link Button */}
-              {project.liveUrl && (
-                <a
-                  href={project.liveUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className={styles.liveLinkButton}
-                >
-                  <span>{t('caseStudy.viewLive', 'View Live Site')}</span>
-                  <ExternalLink size={18} />
-                </a>
-              )}
+
+            {/* Hero Image with Orange Gradient Background */}
+            <div className={styles.heroImageContainer}>
+              <motion.img
+                src={project.images[0]}
+                alt={projectTitle}
+                className={styles.heroImage}
+                initial={{ scale: 1.05, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                transition={{ duration: 1.2, ease: "easeOut" }}
+              />
             </div>
           </motion.div>
 
           {/* Project Overview */}
-          <motion.section
-            className={styles.section}
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.2 }}
-          >
+          <div className={styles.contentGrid}>
             <h2 className={styles.sectionTitle}>
-              {t('caseStudy.overview', 'Project Overview')}
+              {t('caseStudy.overview', 'Overview')}
             </h2>
             <div className={styles.sectionContent}>
               <p className={styles.text}>
-                {t(`caseStudy.projects.${project.id}.overview`, 'This project showcases our expertise in creating innovative digital solutions. We combined cutting-edge technology with thoughtful design to deliver a product that exceeds expectations.')}
+                {t(`caseStudy.projects.${projectId}.overview`, 'This project represents a comprehensive digital solution, engineered to meet specific business objectives through design and technology.')}
               </p>
             </div>
-          </motion.section>
+          </div>
 
           {/* Improvements */}
-          <motion.section
-            className={styles.section}
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.3 }}
-          >
+          <div className={styles.contentGrid}>
             <h2 className={styles.sectionTitle}>
-              {t('caseStudy.improvements', 'What We Improved')}
+              {t('caseStudy.improvements', 'Key Features')}
             </h2>
             <div className={styles.sectionContent}>
               <ul className={styles.improvementsList}>
-                {(t(`caseStudy.projects.${project.id}.improvements`, { returnObjects: true }) || []).map((improvement, index) => (
+                {(t(`caseStudy.projects.${projectId}.improvements`, { returnObjects: true }) || []).map((improvement, index) => (
                   <li key={index} className={styles.improvementItem}>
                     {improvement}
                   </li>
                 ))}
               </ul>
             </div>
-          </motion.section>
+          </div>
 
           {/* Done Work */}
-          <motion.section
-            className={styles.section}
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.4 }}
-          >
+          <div className={styles.contentGrid}>
             <h2 className={styles.sectionTitle}>
-              {t('caseStudy.doneWork', 'Work Completed')}
+              {t('caseStudy.doneWork', 'Deliverables')}
             </h2>
             <div className={styles.sectionContent}>
               <div className={styles.workGrid}>
-                {(t(`caseStudy.projects.${project.id}.doneWork`, { returnObjects: true }) || []).map((work, index) => (
+                {(t(`caseStudy.projects.${projectId}.doneWork`, { returnObjects: true }) || []).map((work, index) => (
                   <div key={index} className={styles.workItem}>
                     <h3 className={styles.workTitle}>{work.title}</h3>
                     <p className={styles.workDescription}>{work.description}</p>
@@ -254,7 +201,7 @@ function CaseStudyContent() {
                 ))}
               </div>
             </div>
-          </motion.section>
+          </div>
         </div>
       </main>
 
@@ -271,4 +218,3 @@ export default function CaseStudy() {
     </ThemeProvider>
   );
 }
-

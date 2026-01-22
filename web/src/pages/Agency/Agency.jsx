@@ -6,7 +6,8 @@ import { HeroSection, MarqueeTicker } from './components/HeroSection';
 import { ClientLogos } from './components/ClientLogos';
 import { TechTicker } from './components/TechTicker';
 import { ServiceShowcase } from './components/ServiceShowcase';
-import { PortfolioGrid } from './components/PortfolioGrid';
+// import { PortfolioGrid } from './components/PortfolioGrid';
+import { SelectedWork } from './components/SelectedWork';
 import { DeviceShowcase } from './components/DeviceShowcase';
 import { CaseStudy } from './components/CaseStudy';
 import { TeamShowcase } from './components/TeamShowcase';
@@ -259,7 +260,8 @@ function AgencyContent() {
         {/* <ConceptGrid /> */}
         {/* <DeviceShowcase /> */}
         <div ref={portfolioRef}>
-          <PortfolioGrid />
+          <SelectedWork />
+          {/* <PortfolioGrid /> */}
         </div>
 
         {/* TeamShowcase - Commented out for now... */}

@@ -5,15 +5,14 @@ import { motion } from 'framer-motion';
 import { ThemeProvider, useTheme } from '../../context/ThemeContext';
 import { NavBar } from '../../../../components/NavBar/NavBar';
 import { Footer } from '../../components/Footer';
-import { ContactFormModal } from '../../components/modals/ContactFormModal';
-import { DemoRequestModal } from '../../components/modals/DemoRequestModal';
 import { usePageTitle } from '../../../../hooks/usePageTitle';
 import VisionDump from '../../../../components/VisionDump/VisionDump';
 import styles from './References.module.css';
 
 // Import project thumbnails
-import furgloveThumbnail from '../../../../assets/FurGloveThhumnail.png';
-import euroTaxiThumbnail from '../../../../assets/EuroTaxi1.png';
+import furgloveThumbnail from '../../../../assets/FurGloveExample.png';
+import euroTaxiThumbnail from '../../../../assets/EuroTaxiExample.png';
+import volturianoAgencyMockup from '../../../../assets/VolturianoAgencyMockupExample.png';
 import replacementImage from '../../../../assets/Replacement image.png';
 
 function ReferencesContent() {
@@ -21,12 +20,9 @@ function ReferencesContent() {
   const { theme } = useTheme();
   usePageTitle(`${t('agencyMenu.references')} | Volturio Studios – Webbyrå i Göteborg`);
 
-  // Scroll to top on page enter - use immediate scroll
+  // Scroll to top on page enter
   useEffect(() => {
     window.scrollTo(0, 0);
-    // Also reset scroll position immediately
-    document.documentElement.scrollTop = 0;
-    document.body.scrollTop = 0;
   }, []);
 
   // Set theme on body
@@ -37,66 +33,34 @@ function ReferencesContent() {
     };
   }, [theme]);
 
-  // Handle learn more button click - scroll to top immediately
-  const handleLearnMoreClick = (e) => {
-    window.scrollTo(0, 0);
-    document.documentElement.scrollTop = 0;
-    document.body.scrollTop = 0;
-  };
-
-  // Build projects list with Euro Taxi first, then Furglove, then placeholders
+  // Projects List matching SelectedWork structure
   const ProjectsList = [
+    {
+      id: 'volturiano',
+      image: volturianoAgencyMockup,
+      link: '/agency/references/volturiano',
+    },
     {
       id: 'euro-taxi',
       image: euroTaxiThumbnail,
-      title: 'Euro Taxi',
-      stack: 'React | TypeScript | Next.js | Tailwind CSS | Leaflet',
       link: '/agency/references/euro-taxi',
-      liveUrl: 'https://euro-taxi-as.vercel.app/#/',
-      isPlaceholder: false
     },
     {
       id: 'furglove-pro',
       image: furgloveThumbnail,
-      title: 'FurGlove Pro',
-      stack: 'React | TypeScript | Next.js | Tailwind CSS',
       link: '/agency/references/furglove-pro',
-      liveUrl: 'https://furglove-pro.vercel.app/',
-      isPlaceholder: false
     },
     {
       id: 'replacement-project-1',
       image: replacementImage,
-      title: t('references.replacementProject', 'Replacement Project'),
-      stack: t('references.replacementProjectPage', 'Personal Replacement Project Page'),
       link: '/agency/references/replacement-project-1',
       isPlaceholder: true
     },
     {
       id: 'replacement-project-2',
       image: replacementImage,
-      title: t('references.replacementProject', 'Replacement Project'),
-      stack: t('references.replacementProjectPage', 'Personal Replacement Project Page'),
       link: '/agency/references/replacement-project-2',
       isPlaceholder: true
-    },
-    {
-      id: 'empty-card-1',
-      image: null,
-      title: '',
-      stack: '',
-      link: null,
-      isPlaceholder: true,
-      isEmpty: true
-    },
-    {
-      id: 'empty-card-2',
-      image: null,
-      title: '',
-      stack: '',
-      link: null,
-      isPlaceholder: true,
-      isEmpty: true
     }
   ];
 
@@ -121,48 +85,51 @@ function ReferencesContent() {
           </motion.h1>
 
           <div className={styles.grid}>
-            {ProjectsList.map((project, index) => (
-              <motion.div 
-                key={project.id}
-                className={styles.projectItem}
-                initial={{ opacity: 0, y: 30 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.6, delay: index * 0.1 }}
-              >
-                {project.isEmpty ? (
-                  // Empty card - just show empty card styling
-                  <div className={styles.projectImageWrapper}>
-                    <div className={styles.gradientOverlay}></div>
-                  </div>
-                ) : (
-                  <>
-                    <div className={styles.projectImageWrapper}>
-                      {project.image ? (
-                        <img src={project.image} alt={project.title} className={styles.projectImage} />
-                      ) : (
-                        <div className={styles.projectImage} style={{ backgroundColor: '#1a1a1a' }}></div>
-                      )}
-                      <div className={styles.gradientOverlay}></div>
+            {ProjectsList.map((project, index) => {
+              // Determine keys. For placeholders, fall back or use specific logic if needed.
+              // We'll try to look up in selectedWork first, then fall back to generic.
+              const isRealProject = !project.isPlaceholder;
+              
+              let title, category;
+              
+              if (isRealProject) {
+                 title = t(`selectedWork.projects.${project.id}.title`, project.id);
+                 category = t(`selectedWork.projects.${project.id}.category`, '');
+              } else {
+                 title = t('references.replacementProject', 'Replacement Project');
+                 category = t('references.replacementProjectPage', 'Concept');
+              }
+
+              return (
+                <Link
+                  key={project.id}
+                  to={project.link}
+                  className={styles.cardLink}
+                  onClick={() => window.scrollTo(0, 0)}
+                >
+                  <motion.div 
+                    className={styles.card}
+                    initial={{ opacity: 0, y: 30 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ duration: 0.6, delay: index * 0.1 }}
+                  >
+                    <div className={styles.imageContainer}>
+                      <img 
+                        src={project.image} 
+                        alt={title} 
+                        className={styles.image}
+                      />
                     </div>
 
-                    <div className={styles.projectContent}>
-                      <h3 className={styles.projectTitle}>{project.title}</h3>
-                      <p className={styles.projectStack}>{project.stack}</p>
-                      {project.link ? (
-                        <Link 
-                          to={project.link} 
-                          className={styles.learnMoreButton}
-                          onClick={handleLearnMoreClick}
-                        >
-                          <span>{t('common:learnMore', 'Learn more')}</span>
-                        </Link>
-                      ) : null}
+                    <div className={styles.info}>
+                      <h3 className={styles.projectTitle}>{title}</h3>
+                      <span className={styles.projectCategory}>{category}</span>
                     </div>
-                  </>
-                )}
-              </motion.div>
-            ))}
+                  </motion.div>
+                </Link>
+              );
+            })}
           </div>
         </div>
       </main>
@@ -180,4 +147,3 @@ export default function References() {
     </ThemeProvider>
   );
 }
-

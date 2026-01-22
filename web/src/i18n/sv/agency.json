@@ -19,6 +19,24 @@
     "clients": ["VOLTURIANO", "PREMIUM VARUMÄRKEN", "WEBBYRÅ GÖTEBORG", "INVESTOR KLASS", "DIGITAL ATELJÉ"],
     "logoAlt": "Klientlogotyp {{index}}"
   },
+  "selectedWork": {
+    "title": "Project exemplar",
+    "showAll": "[ VISA ALLA ]",
+    "projects": {
+      "volturiano": {
+        "title": "Volturio Studios",
+        "category": "WEBBYRÅ PORTFOLIO"
+      },
+      "euro-taxi": {
+        "title": "Euro Taxi",
+        "category": "TRANSPORTTJÄNST"
+      },
+      "furglove-pro": {
+        "title": "Fur Glove",
+        "category": "E-HANDELSPRODUKT"
+      }
+    }
+  },
   "portfolio": {
     "label": "UTVALT ARBETE",
     "title": "Fallstudier",
@@ -522,6 +540,33 @@
           }
         ]
       },
+      "volturiano": {
+        "overview": "Volturio Studios är vår egen premium webbyrå-portfolio som visar vår expertis inom att skapa moderna, högpresterande digitala upplevelser. Denna webbplats demonstrerar våra kapaciteter inom lyxig UI-design, avancerad webbutveckling och immersiva 3D-upplevelser.",
+        "improvements": [
+          "Skapade ett sofistikerat mörkt designsystem med temaväxling",
+          "Implementerade mjuka animationer och övergångar med Framer Motion",
+          "Byggde en omfattande portfoliovisning med fallstudiesidor",
+          "Utvecklade responsiva layouter optimerade för alla enhetsstorlekar"
+        ],
+        "doneWork": [
+          {
+            "title": "Webbyrå Portfolio-webbplats",
+            "description": "Komplett portfolio-webbplats byggd med React, TypeScript och Next.js som visar våra tjänster och projekt"
+          },
+          {
+            "title": "Temasystem",
+            "description": "Anpassat temakontext med mörkt/ljust läge och mjuka övergångar"
+          },
+          {
+            "title": "Fallstudiesidor",
+            "description": "Detaljerade projektvisningssidor med bildkaruseller och omfattande projektinformation"
+          },
+          {
+            "title": "UI/UX Design",
+            "description": "Premium designsystem med modern estetik, mjuka animationer och intuitiv navigering"
+          }
+        ]
+      },
       "replacement-project-1": {
         "overview": "Detta är en ersättningsprojektplatshållare som visar våra kapaciteter. Detta projekt representerar vårt engagemang för att leverera kvalitativa digitala lösningar.",
         "improvements": [
@@ -562,6 +607,17 @@
   },
   "services": {
     "title": "Våra Tjänster",
-    "subtitle": "Omfattande digitala lösningar för moderna företag."
+    "subtitle": "Omfattande digitala lösningar för moderna företag.",
+    "items": {
+      "luxury-ui-design": {
+        "description": "Premiumgränssnitt designade för att fängsla och konvertera. Vi fokuserar på estetik, användbarhet och varumärkesanpassning för att skapa digitala upplevelser som lämnar ett bestående intryck."
+      },
+      "3d-configurators": {
+        "description": "Interaktiva 3D-upplevelser som låter kunder anpassa produkter i realtid. Öka engagemang och försäljning med immersiv produktvisualisering."
+      },
+      "fullstack-websites": {
+        "description": "Robusta, skalbara och högpresterande webbplatser byggda med modern teknik. Från backend-logik till frontend-finess, vi hanterar hela stacken."
+      }
+    }
   }
 }

@@ -12,22 +12,25 @@ import projectStrat from '../../../assets/FurGloveExample.png';
 export function SelectedWork() {
   const { t } = useTranslation('agency');
 
-  // Projects with i18n support and proper routing
+  // Projects with direct live links
   const selectedProjects = [
     {
       id: 'volturiano',
       image: projectRocket,
-      link: '/agency/references/volturiano'
+      link: '/agency', // Links to home/agency page itself
+      external: false
     },
     {
       id: 'euro-taxi',
       image: projectSaas,
-      link: '/agency/references/euro-taxi'
+      link: 'https://euro-taxi-as.vercel.app/#/',
+      external: true
     },
     {
       id: 'furglove-pro',
       image: projectStrat,
-      link: '/agency/references/furglove-pro'
+      link: 'https://furglove-pro.vercel.app/',
+      external: true
     }
   ];
 
@@ -46,35 +49,53 @@ export function SelectedWork() {
             const titleKey = `selectedWork.projects.${project.id}.title`;
             const categoryKey = `selectedWork.projects.${project.id}.category`;
             
+            const content = (
+              <motion.div
+                className={styles.card}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: index * 0.1 }}
+              >
+                <div className={styles.imageContainer}>
+                  <img 
+                    src={project.image} 
+                    alt={t(titleKey, project.id)} 
+                    className={styles.image}
+                  />
+                </div>
+                <div className={styles.info}>
+                  <h3 className={styles.title}>
+                    {t(titleKey, project.id)}
+                  </h3>
+                  <span className={styles.category}>
+                    {t(categoryKey, '')}
+                  </span>
+                </div>
+              </motion.div>
+            );
+
+            if (project.external) {
+              return (
+                <a
+                  key={project.id}
+                  href={project.link}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={styles.cardLink}
+                >
+                  {content}
+                </a>
+              );
+            }
+
             return (
               <Link
                 key={project.id}
                 to={project.link}
                 className={styles.cardLink}
               >
-                <motion.div
-                  className={styles.card}
-                  initial={{ opacity: 0, y: 20 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ delay: index * 0.1 }}
-                >
-                  <div className={styles.imageContainer}>
-                    <img 
-                      src={project.image} 
-                      alt={t(titleKey, project.id)} 
-                      className={styles.image}
-                    />
-                  </div>
-                  <div className={styles.info}>
-                    <h3 className={styles.title}>
-                      {t(titleKey, project.id)}
-                    </h3>
-                    <span className={styles.category}>
-                      {t(categoryKey, '')}
-                    </span>
-                  </div>
-                </motion.div>
+                {content}
               </Link>
             );
           })}

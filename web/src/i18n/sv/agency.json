@@ -472,10 +472,22 @@
     "subtitle": "Digitalt hantverk baserat i Göteborg.",
     "storyTitle": "Vår Historia",
     "storyText": "Volturiano startade med ett enkelt uppdrag: att bygga digitala upplevelser som betyder något. Vi kombinerar teknisk excellens med konstnärlig vision för att hjälpa varumärken att sticka ut i ett trångt digitalt landskap.",
-    "philosophy": "Vi tror på ren kod, djärv design och användarcentrerade strategier. Varje pixel har ett syfte, varje interaktion är skapad med omsorg."
+    "philosophy": "Vi tror på ren kod, djärv design och användarcentrerade strategier. Varje pixel har ett syfte, varje interaktion är skapad med omsorg.",
+    "comingSoon": "Kommer Snart",
+    "comingSoonTagline": "Magi Undergång",
+    "timer": {
+      "days": "Dagar",
+      "hours": "Timmar",
+      "minutes": "Min",
+      "seconds": "Sek"
+    }
   },
   "references": {
-    "title": "Några av våra arbeten",
+    "title": "Premium",
+    "titleSuffix": "websidor,",
+    "titleSuffix2": "Alla Exemplar",
+    "allProjects": "Alla Projekt",
+    "createYourOwn": "[ SKAPA DITT EGNA ]",
     "replacementProject": "Ersättningsprojekt",
     "replacementProjectPage": "Personlig Ersättningsprojektsida",
     "replacementLearnMore": "Ersättning Läs Mer"

@@ -472,10 +472,22 @@
     "subtitle": "Digital craftsmanship based in Gothenburg.",
     "storyTitle": "Our Story",
     "storyText": "Volturiano started with a simple mission: to build digital experiences that matter. We combine technical excellence with artistic vision to help brands stand out in a crowded digital landscape.",
-    "philosophy": "We believe in clean code, bold design, and user-centric strategies. Every pixel has a purpose, every interaction is crafted with care."
+    "philosophy": "We believe in clean code, bold design, and user-centric strategies. Every pixel has a purpose, every interaction is crafted with care.",
+    "comingSoon": "Coming Soon",
+    "comingSoonTagline": "Magic is happening",
+    "timer": {
+      "days": "Days",
+      "hours": "Hours",
+      "minutes": "Mins",
+      "seconds": "Secs"
+    }
   },
   "references": {
-    "title": "Some of our work",
+    "title": "Premium",
+    "titleSuffix": "websites,",
+    "titleSuffix2": "All Exemplars",
+    "allProjects": "All Projects",
+    "createYourOwn": "[ CREATE YOUR OWN ]",
     "replacementProject": "Replacement Project",
     "replacementProjectPage": "Personal Replacement Project Page",
     "replacementLearnMore": "Replacement Learn More"

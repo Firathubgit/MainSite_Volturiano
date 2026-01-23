@@ -6,7 +6,6 @@ import { ThemeProvider, useTheme } from '../../context/ThemeContext';
 import { NavBar } from '../../../../components/NavBar/NavBar';
 import { Footer } from '../../components/Footer';
 import { usePageTitle } from '../../../../hooks/usePageTitle';
-import VisionDump from '../../../../components/VisionDump/VisionDump';
 import styles from './References.module.css';
 
 // Import project thumbnails
@@ -14,6 +13,8 @@ import furgloveThumbnail from '../../../../assets/FurGloveExample.png';
 import euroTaxiThumbnail from '../../../../assets/EuroTaxiExample.png';
 import volturianoAgencyMockup from '../../../../assets/VolturianoAgencyMockupExample.png';
 import replacementImage from '../../../../assets/Replacement image.png';
+import heroVideo from '../../../../assets/Make_a_video_1080p_202601231618.mp4';
+import tornadoLogo from '../../../../assets/Logo/TornadoLogo.png';
 
 function ReferencesContent() {
   const { t } = useTranslation(['agency', 'common']);
@@ -66,23 +67,43 @@ function ReferencesContent() {
 
   return (
     <div className={styles.page} data-theme={theme}>
-      <div className={styles.backgroundEffects}>
-        <div className={styles.gridPattern} />
-        <div className={styles.vignette} />
-      </div>
-
       <NavBar />
       
       <main className={styles.main}>
-        <div className={styles.container}>
-          <motion.h1 
-            className={styles.title}
+        <div className={styles.heroSection}>
+          <video
+            className={styles.heroVideo}
+            autoPlay
+            loop
+            muted
+            playsInline
+          >
+            <source src={heroVideo} type="video/mp4" />
+          </video>
+          <motion.div
+            className={styles.heroContent}
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8 }}
           >
-            {t('references.title', 'Some of our work')}
-          </motion.h1>
+            <h2 className={styles.heroLabel}>{t('selectedWork.title', 'Project exemplar')}</h2>
+            <h1 className={styles.heroTitle}>
+              {t('references.title', 'Premium')}{' '}
+              <img src={tornadoLogo} alt="Volturiano" className={styles.logoImage} />{' '}
+              {t('references.titleSuffix', 'websidor,')}
+              <br />
+              {t('references.titleSuffix2', 'Alla Exemplar')}
+            </h1>
+          </motion.div>
+        </div>
+
+        <div className={styles.container}>
+          <div className={styles.sectionHeader}>
+            <h2 className={styles.sectionTitle}>{t('references.allProjects', 'All Projects')}</h2>
+            <Link to="/agency/contact" className={styles.createLink}>
+              {t('references.createYourOwn', '[ CREATE YOUR OWN ]')}
+            </Link>
+          </div>
 
           <div className={styles.grid}>
             {ProjectsList.map((project, index) => {
@@ -135,7 +156,6 @@ function ReferencesContent() {
       </main>
 
       <Footer />
-      <VisionDump />
     </div>
   );
 }

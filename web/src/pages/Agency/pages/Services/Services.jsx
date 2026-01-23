@@ -6,7 +6,6 @@ import { NavBar } from '../../../../components/NavBar/NavBar';
 import { Footer } from '../../components/Footer';
 import { PackageCards } from '../../components/PackageCards';
 import { usePageTitle } from '../../../../hooks/usePageTitle';
-import VisionDump from '../../../../components/VisionDump/VisionDump';
 import styles from './Services.module.css';
 
 const PackageDetailItem = ({ title, description, features }) => (
@@ -134,7 +133,6 @@ function ServicesContent() {
       </main>
 
       <Footer />
-      <VisionDump />
     </div>
   );
 }

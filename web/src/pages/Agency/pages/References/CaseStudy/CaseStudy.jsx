@@ -7,7 +7,6 @@ import { ThemeProvider, useTheme } from '../../../context/ThemeContext';
 import { NavBar } from '../../../../../components/NavBar/NavBar';
 import { Footer } from '../../../components/Footer';
 import { usePageTitle } from '../../../../../hooks/usePageTitle';
-import VisionDump from '../../../../../components/VisionDump/VisionDump';
 import styles from './CaseStudy.module.css';
 
 // Import project images
@@ -206,7 +205,6 @@ function CaseStudyContent() {
       </main>
 
       <Footer />
-      <VisionDump />
     </div>
   );
 }

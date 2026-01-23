@@ -1,16 +1,68 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { motion } from 'framer-motion';
 import { ThemeProvider, useTheme } from '../../context/ThemeContext';
 import { NavBar } from '../../../../components/NavBar/NavBar';
 import { Footer } from '../../components/Footer';
-import { TeamShowcase } from '../../components/TeamShowcase';
 import { usePageTitle } from '../../../../hooks/usePageTitle';
-import VisionDump from '../../../../components/VisionDump/VisionDump';
 import styles from './About.module.css';
 
-// Using a placeholder image for the story section if needed, or just clean typography
-import officeImage from '../../../../assets/H1/Rectangle 11.png';
+// Countdown Component styled like the requested design
+const Countdown = () => {
+  const { t } = useTranslation('agency');
+  const [timeLeft, setTimeLeft] = useState({
+    days: 14,
+    hours: 12,
+    minutes: 45,
+    seconds: 30
+  });
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setTimeLeft(prev => {
+        if (prev.seconds > 0) return { ...prev, seconds: prev.seconds - 1 };
+        if (prev.minutes > 0) return { ...prev, minutes: prev.minutes - 1, seconds: 59 };
+        if (prev.hours > 0) return { ...prev, hours: prev.hours - 1, minutes: 59, seconds: 59 };
+        if (prev.days > 0) return { ...prev, days: prev.days - 1, hours: 23, minutes: 59, seconds: 59 };
+        return prev;
+      });
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  return (
+    <div className={styles.timerContainer}>
+      <div className={styles.timerInner}>
+        <div className={styles.timerGroup}>
+          <div className={styles.timeUnit}>
+            <span className={styles.timeValue}>{String(timeLeft.days).padStart(2, '0')}</span>
+            <span className={styles.timeLabel}>{t('about.timer.days')}</span>
+          </div>
+          
+          <span className={styles.separator}>:</span>
+          
+          <div className={styles.timeUnit}>
+            <span className={styles.timeValue}>{String(timeLeft.hours).padStart(2, '0')}</span>
+            <span className={styles.timeLabel}>{t('about.timer.hours')}</span>
+          </div>
+          
+          <span className={styles.separator}>:</span>
+          
+          <div className={styles.timeUnit}>
+            <span className={styles.timeValue}>{String(timeLeft.minutes).padStart(2, '0')}</span>
+            <span className={styles.timeLabel}>{t('about.timer.minutes')}</span>
+          </div>
+          
+          <span className={styles.separator}>:</span>
+          
+          <div className={styles.timeUnit}>
+            <span className={styles.timeValue}>{String(timeLeft.seconds).padStart(2, '0')}</span>
+            <span className={styles.timeLabel}>{t('about.timer.seconds')}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 function AboutContent() {
   const { t } = useTranslation(['agency', 'common']);
@@ -34,53 +86,24 @@ function AboutContent() {
       <NavBar />
       
       <main className={styles.main}>
-        <div className={styles.headerContainer}>
-          <motion.h1 
-            className={styles.title}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8 }}
-          >
-            {t('about.title', 'About Volturiano')}
-          </motion.h1>
-          <motion.p
-            className={styles.subtitle}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, delay: 0.1 }}
-          >
-            {t('about.subtitle', 'Digital craftsmanship based in Gothenburg.')}
-          </motion.p>
-        </div>
-
-        {/* Clean Story Section - Terra Hutton Inspired */}
-        <div className={styles.storySection}>
-          <div className={styles.storyContainer}>
-             <div className={styles.storyImageWrapper}>
-                <img src={officeImage} alt="Volturiano Office" className={styles.storyImage} />
-             </div>
-             <div className={styles.storyContent}>
-                <h2 className={styles.storyTitle}>{t('about.storyTitle', 'Our Story')}</h2>
-                <div className={styles.storyText}>
-                  <p>
-                    {t('about.storyText', 'Volturiano started with a simple mission: to build digital experiences that matter. We combine technical excellence with artistic vision to help brands stand out in a crowded digital landscape.')}
-                  </p>
-                  <p>
-                    {t('about.philosophy', 'We believe in clean code, bold design, and user-centric strategies. Every pixel has a purpose, every interaction is crafted with care.')}
-                  </p>
-                </div>
-             </div>
-          </div>
-        </div>
-
-        {/* Team Section - Replaces Purpose */}
-        <div className={styles.sectionWrapper}>
-          <TeamShowcase />
+        <div className={styles.contentWrapper}>
+          
+          {/* Coming Soon Heading */}
+          <h1 className={styles.comingSoonTitle}>
+            {t('about.comingSoon')}
+          </h1>
+          
+          {/* Timer */}
+          <Countdown />
+          
+          {/* Tagline */}
+          <p className={styles.tagline}>
+            {t('about.comingSoonTagline')}
+          </p>
         </div>
       </main>
 
       <Footer />
-      <VisionDump />
     </div>
   );
 }
@@ -92,4 +115,3 @@ export default function About() {
     </ThemeProvider>
   );
 }
-

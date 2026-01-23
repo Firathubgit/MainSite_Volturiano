@@ -20,7 +20,6 @@ import { PackageCards } from './components/PackageCards';
 import { Footer } from './components/Footer';
 import { ContactFormModal } from './components/modals/ContactFormModal';
 import { DemoRequestModal } from './components/modals/DemoRequestModal';
-import VisionDump from '../../components/VisionDump/VisionDump';
 import { SERVICES } from './constants';
 import { usePreload, usePreloadOnIntersect } from './hooks/usePreload';
 import styles from './Agency.module.css';
@@ -304,8 +303,6 @@ function AgencyContent() {
         initialServiceId={selectedServiceId}
       />
 
-      {/* Vision Dump - Internal Developer Tool */}
-      {/* <VisionDump /> */}
     </div>
   );
 }

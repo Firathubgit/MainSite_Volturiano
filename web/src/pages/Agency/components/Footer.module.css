@@ -69,14 +69,15 @@
   font-weight: 300;
   color: var(--text-quaternary);
   text-decoration: none;
-  border-bottom: 1px solid var(--border-color);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
   padding-bottom: 0.5rem;
   transition: color 0.3s, border-color 0.3s;
 }
 
 .emailLink:hover {
   color: var(--text-primary);
-  border-color: var(--accent-secondary);
+  border-bottom-color: #FF4520; /* Orange underline on hover */
+  border-bottom-width: 2px;
 }
 
 @media (min-width: 768px) {
@@ -89,12 +90,13 @@
 .emailIcon {
   width: 2rem;
   height: 2rem;
-  color: var(--accent-secondary);
+  color: var(--text-quaternary);
   transition: transform 0.3s, color 0.3s;
 }
 
 .emailLink:hover .emailIcon {
   transform: translate(0.5rem, -0.5rem);
+  color: #FF4520; /* Orange on hover */
 }
 
 @media (min-width: 768px) {

@@ -34,33 +34,36 @@ function ReferencesContent() {
     };
   }, [theme]);
 
-  // Projects List matching SelectedWork structure
+  // Projects List with direct live links (project-specific pages kept for future use)
   const ProjectsList = [
     {
       id: 'volturiano',
       image: volturianoAgencyMockup,
-      link: '/agency/references/volturiano',
+      link: '/agency', // Links to home/agency page itself
+      external: false
     },
     {
       id: 'euro-taxi',
       image: euroTaxiThumbnail,
-      link: '/agency/references/euro-taxi',
+      link: 'https://euro-taxi-as.vercel.app/#/',
+      external: true
     },
     {
       id: 'furglove-pro',
       image: furgloveThumbnail,
-      link: '/agency/references/furglove-pro',
+      link: 'https://furglove-pro.vercel.app/',
+      external: true
     },
     {
       id: 'replacement-project-1',
       image: replacementImage,
-      link: '/agency/references/replacement-project-1',
+      link: '#', // Placeholder - no link for now
       isPlaceholder: true
     },
     {
       id: 'replacement-project-2',
       image: replacementImage,
-      link: '/agency/references/replacement-project-2',
+      link: '#', // Placeholder - no link for now
       isPlaceholder: true
     }
   ];
@@ -100,9 +103,15 @@ function ReferencesContent() {
         <div className={styles.container}>
           <div className={styles.sectionHeader}>
             <h2 className={styles.sectionTitle}>{t('references.allProjects', 'All Projects')}</h2>
-            <Link to="/agency/contact" className={styles.createLink}>
+            <button 
+              onClick={() => {
+                const footer = document.getElementById('footer');
+                footer?.scrollIntoView({ behavior: 'smooth' });
+              }}
+              className={styles.createLink}
+            >
               {t('references.createYourOwn', '[ CREATE YOUR OWN ]')}
-            </Link>
+            </button>
           </div>
 
           <div className={styles.grid}>
@@ -121,6 +130,53 @@ function ReferencesContent() {
                  category = t('references.replacementProjectPage', 'Concept');
               }
 
+              const content = (
+                <motion.div 
+                  className={styles.card}
+                  initial={{ opacity: 0, y: 30 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ duration: 0.6, delay: index * 0.1 }}
+                >
+                  <div className={styles.imageContainer}>
+                    <img 
+                      src={project.image} 
+                      alt={title} 
+                      className={styles.image}
+                    />
+                  </div>
+
+                  <div className={styles.info}>
+                    <h3 className={styles.projectTitle}>{title}</h3>
+                    <span className={styles.projectCategory}>{category}</span>
+                  </div>
+                </motion.div>
+              );
+
+              // Use external link for external projects, internal Link for internal/placeholders
+              if (project.external) {
+                return (
+                  <a
+                    key={project.id}
+                    href={project.link}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={styles.cardLink}
+                  >
+                    {content}
+                  </a>
+                );
+              }
+
+              // For placeholders or internal links, use Link or button
+              if (project.isPlaceholder) {
+                return (
+                  <div key={project.id} className={styles.cardLink} style={{ cursor: 'default', pointerEvents: 'none' }}>
+                    {content}
+                  </div>
+                );
+              }
+
               return (
                 <Link
                   key={project.id}
@@ -128,26 +184,7 @@ function ReferencesContent() {
                   className={styles.cardLink}
                   onClick={() => window.scrollTo(0, 0)}
                 >
-                  <motion.div 
-                    className={styles.card}
-                    initial={{ opacity: 0, y: 30 }}
-                    whileInView={{ opacity: 1, y: 0 }}
-                    viewport={{ once: true }}
-                    transition={{ duration: 0.6, delay: index * 0.1 }}
-                  >
-                    <div className={styles.imageContainer}>
-                      <img 
-                        src={project.image} 
-                        alt={title} 
-                        className={styles.image}
-                      />
-                    </div>
-
-                    <div className={styles.info}>
-                      <h3 className={styles.projectTitle}>{title}</h3>
-                      <span className={styles.projectCategory}>{category}</span>
-                    </div>
-                  </motion.div>
+                  {content}
                 </Link>
               );
             })}

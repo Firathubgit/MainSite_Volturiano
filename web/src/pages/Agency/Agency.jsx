@@ -2,7 +2,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { usePageTitle } from '../../hooks/usePageTitle';
 import { ThemeProvider, useTheme } from './context/ThemeContext';
-import { HeroSection, MarqueeTicker } from './components/HeroSection';
+import { motion } from 'framer-motion';
+import { ArrowDownRight } from 'lucide-react';
 import { ClientLogos } from './components/ClientLogos';
 import { TechTicker } from './components/TechTicker';
 import { ServiceShowcase } from './components/ServiceShowcase';
@@ -23,6 +24,7 @@ import { DemoRequestModal } from './components/modals/DemoRequestModal';
 import { SERVICES } from './constants';
 import { usePreload, usePreloadOnIntersect } from './hooks/usePreload';
 import styles from './Agency.module.css';
+import heroStyles from './AgencyHero.module.css';
 
 // Import images for preloading
 import furGloveThumbnail from '../../assets/FurGloveThhumnail.png';
@@ -32,6 +34,7 @@ import GoldPackage from '../../assets/Logo/GOLDPackage.png';
 import SilverPackage from '../../assets/Logo/SilverPackage.png';
 import TitaniumPackage from '../../assets/Logo/TitaniumPackage.png';
 import TornadoLogo from '../../assets/Logo/TornadoLogo.png';
+import heroVideo from '../../assets/Make_a_video_1080p_202601231618.mp4';
 
 function AgencyContent() {
   const { t } = useTranslation(['agency', 'common']);
@@ -242,52 +245,106 @@ function AgencyContent() {
         <div className={styles.vignette} />
       </div>
 
-      <HeroSection 
-        onOpenContact={openContact}
-        onScrollToServices={() => scrollToSection('package-cards')}
-      />
+      {/* Hero Section with Video */}
+      <section className={heroStyles.heroSection}>
+        <video
+          className={heroStyles.heroVideo}
+          autoPlay
+          loop
+          muted
+          playsInline
+        >
+          <source src={heroVideo} type="video/mp4" />
+        </video>
+        <motion.div
+          className={heroStyles.heroContent}
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.8 }}
+        >
+          <div className={heroStyles.textWrapper}>
+            <motion.h1 
+              initial={{ y: 100 }}
+              animate={{ y: 0 }}
+              transition={{ duration: 1, ease: [0.22, 1, 0.36, 1] }}
+              className={heroStyles.title1}
+            >
+              Volturio Studios
+            </motion.h1>
+          </div>
+
+          <div className={heroStyles.textWrapper}>
+            <motion.h1 
+              initial={{ y: 100 }}
+              animate={{ y: 0 }}
+              transition={{ duration: 1, delay: 0.1, ease: [0.22, 1, 0.36, 1] }}
+              className={heroStyles.title2}
+            >
+              {t('hero.agencyTitle', 'AGENCY.')}
+            </motion.h1>
+          </div>
+
+          <motion.div 
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: 0.5 }}
+            className={heroStyles.descriptionContainer}
+          >
+            <p className={heroStyles.description}>
+              <span className={heroStyles.desktopText}>
+                {t('hero.description', { defaultValue: 'We help Businesses Grow through Professional Websites that are visible, functional, and bring in new Customers.' }).replace(/<[^>]*>/g, '')}
+              </span>
+              <span className={heroStyles.mobileText}>
+                {t('hero.descriptionMobile', { defaultValue: 'Vi hjälper företag att växa genom premium Webbplatser' })}
+              </span>
+            </p>
+            <a 
+              href="#footer" 
+              onClick={(e) => {
+                e.preventDefault();
+                document.getElementById('footer')?.scrollIntoView({ behavior: 'smooth' });
+              }}
+              className={heroStyles.exploreLink}
+            >
+              {t('hero.exploreServices', 'STARTA DITT PROJEKT')}
+              <ArrowDownRight className={heroStyles.arrowIcon} />
+            </a>
+          </motion.div>
+        </motion.div>
+      </section>
 
       <div className={styles.contentWrapper}>
-        <MarqueeTicker />
+        {/* Project Examples - First after hero */}
+        <div ref={portfolioRef}>
+          <SelectedWork />
+        </div>
 
-        <ClientLogos />
-        
-        <TechTicker />
+        {/* Vårt Syfte */}
         <AgencyPurpose />
+
+        {/* Package Cards */}
+        <div ref={packageCardsRef}>
+          <PackageCards onOpenContact={openContact} />
+        </div>
+
+        {/* <ClientLogos /> */}
+        {/* <TechTicker /> */}
         {/* <PedestalShowcase /> */}
         {/* <TwoImageSolution /> */}
         {/* <ConceptGrid /> */}
         {/* <DeviceShowcase /> */}
-        <div ref={portfolioRef}>
-          <SelectedWork />
-          {/* <PortfolioGrid /> */}
-        </div>
-
+        {/* <PortfolioGrid /> */}
         {/* TeamShowcase - Commented out for now... */}
         {/* <TeamShowcase /> */}
         {/* CaseStudy - Commented out for now... */}
         {/* <CaseStudy /> */}
-
-
         {/* <SystemMetrics /> */}
-
         {/* ServiceShowcase - Commented out for now... */}
         {/* <ServiceShowcase 
           onOpenContact={openContact}
           onOpenDemo={openDemo}
         /> */}
 
-
-
-
-
-
-
-
-
-        <div ref={packageCardsRef}>
-          <PackageCards onOpenContact={openContact} />
-        </div>
 
         <Footer />
       </div>

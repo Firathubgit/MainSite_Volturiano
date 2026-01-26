@@ -1,5 +1,5 @@
 .section {
-  padding: 4rem 1rem; /* Reduced by half */
+  padding: calc(4rem + 60px) 1rem calc(4rem + 60px) 1rem; /* 60px extra spacing top and bottom */
   position: relative;
   z-index: 10;
 }

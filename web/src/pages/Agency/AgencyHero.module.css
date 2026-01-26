@@ -104,6 +104,13 @@
   text-stroke: 1px var(--accent-primary);
 }
 
+/* WEBBYRO always in hovered state */
+.webbyroAlwaysHover {
+  color: var(--accent-primary) !important;
+  -webkit-text-stroke: 1px var(--accent-primary) !important;
+  text-stroke: 1px var(--accent-primary) !important;
+}
+
 /* Light mode: title2 always in hovered state */
 body[data-theme="light"] .title2 {
   color: var(--accent-primary);

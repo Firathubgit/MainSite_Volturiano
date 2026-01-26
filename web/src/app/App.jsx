@@ -25,6 +25,7 @@ const About = lazy(() => import('../pages/Agency/pages/About/About'));
 const References = lazy(() => import('../pages/Agency/pages/References/References'));
 const CaseStudy = lazy(() => import('../pages/Agency/pages/References/CaseStudy/CaseStudy'));
 const Services = lazy(() => import('../pages/Agency/pages/Services/Services'));
+const Booking = lazy(() => import('../pages/Agency/pages/Booking/Booking'));
 // Using new premium configurator - switch back to Configurator if needed
 const Configurator = lazy(() => import('../pages/Configurator/ConfiguratorNew'));
 const ConfiguratorFromGarage = lazy(() => import('../pages/Configurator/ConfiguratorFromGarage'));
@@ -266,6 +267,7 @@ export default function App() {
             <Route path="/agency/references" element={<References />} />
             <Route path="/agency/references/:projectId" element={<CaseStudy />} />
             <Route path="/agency/services" element={<Services />} />
+            <Route path="/agency/booking" element={<Booking />} />
             <Route path="/infotainment" element={<Infotainment />} />
             <Route
               path="/configurator/:garageItemId"

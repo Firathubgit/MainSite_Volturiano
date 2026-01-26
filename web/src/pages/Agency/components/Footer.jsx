@@ -1,10 +1,23 @@
 import React from 'react';
-import { ArrowUpRight, Linkedin, Twitter, Instagram, Phone } from 'lucide-react';
+import { ArrowUpRight, Linkedin, Twitter, Instagram, Phone, Calendar } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
+import { Link } from 'react-router-dom';
 import { ThemeToggle } from './ThemeToggle';
 import tornadoLogo from '../../../assets/Logo/TornadoLogo.png';
 import styles from './Footer.module.css';
+
+// TikTok Icon Component
+const TikTokIcon = ({ className }) => (
+  <svg
+    className={className}
+    viewBox="0 0 24 24"
+    fill="currentColor"
+    xmlns="http://www.w3.org/2000/svg"
+  >
+    <path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-5.2 1.74 2.89 2.89 0 0 1 2.31-4.64 2.93 2.93 0 0 1 .88.13V9.4a6.84 6.84 0 0 0-1-.05A6.33 6.33 0 0 0 5 20.1a6.34 6.34 0 0 0 10.86-4.43v-7a8.16 8.16 0 0 0 4.77 1.52v-3.4a4.85 4.85 0 0 1-1-.1z"/>
+  </svg>
+);
 
 export function Footer() {
   const { t } = useTranslation('agency');
@@ -80,13 +93,23 @@ Med vänliga hälsningar,
             ))}
           </h2>
           
-          <a 
-            href={mailtoLink}
-            className={styles.emailLink}
-          >
-            create@volturiano.com
-            <ArrowUpRight className={styles.emailIcon} />
-          </a>
+          <div className={styles.ctaButtons}>
+            <a 
+              href={mailtoLink}
+              className={styles.emailLink}
+            >
+              create@volturiano.com
+              <ArrowUpRight className={styles.emailIcon} />
+            </a>
+            <Link 
+              to="/agency/booking"
+              className={styles.bookingLink}
+            >
+              <Calendar className={styles.bookingIcon} />
+              {t('footer.bookingButton', { defaultValue: 'Boka Samtal 30Min' })}
+              <ArrowUpRight className={styles.bookingArrowIcon} />
+            </Link>
+          </div>
         </motion.div>
       </div>
 
@@ -116,7 +139,9 @@ Med vänliga hälsningar,
         <div className={styles.infoColumn}>
           <div className={styles.socialLinks}>
             <a 
-              href="#" 
+              href="https://www.linkedin.com/in/volturiano-studios-ba878a3a8/" 
+              target="_blank"
+              rel="noopener noreferrer"
               className={styles.socialLink}
               aria-label={t('footer.social.linkedin', { defaultValue: 'LinkedIn' })}
             >
@@ -137,6 +162,15 @@ Med vänliga hälsningar,
               aria-label={t('footer.social.instagram', { defaultValue: 'Instagram' })}
             >
               <Instagram className={styles.socialIcon} />
+            </a>
+            <a 
+              href="https://www.tiktok.com/@volturiano.webbyro" 
+              target="_blank"
+              rel="noopener noreferrer"
+              className={styles.socialLink}
+              aria-label={t('footer.social.tiktok', { defaultValue: 'TikTok' })}
+            >
+              <TikTokIcon className={styles.socialIcon} />
             </a>
           </div>
         </div>

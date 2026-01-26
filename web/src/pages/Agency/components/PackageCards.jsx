@@ -1,9 +1,9 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import styles from './PackageCards.module.css';
-import GoldPackage from '../../../assets/Logo/GOLDPackage.png';
-import SilverPackage from '../../../assets/Logo/SilverPackage.png';
-import TitaniumPackage from '../../../assets/Logo/TitaniumPackage.png';
+import GoldPackage from '../../../assets/Logo/GOLDCARDBLACKGRADIENT.png';
+import SilverPackage from '../../../assets/Logo/SILVERCARDBLACKGRADIENT.png';
+import TitaniumPackage from '../../../assets/Logo/TITANIUMCARDBLACKGRADIENT.png';
 
 export function PackageCards({ onOpenContact, onActiveIndexChange }) {
   const { t } = useTranslation('agency');

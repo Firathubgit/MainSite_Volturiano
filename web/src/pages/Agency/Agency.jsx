@@ -280,7 +280,23 @@ function AgencyContent() {
               transition={{ duration: 1, delay: 0.1, ease: [0.22, 1, 0.36, 1] }}
               className={heroStyles.title2}
             >
-              {t('hero.agencyTitle', 'AGENCY.')}
+              {(() => {
+                const titleText = t('hero.agencyTitle', 'AGENCY.');
+                // Split text to make "WEBBYRO" (or "WEB BYRO") always hovered
+                // Match "WEB BYRO" with space, or "WEBBYRO" without space
+                const match = titleText.match(/(WEB\s*BYRO|WEBBYRO)/i);
+                if (match) {
+                  const parts = titleText.split(new RegExp(`(${match[0]})`, 'i'));
+                  return parts.map((part, index) => {
+                    const normalizedPart = part.toUpperCase().replace(/\s+/g, '');
+                    if (normalizedPart === 'WEBBYRO' || part.toUpperCase().trim() === 'WEB BYRO') {
+                      return <span key={index} className={heroStyles.webbyroAlwaysHover}>{part}</span>;
+                    }
+                    return part;
+                  });
+                }
+                return titleText;
+              })()}
             </motion.h1>
           </div>
 

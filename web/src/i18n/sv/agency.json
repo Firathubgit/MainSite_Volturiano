@@ -328,8 +328,10 @@
     "social": {
       "linkedin": "LinkedIn",
       "twitter": "Twitter / X",
-      "instagram": "Instagram"
+      "instagram": "Instagram",
+      "tiktok": "TikTok"
     },
+    "bookingButton": "Boka Samtal 30Min",
     "copyright": "© 2026 Volturio Web Byrå.",
     "tagline": "Konstruerad för framtiden.",
     "links": {
@@ -466,6 +468,10 @@
         "instructions": "Skriv koden i e-posten för att lösa in paketet för att påbörja följande utvecklingscykel för Web Byro."
       }
     }
+  },
+  "booking": {
+    "title": "Boka Google Meet 30 Min",
+    "subtitle": "Boka ett snabbt 30-minuters möte för att diskutera ditt projekt och behov."
   },
   "about": {
     "title": "Om Volturiano",

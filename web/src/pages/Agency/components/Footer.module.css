@@ -44,7 +44,7 @@
   font-weight: 700;
   letter-spacing: -0.05em;
   color: var(--text-primary);
-  margin-bottom: 3rem;
+  margin-bottom: 4rem;
   line-height: 1;
   transition: color 0.3s ease;
 }
@@ -72,6 +72,13 @@
   border-bottom: 1px solid rgba(255, 255, 255, 0.2);
   padding-bottom: 0.5rem;
   transition: color 0.3s, border-color 0.3s;
+  width: 100%;
+}
+
+@media (min-width: 768px) {
+  .emailLink {
+    width: auto;
+  }
 }
 
 .emailLink:hover {
@@ -97,6 +104,84 @@
 .emailLink:hover .emailIcon {
   transform: translate(0.5rem, -0.5rem);
   color: #FF4520; /* Orange on hover */
+}
+
+.ctaButtons {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+  align-items: flex-start;
+  width: 100%;
+  margin-top: 1rem;
+}
+
+@media (min-width: 768px) {
+  .ctaButtons {
+    gap: 2.5rem;
+  }
+}
+
+.bookingLink {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  color: #FFFFFF;
+  background-color: #000000;
+  padding: 0.75rem 1.5rem;
+  border-radius: 8px;
+  text-decoration: none;
+  transition: all 0.3s ease;
+  font-size: 0.9rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  border: 2px solid #FFFFFF;
+  cursor: pointer;
+  font-family: 'Manrope', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  white-space: nowrap;
+  width: 100%;
+}
+
+.bookingLink:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(255, 255, 255, 0.1);
+}
+
+.bookingLink:active {
+  transform: translateY(0);
+}
+
+@media (min-width: 768px) {
+  .bookingLink {
+    font-size: 1rem;
+    padding: 0.875rem 2rem;
+    width: auto;
+  }
+}
+
+.bookingIcon {
+  width: 0.875rem;
+  height: 0.875rem;
+  transition: transform 0.3s ease;
+  color: #FFFFFF;
+  flex-shrink: 0;
+}
+
+.bookingLink:hover .bookingIcon {
+  transform: translateX(2px);
+}
+
+.bookingArrowIcon {
+  width: 0.875rem;
+  height: 0.875rem;
+  transition: transform 0.3s ease;
+  color: #FFFFFF;
+  flex-shrink: 0;
+}
+
+.bookingLink:hover .bookingArrowIcon {
+  transform: translate(4px, -4px);
 }
 
 @media (min-width: 768px) {

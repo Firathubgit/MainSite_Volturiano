@@ -1,0 +1,107 @@
+.page {
+  /* Force dark theme variables for this page */
+  --bg-primary: #000000;
+  --bg-secondary: #0B0B0B;
+  --bg-tertiary: #111111;
+  --bg-quaternary: #1F1F1F;
+  --bg-footer: #0A0A0A;
+  --text-primary: #FFFFFF;
+  --text-secondary: #A0A0A0;
+  --text-muted: #6A6A6A;
+  --accent-primary: #FF4520;
+  --accent-secondary: #FF6B4A;
+  --border-subtle: rgba(255, 255, 255, 0.08);
+  --border-light: rgba(255, 255, 255, 0.15);
+
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background-color: #000000;
+  transition: background-color 0.3s ease;
+}
+
+/* Override light theme - always stay dark */
+.page[data-theme="light"] {
+  --bg-primary: #000000;
+  --bg-secondary: #0B0B0B;
+  --bg-tertiary: #111111;
+  --bg-quaternary: #1F1F1F;
+  --bg-footer: #0A0A0A;
+  --text-primary: #FFFFFF;
+  --text-secondary: #A0A0A0;
+  --text-muted: #6A6A6A;
+  --accent-primary: #FF4520;
+  --accent-secondary: #FF6B4A;
+  --border-subtle: rgba(255, 255, 255, 0.08);
+  --border-light: rgba(255, 255, 255, 0.15);
+  background-color: #000000;
+}
+
+.bookingSection {
+  flex: 1;
+  width: 100%;
+  padding: calc(6rem + 80px) 0 0;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  background-color: #000000;
+}
+
+.bookingContainer {
+  max-width: 100%;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0;
+  background-color: #000000;
+}
+
+.title {
+  display: none;
+}
+
+.subtitle {
+  display: none;
+}
+
+/* Calendly wrapper - exact fit to card, clip borders */
+.calendlyWrapper {
+  width: 1002px;
+  height: 702px;
+  background-color: #000000;
+  padding: 0;
+  margin: 0 auto;
+  border-radius: 16px;
+  overflow: hidden;
+  position: relative;
+}
+
+.bookingContainer .calendly-inline-widget {
+  /* Slightly larger to hide internal Calendly border */
+  width: calc(100% + 4px) !important;
+  height: calc(100% + 4px) !important;
+  margin: -2px;
+  border-radius: 16px;
+  overflow: hidden;
+  padding: 0;
+  position: relative;
+  background-color: #000000;
+  border: none;
+  box-shadow: none;
+}
+
+/* Responsive - smaller screens */
+@media (max-width: 1050px) {
+  .calendlyWrapper {
+    width: calc(100vw - 40px);
+    max-width: 660px;
+    height: 900px;
+  }
+}
+
+@media (min-width: 768px) {
+  .bookingSection {
+    padding: calc(6rem + 80px) 0 0;
+  }
+}

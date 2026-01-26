@@ -328,8 +328,10 @@
     "social": {
       "linkedin": "LinkedIn",
       "twitter": "Twitter / X",
-      "instagram": "Instagram"
+      "instagram": "Instagram",
+      "tiktok": "TikTok"
     },
+    "bookingButton": "Book Call 30Min",
     "copyright": "© 2026 Volturio Web Agency.",
     "tagline": "Engineered for the future.",
     "links": {
@@ -466,6 +468,10 @@
         "instructions": "Write the code in the email to redeem the package for the following agency development cycle to begin."
       }
     }
+  },
+  "booking": {
+    "title": "Book Google Meet 30 Min",
+    "subtitle": "Book a quick 30-minute meeting to discuss your project and needs."
   },
   "about": {
     "title": "About Volturiano",

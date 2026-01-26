@@ -27,60 +27,70 @@ function BookingContent() {
   
   usePageTitle(`${t('booking.title', { defaultValue: 'Boka möte' })} | Volturio Studios – Webbyrå i Göteborg`);
 
-  // Load Calendly script and inject dark mode styles
+  // Load Calendly using initInlineWidget for better control
   useEffect(() => {
-    const script = document.createElement('script');
-    script.src = 'https://assets.calendly.com/assets/external/widget.js';
-    script.async = true;
-    document.body.appendChild(script);
-
-    // Inject CSS to style Calendly widget with black background
+    // Inject CSS for transparent/black background
     const style = document.createElement('style');
     style.id = 'calendly-custom-styling';
     style.textContent = `
-      /* Force black background on all Calendly elements */
-      .calendly-inline-widget,
-      .calendly-inline-widget *,
-      .calendly-inline-widget > div,
-      .calendly-inline-widget > div > div,
-      .calendly-inline-widget > div > div > div,
-      [class*="calendly"],
-      [class*="Calendly"] {
-        background-color: #000000 !important;
-        background: #000000 !important;
-        border: none !important;
-        border-radius: 0 !important;
-        box-shadow: none !important;
-        outline: none !important;
+      /* Transparent wrapper */
+      .calendly-inline-widget {
+        background: transparent !important;
       }
       
-      /* Remove borders from iframe and set black background */
-      .calendly-inline-widget iframe {
-        background-color: #000000 !important;
-        background: #000000 !important;
+      /* Force iframe to respect transparency */
+      .calendly-inline-widget > iframe {
+        color-scheme: light;
+        background: transparent !important;
         border: none !important;
-        border-radius: 0 !important;
-        box-shadow: none !important;
-        outline: none !important;
+        border-radius: 16px !important;
       }
 
-      /* Target Calendly's spinner/loading wrapper */
-      .calendly-spinner-container,
-      .calendly-badge-widget,
-      .calendly-overlay,
-      .calendly-popup,
-      .calendly-popup-content {
-        background-color: #000000 !important;
-        background: #000000 !important;
-        border: none !important;
-        border-radius: 0 !important;
-        box-shadow: none !important;
+      /* Loading spinner area */
+      .calendly-spinner-container {
+        background: transparent !important;
       }
     `;
     document.head.appendChild(style);
 
+    // Load Calendly script
+    const script = document.createElement('script');
+    script.src = 'https://assets.calendly.com/assets/external/widget.js';
+    script.async = true;
+    
+    script.onload = () => {
+      // Initialize widget using the API method
+      if (window.Calendly) {
+        const container = document.getElementById('calendly-embed');
+        if (container) {
+          window.Calendly.initInlineWidget({
+            url: 'https://calendly.com/hello-volturiano/30min?hide_gdpr_banner=1&background_color=000000&text_color=ffffff&primary_color=ff4520',
+            parentElement: container,
+            prefill: {},
+            utm: {}
+          });
+
+          // Force iframe background after widget loads
+          const forceTransparent = () => {
+            const iframe = container.querySelector('iframe');
+            if (iframe) {
+              iframe.style.background = 'transparent';
+              iframe.style.colorScheme = 'light';
+            }
+          };
+          
+          // Try multiple times as Calendly can be slow to inject iframe
+          setTimeout(forceTransparent, 500);
+          setTimeout(forceTransparent, 1000);
+          setTimeout(forceTransparent, 2000);
+        }
+      }
+    };
+    
+    document.body.appendChild(script);
+
     return () => {
-      // Cleanup: remove script and style when component unmounts
+      // Cleanup
       const existingScript = document.querySelector('script[src="https://assets.calendly.com/assets/external/widget.js"]');
       if (existingScript && document.body.contains(existingScript)) {
         document.body.removeChild(existingScript);
@@ -106,9 +116,9 @@ function BookingContent() {
         >
           <div className={styles.calendlyWrapper}>
             <div 
-              className="calendly-inline-widget" 
-              data-url="https://calendly.com/hello-volturiano/30min?background_color=000000&text_color=ffffff&primary_color=ff4520"
-              style={{ minWidth: '320px', height: '100%' }}
+              id="calendly-embed"
+              className="calendly-inline-widget"
+              style={{ minWidth: '320px', height: '100%', background: 'transparent' }}
             />
           </div>
         </motion.div>

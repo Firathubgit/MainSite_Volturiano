@@ -65,11 +65,11 @@
   display: none;
 }
 
-/* Calendly wrapper - exact fit to card, clip borders */
+/* Calendly wrapper - transparent background */
 .calendlyWrapper {
   width: 1002px;
   height: 702px;
-  background-color: #000000;
+  background: transparent !important;
   padding: 0;
   margin: 0 auto;
   border-radius: 16px;
@@ -77,18 +77,21 @@
   position: relative;
 }
 
-.bookingContainer .calendly-inline-widget {
-  /* Slightly larger to hide internal Calendly border */
-  width: calc(100% + 4px) !important;
-  height: calc(100% + 4px) !important;
-  margin: -2px;
+/* Calendly widget - transparent */
+.calendlyWrapper :global(.calendly-inline-widget) {
+  width: 100% !important;
+  height: 100% !important;
+  background: transparent !important;
   border-radius: 16px;
   overflow: hidden;
-  padding: 0;
-  position: relative;
-  background-color: #000000;
-  border: none;
-  box-shadow: none;
+}
+
+/* Iframe styling */
+.calendlyWrapper :global(.calendly-inline-widget) :global(iframe) {
+  color-scheme: light;
+  background: transparent !important;
+  border: none !important;
+  border-radius: 16px !important;
 }
 
 /* Responsive - smaller screens */

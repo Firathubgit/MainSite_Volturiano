@@ -27,7 +27,7 @@ function BookingContent() {
   
   usePageTitle(`${t('booking.title', { defaultValue: 'Boka möte' })} | Volturio Studios – Webbyrå i Göteborg`);
 
-  // Load Calendly using initInlineWidget for better control
+  // Load Calendly with fallback to data-url method
   useEffect(() => {
     // Inject CSS for transparent/black background
     const style = document.createElement('style');
@@ -53,47 +53,84 @@ function BookingContent() {
     `;
     document.head.appendChild(style);
 
-    // Load Calendly script
-    const script = document.createElement('script');
-    script.src = 'https://assets.calendly.com/assets/external/widget.js';
-    script.async = true;
-    
-    script.onload = () => {
-      // Initialize widget using the API method
-      if (window.Calendly) {
-        const container = document.getElementById('calendly-embed');
-        if (container) {
-          window.Calendly.initInlineWidget({
-            url: 'https://calendly.com/hello-volturiano/30min?hide_gdpr_banner=1&background_color=000000&text_color=ffffff&primary_color=ff4520',
-            parentElement: container,
-            prefill: {},
-            utm: {}
-          });
+    const container = document.getElementById('calendly-embed');
+    if (!container) return;
 
-          // Force iframe background after widget loads
-          const forceTransparent = () => {
-            const iframe = container.querySelector('iframe');
-            if (iframe) {
-              iframe.style.background = 'transparent';
-              iframe.style.colorScheme = 'light';
-            }
-          };
-          
-          // Try multiple times as Calendly can be slow to inject iframe
-          setTimeout(forceTransparent, 500);
-          setTimeout(forceTransparent, 1000);
-          setTimeout(forceTransparent, 2000);
-        }
-      }
-    };
+    // Check if script already exists
+    const existingScript = document.querySelector('script[src="https://assets.calendly.com/assets/external/widget.js"]');
     
-    document.body.appendChild(script);
+    if (existingScript) {
+      // Script already loaded, initialize immediately
+      initializeCalendly();
+    } else {
+      // Load Calendly script
+      const script = document.createElement('script');
+      script.src = 'https://assets.calendly.com/assets/external/widget.js';
+      script.async = true;
+      
+      script.onload = () => {
+        initializeCalendly();
+      };
+      
+      script.onerror = () => {
+        console.error('Failed to load Calendly script');
+        // Fallback: use data-url method
+        container.setAttribute('data-url', 'https://calendly.com/hello-volturiano/30min?hide_gdpr_banner=1&background_color=000000&text_color=ffffff&primary_color=ff4520');
+      };
+      
+      document.body.appendChild(script);
+    }
+
+    function initializeCalendly() {
+      // Wait a bit for Calendly to be fully ready
+      setTimeout(() => {
+        const container = document.getElementById('calendly-embed');
+        if (!container) return;
+
+        try {
+          if (window.Calendly && typeof window.Calendly.initInlineWidget === 'function') {
+            window.Calendly.initInlineWidget({
+              url: 'https://calendly.com/hello-volturiano/30min?hide_gdpr_banner=1&background_color=000000&text_color=ffffff&primary_color=ff4520',
+              parentElement: container,
+              prefill: {},
+              utm: {}
+            });
+
+            // Force iframe background after widget loads
+            const forceTransparent = () => {
+              const iframe = container.querySelector('iframe');
+              if (iframe) {
+                iframe.style.background = 'transparent';
+                iframe.style.colorScheme = 'light';
+              }
+            };
+            
+            // Try multiple times as Calendly can be slow to inject iframe
+            setTimeout(forceTransparent, 500);
+            setTimeout(forceTransparent, 1000);
+            setTimeout(forceTransparent, 2000);
+          } else {
+            // Fallback: use data-url method if API not available
+            container.setAttribute('data-url', 'https://calendly.com/hello-volturiano/30min?hide_gdpr_banner=1&background_color=000000&text_color=ffffff&primary_color=ff4520');
+          }
+        } catch (error) {
+          console.error('Error initializing Calendly:', error);
+          // Fallback: use data-url method
+          container.setAttribute('data-url', 'https://calendly.com/hello-volturiano/30min?hide_gdpr_banner=1&background_color=000000&text_color=ffffff&primary_color=ff4520');
+        }
+      }, 100);
+    }
 
     return () => {
       // Cleanup
       const existingScript = document.querySelector('script[src="https://assets.calendly.com/assets/external/widget.js"]');
-      if (existingScript && document.body.contains(existingScript)) {
-        document.body.removeChild(existingScript);
+      if (existingScript && document.body.contains(existingScript) && !existingScript.hasAttribute('data-keep')) {
+        // Only remove if we added it (not if it was already there)
+        try {
+          document.body.removeChild(existingScript);
+        } catch (e) {
+          // Script might already be removed
+        }
       }
       const existingStyle = document.getElementById('calendly-custom-styling');
       if (existingStyle) {
@@ -118,6 +155,7 @@ function BookingContent() {
             <div 
               id="calendly-embed"
               className="calendly-inline-widget"
+              data-url="https://calendly.com/hello-volturiano/30min?hide_gdpr_banner=1&background_color=000000&text_color=ffffff&primary_color=ff4520"
               style={{ minWidth: '320px', height: '100%', background: 'transparent' }}
             />
           </div>

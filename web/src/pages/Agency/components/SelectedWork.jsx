@@ -23,7 +23,7 @@ export function SelectedWork() {
     {
       id: 'euro-taxi',
       image: projectSaas,
-      link: 'https://euro-taxi-as.vercel.app/#/',
+      link: 'https://www.eurotaxias.no/',
       external: true
     },
     {

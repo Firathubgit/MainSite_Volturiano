@@ -45,7 +45,7 @@ function ReferencesContent() {
     {
       id: 'euro-taxi',
       image: euroTaxiThumbnail,
-      link: 'https://euro-taxi-as.vercel.app/#/',
+      link: 'https://www.eurotaxias.no/',
       external: true
     },
     {

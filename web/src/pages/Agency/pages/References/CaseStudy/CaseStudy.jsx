@@ -36,7 +36,7 @@ const ProjectsData = {
     id: 'euro-taxi',
     thumbnail: euroTaxiThumbnail,
     images: [euroTaxiThumbnail],
-    liveUrl: 'https://euro-taxi-as.vercel.app/#/'
+    liveUrl: 'https://www.eurotaxias.no/'
   },
   'replacement-project-1': {
     id: 'replacement-project-1',

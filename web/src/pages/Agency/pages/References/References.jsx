@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useLayoutEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
@@ -9,10 +9,11 @@ import { usePageTitle } from '../../../../hooks/usePageTitle';
 import styles from './References.module.css';
 
 // Import project thumbnails
+import scaleIntelligenceThumbnail from '../../../../assets/ScaleIntelegenceMocup.png';
+import europaBageriThumbnail from '../../../../assets/EuropaBageriMockipadpic.png';
 import furgloveThumbnail from '../../../../assets/FurGloveExample.png';
 import euroTaxiThumbnail from '../../../../assets/EuroTaxiExample.png';
 import volturianoAgencyMockup from '../../../../assets/VolturianoAgencyMockupExample.png';
-import replacementImage from '../../../../assets/Replacement image.png';
 import heroVideo from '../../../../assets/Make_a_video_1080p_202601231618.mp4';
 import tornadoLogo from '../../../../assets/Logo/TornadoLogo.png';
 
@@ -21,9 +22,17 @@ function ReferencesContent() {
   const { theme } = useTheme();
   usePageTitle(`${t('agencyMenu.references')} | Volturio Studios – Webbyrå i Göteborg`);
 
-  // Scroll to top on page enter
-  useEffect(() => {
+  // Scroll to top on page enter - use both useLayoutEffect and useEffect to ensure it works
+  useLayoutEffect(() => {
     window.scrollTo(0, 0);
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
+  }, []);
+
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
   }, []);
 
   // Set theme on body
@@ -35,12 +44,13 @@ function ReferencesContent() {
   }, [theme]);
 
   // Projects List with direct live links (project-specific pages kept for future use)
+  // Order: Scale Intelligence first, then other projects, Volturiano Studios last
   const ProjectsList = [
     {
-      id: 'volturiano',
-      image: volturianoAgencyMockup,
-      link: '/agency', // Links to home/agency page itself
-      external: false
+      id: 'scale-intelligence',
+      image: scaleIntelligenceThumbnail,
+      link: 'https://wave-form-example-website.vercel.app/?',
+      external: true
     },
     {
       id: 'euro-taxi',
@@ -55,16 +65,16 @@ function ReferencesContent() {
       external: true
     },
     {
-      id: 'replacement-project-1',
-      image: replacementImage,
-      link: '#', // Placeholder - no link for now
-      isPlaceholder: true
+      id: 'europa-bageri',
+      image: europaBageriThumbnail,
+      link: 'https://europa-bageri-premium.vercel.app/',
+      external: true
     },
     {
-      id: 'replacement-project-2',
-      image: replacementImage,
-      link: '#', // Placeholder - no link for now
-      isPlaceholder: true
+      id: 'volturiano',
+      image: volturianoAgencyMockup,
+      link: '/agency', // Links to home/agency page itself
+      external: false
     }
   ];
 

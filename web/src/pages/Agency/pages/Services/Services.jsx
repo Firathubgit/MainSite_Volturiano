@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useLayoutEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ThemeProvider, useTheme } from '../../context/ThemeContext';
@@ -25,6 +25,19 @@ function ServicesContent() {
   const { theme } = useTheme();
   const [activeDetailIndex, setActiveDetailIndex] = useState(1); // Default to titanium (index 1)
   usePageTitle(`${t('agencyMenu.services')} | Volturio Studios – Webbyrå i Göteborg`);
+
+  // Scroll to top on page enter - use both useLayoutEffect and useEffect to ensure it works
+  useLayoutEffect(() => {
+    window.scrollTo(0, 0);
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
+  }, []);
+
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
+  }, []);
 
   useEffect(() => {
     document.body.setAttribute('data-theme', theme);

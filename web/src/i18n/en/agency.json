@@ -23,9 +23,13 @@
     "title": "Case Studies",
     "showAll": "[ SHOW-ALL ]",
     "projects": {
-      "volturiano": {
-        "title": "Volturio Studios",
-        "category": "AGENCY PORTFOLIO"
+      "europa-bageri": {
+        "title": "Europa Bageri",
+        "category": "RESTAURANT & BAKERY"
+      },
+      "scale-intelligence": {
+        "title": "Scale Intelligence",
+        "category": "AI PLATFORM"
       },
       "euro-taxi": {
         "title": "Euro Taxi",
@@ -34,6 +38,10 @@
       "furglove-pro": {
         "title": "Fur Glove",
         "category": "E-COMMERCE PRODUCT"
+      },
+      "volturiano": {
+        "title": "Volturio Studios",
+        "category": "AGENCY PORTFOLIO"
       }
     }
   },
@@ -471,7 +479,9 @@
   },
   "booking": {
     "title": "Book Google Meet 30 Min",
-    "subtitle": "Book a quick 30-minute meeting to discuss your project and needs."
+    "subtitle": "Book a quick 30-minute meeting to discuss your project and needs.",
+    "heroTitle": "Book a meeting with us!",
+    "heroDescription": "Book a quick 30-minute meeting to discuss your project and needs."
   },
   "about": {
     "title": "About Volturiano",
@@ -504,6 +514,60 @@
     "doneWork": "Work Completed",
     "viewLive": "View Live Site",
     "projects": {
+      "europa-bageri": {
+        "overview": "Europa Bageri is a premium restaurant and bakery website showcasing authentic Balkan flavors in Gothenburg. We created a modern, elegant website with online ordering integration, location finder, and seamless user experience that reflects the brand's heritage and quality.",
+        "improvements": [
+          "Implemented elegant dark-themed design with gold accents reflecting premium brand identity",
+          "Integrated online ordering system with Foodora delivery service",
+          "Created location finder functionality for multiple café locations",
+          "Optimized responsive design for all devices with focus on mobile experience"
+        ],
+        "doneWork": [
+          {
+            "title": "Restaurant Website",
+            "description": "Complete restaurant and bakery website built with modern web technologies"
+          },
+          {
+            "title": "Online Ordering Integration",
+            "description": "Seamless integration with Foodora for online food ordering and delivery"
+          },
+          {
+            "title": "Multi-location Support",
+            "description": "Location finder functionality to help customers find the nearest café"
+          },
+          {
+            "title": "Premium UI/UX Design",
+            "description": "Sophisticated design system with dark theme, gold accents, and elegant typography reflecting Balkan heritage"
+          }
+        ]
+      },
+      "scale-intelligence": {
+        "overview": "Scale Intelligence is a cutting-edge AI platform for deploying custom AI agents and fluid neural interfaces. We developed a sophisticated dark-themed interface that bridges the gap between complex LLMs and world-class UX, enabling seamless AI agent deployment and management.",
+        "improvements": [
+          "Created futuristic dark-themed design with fluid, organic visual elements",
+          "Implemented intuitive AI agent deployment workflow interface",
+          "Designed neural interface visualization with dynamic data flow representations",
+          "Optimized for complex AI operations while maintaining exceptional user experience"
+        ],
+        "doneWork": [
+          {
+            "title": "AI Platform Interface",
+            "description": "Complete platform interface for AI agent deployment and management"
+          },
+          {
+            "title": "Fluid Design System",
+            "description": "Sophisticated design with organic shapes and dynamic visual elements representing neural interfaces"
+          },
+          {
+            "title": "Workflow Builder",
+            "description": "Intuitive workflow description interface for custom AI agent configuration"
+          },
+          {
+            "title": "Premium UX for Complex Systems",
+            "description": "World-class user experience design that makes complex AI operations accessible and intuitive"
+          }
+        ]
+      },
       "furglove-pro": {
         "overview": "FurGlove Pro is a premium e-commerce platform for an innovative product line. We created a modern, user-friendly website with interactive features and seamless shopping experience.",
         "improvements": [

@@ -10,6 +10,8 @@ import { usePageTitle } from '../../../../../hooks/usePageTitle';
 import styles from './CaseStudy.module.css';
 
 // Import project images
+import scaleIntelligenceThumbnail from '../../../../../assets/ScaleIntelegenceMocup.png';
+import europaBageriThumbnail from '../../../../../assets/EuropaBageriMockipadpic.png';
 import furgloveThumbnail from '../../../../../assets/FurGloveExample.png';
 import euroTaxiThumbnail from '../../../../../assets/EuroTaxiExample.png';
 import volturianoAgencyMockup from '../../../../../assets/VolturianoAgencyMockupExample.png';
@@ -26,17 +28,29 @@ const ProjectsData = {
     // Title/Stack will be pulled from i18n
     liveUrl: 'https://volturiano.com/agency'
   },
+  'euro-taxi': {
+    id: 'euro-taxi',
+    thumbnail: euroTaxiThumbnail,
+    images: [euroTaxiThumbnail],
+    liveUrl: 'https://www.eurotaxias.no/'
+  },
   'furglove-pro': {
     id: 'furglove-pro',
     thumbnail: furgloveThumbnail,
     images: [furgloveThumbnail],
     liveUrl: 'https://furglove-pro.vercel.app/'
   },
-  'euro-taxi': {
-    id: 'euro-taxi',
-    thumbnail: euroTaxiThumbnail,
-    images: [euroTaxiThumbnail],
-    liveUrl: 'https://www.eurotaxias.no/'
+  'europa-bageri': {
+    id: 'europa-bageri',
+    thumbnail: europaBageriThumbnail,
+    images: [europaBageriThumbnail],
+    liveUrl: 'https://europa-bageri-premium.vercel.app/'
+  },
+  'scale-intelligence': {
+    id: 'scale-intelligence',
+    thumbnail: scaleIntelligenceThumbnail,
+    images: [scaleIntelligenceThumbnail],
+    liveUrl: 'https://wave-form-example-website.vercel.app/?'
   },
   'replacement-project-1': {
     id: 'replacement-project-1',

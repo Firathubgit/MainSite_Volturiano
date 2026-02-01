@@ -5,20 +5,20 @@ import { motion } from 'framer-motion';
 import styles from './SelectedWork.module.css';
 
 // Import the specific assets requested
-import projectRocket from '../../../assets/VolturianoAgencyMockupExample.png';
+import scaleIntelligenceImage from '../../../assets/ScaleIntelegenceMocup.png';
 import projectSaas from '../../../assets/EuroTaxiExample.png';
 import projectStrat from '../../../assets/FurGloveExample.png';
 
 export function SelectedWork() {
   const { t } = useTranslation('agency');
 
-  // Projects with direct live links
+  // Projects with direct live links - Only 3 projects in hero section
   const selectedProjects = [
     {
-      id: 'volturiano',
-      image: projectRocket,
-      link: '/agency', // Links to home/agency page itself
-      external: false
+      id: 'scale-intelligence',
+      image: scaleIntelligenceImage,
+      link: 'https://wave-form-example-website.vercel.app/?',
+      external: true
     },
     {
       id: 'euro-taxi',

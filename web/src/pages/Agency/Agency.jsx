@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useLayoutEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { usePageTitle } from '../../hooks/usePageTitle';
 import { ThemeProvider, useTheme } from './context/ThemeContext';
@@ -39,6 +39,19 @@ import heroVideo from '../../assets/Make_a_video_1080p_202601231618.mp4';
 function AgencyContent() {
   const { t } = useTranslation(['agency', 'common']);
   usePageTitle(t('agency:pageTitle'));
+  
+  // Scroll to top on page enter - use both useLayoutEffect and useEffect to ensure it works
+  useLayoutEffect(() => {
+    window.scrollTo(0, 0);
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
+  }, []);
+
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
+  }, []);
   
   // SEO Meta Description and Open Graph tags
   useEffect(() => {

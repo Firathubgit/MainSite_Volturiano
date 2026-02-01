@@ -20,12 +20,24 @@ function BookingContent() {
   useLayoutEffect(() => {
     document.body.setAttribute('data-theme', 'dark');
     
+    // Scroll to top immediately
+    window.scrollTo(0, 0);
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
+    
     return () => {
       // Don't restore - let the next page set its own theme
     };
   }, []);
   
   usePageTitle(`${t('booking.title', { defaultValue: 'Boka möte' })} | Volturio Studios – Webbyrå i Göteborg`);
+
+  // Scroll to top on page enter - ensure it happens after render too
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
+  }, []);
 
   // Load Calendly with fallback to data-url method
   useEffect(() => {
@@ -151,6 +163,21 @@ function BookingContent() {
           className={styles.bookingContainer}
           style={{ backgroundColor: '#000000' }}
         >
+          {/* Hero Header Section */}
+          <motion.div
+            className={styles.heroHeader}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8, delay: 0.1 }}
+          >
+            <h1 className={styles.heroTitle}>
+              {t('booking.heroTitle', 'Boka ett möte med oss!')}
+            </h1>
+            <p className={styles.heroDescription}>
+              {t('booking.heroDescription', 'Boka ett snabbt 30-minuters möte för att diskutera ditt projekt och behov. Vi hjälper dig att ta nästa steg mot din digitala lösning.')}
+            </p>
+          </motion.div>
+
           <div className={styles.calendlyWrapper}>
             <div 
               id="calendly-embed"

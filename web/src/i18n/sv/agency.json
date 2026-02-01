@@ -42,6 +42,14 @@
       "volturiano": {
         "title": "Volturio Studios",
         "category": "WEBBYRÅ PORTFOLIO"
+      },
+      "solar-panel-solutions": {
+        "title": "Solar Panel Solutions",
+        "category": "SOLARENERGI-PLATTFORM"
+      },
+      "mathornan": {
+        "title": "Mathörnan",
+        "category": "RESTAURANG & MATSERVICE"
       }
     }
   },
@@ -646,6 +654,60 @@
           {
             "title": "UI/UX Design",
             "description": "Premium designsystem med modern estetik, mjuka animationer och intuitiv navigering"
+          }
+        ]
+      },
+      "solar-panel-solutions": {
+        "overview": "Solar Panel Solutions är en interaktiv plattform för att förklara solprojekt med en enda länk. Vi utvecklade en omfattande lösning med interaktiva 3D-visualiseringar, kartor och datavisualisering för att hjälpa solteam och intressenter att förstå komplexa projekt på minuter.",
+        "improvements": [
+          "Skapade interaktiva 3D-visualiseringar för solpanelslayouter och installationer",
+          "Implementerade interaktiva kartor för projektsplats och platsanalys",
+          "Utvecklade datavisualiseringskomponenter för solenergimätvärden och prognoser",
+          "Byggde ett enkellänksdelningssystem för enkel projektpresentation"
+        ],
+        "doneWork": [
+          {
+            "title": "Interaktiv 3D-plattform",
+            "description": "Komplett plattform med 3D-visualiseringar för solpanelprojekt och installationer"
+          },
+          {
+            "title": "Interaktiva kartor",
+            "description": "Kartintegration för projektsplatser och platsanalys med interaktiva funktioner"
+          },
+          {
+            "title": "Datavisualisering",
+            "description": "Omfattande datavisualisering för solenergimätvärden, prognoser och prestandadata"
+          },
+          {
+            "title": "Enkellänksdelning",
+            "description": "Enkelt delningssystem som låter intressenter komma åt komplett projektinformation via en enda länk"
+          }
+        ]
+      },
+      "mathornan": {
+        "overview": "Mathörnan är en premium restaurangwebbplats för en autentisk kolgrill och hembakat bröd-restaurang i Kortedala, Göteborg. Vi skapade en modern, inbjudande webbplats som visar deras autentiska kulinariska erbjudanden med en elegant design som speglar värme och kvalitet i deras mat.",
+        "improvements": [
+          "Designat elegant mörkt tema-gränssnitt med varm matfotografering",
+          "Implementerat onlinebeställningssystem för enkel matbeställning",
+          "Skapat menyvisning med högkvalitativ matfotografering",
+          "Optimerat för mobilupplevelse med fokus på beställningsfunktionalitet"
+        ],
+        "doneWork": [
+          {
+            "title": "Restaurangwebbplats",
+            "description": "Komplett restaurangwebbplats byggd med moderna webbtekniker som visar autentisk kolgrill och hembakat bröd"
+          },
+          {
+            "title": "Onlinebeställningssystem",
+            "description": "Integrerad onlinebeställningsfunktionalitet för smidig matbeställningsupplevelse"
+          },
+          {
+            "title": "Menyvisning",
+            "description": "Vacker menyvisning med högkvalitativ matfotografering och tydlig presentation"
+          },
+          {
+            "title": "Premium UI/UX Design",
+            "description": "Elegant designsystem med mörkt tema, varma färger och inbjudande estetik som speglar restaurangens autentiska kulinariska upplevelse"
           }
         ]
       },

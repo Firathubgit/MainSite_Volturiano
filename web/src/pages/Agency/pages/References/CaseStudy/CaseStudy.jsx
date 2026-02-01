@@ -15,6 +15,8 @@ import europaBageriThumbnail from '../../../../../assets/EuropaBageriMockipadpic
 import furgloveThumbnail from '../../../../../assets/FurGloveExample.png';
 import euroTaxiThumbnail from '../../../../../assets/EuroTaxiExample.png';
 import volturianoAgencyMockup from '../../../../../assets/VolturianoAgencyMockupExample.png';
+import solarExampleThumbnail from '../../../../../assets/SolarExample.png';
+import mathornanThumbnail from '../../../../../assets/Mathörnan.png';
 import replacementImage from '../../../../../assets/Replacement image.png';
 
 // Fallback images if needed, though we seem to have one main image per project now in the examples
@@ -51,6 +53,18 @@ const ProjectsData = {
     thumbnail: scaleIntelligenceThumbnail,
     images: [scaleIntelligenceThumbnail],
     liveUrl: 'https://wave-form-example-website.vercel.app/?'
+  },
+  'solar-panel-solutions': {
+    id: 'solar-panel-solutions',
+    thumbnail: solarExampleThumbnail,
+    images: [solarExampleThumbnail],
+    liveUrl: 'https://solar-example.vercel.app/'
+  },
+  'mathornan': {
+    id: 'mathornan',
+    thumbnail: mathornanThumbnail,
+    images: [mathornanThumbnail],
+    liveUrl: 'https://matcorner.vercel.app/'
   },
   'replacement-project-1': {
     id: 'replacement-project-1',

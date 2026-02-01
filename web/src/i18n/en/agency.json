@@ -42,6 +42,14 @@
       "volturiano": {
         "title": "Volturio Studios",
         "category": "AGENCY PORTFOLIO"
+      },
+      "solar-panel-solutions": {
+        "title": "Solar Panel Solutions",
+        "category": "SOLAR ENERGY PLATFORM"
+      },
+      "mathornan": {
+        "title": "Mathörnan",
+        "category": "RESTAURANT & FOOD SERVICE"
       }
     }
   },
@@ -646,6 +654,60 @@
           {
             "title": "UI/UX Design",
             "description": "Premium design system with modern aesthetics, smooth animations, and intuitive navigation"
+          }
+        ]
+      },
+      "solar-panel-solutions": {
+        "overview": "Solar Panel Solutions is an interactive platform for explaining solar projects with a single link. We developed a comprehensive solution featuring interactive 3D visualizations, maps, and data visualization to help solar teams and stakeholders understand complex projects in minutes.",
+        "improvements": [
+          "Created interactive 3D visualizations for solar panel layouts and installations",
+          "Implemented interactive maps for project location and site analysis",
+          "Developed data visualization components for solar energy metrics and projections",
+          "Built a single-link sharing system for easy project presentation"
+        ],
+        "doneWork": [
+          {
+            "title": "Interactive 3D Platform",
+            "description": "Complete platform with 3D visualizations for solar panel projects and installations"
+          },
+          {
+            "title": "Interactive Maps",
+            "description": "Map integration for project locations and site analysis with interactive features"
+          },
+          {
+            "title": "Data Visualization",
+            "description": "Comprehensive data visualization for solar energy metrics, projections, and performance data"
+          },
+          {
+            "title": "Single-Link Sharing",
+            "description": "Easy sharing system allowing stakeholders to access complete project information via a single link"
+          }
+        ]
+      },
+      "mathornan": {
+        "overview": "Mathörnan is a premium restaurant website for an authentic charcoal grill and homemade bread restaurant in Kortedala, Gothenburg. We created a modern, inviting website that showcases their authentic culinary offerings with an elegant design that reflects the warmth and quality of their food.",
+        "improvements": [
+          "Designed elegant dark-themed interface with warm food photography",
+          "Implemented online ordering system for easy food ordering",
+          "Created menu showcase with high-quality food imagery",
+          "Optimized for mobile experience with focus on ordering functionality"
+        ],
+        "doneWork": [
+          {
+            "title": "Restaurant Website",
+            "description": "Complete restaurant website built with modern web technologies showcasing authentic charcoal grill and homemade bread"
+          },
+          {
+            "title": "Online Ordering System",
+            "description": "Integrated online ordering functionality for seamless food ordering experience"
+          },
+          {
+            "title": "Menu Presentation",
+            "description": "Beautiful menu showcase with high-quality food photography and clear presentation"
+          },
+          {
+            "title": "Premium UI/UX Design",
+            "description": "Elegant design system with dark theme, warm colors, and inviting aesthetics that reflect the restaurant's authentic culinary experience"
           }
         ]
       },

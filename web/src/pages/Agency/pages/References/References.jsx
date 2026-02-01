@@ -14,6 +14,8 @@ import europaBageriThumbnail from '../../../../assets/EuropaBageriMockipadpic.pn
 import furgloveThumbnail from '../../../../assets/FurGloveExample.png';
 import euroTaxiThumbnail from '../../../../assets/EuroTaxiExample.png';
 import volturianoAgencyMockup from '../../../../assets/VolturianoAgencyMockupExample.png';
+import solarExampleThumbnail from '../../../../assets/SolarExample.png';
+import mathornanThumbnail from '../../../../assets/Mathörnan.png';
 import heroVideo from '../../../../assets/BackgroundVid.mp4';
 import tornadoLogo from '../../../../assets/Logo/TornadoLogo.png';
 
@@ -75,6 +77,18 @@ function ReferencesContent() {
       image: volturianoAgencyMockup,
       link: '/agency', // Links to home/agency page itself
       external: false
+    },
+    {
+      id: 'solar-panel-solutions',
+      image: solarExampleThumbnail,
+      link: 'https://solar-example.vercel.app/',
+      external: true
+    },
+    {
+      id: 'mathornan',
+      image: mathornanThumbnail,
+      link: 'https://matcorner.vercel.app/',
+      external: true
     }
   ];
 

@@ -14,7 +14,7 @@ import europaBageriThumbnail from '../../../../assets/EuropaBageriMockipadpic.pn
 import furgloveThumbnail from '../../../../assets/FurGloveExample.png';
 import euroTaxiThumbnail from '../../../../assets/EuroTaxiExample.png';
 import volturianoAgencyMockup from '../../../../assets/VolturianoAgencyMockupExample.png';
-import heroVideo from '../../../../assets/Make_a_video_1080p_202601231618.mp4';
+import heroVideo from '../../../../assets/BackgroundVid.mp4';
 import tornadoLogo from '../../../../assets/Logo/TornadoLogo.png';
 
 function ReferencesContent() {

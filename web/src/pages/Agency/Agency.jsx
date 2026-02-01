@@ -34,7 +34,7 @@ import GoldPackage from '../../assets/Logo/GOLDPackage.png';
 import SilverPackage from '../../assets/Logo/SilverPackage.png';
 import TitaniumPackage from '../../assets/Logo/TitaniumPackage.png';
 import TornadoLogo from '../../assets/Logo/TornadoLogo.png';
-import heroVideo from '../../assets/Make_a_video_1080p_202601231618.mp4';
+import heroVideo from '../../assets/BackgroundVid.mp4';
 
 function AgencyContent() {
   const { t } = useTranslation(['agency', 'common']);

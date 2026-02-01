@@ -176,7 +176,7 @@ Med vänliga hälsningar,
         </div>
 
         <div className={`${styles.infoColumn} ${styles.infoColumnRight}`}>
-          <p>{t('footer.copyright', { defaultValue: '© 2026 Volturio Web Agency.' })}</p>
+          <p>{t('footer.copyright', { defaultValue: '© 2026 Volturio Web Agency' })}</p>
           <p className={styles.tagline}>
             {t('footer.tagline', { defaultValue: 'Engineered for the future.' })}
           </p>

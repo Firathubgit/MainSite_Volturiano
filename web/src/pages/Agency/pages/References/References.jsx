@@ -13,7 +13,6 @@ import scaleIntelligenceThumbnail from '../../../../assets/ScaleIntelegenceMocup
 import europaBageriThumbnail from '../../../../assets/EuropaBageriMockipadpic.png';
 import furgloveThumbnail from '../../../../assets/FurGloveExample.png';
 import euroTaxiThumbnail from '../../../../assets/EuroTaxiExample.png';
-import volturianoAgencyMockup from '../../../../assets/VolturianoAgencyMockupExample.png';
 import solarExampleThumbnail from '../../../../assets/SolarExample.png';
 import mathornanThumbnail from '../../../../assets/Mathörnan.png';
 import heroVideo from '../../../../assets/BackgroundVid.mp4';
@@ -46,12 +45,30 @@ function ReferencesContent() {
   }, [theme]);
 
   // Projects List with direct live links (project-specific pages kept for future use)
-  // Order: Scale Intelligence first, then other projects, Volturiano Studios last
+  // Order: 1. Scale Intelligence, 2. Solar Panel Solutions, 3. Mathörnan, 4. Europa Bageri, 5. Euro Taxi, 6. Furglove
   const ProjectsList = [
     {
       id: 'scale-intelligence',
       image: scaleIntelligenceThumbnail,
       link: 'https://wave-form-example-website.vercel.app/?',
+      external: true
+    },
+    {
+      id: 'solar-panel-solutions',
+      image: solarExampleThumbnail,
+      link: 'https://solar-example.vercel.app/',
+      external: true
+    },
+    {
+      id: 'mathornan',
+      image: mathornanThumbnail,
+      link: 'https://matcorner.vercel.app/',
+      external: true
+    },
+    {
+      id: 'europa-bageri',
+      image: europaBageriThumbnail,
+      link: 'https://europa-bageri-premium.vercel.app/',
       external: true
     },
     {
@@ -64,30 +81,6 @@ function ReferencesContent() {
       id: 'furglove-pro',
       image: furgloveThumbnail,
       link: 'https://furglove-pro.vercel.app/',
-      external: true
-    },
-    {
-      id: 'europa-bageri',
-      image: europaBageriThumbnail,
-      link: 'https://europa-bageri-premium.vercel.app/',
-      external: true
-    },
-    {
-      id: 'volturiano',
-      image: volturianoAgencyMockup,
-      link: '/agency', // Links to home/agency page itself
-      external: false
-    },
-    {
-      id: 'solar-panel-solutions',
-      image: solarExampleThumbnail,
-      link: 'https://solar-example.vercel.app/',
-      external: true
-    },
-    {
-      id: 'mathornan',
-      image: mathornanThumbnail,
-      link: 'https://matcorner.vercel.app/',
       external: true
     }
   ];

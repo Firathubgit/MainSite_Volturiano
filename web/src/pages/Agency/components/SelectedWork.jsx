@@ -6,13 +6,14 @@ import styles from './SelectedWork.module.css';
 
 // Import the specific assets requested
 import scaleIntelligenceImage from '../../../assets/ScaleIntelegenceMocup.png';
-import projectSaas from '../../../assets/EuroTaxiExample.png';
-import projectStrat from '../../../assets/FurGloveExample.png';
+import solarExampleThumbnail from '../../../assets/SolarExample.png';
+import mathornanThumbnail from '../../../assets/Mathörnan.png';
 
 export function SelectedWork() {
   const { t } = useTranslation('agency');
 
   // Projects with direct live links - Only 3 projects in hero section
+  // Order: 1. Scale Intelligence, 2. Solar Panel Solutions, 3. Mathörnan
   const selectedProjects = [
     {
       id: 'scale-intelligence',
@@ -21,15 +22,15 @@ export function SelectedWork() {
       external: true
     },
     {
-      id: 'euro-taxi',
-      image: projectSaas,
-      link: 'https://www.eurotaxias.no/',
+      id: 'solar-panel-solutions',
+      image: solarExampleThumbnail,
+      link: 'https://solar-example.vercel.app/',
       external: true
     },
     {
-      id: 'furglove-pro',
-      image: projectStrat,
-      link: 'https://furglove-pro.vercel.app/',
+      id: 'mathornan',
+      image: mathornanThumbnail,
+      link: 'https://matcorner.vercel.app/',
       external: true
     }
   ];

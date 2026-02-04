@@ -136,7 +136,7 @@ function AgencyContent() {
           : "Premium web agency in Gothenburg building advanced web solutions, from 3D configurators to customer portals. Custom systems for businesses that want to grow.",
         "url": "https://volturiano.com/agency",
         "logo": "https://volturiano.com/logo.png",
-        "image": "https://volturiano.com/og-image.jpg",
+        "image": "https://volturiano.com/og-image.png",
         "address": {
           "@type": "PostalAddress",
           "addressLocality": "Göteborg",

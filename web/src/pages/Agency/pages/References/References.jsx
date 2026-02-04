@@ -15,6 +15,7 @@ import furgloveThumbnail from '../../../../assets/FurGloveExample.png';
 import euroTaxiThumbnail from '../../../../assets/EuroTaxiExample.png';
 import solarExampleThumbnail from '../../../../assets/SolarExample.png';
 import mathornanThumbnail from '../../../../assets/Mathörnan.png';
+import chockladThumbnail from '../../../../assets/Chocklad.png';
 import heroVideo from '../../../../assets/BackgroundVid.mp4';
 import tornadoLogo from '../../../../assets/Logo/TornadoLogo.png';
 
@@ -45,7 +46,7 @@ function ReferencesContent() {
   }, [theme]);
 
   // Projects List with direct live links (project-specific pages kept for future use)
-  // Order: 1. Scale Intelligence, 2. Solar Panel Solutions, 3. Mathörnan, 4. Europa Bageri, 5. Euro Taxi, 6. Furglove
+  // Order: 1. Scale Intelligence, 2. Solar Panel Solutions, 3. Mathörnan, 4. Europa Bageri, 5. Euro Taxi, 6. Furglove, 7. Oompaloompa
   const ProjectsList = [
     {
       id: 'scale-intelligence',
@@ -81,6 +82,12 @@ function ReferencesContent() {
       id: 'furglove-pro',
       image: furgloveThumbnail,
       link: 'https://furglove-pro.vercel.app/',
+      external: true
+    },
+    {
+      id: 'oompaloompa',
+      image: chockladThumbnail,
+      link: 'https://chocolata-mvp-ksrb.vercel.app/',
       external: true
     }
   ];

@@ -54,6 +54,10 @@
       "oompaloompa": {
         "title": "Oompaloompa",
         "category": "PREMIUM CHOCOLATE MARKETPLACE"
+      },
+      "volturiano-platform": {
+        "title": "Volturiano",
+        "category": "CAR BRAND PLATFORM"
       }
     }
   },
@@ -554,7 +558,7 @@
         ]
       },
       "scale-intelligence": {
-        "overview": "Scale Intelligence is a cutting-edge AI platform for deploying custom AI agents and fluid neural interfaces. We developed a sophisticated dark-themed interface that bridges the gap between complex LLMs and world-class UX, enabling seamless AI agent deployment and management.",
+        "overview": "Demo case study — not a real client. AI agent deployment platform with dark-themed fluid neural interface, LLM integration, and workflow builder. Built by Volturio Studios as a portfolio showcase example.",
         "improvements": [
           "Created futuristic dark-themed design with fluid, organic visual elements",
           "Implemented intuitive AI agent deployment workflow interface",
@@ -608,7 +612,7 @@
         ]
       },
       "euro-taxi": {
-        "overview": "Euro Taxi is a complete taxi booking platform for Oslo and Viken. We developed a modern application with real-time booking, map integration, and seamless user experience.",
+        "overview": "Taxi booking platform with Leaflet map integration, real-time pricing, and responsive design — currently deployed via QR code across 130+ vehicles in the Oslo and Viken region of Norway.",
         "improvements": [
           "Implemented map integration with Leaflet for visual booking",
           "Enhanced booking process with real-time pricing",
@@ -662,7 +666,7 @@
         ]
       },
       "solar-panel-solutions": {
-        "overview": "Solar Panel Solutions is an interactive platform for explaining solar projects with a single link. We developed a comprehensive solution featuring interactive 3D visualizations, maps, and data visualization to help solar teams and stakeholders understand complex projects in minutes.",
+        "overview": "Demo case study — not a real client. Interactive solar project platform with 3D visualizations, map integration, energy data dashboards, and single-link sharing. Built by Volturio Studios as a portfolio showcase example.",
         "improvements": [
           "Created interactive 3D visualizations for solar panel layouts and installations",
           "Implemented interactive maps for project location and site analysis",
@@ -715,41 +719,13 @@
           }
         ]
       },
-      "replacement-project-1": {
-        "overview": "This is a replacement project placeholder showcasing our capabilities. This project represents our commitment to delivering quality digital solutions.",
-        "improvements": [
-          "Placeholder improvement 1",
-          "Placeholder improvement 2",
-          "Placeholder improvement 3"
-        ],
-        "doneWork": [
-          {
-            "title": "Placeholder Work Item 1",
-            "description": "Description of placeholder work completed"
-          },
-          {
-            "title": "Placeholder Work Item 2",
-            "description": "Description of placeholder work completed"
-          }
-        ]
+      "volturiano-platform": {
+        "overview": "Complete car-brand platform with Supabase database, real-time authentication, 2D/3D configurator, personal garage, test-drive booking, AI assistant, push notifications, PDF export, admin dashboard, role management, multi-language support, and Stripe payments. Disclaimer: Volturiano is a fictional brand, not a real car manufacturer.",
+        "purchaseNote": "Platform available for licensing. Your brand, your cars, live in weeks.",
+        "downloadFeatures": "Download Feature List"
       },
-      "replacement-project-2": {
-        "overview": "This is a replacement project placeholder showcasing our capabilities. This project represents our commitment to delivering quality digital solutions.",
-        "improvements": [
-          "Placeholder improvement 1",
-          "Placeholder improvement 2",
-          "Placeholder improvement 3"
-        ],
-        "doneWork": [
-          {
-            "title": "Placeholder Work Item 1",
-            "description": "Description of placeholder work completed"
-          },
-          {
-            "title": "Placeholder Work Item 2",
-            "description": "Description of placeholder work completed"
-          }
-        ]
+      "oompaloompa": {
+        "overview": "Premium chocolate marketplace with Supabase backend, real-time authentication, admin dashboard, buyer dashboard, role-based access control, product management, order tracking, and Stripe checkout — fully deployed and production-ready."
       }
     }
   },

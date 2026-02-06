@@ -26,6 +26,7 @@ export function NavBar() {
   const closeAccountMenu = useUiStore((state) => state.closeAccountMenu);
   const toggleNavMenu = useUiStore((state) => state.toggleNavMenu);
   const accountMenuOpen = useUiStore((state) => state.accountMenuOpen);
+  const platformMode = useUiStore((state) => state.platformMode);
   const accountButtonRef = useRef(null);
   
   useRenderLogger('NavBar', { pathname: location.pathname, isHome, hasSession: !!session, accountMenuOpen });
@@ -92,7 +93,7 @@ export function NavBar() {
           </button>
         </div>
 
-        {/* Center logo: clickable unless on home */}
+        {/* Center logo: clickable unless on home. Route / handles context dynamically via platformMode */}
         <div className={s.center}>
           {isHome ? (
             <div className={s.logo} aria-label={t('nav:aria.home')}>

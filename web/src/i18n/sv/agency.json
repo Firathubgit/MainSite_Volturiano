@@ -54,6 +54,10 @@
       "oompaloompa": {
         "title": "Oompaloompa",
         "category": "PREMIUM CHOKLADMARKNAD"
+      },
+      "volturiano-platform": {
+        "title": "Volturiano",
+        "category": "BILMÄRKESPLATTFORM"
       }
     }
   },
@@ -554,7 +558,7 @@
         ]
       },
       "scale-intelligence": {
-        "overview": "Scale Intelligence är en banbrytande AI-plattform för att distribuera anpassade AI-agenter och flytande neurala gränssnitt. Vi utvecklade ett sofistikerat mörkt tema-gränssnitt som bygger broar mellan komplexa LLM:er och världsklass UX, vilket möjliggör smidig AI-agentdistribution och hantering.",
+        "overview": "Demo-fallstudie — ej en riktig klient. AI-agentplattform med mörkt tema, flytande neuralt gränssnitt, LLM-integration och arbetsflödesbyggare. Byggd av Volturio Studios som portfolio-exempel.",
         "improvements": [
           "Skapat futuristisk mörkt tema-design med flytande, organiska visuella element",
           "Implementerat intuitivt AI-agentdistributionsarbetsflödesgränssnitt",
@@ -608,7 +612,7 @@
         ]
       },
       "euro-taxi": {
-        "overview": "Euro Taxi är en komplett taxibokningsplattform för Oslo och Viken. Vi utvecklade en modern applikation med realtidsbokning, kartintegration och smidig användarupplevelse.",
+        "overview": "Taxibokningsplattform med Leaflet-kartintegration, realtidsprissättning och responsiv design — för närvarande driftsatt via QR-kod i över 130 fordon i Oslo- och Vikenområdet i Norge.",
         "improvements": [
           "Implementerad kartintegration med Leaflet för visuell bokning",
           "Förbättrad bokningsprocess med realtidsprissättning",
@@ -662,7 +666,7 @@
         ]
       },
       "solar-panel-solutions": {
-        "overview": "Solar Panel Solutions är en interaktiv plattform för att förklara solprojekt med en enda länk. Vi utvecklade en omfattande lösning med interaktiva 3D-visualiseringar, kartor och datavisualisering för att hjälpa solteam och intressenter att förstå komplexa projekt på minuter.",
+        "overview": "Demo-fallstudie — ej en riktig klient. Interaktiv solprojektplattform med 3D-visualiseringar, kartintegration, energidatapaneler och delning via en länk. Byggd av Volturio Studios som portfolio-exempel.",
         "improvements": [
           "Skapade interaktiva 3D-visualiseringar för solpanelslayouter och installationer",
           "Implementerade interaktiva kartor för projektsplats och platsanalys",
@@ -715,41 +719,13 @@
           }
         ]
       },
-      "replacement-project-1": {
-        "overview": "Detta är en ersättningsprojektplatshållare som visar våra kapaciteter. Detta projekt representerar vårt engagemang för att leverera kvalitativa digitala lösningar.",
-        "improvements": [
-          "Platshållare förbättring 1",
-          "Platshållare förbättring 2",
-          "Platshållare förbättring 3"
-        ],
-        "doneWork": [
-          {
-            "title": "Platshållare Arbetsuppgift 1",
-            "description": "Beskrivning av platshållare arbete som slutförts"
-          },
-          {
-            "title": "Platshållare Arbetsuppgift 2",
-            "description": "Beskrivning av platshållare arbete som slutförts"
-          }
-        ]
+      "volturiano-platform": {
+        "overview": "Fullständig bilmärkesplattform med Supabase-databas, realtidsautentisering, 2D/3D-konfigurator, personligt garage, provkörningsbokning, AI-assistent, push-notiser, PDF-export, adminpanel, rollhantering, flerspråksstöd och Stripe-betalningar. Disclaimer: Volturiano är ett fiktivt varumärke, ej en riktig biltillverkare.",
+        "purchaseNote": "Plattform tillgänglig för licensiering. Ert varumärke, era bilar, live inom veckor.",
+        "downloadFeatures": "Ladda ner funktionslista"
       },
-      "replacement-project-2": {
-        "overview": "Detta är en ersättningsprojektplatshållare som visar våra kapaciteter. Detta projekt representerar vårt engagemang för att leverera kvalitativa digitala lösningar.",
-        "improvements": [
-          "Platshållare förbättring 1",
-          "Platshållare förbättring 2",
-          "Platshållare förbättring 3"
-        ],
-        "doneWork": [
-          {
-            "title": "Platshållare Arbetsuppgift 1",
-            "description": "Beskrivning av platshållare arbete som slutförts"
-          },
-          {
-            "title": "Platshållare Arbetsuppgift 2",
-            "description": "Beskrivning av platshållare arbete som slutförts"
-          }
-        ]
+      "oompaloompa": {
+        "overview": "Premium chokladmarknadsplats med Supabase-backend, realtidsautentisering, adminpanel, köparpanel, rollbaserad åtkomstkontroll, produkthantering, orderspårning och Stripe-kassa — fullt driftsatt och produktionsklar."
       }
     }
   },

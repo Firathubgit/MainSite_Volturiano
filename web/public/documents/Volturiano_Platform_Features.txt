@@ -1,0 +1,879 @@
+================================================================================
+  VOLTURIANO AUTOMOTIVE PLATFORM
+  COMPLETE FEATURE SPECIFICATION
+================================================================================
+
+  Version:    1.0
+  Platform:   Web (Desktop, Tablet, Mobile)
+  Stack:      React 18 + Vite, Supabase, Zustand, React Three Fiber, Stripe
+  License:    Available for white-label deployment
+
+================================================================================
+  TABLE OF CONTENTS
+================================================================================
+
+  1.  Platform Architecture & Infrastructure
+  2.  Authentication & User Management
+  3.  The Digital Garage (User Portal)
+  4.  2D Visual Configurator Engine
+  5.  3D Immersive Configurator Engine
+  6.  Commerce, Pricing & Payments
+  7.  AI Assistant & Customer Support
+  8.  Admin Dashboard & Content Management
+  9.  Operations, Monitoring & Analytics
+  10. Internationalization & Multi-Region
+  11. Performance & Optimization
+  12. Security & Compliance
+  13. Marketing & Launch Communications
+  14. Appendix: Database Schema Summary
+
+
+================================================================================
+  1. PLATFORM ARCHITECTURE & INFRASTRUCTURE
+================================================================================
+
+  1.1  FRONTEND FRAMEWORK
+  ─────────────────────────────────────────
+  • React 18+ with Vite for sub-second hot module replacement.
+  • React Router v6 with route-level code splitting and lazy loading.
+  • Feature-sliced architecture: each module is self-contained with its own
+    components, API layer, store slice, and scoped CSS.
+  • CSS Modules + PostCSS for zero-collision component styling.
+  • Framer Motion for declarative scroll-reveal, page transitions, and
+    micro-interactions across the entire UI.
+  • Full progressive web app (PWA) readiness with service worker hooks.
+
+  1.2  BACKEND & DATA LAYER
+  ─────────────────────────────────────────
+  • Supabase (PostgreSQL 15) as the single source of truth.
+  • Row-Level Security (RLS) on every table — no data leaks by design.
+  • Supabase Auth with email/password, magic links, and social OAuth providers.
+  • Supabase Realtime subscriptions for live dashboard updates, garage sync,
+    and inventory changes pushed to every connected client instantly.
+  • Supabase Edge Functions (Deno) for server-side logic: PDF generation,
+    Stripe webhooks, email dispatch, AI proxy, and scheduled jobs.
+  • Supabase Storage CDN with signed URLs for renders, 3D models, documents,
+    and user-uploaded assets — globally distributed.
+
+  1.3  STATE MANAGEMENT
+  ─────────────────────────────────────────
+  • Zustand stores with fine-grained subscriptions (no unnecessary re-renders).
+  • Dedicated stores: userStore, uiStore, configStore, garageStore.
+  • Optimistic updates with automatic rollback on server failure.
+  • localStorage persistence for offline-capable core features.
+  • Session management with automatic token refresh.
+
+  1.4  CI/CD & DEPLOYMENT
+  ─────────────────────────────────────────
+  • GitHub Actions workflows for automated testing, linting, and deployment.
+  • Vercel/Netlify frontend hosting with edge CDN and preview deployments.
+  • Supabase CLI for database migrations with rollback capability.
+  • Lighthouse CI for enforcing performance budgets on every pull request.
+  • Zero-downtime deployments with atomic rollouts.
+
+  1.5  ERROR HANDLING & MONITORING
+  ─────────────────────────────────────────
+  • Global and route-level React Error Boundaries preventing full app crashes.
+  • Structured logging utility with log levels (debug, info, warn, error).
+  • Sentry integration for real-time error tracking and performance monitoring.
+  • Request ID correlation across frontend and Edge Functions.
+  • Alerting rules for critical error spikes.
+
+
+================================================================================
+  2. AUTHENTICATION & USER MANAGEMENT
+================================================================================
+
+  2.1  SIGN-UP & LOGIN
+  ─────────────────────────────────────────
+  • Email + password registration with server-side validation.
+  • Magic link (passwordless) login via email.
+  • Social OAuth: Google, Apple, GitHub (configurable per deployment).
+  • Session persistence across tabs and browser restarts.
+  • Automatic token refresh — users never get logged out mid-session.
+
+  2.2  USER PROFILES
+  ─────────────────────────────────────────
+  • Profiles table linked to Supabase Auth with RLS.
+  • Editable display name, avatar, phone, and preferred language.
+  • Profile completion progress indicator.
+  • Account deletion flow (GDPR-compliant data removal).
+
+  2.3  ROLE-BASED ACCESS CONTROL (RBAC)
+  ─────────────────────────────────────────
+  • Role hierarchy: user → dealer → admin → super_admin.
+  • JWT claims carry role information for client-side gating.
+  • RLS policies enforce role checks on every database query.
+  • Admin role grants access to the Admin Dashboard.
+  • Dealer role grants access to order management and test-drive requests.
+
+  2.4  ACCOUNT SETTINGS
+  ─────────────────────────────────────────
+  • Password change with current-password verification.
+  • Email change with re-verification flow.
+  • Notification preferences (email, push, SMS toggles).
+  • Language and region preference.
+  • Connected accounts management (OAuth providers).
+  • Two-factor authentication readiness (TOTP).
+
+
+================================================================================
+  3. THE DIGITAL GARAGE (USER PORTAL)
+================================================================================
+
+  3.1  CORE GARAGE UI
+  ─────────────────────────────────────────
+  • Four-lane layout: Saved Builds, Purchases, Prototypes, Wishlist.
+  • Each lane displays vehicle configuration cards with thumbnail, title,
+    model, price summary, tags, and last-modified timestamp.
+  • Real-time synchronization via Supabase Realtime — changes on one device
+    appear instantly on all others.
+  • Responsive grid that adapts from 4-column desktop to single-column mobile.
+  • Loading skeletons, empty states, and error recovery for every lane.
+
+  3.2  SAVE TO GARAGE
+  ─────────────────────────────────────────
+  • One-click save from any configurator view.
+  • Full configuration JSON stored in garage_items.config_payload (JSONB).
+  • Automatic initial version snapshot created on first save.
+  • Auth-aware: redirects unauthenticated users to login, then returns them
+    to the exact configurator state for seamless save completion.
+  • Optimistic UI update with rollback on failure.
+  • Success toast with link to open the saved item in the Garage.
+
+  3.3  EDIT & RENAME
+  ─────────────────────────────────────────
+  • Modal editor for title, description, and state.
+  • Input validation: required title, max character limits.
+  • Partial update support — only changed fields are sent to the server.
+  • Automatic updated_at timestamp refresh.
+  • Version snapshot created if the underlying configuration changes.
+
+  3.4  VERSION HISTORY & DIFF VIEW
+  ─────────────────────────────────────────
+  • Vertical timeline of every version ever saved for a garage item.
+  • Each entry shows version number, date, and a human-readable diff summary.
+  • Click any version to see the full configuration snapshot.
+  • Visual diff: added options highlighted in green, removed in red, changed
+    in amber, with price delta displayed for each change.
+  • "Restore to this version" action: creates a new version from the restored
+    state, preserving full history.
+
+  3.5  SHARING & DEEP LINKS
+  ─────────────────────────────────────────
+  • Generate unique shareable URL for any garage item.
+  • Share modal with: copy-to-clipboard button, QR code for mobile scanning,
+    privacy controls, and optional link expiry.
+  • Privacy levels: Public (anyone), Unlisted (link-only), Private (owner).
+  • Access tracking: view count, last accessed timestamp.
+  • Deep link handler at /garage/share/:shareCode renders a read-only view
+    of the shared configuration with a "Save to my garage" call-to-action.
+  • Supabase RPC functions: create_share_link, get_shared_item,
+    update_share_settings — all secured with RLS.
+
+  3.6  STATE TRANSITIONS & ORDER LINKING
+  ─────────────────────────────────────────
+  • State enum: saved, purchased, prototype, wishlist, archived.
+  • Validated transitions (e.g., cannot move from archived to purchased).
+  • Stripe webhook integration: on payment success, the linked garage item
+    automatically transitions to "purchased" and a milestone is created.
+  • On refund: state reverts to "saved" with a refund milestone logged.
+  • Manual drag-and-drop between lanes with confirmation dialog.
+  • Activity log entry created for every state change.
+
+  3.7  TAGS & GOAL CONFIGURATION
+  ─────────────────────────────────────────
+  • Chip-based multi-select tag system.
+  • Predefined tags: track, grand-tourer, concept, daily-driver (extensible).
+  • Tags displayed visually on each car card.
+  • Tag filtering with AND/OR logic toggle.
+  • Tag counts shown in filter bar.
+  • Filter preferences persisted to localStorage.
+
+  3.8  OPEN IN CONFIGURATOR (DEEP LINK)
+  ─────────────────────────────────────────
+  • "Configure" button on every garage card.
+  • Route: /configurator/:garageItemId — loads the saved configuration,
+    extracts vehicle selection and all option mappings, and hydrates the
+    configurator store so the user picks up exactly where they left off.
+  • Graceful handling of missing options (e.g., discontinued color).
+  • Loading state with branded animation during extraction.
+
+  3.9  TIMELINE & MILESTONES
+  ─────────────────────────────────────────
+  • Vertical timeline attached to each garage item.
+  • Milestone types: created, updated, purchased, delivered, custom.
+  • Expandable detail view per milestone.
+  • Users can add custom milestones (e.g., "Showed dealer", "Approved by
+    spouse").
+  • Future-date placeholders for estimated delivery.
+  • Legacy milestone type mapping for backward compatibility.
+
+  3.10 ADVANCED FILTERING & SORTING
+  ─────────────────────────────────────────
+  • Filter by: state, date range (created/updated), price range, vehicle
+    model, tags.
+  • Sort by: date (newest/oldest), price (high/low), name (A–Z).
+  • Saved filter presets with quick-apply buttons.
+  • "Clear all filters" one-click reset.
+  • Client-side search by title and description for instant results.
+  • Server-side filtering for date and price ranges for efficiency.
+
+  3.11 PDF EXPORT
+  ─────────────────────────────────────────
+  • Edge Function (generate-pdf) accepts a garage_item_id and produces a
+    branded PDF specification sheet.
+  • PDF contents: vehicle details, selected options with individual prices,
+    pricing breakdown, high-res render image, QR code linking to the shared
+    configuration, and Volturiano-branded header/footer with orange accents.
+  • Asynchronous job queue: pdf_export_jobs table tracks status (queued,
+    processing, completed, failed).
+  • Generated PDFs stored in Supabase Storage "documents" bucket with signed
+    download URLs.
+  • UI: "Export PDF" in the card menu, status badge, and download button.
+  • Typical generation time: 2–5 seconds.
+
+  3.12 TEST DRIVE SCHEDULING
+  ─────────────────────────────────────────
+  • Scheduling modal pre-filled with the garage item's model and the user's
+    contact info from their profile.
+  • Date picker restricted to future dates.
+  • Dynamic dealer selector supporting multiple dealership locations.
+  • On submit: record created in test_drive_requests, email dispatched to
+    the selected dealer and a confirmation sent to the user (via Edge
+    Function with Resend integration).
+  • Status tracking: pending → confirmed → completed / cancelled.
+  • Dealers can update status via API; users see live status on their card.
+  • Cancel functionality with reason field.
+  • All actions logged to garage_activity for audit trail.
+
+
+================================================================================
+  4. 2D VISUAL CONFIGURATOR ENGINE
+================================================================================
+
+  4.1  MANIFEST-DRIVEN ARCHITECTURE
+  ─────────────────────────────────────────
+  • Every vehicle model is defined by a JSON manifest stored in Supabase.
+  • Manifest structure:
+      - modelId, supported angles (front-3q, side, rear-3q, interior)
+      - Layer stack with z-index ordering
+      - Dependency graph between layers (e.g., wheels depend on body color)
+      - Variant mapping: option_value_id → asset URL for each layer
+      - Metadata: version, last updated, author
+  • Manifest Editor UI for admin users:
+      - Drag-and-drop layer reordering.
+      - Visual dependency graph.
+      - Direct upload of assets to Supabase Storage.
+      - JSON export/import.
+      - Validation before publish.
+  • Versioned manifests with draft/published/archived lifecycle.
+  • Rollback to any previous manifest version.
+
+  4.2  LAYERED IMAGE COMPOSITION
+  ─────────────────────────────────────────
+  • High-fidelity 2D rendering by stacking transparent PNG/WebP layers.
+  • Each configurable option (paint, wheels, calipers, aero, interior trim)
+    maps to a specific layer with its own z-index.
+  • Option swap triggers only the affected layer reload — all other layers
+    remain cached, achieving <100ms perceived swap time.
+  • Multi-angle support: users switch between front ¾, side profile, rear ¾,
+    and interior views, each with its own layer set.
+
+  4.3  ADAPTIVE IMAGE QUALITY SCALING
+  ─────────────────────────────────────────
+  • Automatic detection of viewport size, device pixel ratio (DPR), and
+    network speed (navigator.connection API).
+  • Quality tiers:
+      - Low:   800px width, 70% JPEG quality (mobile / slow 3G)
+      - Medium: 1200px, 85% quality (tablet / 4G)
+      - High:  2000px, 95% quality (desktop / fast connection)
+      - Ultra: original resolution, lossless (retina / Wi-Fi)
+  • Supabase Storage CDN image transformations for on-the-fly resizing.
+  • Progressive loading: low-quality placeholder → full resolution swap.
+  • IntersectionObserver-based lazy loading.
+  • Prefetch on swatch hover for instant visual feedback.
+  • Performance budgets: LCP < 2.5s, image load < 1s on 3G, zero layout
+    shift.
+
+  4.4  COMPATIBILITY RULES ENGINE
+  ─────────────────────────────────────────
+  • Rules stored in compatibility_rules table with types: "requires" and
+    "incompatible".
+  • Client-side evaluation engine loaded into Zustand store.
+  • On every option change, all rules are re-evaluated in <10ms.
+  • Violation feedback: inline alerts with i18n messages, affected options
+    highlighted, and auto-resolve suggestions.
+  • Automatic reconciliation: "requires" rules auto-select the dependency;
+    "incompatible" rules disable the conflicting option with explanation.
+  • Undo support for auto-resolved changes.
+  • Admin rule management UI: list, create, edit, delete, bulk import/export,
+    test rules against sample configurations.
+
+  4.5  CAMERA ANGLE TRANSITIONS
+  ─────────────────────────────────────────
+  • Smooth animated transitions between viewing angles.
+  • Parallax depth effect: layers shift at different rates based on z-index,
+    creating a subtle 3D illusion during angle switches.
+  • Configurable easing functions and durations via manifest metadata.
+  • Respects prefers-reduced-motion for accessibility.
+  • 60fps target on mid-tier devices.
+
+  4.6  PRESET CONFIGURATIONS
+  ─────────────────────────────────────────
+  • Curated starter configurations: Performance Pack, Winter Pack, Launch
+    Edition, etc.
+  • Preset gallery shown on configurator entry with thumbnails, names, and
+    descriptions.
+  • "Start with this" applies the full preset to the configurator store.
+  • "Start from scratch" option always available.
+  • Presets managed via Supabase table with admin CRUD interface.
+
+  4.7  STUDIO LIGHTING FILTER
+  ─────────────────────────────────────────
+  • Background/lighting presets: Studio (neutral), Track (dynamic), Gallery
+    (dramatic), Sunset (warm).
+  • Segmented control with visual thumbnails.
+  • Background assets swapped with preloaded fade transitions.
+  • User preference persisted per configuration.
+
+  4.8  UNDO / REDO SYSTEM
+  ─────────────────────────────────────────
+  • Full history stack in the configurator Zustand store.
+  • past[] / present / future[] architecture with immutable snapshots.
+  • Keyboard shortcuts: Ctrl+Z (undo), Ctrl+Y / Ctrl+Shift+Z (redo).
+  • History depth limit (50 states) to bound memory usage.
+  • Optional localStorage persistence so history survives page reloads.
+
+  4.9  COMPARE MODE
+  ─────────────────────────────────────────
+  • Side-by-side comparison of two configurations.
+  • Diff highlighting: added (green), removed (red), changed (amber).
+  • Option-by-option and price-by-price comparison table.
+  • Responsive: stacks vertically on mobile.
+  • Future: shareable comparison URLs and Supabase persistence.
+
+  4.10 VARIANT AVAILABILITY ALERTS
+  ─────────────────────────────────────────
+  • variant_inventory table tracks stock per option_value per region.
+  • Supabase Realtime subscription pushes inventory changes to the
+    configurator in real time.
+  • Low-stock warnings and out-of-stock indicators shown inline.
+  • Unavailable options are automatically disabled with explanation.
+  • Dismissible alerts with persisted dismiss state.
+
+  4.11 WISHLIST OVERLAY
+  ─────────────────────────────────────────
+  • Floating "Add to Wishlist" button on the configurator page.
+  • Auth-aware: redirects guests to login, returns to exact state.
+  • Reuses SaveToGarageButton logic with state preset to "wishlist".
+  • Toast confirmation with link to Garage.
+
+  4.12 WATERMARK RENDERING
+  ─────────────────────────────────────────
+  • Client-side canvas watermark overlay on configurator renders.
+  • Configurable opacity and corner position.
+  • User toggle to enable/disable.
+  • Server-side watermarking pipeline planned for high-res exports.
+
+  4.13 SHOWCASE MODE
+  ─────────────────────────────────────────
+  • Full-screen immersive presentation of the configured vehicle.
+  • Environment presets: winter, summer, studio, track, gallery.
+  • Text/copy overlays for marketing presentations.
+  • Shareable showcase URLs: /showcase/:configId?preset=winter.
+  • Deep link back to configurator for further editing.
+
+  4.14 AR PREVIEW INTEGRATION
+  ─────────────────────────────────────────
+  • Device capability detection: WebXR, ARKit (iOS), ARCore (Android).
+  • AR asset URLs in manifest: USDZ (iOS) and GLB (Android/Web).
+  • AR button shown only on supported devices.
+  • Launches native AR viewer or WebXR session.
+  • Graceful fallback to 2D/3D on unsupported devices.
+
+
+================================================================================
+  5. 3D IMMERSIVE CONFIGURATOR ENGINE
+================================================================================
+
+  5.1  REACT THREE FIBER SCENE
+  ─────────────────────────────────────────
+  • Full WebGL scene built with React Three Fiber + Drei.
+  • Perspective camera with configurable FOV and position presets.
+  • Orbit controls: rotate, pan, zoom with damping.
+  • HDRI environment lighting + directional sun light.
+  • Ground plane with shadow receiver.
+  • frameloop="demand" for battery-efficient rendering (only re-renders
+    when the scene changes).
+
+  5.2  GLB STREAMING & CACHING
+  ─────────────────────────────────────────
+  • Asset pipeline: source GLB → Draco compression → KTX2 texture
+    conversion → geometry optimization → LOD variant generation →
+    upload to Supabase Storage.
+  • DRACOLoader and KTX2Loader integration for maximum compression.
+  • Progressive loading with placeholder meshes during download.
+  • IndexedDB caching of decoded geometry buffers — repeat visits load
+    from local cache with zero network requests.
+  • Versioned assets with automatic cache invalidation on update.
+  • Retry logic with exponential backoff on network failures.
+
+  5.3  LEVEL OF DETAIL (LOD)
+  ─────────────────────────────────────────
+  • Automatic device capability detection (GPU tier, available memory).
+  • Camera-distance-based LOD switching using Drei <Detailed>.
+  • Three LOD tiers: high (close-up), medium (mid-range), low (overview).
+  • Automatic fallback to 2D configurator on low-end devices.
+
+  5.4  INTERIOR / EXTERIOR TOGGLE
+  ─────────────────────────────────────────
+  • GLB node partitioning: interior group, exterior group, shared nodes.
+  • Toggle buttons with smooth camera transition between exterior wide-angle
+    and interior close-up perspectives.
+  • Light rig swap: exterior uses HDRI + sun; interior uses ambient + accent.
+  • Animated visibility transitions.
+
+  5.5  PAINT SHADER SYSTEM
+  ─────────────────────────────────────────
+  • Custom MeshPhysicalMaterial-based paint shader.
+  • Physical parameters: base color, metallic, roughness.
+  • Metallic flake layer: configurable density, size, and color.
+  • Clearcoat layer: adjustable strength and roughness.
+  • Control panel with sliders and color pickers for real-time tuning.
+  • Preset paint materials matching the 2D configurator swatches.
+
+  5.6  STUDIO LIGHT PRESETS (3D)
+  ─────────────────────────────────────────
+  • studio_light_presets table: HDRI path, intensity, color temperature.
+  • Preset picker with thumbnail grid and hover preview.
+  • Smooth HDRI crossfade transitions.
+  • User preference persisted per configuration.
+
+  5.7  ANIMATED PARTS SYSTEM
+  ─────────────────────────────────────────
+  • GLTF animation tracks for interactive parts:
+      - Doors: door_fl_open, door_fr_open, door_rl_open, door_rr_open
+      - Trunk / frunk: trunk_open, frunk_open
+      - Spoiler: spoiler_extend
+      - Aero elements: aero_front_deploy, aero_rear_deploy
+  • Visual timeline scrubber with play/pause, speed control, and loop.
+  • useAnimationController hook for programmatic playback.
+
+  5.8  VOLUMETRIC LIGHTING & FOG
+  ─────────────────────────────────────────
+  • Quality tiers: off (low-end), basic fog (medium), full volumetric (high).
+  • Adjustable density and color.
+  • Automatic quality selection based on device GPU tier.
+  • User override in settings panel.
+
+  5.9  BACKGROUND STAGE CONFIGURATION
+  ─────────────────────────────────────────
+  • HDRI environment selector with rotation and blur sliders.
+  • Prefiltered PMREM generation for accurate reflections.
+  • Preferences persisted per user profile and per configuration.
+
+  5.10 WEBXR / VR INTEGRATION
+  ─────────────────────────────────────────
+  • WebXR API capability detection with onboarding prompt.
+  • @react-three/xr integration for immersive VR sessions.
+  • Teleport controls and safe play-area boundaries.
+  • Hand tracking support (optional, device-dependent).
+  • Graceful session start/stop with analytics sync.
+
+  5.11 HIGH-RES RENDER EXPORT
+  ─────────────────────────────────────────
+  • Multi-pass supersampled capture pipeline.
+  • Resolution presets: 1080p, 4K, 8K.
+  • Format options: PNG, JPEG, WebP.
+  • Optional watermark overlay.
+  • Edge Function for server-side rendering of ultra-high-res exports.
+  • Job queue with status tracking and signed download URL.
+
+  5.12 SOUND DESIGN INTEGRATION
+  ─────────────────────────────────────────
+  • Interaction-to-audio mapping:
+      - Option selection → click sound
+      - Camera movement → ambient whoosh
+      - Door open → mechanical latch
+      - Engine start → rev sound
+  • Audio files stored in Supabase Storage "audio" bucket.
+  • Spatial 3D audio using Web Audio API.
+  • Debounced playback to prevent sound stacking on rapid interactions.
+  • Global mute toggle respecting user preference.
+
+
+================================================================================
+  6. COMMERCE, PRICING & PAYMENTS
+================================================================================
+
+  6.1  DYNAMIC PRICING ENGINE
+  ─────────────────────────────────────────
+  • Supabase RPC get_configuration_totals calculates:
+      - Base vehicle price
+      - Sum of selected option price deltas
+      - Region-specific taxes
+      - Active incentives / discounts
+      - Grand total
+  • Results cached in user_configurations.pricing_summary for instant recall.
+  • Cache invalidated and recalculated on every option change.
+
+  6.2  PRICING PANEL UI
+  ─────────────────────────────────────────
+  • Live-updating pricing summary on the configurator.
+  • Itemized option list with individual prices.
+  • Animated price change indicators (increase ↑ red, decrease ↓ green).
+  • Multi-currency support (EUR, USD, SEK, NOK — configurable).
+  • Finance calculator stubs: APR, lease, residual value (ready for data
+    feed integration).
+
+  6.3  STRIPE INTEGRATION
+  ─────────────────────────────────────────
+  • Stripe Checkout Sessions created via Edge Function (keys never exposed
+    to the client).
+  • Support for deposits, reservations, and full payments.
+  • Webhook handler (stripe-webhook Edge Function) processes:
+      - payment_intent.succeeded → order status "paid", garage item →
+        "purchased", milestone created, confirmation email sent.
+      - charge.refunded → order status "refunded", garage item → "saved",
+        refund milestone created.
+  • Idempotency keys to prevent duplicate processing.
+  • Comprehensive error handling and retry logic.
+
+  6.4  ORDER MANAGEMENT
+  ─────────────────────────────────────────
+  • orders table: status lifecycle (pending → paid → processing →
+    completed / cancelled / refunded).
+  • order_items table for line-item detail.
+  • User-facing order history view with status badges.
+  • Admin-facing order management console.
+  • Email notifications at each status transition.
+
+  6.5  INVENTORY INTELLIGENCE
+  ─────────────────────────────────────────
+  • variant_inventory table tracks real-time stock per option per region.
+  • Configurator links available options to in-stock inventory for
+    "available now" delivery estimates.
+  • Low-stock and out-of-stock alerts propagated via Realtime subscriptions.
+
+
+================================================================================
+  7. AI ASSISTANT & CUSTOMER SUPPORT
+================================================================================
+
+  7.1  VIRTUAL CONCIERGE
+  ─────────────────────────────────────────
+  • AI-powered chat assistant available on every page.
+  • Context-aware: the assistant "sees" the user's current configurator
+    state, garage items, and browsing context.
+  • Natural language understanding for questions like:
+      - "Does the sport exhaust fit the grand-tourer package?"
+      - "What's the price difference between matte and metallic black?"
+      - "Show me configurations under €80,000."
+  • Powered by OpenAI / Anthropic via Edge Function proxy (API keys never
+    exposed to client).
+
+  7.2  LEAD QUALIFICATION
+  ─────────────────────────────────────────
+  • Automated conversation flow to gather customer requirements:
+      - Budget range
+      - Preferred model and use case
+      - Timeline for purchase
+      - Contact preferences
+  • Qualified leads forwarded to the dealership CRM or email inbox.
+  • Conversation transcripts stored for sales team reference.
+
+  7.3  KNOWLEDGE BASE INTEGRATION
+  ─────────────────────────────────────────
+  • AI assistant trained on vehicle specifications, option details, pricing,
+    and brand FAQs.
+  • Retrieval-augmented generation (RAG) for accurate, grounded answers.
+  • Fallback to human handoff when confidence is low.
+
+
+================================================================================
+  8. ADMIN DASHBOARD & CONTENT MANAGEMENT
+================================================================================
+
+  8.1  REAL-TIME ANALYTICS DASHBOARD
+  ─────────────────────────────────────────
+  • Live metrics: active users, active configurator sessions, popular
+    options, most-saved configurations.
+  • Conversion funnel: visitor → configurator → save → order → payment.
+  • Heatmaps of most-selected options and drop-off points.
+  • Time-series charts for daily/weekly/monthly trends.
+
+  8.2  VEHICLE & OPTION MANAGEMENT
+  ─────────────────────────────────────────
+  • No-code CRUD interface for vehicles, option groups, options, and option
+    values.
+  • Drag-and-drop display ordering.
+  • Bulk import/export (CSV, JSON).
+  • Price management with audit trail (who changed what, when).
+  • Image/asset upload directly to Supabase Storage.
+
+  8.3  CONFIGURATOR MANIFEST MANAGEMENT
+  ─────────────────────────────────────────
+  • Visual manifest editor (see section 4.1).
+  • Draft → Published → Archived lifecycle.
+  • Version history with one-click rollback.
+  • Asset validation: checks that all referenced URLs resolve before publish.
+
+  8.4  ORDER & TEST DRIVE MANAGEMENT
+  ─────────────────────────────────────────
+  • Centralized order console with filters by status, date, and customer.
+  • One-click status updates with automatic customer notification.
+  • Test drive request queue with dealer assignment.
+  • Calendar view for upcoming test drives.
+
+  8.5  CUSTOMER CRM
+  ─────────────────────────────────────────
+  • Unified customer profiles: account info, saved garages, order history,
+    test drive history, AI chat transcripts.
+  • Search and filter by any field.
+  • Notes and tags per customer for sales team collaboration.
+
+  8.6  ROLE & PERMISSION MANAGEMENT
+  ─────────────────────────────────────────
+  • Admin UI for assigning roles to users.
+  • Granular permissions per module (vehicles, orders, analytics, etc.).
+  • Audit log of all admin actions with timestamp and actor.
+
+  8.7  COMPATIBILITY RULES MANAGEMENT
+  ─────────────────────────────────────────
+  • Admin interface for creating and editing compatibility rules.
+  • Rule types: requires, incompatible.
+  • Test rules against sample configurations before publishing.
+  • Bulk import/export.
+
+
+================================================================================
+  9. OPERATIONS, MONITORING & ANALYTICS
+================================================================================
+
+  9.1  PERFORMANCE MONITORING
+  ─────────────────────────────────────────
+  • Lighthouse CI on every deployment with enforced budgets:
+      - LCP < 2.5s
+      - FID < 100ms
+      - CLS < 0.1
+      - Total bundle < 500KB (initial load)
+  • Web Vitals tracking in production.
+  • Image load time monitoring per quality tier.
+  • 3D scene FPS tracking with automatic quality downgrade.
+
+  9.2  UPTIME & HEALTH CHECKS
+  ─────────────────────────────────────────
+  • Health endpoint for automated uptime monitoring.
+  • Supabase service status integration.
+  • Edge Function invocation success rate tracking.
+  • 99.9% uptime SLA target.
+
+  9.3  DATABASE PERFORMANCE
+  ─────────────────────────────────────────
+  • Optimized indexes on all frequently queried columns.
+  • Common query targets: <50ms response time.
+  • Connection pooling via Supabase PGBouncer.
+  • Slow query logging and alerting.
+
+  9.4  ASSET DELIVERY
+  ─────────────────────────────────────────
+  • CDN-distributed storage for all static assets.
+  • Cache headers optimized per asset type (immutable for hashed bundles,
+    stale-while-revalidate for dynamic content).
+  • Image transformation on-the-fly via Supabase Storage CDN.
+
+  9.5  SCHEDULED JOBS
+  ─────────────────────────────────────────
+  • Edge Function cron jobs for:
+      - Expired share link cleanup
+      - Stale PDF job cleanup
+      - Inventory sync (if external feed configured)
+      - Monthly milestone placeholder generation for purchased items
+      - Analytics aggregation
+
+
+================================================================================
+  10. INTERNATIONALIZATION & MULTI-REGION
+================================================================================
+
+  10.1 LANGUAGE SUPPORT
+  ─────────────────────────────────────────
+  • i18next integration with namespace-separated translation files.
+  • Shipped with English and Swedish; adding a new language requires only a
+    JSON translation file — zero code changes.
+  • Language switcher in the navigation bar.
+  • User preference stored in profile and localStorage.
+  • All UI text, error messages, validation messages, PDF exports, and email
+    templates are translatable.
+
+  10.2 REGIONAL CONFIGURATION
+  ─────────────────────────────────────────
+  • Currency formatting per region (EUR, USD, SEK, NOK).
+  • Tax calculation rules per region.
+  • Dealer/inventory filtering by region.
+  • Date and number formatting per locale.
+
+  10.3 MULTI-BRAND DEPLOYMENT
+  ─────────────────────────────────────────
+  • White-label architecture: brand name, logo, colors, and fonts are
+    configurable via environment variables and CSS custom properties.
+  • Single codebase deploys as a unique branded platform per client.
+  • Brand-specific seed data and manifest assets.
+
+
+================================================================================
+  11. PERFORMANCE & OPTIMIZATION
+================================================================================
+
+  11.1 CODE SPLITTING & LAZY LOADING
+  ─────────────────────────────────────────
+  • Route-level code splitting: each page is a separate chunk.
+  • Dynamic imports for heavy modules (3D engine, PDF library, AI chat).
+  • Prefetching of likely-next routes on hover.
+  • Tree-shaking for minimal bundle size.
+
+  11.2 RENDERING OPTIMIZATION
+  ─────────────────────────────────────────
+  • Zustand fine-grained subscriptions prevent unnecessary re-renders.
+  • React.memo and useMemo for expensive computations.
+  • Virtual scrolling for long lists (garage items, order history).
+  • requestAnimationFrame-based animations for 60fps.
+
+  11.3 NETWORK OPTIMIZATION
+  ─────────────────────────────────────────
+  • Optimistic updates reduce perceived latency to near-zero.
+  • Debounced API calls for rapid user interactions.
+  • Batched Supabase queries where possible.
+  • Service worker caching strategy (planned) for offline support.
+
+  11.4 ASSET OPTIMIZATION
+  ─────────────────────────────────────────
+  • WebP/AVIF image formats where supported.
+  • Draco-compressed GLB models (up to 90% size reduction).
+  • KTX2 GPU-compressed textures for 3D scenes.
+  • Hashed filenames for aggressive browser caching.
+
+
+================================================================================
+  12. SECURITY & COMPLIANCE
+================================================================================
+
+  12.1 DATA PROTECTION
+  ─────────────────────────────────────────
+  • Row-Level Security on every Supabase table — enforced at the database
+    level, not application level.
+  • Service role keys used only in Edge Functions, never exposed to client.
+  • Input validation on all user-facing endpoints.
+  • SQL injection prevention via parameterized queries (Supabase default).
+  • XSS prevention via React's built-in escaping.
+
+  12.2 AUTHENTICATION SECURITY
+  ─────────────────────────────────────────
+  • JWT tokens with short expiry and automatic refresh.
+  • Secure cookie storage for session tokens.
+  • Rate limiting on auth endpoints.
+  • CAPTCHA integration readiness for abuse prevention.
+
+  12.3 INFRASTRUCTURE SECURITY
+  ─────────────────────────────────────────
+  • HTTPS enforced everywhere.
+  • Security headers: CSP, HSTS, X-Frame-Options, X-Content-Type-Options.
+  • No source maps in production builds.
+  • Obfuscated chunk filenames.
+  • Dependabot for automated dependency vulnerability scanning.
+
+  12.4 COMPLIANCE
+  ─────────────────────────────────────────
+  • GDPR-ready: account deletion, data export, consent management.
+  • WCAG 2.1 AA accessibility target.
+  • Cookie consent management readiness.
+  • Audit logging for all admin and financial actions.
+
+
+================================================================================
+  13. MARKETING & LAUNCH COMMUNICATIONS
+================================================================================
+
+  13.1 EMAIL TEMPLATES
+  ─────────────────────────────────────────
+  • Branded transactional email templates for:
+      - Welcome / account confirmation
+      - Password reset
+      - Order confirmation
+      - Test drive confirmation
+      - PDF export ready notification
+      - Share link notification
+  • Sent via Resend (or configurable SMTP provider) through Edge Functions.
+
+  13.2 PUSH NOTIFICATIONS (PLANNED)
+  ─────────────────────────────────────────
+  • Web Push API integration for:
+      - Order status updates
+      - Test drive reminders
+      - New model announcements
+      - Price drop alerts on wishlisted configurations
+  • User opt-in/out controls in account settings.
+
+  13.3 SEO & SOCIAL SHARING
+  ─────────────────────────────────────────
+  • Dynamic meta tags (title, description, OG image) per page.
+  • Structured data (JSON-LD) for vehicle listings.
+  • Social share cards for shared configurations and showcase URLs.
+  • Sitemap generation.
+
+
+================================================================================
+  14. APPENDIX: DATABASE SCHEMA SUMMARY
+================================================================================
+
+  CORE TABLES
+  ─────────────────────────────────────────
+  profiles              User profiles linked to Supabase Auth
+  vehicles              Vehicle models with specs, pricing, media
+  option_groups         Groups of configurable options (Exterior, Interior…)
+  options               Individual options within groups (Paint, Wheels…)
+  option_values         Selectable values per option (Nero Black, Orange…)
+  materials             3D material definitions (shader properties)
+  compatibility_rules   Requires / incompatible rules between option values
+
+  CONFIGURATION & GARAGE
+  ─────────────────────────────────────────
+  user_configurations   Saved configurations with selected_options JSONB
+  garage_items          User's garage entries with config_payload
+  garage_versions       Version history snapshots per garage item
+  garage_item_tags      Tag associations per garage item
+  garage_share_links    Shareable links with privacy and expiry
+  garage_milestones     Timeline milestones per garage item
+  garage_activity       Activity log for all garage actions
+
+  COMMERCE
+  ─────────────────────────────────────────
+  orders                Order records with Stripe references and status
+  order_items           Line items per order
+  variant_inventory     Stock tracking per option value per region
+
+  OPERATIONS
+  ─────────────────────────────────────────
+  test_drive_requests   Test drive bookings with dealer assignment
+  dealers               Dealership locations
+  pdf_export_jobs       Async PDF generation job queue
+  config_2d_manifests   2D configurator manifest definitions
+  studio_light_presets  3D lighting preset definitions
+  showcase_presets      Showcase mode environment presets
+  ai_conversations      AI assistant chat history
+
+  ADMIN
+  ─────────────────────────────────────────
+  admin_roles           Role definitions
+  admin_audit_log       All admin actions with timestamp and actor
+
+
+================================================================================
+
+  Platform available for licensing.
+  Your brand. Your vehicles. Live in weeks.
+
+  Contact: create@volturiano.com
+
+================================================================================

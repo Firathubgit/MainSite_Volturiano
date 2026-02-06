@@ -147,14 +147,6 @@ export default function NavDrawer() {
                   </button>
                   <button
                     type="button"
-                    onClick={() => goTo('/agency')}
-                    className={`${styles.navItem} ${location.pathname === '/agency' ? styles.navItemActive : ''}`}
-                  >
-                    <span>Agency</span>
-                    <span className={styles.arrow}>›</span>
-                  </button>
-                  <button
-                    type="button"
                     onClick={() => goTo('/configurator')}
                     className={styles.navItem}
                   >

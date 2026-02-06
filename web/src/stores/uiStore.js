@@ -7,6 +7,7 @@ export const useUiStore = create((set) => ({
   navMenuOpen: false,
   languageMenuOpen: false,
   forceOverlay: false,
+  platformMode: false,
   setMuted: (muted) => set({ muted }),
   setViewerMode: (viewerMode) => set({ viewerMode }),
   openAccountMenu: () => set({ accountMenuOpen: true }),
@@ -21,6 +22,8 @@ export const useUiStore = create((set) => ({
   closeLanguageMenu: () => set({ languageMenuOpen: false }),
   toggleLanguageMenu: () =>
     set((state) => ({ languageMenuOpen: !state.languageMenuOpen })),
-  setForceOverlay: (forceOverlay) => set({ forceOverlay })
+  setForceOverlay: (forceOverlay) => set({ forceOverlay }),
+  enterPlatform: () => set({ platformMode: true }),
+  exitPlatform: () => set({ platformMode: false })
 }));
 

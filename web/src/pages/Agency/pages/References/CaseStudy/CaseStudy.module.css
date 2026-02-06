@@ -1,285 +1,324 @@
+/* ============================================
+   PROJECT DETAIL PAGE — Dark, Polestar-inspired
+   ============================================ */
+
 .page {
-  --bg-primary: #000000;
-  --text-primary: #ffffff;
-  --text-secondary: rgba(255, 255, 255, 0.7);
-  --accent-primary: #ffffff;
-  
-  background-color: var(--bg-primary);
-  color: var(--text-primary);
+  background: black;
+  color: white;
   min-height: 100vh;
   width: 100%;
-  padding-top: 80px;
   position: relative;
   overflow-x: hidden;
 }
 
-.backgroundEffects {
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  z-index: 0;
-}
-
-.gridPattern {
-  position: absolute;
-  inset: 0;
-  background-image: 
-    linear-gradient(to right, rgba(128, 128, 128, 0.08) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(128, 128, 128, 0.08) 1px, transparent 1px);
-  background-size: 4rem 4rem;
-}
-
-.vignette {
-  position: absolute;
-  inset: 0;
-  background: 
-    radial-gradient(circle at 50% 0%, rgba(255, 69, 32, 0.15) 0%, transparent 60%),
-    linear-gradient(
-      to bottom,
-      transparent,
-      var(--bg-primary) 80%,
-      var(--bg-primary)
-    );
-  opacity: 1;
-}
-
-.main {
-  position: relative;
-  z-index: 1;
-  padding-bottom: 8rem;
-}
-
-.container {
-  max-width: 1400px;
-  margin: 0 auto;
-  padding: 0 2rem;
-}
-
-.backButton {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  color: var(--text-secondary);
-  text-decoration: none;
-  font-family: 'Inter', sans-serif;
-  text-transform: uppercase;
-  font-size: 0.9rem;
-  margin-bottom: 3rem;
-  transition: color 0.3s ease;
-  letter-spacing: 0.05em;
-}
-
-.backButton:hover {
-  color: var(--text-primary);
-}
-
+/* ============================================
+   1. FULL-BLEED HERO
+   ============================================ */
 .hero {
-  display: flex;
-  flex-direction: column;
-  gap: 4rem;
-  margin-bottom: 8rem;
   position: relative;
-}
-
-.heroHeader {
-  display: flex;
-  flex-direction: column;
-  gap: 2rem;
-  max-width: 900px;
-}
-
-.heroTitle {
-  font-family: 'Inter', sans-serif;
-  font-size: 6rem;
-  font-weight: 900;
-  line-height: 1;
-  letter-spacing: -0.03em;
-  text-transform: uppercase;
-  margin: 0;
-  color: var(--text-primary);
-}
-
-.heroMeta {
-  display: flex;
-  align-items: center;
-  gap: 2rem;
-  flex-wrap: wrap;
-}
-
-.projectStack {
-  font-family: 'Inter', sans-serif;
-  color: var(--text-secondary);
-  font-size: 1rem;
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-  font-weight: 500;
-}
-
-.liveLinkButton {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 14px 36px;
-  background-color: transparent;
-  color: var(--text-primary);
-  border: 2px solid var(--text-primary);
-  text-decoration: none;
-  border-radius: 100px;
-  font-family: 'Inter', sans-serif;
-  font-weight: 600;
-  text-transform: uppercase;
-  font-size: 0.9rem;
-  letter-spacing: 0.05em;
-  transition: all 0.3s ease;
-}
-
-.liveLinkButton:hover {
-  background-color: var(--text-primary);
-  color: var(--bg-primary);
-  transform: translateY(-2px);
-}
-
-.heroImageContainer {
   width: 100%;
-  border-radius: 24px;
+  height: 100vh;
+  min-height: 600px;
+  max-height: 1200px;
   overflow: hidden;
-  background-color: #1a1a1a;
-  box-shadow: 0 30px 80px -20px rgba(0, 0, 0, 0.6);
-  position: relative;
-  aspect-ratio: 16/9;
-  /* Orange gradient background behind the image */
-  background: 
-    radial-gradient(circle at 50% 0%, rgba(255, 69, 32, 0.25) 0%, transparent 70%),
-    radial-gradient(circle at 100% 50%, rgba(255, 69, 32, 0.15) 0%, transparent 60%),
-    #1a1a1a;
 }
 
 .heroImage {
+  position: absolute;
+  inset: 0;
   width: 100%;
   height: 100%;
   object-fit: cover;
+  object-position: center;
+  z-index: 0;
+}
+
+.heroGradient {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    0deg,
+    black 0%,
+    rgba(0, 0, 0, 0.50) 50%,
+    rgba(0, 0, 0, 0) 100%
+  );
+  z-index: 1;
+  pointer-events: none;
+}
+
+/* Bottom content area over the gradient */
+.heroBottom {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 2;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 64px;
+  padding: 0 64px 80px;
+}
+
+/* Left side: logo + title + buttons */
+.heroLeft {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  max-width: 672px;
+}
+
+.heroLogo {
+  height: 32px;
+  width: auto;
+  object-fit: contain;
+  align-self: flex-start;
+}
+
+.heroTitle {
+  font-family: 'Times New Roman', Times, serif;
+  font-size: 48px;
+  font-weight: 700;
+  text-transform: uppercase;
+  line-height: 48px;
+  color: #F4F4F5;
+  margin: 0;
+}
+
+.heroButtons {
+  display: flex;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+/* Pill ghost button */
+.pillBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 40px;
+  padding: 0 25px;
+  border-radius: 9999px;
+  border: 1px solid #404040;
+  background: transparent;
+  color: white;
+  font-family: 'Consolas', 'Courier New', monospace;
+  font-size: 14px;
+  font-weight: 400;
+  text-transform: uppercase;
+  letter-spacing: 1.4px;
+  line-height: 20px;
+  text-decoration: none;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  white-space: nowrap;
+}
+
+.pillBtn:hover {
+  border-color: white;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+/* Right side: description */
+.heroRight {
+  max-width: 430px;
+  flex-shrink: 0;
+}
+
+.heroDesc {
+  font-family: 'Segoe UI', system-ui, sans-serif;
+  font-size: 16px;
+  font-weight: 400;
+  line-height: 28px;
+  color: white;
+  margin: 0;
+}
+
+.purchaseNote {
+  margin: 16px 0 0;
+  padding: 12px 16px;
+  border-left: 2px solid #ff6b00;
+  background: rgba(255, 107, 0, 0.06);
+  font-family: 'Consolas', 'Courier New', monospace;
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 22px;
+  letter-spacing: 0.4px;
+  color: #ff6b00;
+  text-transform: uppercase;
+}
+
+.downloadRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 14px;
+  padding: 10px 14px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.03);
+  text-decoration: none;
+  transition: border-color 0.25s, background 0.25s;
+  cursor: pointer;
+}
+
+.downloadRow:hover {
+  border-color: rgba(255, 107, 0, 0.4);
+  background: rgba(255, 107, 0, 0.04);
+}
+
+.downloadIcon {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  color: #ff6b00;
+}
+
+.downloadLabel {
+  font-family: 'Consolas', 'Courier New', monospace;
+  font-size: 11px;
+  font-weight: 400;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.5);
+  transition: color 0.25s;
+}
+
+.downloadRow:hover .downloadLabel {
+  color: rgba(255, 255, 255, 0.8);
+}
+
+/* ============================================
+   2. CTA BANNER SECTION
+   ============================================ */
+.ctaBanner {
   position: relative;
+  width: 100%;
+  height: 368px;
+  overflow: hidden;
+}
+
+.ctaBannerBg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  z-index: 0;
+}
+
+.ctaBannerOverlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.50);
   z-index: 1;
 }
 
-/* Content Sections */
-.contentGrid {
-  display: grid;
-  grid-template-columns: 1fr 1.5fr;
-  gap: 4rem;
-  margin-bottom: 6rem;
-}
-
-.sectionTitle {
-  font-family: 'Inter', sans-serif;
-  font-size: 1.5rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-  margin-bottom: 1rem;
-  color: var(--text-primary);
-  position: sticky;
-  top: 100px;
-  align-self: start;
-}
-
-.sectionContent {
-  font-size: 1.1rem;
-  line-height: 1.7;
-  color: var(--text-secondary);
-}
-
-.text {
-  margin-bottom: 1.5rem;
-}
-
-.improvementsList {
-  list-style: none;
-  padding: 0;
-  margin: 0;
+.ctaBannerContent {
+  position: relative;
+  z-index: 2;
   display: flex;
   flex-direction: column;
-  gap: 1.25rem;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  padding: 80px 64px;
+  text-align: center;
 }
 
-.improvementItem {
-  padding-left: 1.5rem;
-  position: relative;
-  font-size: 1.05rem;
+.ctaTitle {
+  font-family: 'Segoe UI', system-ui, sans-serif;
+  font-size: 48px;
+  font-weight: 400;
+  text-transform: capitalize;
+  line-height: 48px;
+  color: white;
+  margin: 0 0 16px;
 }
 
-.improvementItem::before {
-  content: '—';
-  position: absolute;
-  left: 0;
-  color: var(--text-primary);
-  font-weight: 700;
+.ctaSubtitle {
+  font-family: 'Segoe UI', system-ui, sans-serif;
+  font-size: 20px;
+  font-weight: 400;
+  line-height: 28px;
+  color: #7D8187;
+  margin: 0 0 24px;
+  max-width: 420px;
 }
 
-.workGrid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 2rem;
+.ctaBtn {
+  composes: pillBtn;
 }
 
-.workItem {
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 16px;
-  padding: 2rem;
-  transition: all 0.3s ease;
-}
-
-.workItem:hover {
-  background: rgba(255, 255, 255, 0.05);
-  border-color: rgba(255, 255, 255, 0.12);
-  transform: translateY(-2px);
-}
-
-.workTitle {
-  font-family: 'Inter', sans-serif;
-  font-size: 1.25rem;
-  font-weight: 700;
-  margin-bottom: 0.75rem;
-  color: var(--text-primary);
-}
-
-.workDescription {
-  font-size: 0.95rem;
-  color: var(--text-secondary);
-  line-height: 1.6;
-}
-
+/* ============================================
+   RESPONSIVE
+   ============================================ */
 @media (max-width: 1024px) {
+  .heroBottom {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 32px;
+    padding: 0 40px 60px;
+  }
+
+  .heroRight {
+    max-width: 100%;
+  }
+
   .heroTitle {
-    font-size: 4rem;
+    font-size: 40px;
+    line-height: 40px;
   }
-  
-  .contentGrid {
-    grid-template-columns: 1fr;
-    gap: 2rem;
-  }
-  
-  .sectionTitle {
-    position: static;
-    margin-bottom: 1.5rem;
+
+  .ctaTitle {
+    font-size: 36px;
+    line-height: 40px;
   }
 }
 
 @media (max-width: 768px) {
+  .heroBottom {
+    padding: 0 24px 40px;
+  }
+
+  .heroLeft {
+    align-items: flex-start;
+  }
+
+  .heroLogo {
+    height: 24px;
+  }
+
   .heroTitle {
-    font-size: 3rem;
+    font-size: 28px;
+    line-height: 32px;
+    text-align: left;
   }
-  
-  .workGrid {
-    grid-template-columns: 1fr;
+
+  .heroButtons {
+    flex-direction: column;
+    align-items: flex-start;
   }
-  
-  .container {
-    padding: 0 1.5rem;
+
+  .heroDesc {
+    text-align: left;
   }
-  
-  .heroImageContainer {
-    border-radius: 16px;
+
+  .ctaBanner {
+    height: auto;
+    min-height: 300px;
+  }
+
+  .ctaBannerContent {
+    padding: 48px 24px;
+  }
+
+  .ctaTitle {
+    font-size: 28px;
+    line-height: 32px;
+  }
+
+  .ctaSubtitle {
+    font-size: 16px;
   }
 }

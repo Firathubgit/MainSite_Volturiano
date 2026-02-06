@@ -1,12 +1,12 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useLayoutEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { motion, AnimatePresence } from 'framer-motion';
-import { ExternalLink, ArrowLeft } from 'lucide-react';
+import { motion } from 'framer-motion';
 import { ThemeProvider, useTheme } from '../../../context/ThemeContext';
 import { NavBar } from '../../../../../components/NavBar/NavBar';
 import { Footer } from '../../../components/Footer';
 import { usePageTitle } from '../../../../../hooks/usePageTitle';
+import { useUiStore } from '../../../../../stores/uiStore';
 import styles from './CaseStudy.module.css';
 
 // Import project images
@@ -17,221 +17,199 @@ import euroTaxiThumbnail from '../../../../../assets/EuroTaxiExample.png';
 import volturianoAgencyMockup from '../../../../../assets/VolturianoAgencyMockupExample.png';
 import solarExampleThumbnail from '../../../../../assets/SolarExample.png';
 import mathornanThumbnail from '../../../../../assets/Mathörnan.png';
-import replacementImage from '../../../../../assets/Replacement image.png';
+import chockladThumbnail from '../../../../../assets/Chocklad.png';
+import platformThumbnail from '../../../../../assets/114shots_so.png';
+import tornadoLogo from '../../../../../assets/Logo/TornadoLogo.png';
 
-// Fallback images if needed, though we seem to have one main image per project now in the examples
-// I'll use the example images as the main hero images.
+// CTA banner background
+import ctaBannerBg from '../../../../../assets/AbstractishImage.png';
 
+/* ───────── Project data ───────── */
 const ProjectsData = {
   'volturiano': {
     id: 'volturiano',
     thumbnail: volturianoAgencyMockup,
-    images: [volturianoAgencyMockup],
-    // Title/Stack will be pulled from i18n
-    liveUrl: 'https://volturiano.com/agency'
+    liveUrl: 'https://volturiano.com/agency',
   },
   'euro-taxi': {
     id: 'euro-taxi',
     thumbnail: euroTaxiThumbnail,
-    images: [euroTaxiThumbnail],
-    liveUrl: 'https://www.eurotaxias.no/'
+    liveUrl: 'https://www.eurotaxias.no/',
   },
   'furglove-pro': {
     id: 'furglove-pro',
     thumbnail: furgloveThumbnail,
-    images: [furgloveThumbnail],
-    liveUrl: 'https://furglove-pro.vercel.app/'
+    liveUrl: 'https://furglove-pro.vercel.app/',
   },
   'europa-bageri': {
     id: 'europa-bageri',
     thumbnail: europaBageriThumbnail,
-    images: [europaBageriThumbnail],
-    liveUrl: 'https://europa-bageri-premium.vercel.app/'
+    liveUrl: 'https://europa-bageri-premium.vercel.app/',
   },
   'scale-intelligence': {
     id: 'scale-intelligence',
     thumbnail: scaleIntelligenceThumbnail,
-    images: [scaleIntelligenceThumbnail],
-    liveUrl: 'https://wave-form-example-website.vercel.app/?'
+    liveUrl: 'https://wave-form-example-website.vercel.app/?',
   },
   'solar-panel-solutions': {
     id: 'solar-panel-solutions',
     thumbnail: solarExampleThumbnail,
-    images: [solarExampleThumbnail],
-    liveUrl: 'https://solar-example.vercel.app/'
+    liveUrl: 'https://solar-example.vercel.app/',
   },
   'mathornan': {
     id: 'mathornan',
     thumbnail: mathornanThumbnail,
-    images: [mathornanThumbnail],
-    liveUrl: 'https://matcorner.vercel.app/'
+    liveUrl: 'https://matcorner.vercel.app/',
   },
-  'replacement-project-1': {
-    id: 'replacement-project-1',
-    thumbnail: replacementImage,
-    images: [replacementImage],
-    liveUrl: null,
-    isPlaceholder: true
+  'oompaloompa': {
+    id: 'oompaloompa',
+    thumbnail: chockladThumbnail,
+    liveUrl: 'https://chocolata-mvp-ksrb.vercel.app/',
   },
-  'replacement-project-2': {
-    id: 'replacement-project-2',
-    thumbnail: replacementImage,
-    images: [replacementImage],
-    liveUrl: null,
-    isPlaceholder: true
+  'volturiano-platform': {
+    id: 'volturiano-platform',
+    thumbnail: platformThumbnail,
+    liveUrl: '/start',
+    isInternal: true,
   },
 };
 
+/* ───────── Main component ───────── */
 function CaseStudyContent() {
   const { projectId } = useParams();
   const navigate = useNavigate();
   const { t } = useTranslation(['agency', 'common']);
   const { theme } = useTheme();
-  
+  const enterPlatform = useUiStore((state) => state.enterPlatform);
+
   const project = ProjectsData[projectId];
 
-  // Scroll to top on page enter
-  useEffect(() => {
+  // Scroll to top
+  useLayoutEffect(() => {
     window.scrollTo(0, 0);
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
   }, []);
 
   useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+  }, []);
+
+  // Redirect if unknown project
+  useEffect(() => {
     if (!project) {
       navigate('/agency/references', { replace: true });
-      return;
     }
   }, [project, navigate]);
 
-  // Get project details from i18n
-  // Use selectedWork keys for title/category (stack)
-  // Use caseStudy keys for overview/improvements/doneWork
-  const projectTitle = project?.isPlaceholder 
+  // Theme
+  useEffect(() => {
+    document.body.setAttribute('data-theme', theme);
+    return () => document.body.removeAttribute('data-theme');
+  }, [theme]);
+
+  // i18n lookups
+  const projectTitle = project?.isPlaceholder
     ? t('references.replacementProject', 'Replacement Project')
-    : t(`selectedWork.projects.${projectId}.title`, project?.title);
-    
-  const projectStack = project?.isPlaceholder
-    ? t('references.replacementProjectPage', 'Concept')
-    : t(`selectedWork.projects.${projectId}.category`, project?.stack);
+    : t(`selectedWork.projects.${projectId}.title`, projectId);
+
+  const projectOverview = t(
+    `caseStudy.projects.${projectId}.overview`,
+    'This project represents a comprehensive digital solution, engineered to meet specific business objectives through design and technology.'
+  );
+
+  const purchaseNote = t(`caseStudy.projects.${projectId}.purchaseNote`, '');
 
   usePageTitle(`${projectTitle || 'Case Study'} | Volturio Studios`);
 
-  useEffect(() => {
-    document.body.setAttribute('data-theme', theme);
-    return () => {
-      document.body.removeAttribute('data-theme');
-    };
-  }, [theme]);
-
-  if (!project) {
-    return null;
-  }
+  if (!project) return null;
 
   return (
-    <div className={styles.page} data-theme={theme}>
-      <div className={styles.backgroundEffects}>
-        <div className={styles.gridPattern} />
-        <div className={styles.vignette} />
-      </div>
-
+    <div className={styles.page}>
       <NavBar />
-      
-      <main className={styles.main}>
-        <div className={styles.container}>
-          {/* Back Button */}
-          <Link to="/agency/references" className={styles.backButton}>
-            <ArrowLeft size={16} />
-            <span>{t('common:backToArchive', 'Back to Archive')}</span>
-          </Link>
 
-          {/* Hero Section */}
-          <motion.div
-            className={styles.hero}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8 }}
-          >
-            <div className={styles.heroHeader}>
-              <h1 className={styles.heroTitle}>
-                {projectTitle}
-              </h1>
-              
-              <div className={styles.heroMeta}>
-                <span className={styles.projectStack}>{projectStack}</span>
-                
-                {/* Live Link Button - PREVIEW style */}
-                {project.liveUrl && (
-                  <a
-                    href={project.liveUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className={styles.liveLinkButton}
-                  >
-                    <span>{t('caseStudy.viewLive', 'PREVIEW')}</span>
-                  </a>
-                )}
-              </div>
-            </div>
+      {/* ──── Section 1: Full-bleed Hero ──── */}
+      <section className={styles.hero}>
+        <motion.img
+          src={project.thumbnail}
+          alt={projectTitle}
+          className={styles.heroImage}
+          initial={{ scale: 1.06, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          transition={{ duration: 1.2, ease: 'easeOut' }}
+        />
+        <div className={styles.heroGradient} />
 
-            {/* Hero Image with Orange Gradient Background */}
-            <div className={styles.heroImageContainer}>
-              <motion.img
-                src={project.images[0]}
-                alt={projectTitle}
-                className={styles.heroImage}
-                initial={{ scale: 1.05, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                transition={{ duration: 1.2, ease: "easeOut" }}
-              />
-            </div>
-          </motion.div>
-
-          {/* Project Overview */}
-          <div className={styles.contentGrid}>
-            <h2 className={styles.sectionTitle}>
-              {t('caseStudy.overview', 'Overview')}
-            </h2>
-            <div className={styles.sectionContent}>
-              <p className={styles.text}>
-                {t(`caseStudy.projects.${projectId}.overview`, 'This project represents a comprehensive digital solution, engineered to meet specific business objectives through design and technology.')}
-              </p>
+        {/* Bottom content */}
+        <div className={styles.heroBottom}>
+          {/* Left: logo + title + buttons */}
+          <div className={styles.heroLeft}>
+            <img src={tornadoLogo} alt="Volturio" className={styles.heroLogo} />
+            <h1 className={styles.heroTitle}>{projectTitle}</h1>
+            <div className={styles.heroButtons}>
+              {project.liveUrl && project.isInternal ? (
+                <Link
+                  to={project.liveUrl}
+                  className={styles.pillBtn}
+                  onClick={() => { enterPlatform(); window.scrollTo(0, 0); }}
+                >
+                  Preview
+                </Link>
+              ) : project.liveUrl ? (
+                <a
+                  href={project.liveUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={styles.pillBtn}
+                >
+                  Preview
+                </a>
+              ) : null}
             </div>
           </div>
 
-          {/* Improvements */}
-          <div className={styles.contentGrid}>
-            <h2 className={styles.sectionTitle}>
-              {t('caseStudy.improvements', 'Key Features')}
-            </h2>
-            <div className={styles.sectionContent}>
-              <ul className={styles.improvementsList}>
-                {(t(`caseStudy.projects.${projectId}.improvements`, { returnObjects: true }) || []).map((improvement, index) => (
-                  <li key={index} className={styles.improvementItem}>
-                    {improvement}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </div>
-
-          {/* Done Work */}
-          <div className={styles.contentGrid}>
-            <h2 className={styles.sectionTitle}>
-              {t('caseStudy.doneWork', 'Deliverables')}
-            </h2>
-            <div className={styles.sectionContent}>
-              <div className={styles.workGrid}>
-                {(t(`caseStudy.projects.${projectId}.doneWork`, { returnObjects: true }) || []).map((work, index) => (
-                  <div key={index} className={styles.workItem}>
-                    <h3 className={styles.workTitle}>{work.title}</h3>
-                    <p className={styles.workDescription}>{work.description}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
+          {/* Right: description */}
+          <div className={styles.heroRight}>
+            <p className={styles.heroDesc}>{projectOverview}</p>
+            {purchaseNote && (
+              <p className={styles.purchaseNote}>{purchaseNote}</p>
+            )}
+            
+            {projectId === 'volturiano-platform' && (
+              <a
+                href="/documents/Volturiano_Platform_Features.html"
+                target="_blank"
+                rel="noopener noreferrer"
+                className={styles.downloadRow}
+              >
+                <svg className={styles.downloadIcon} viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M8 1v9m0 0L5 7m3 3l3-3M2 12v1a2 2 0 002 2h8a2 2 0 002-2v-1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+                <span className={styles.downloadLabel}>
+                  {t(`caseStudy.projects.volturiano-platform.downloadFeatures`, 'Download Feature List')}
+                </span>
+              </a>
+            )}
           </div>
         </div>
-      </main>
+      </section>
 
+      {/* ──── Section 2: CTA Banner ──── */}
+      <section className={styles.ctaBanner}>
+        <img src={ctaBannerBg} alt="" className={styles.ctaBannerBg} aria-hidden="true" />
+        <div className={styles.ctaBannerOverlay} />
+        <div className={styles.ctaBannerContent}>
+          <h2 className={styles.ctaTitle}>Reimagine websites with us</h2>
+          <p className={styles.ctaSubtitle}>
+            Premium web experiences for your brand, built by Volturio Studios.
+          </p>
+          <Link to="/agency/booking" className={styles.ctaBtn}>
+            Unlock Unlimited Access
+          </Link>
+        </div>
+      </section>
+
+      {/* ──── Section 3: Footer ──── */}
       <Footer />
     </div>
   );

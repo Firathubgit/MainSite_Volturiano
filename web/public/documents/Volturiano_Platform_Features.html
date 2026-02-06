@@ -1,0 +1,1616 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Volturiano Automotive Platform — Feature Specification</title>
+<style>
+  /* ── Reset & Base ─────────────────────────────────── */
+  *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --bg: #0a0a0a;
+    --surface: #111111;
+    --border: #1e1e1e;
+    --text: #e0e0e0;
+    --text-muted: #888888;
+    --accent: #ff6b00;
+    --accent-dim: rgba(255, 107, 0, 0.12);
+    --white: #ffffff;
+  }
+
+  html { font-size: 15px; }
+
+  body {
+    font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, 'Helvetica Neue', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.7;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ── Print Button ─────────────────────────────────── */
+  .print-bar {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    z-index: 100;
+    display: flex;
+    justify-content: center;
+    padding: 12px;
+    background: rgba(10,10,10,0.92);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .print-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 28px;
+    border: 1px solid var(--accent);
+    border-radius: 6px;
+    background: transparent;
+    color: var(--accent);
+    font-family: 'Consolas', 'Courier New', monospace;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: background 0.25s, color 0.25s;
+  }
+
+  .print-btn:hover {
+    background: var(--accent);
+    color: var(--bg);
+  }
+
+  .print-btn svg { width: 14px; height: 14px; }
+
+  /* ── Document Container ───────────────────────────── */
+  .document {
+    max-width: 820px;
+    margin: 80px auto 60px;
+    padding: 0 24px;
+  }
+
+  /* ── Cover / Header ───────────────────────────────── */
+  .cover {
+    text-align: center;
+    padding: 60px 0 50px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 50px;
+  }
+
+  .cover-logo {
+    width: 48px;
+    height: auto;
+    margin-bottom: 32px;
+    opacity: 0.9;
+  }
+
+  .cover h1 {
+    font-size: 2.2rem;
+    font-weight: 300;
+    letter-spacing: 8px;
+    text-transform: uppercase;
+    color: var(--white);
+    margin-bottom: 6px;
+  }
+
+  .cover-sub {
+    font-size: 1rem;
+    font-weight: 300;
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: 36px;
+  }
+
+  .cover-meta {
+    display: flex;
+    justify-content: center;
+    gap: 36px;
+    flex-wrap: wrap;
+  }
+
+  .cover-meta-item {
+    text-align: center;
+  }
+
+  .cover-meta-label {
+    display: block;
+    font-size: 0.65rem;
+    font-weight: 600;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 4px;
+  }
+
+  .cover-meta-value {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+  }
+
+  /* ── Table of Contents ────────────────────────────── */
+  .toc {
+    padding: 36px 0;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 50px;
+  }
+
+  .toc-title {
+    font-size: 0.7rem;
+    font-weight: 600;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 20px;
+  }
+
+  .toc-list {
+    list-style: none;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px 40px;
+  }
+
+  .toc-list li {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    padding: 4px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.03);
+  }
+
+  .toc-list li span {
+    color: var(--accent);
+    margin-right: 8px;
+    font-family: 'Consolas', monospace;
+    font-size: 0.75rem;
+  }
+
+  /* ── Sections ─────────────────────────────────────── */
+  .section {
+    margin-bottom: 56px;
+  }
+
+  .section-number {
+    display: inline-block;
+    font-family: 'Consolas', monospace;
+    font-size: 0.7rem;
+    font-weight: 600;
+    letter-spacing: 2px;
+    color: var(--accent);
+    margin-bottom: 8px;
+  }
+
+  .section-title {
+    font-size: 1.4rem;
+    font-weight: 300;
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    color: var(--white);
+    margin-bottom: 6px;
+    padding-bottom: 14px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  /* ── Subsections ──────────────────────────────────── */
+  .subsection {
+    margin-top: 32px;
+  }
+
+  .subsection-header {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    margin-bottom: 14px;
+  }
+
+  .subsection-num {
+    font-family: 'Consolas', monospace;
+    font-size: 0.72rem;
+    color: var(--accent);
+    flex-shrink: 0;
+  }
+
+  .subsection-title {
+    font-size: 0.9rem;
+    font-weight: 600;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--white);
+  }
+
+  /* ── Feature Lists ────────────────────────────────── */
+  .features {
+    list-style: none;
+    padding-left: 0;
+  }
+
+  .features li {
+    position: relative;
+    padding: 6px 0 6px 18px;
+    font-size: 0.88rem;
+    color: var(--text);
+    line-height: 1.65;
+  }
+
+  .features li::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 13px;
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: var(--accent);
+    opacity: 0.7;
+  }
+
+  .features li .dim { color: var(--text-muted); }
+
+  /* ── Indent sub-items ─────────────────────────────── */
+  .features .indent {
+    padding-left: 36px;
+    font-size: 0.84rem;
+    color: var(--text-muted);
+  }
+
+  .features .indent::before {
+    left: 18px;
+    width: 4px;
+    height: 4px;
+    background: var(--text-muted);
+    opacity: 0.4;
+  }
+
+  /* ── Highlight boxes ──────────────────────────────── */
+  .highlight-box {
+    margin: 20px 0;
+    padding: 16px 20px;
+    border-left: 2px solid var(--accent);
+    background: var(--accent-dim);
+    border-radius: 0 6px 6px 0;
+  }
+
+  .highlight-box p {
+    font-size: 0.85rem;
+    color: var(--text);
+    line-height: 1.6;
+  }
+
+  /* ── Schema Table ─────────────────────────────────── */
+  .schema-group-title {
+    font-size: 0.7rem;
+    font-weight: 600;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin: 28px 0 12px;
+  }
+
+  .schema-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 8px;
+  }
+
+  .schema-table td {
+    padding: 7px 12px;
+    font-size: 0.82rem;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+  }
+
+  .schema-table td:first-child {
+    font-family: 'Consolas', monospace;
+    color: var(--white);
+    white-space: nowrap;
+    width: 220px;
+  }
+
+  .schema-table td:last-child {
+    color: var(--text-muted);
+  }
+
+  /* ── Footer ───────────────────────────────────────── */
+  .doc-footer {
+    text-align: center;
+    padding: 50px 0 40px;
+    border-top: 1px solid var(--border);
+    margin-top: 60px;
+  }
+
+  .doc-footer .footer-logo {
+    width: 32px;
+    margin-bottom: 20px;
+    opacity: 0.7;
+  }
+
+  .doc-footer .tagline {
+    font-size: 0.9rem;
+    font-weight: 300;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: 6px;
+  }
+
+  .doc-footer .contact {
+    font-size: 0.78rem;
+    color: var(--accent);
+    letter-spacing: 1px;
+  }
+
+  /* ── Responsive ───────────────────────────────────── */
+  @media (max-width: 640px) {
+    .toc-list { grid-template-columns: 1fr; }
+    .cover h1 { font-size: 1.6rem; letter-spacing: 4px; }
+    .cover-meta { gap: 20px; }
+    .document { padding: 0 16px; }
+  }
+
+  /* ── Print Styles ─────────────────────────────────── */
+  @media print {
+    .print-bar { display: none !important; }
+    body { background: #fff; color: #222; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .document { margin: 0 auto; max-width: 100%; }
+    .cover { padding: 30px 0 24px; border-bottom-color: #ccc; }
+    .cover h1 { color: #111; }
+    .cover-sub { color: #666; }
+    .cover-meta-value { color: #555; }
+    .section-title { color: #111; border-bottom-color: #ddd; }
+    .subsection-title { color: #222; }
+    .features li { color: #333; }
+    .features li::before { background: var(--accent); print-color-adjust: exact; }
+    .features .indent { color: #555; }
+    .toc-list li { color: #555; border-bottom-color: #eee; }
+    .schema-table td:first-child { color: #111; }
+    .schema-table td:last-child { color: #555; }
+    .schema-table td { border-bottom-color: #eee; }
+    .highlight-box { border-left-color: var(--accent); background: #fff4eb; }
+    .doc-footer { border-top-color: #ccc; }
+    .doc-footer .tagline { color: #666; }
+    .section { page-break-inside: avoid; }
+    .section-title { page-break-after: avoid; }
+    .subsection { page-break-inside: avoid; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ── Print Bar ──────────────────────────────────── -->
+<div class="print-bar">
+  <button class="print-btn" onclick="window.print()">
+    <svg viewBox="0 0 16 16" fill="none"><path d="M8 1v9m0 0L5 7m3 3l3-3M2 12v1a2 2 0 002 2h8a2 2 0 002-2v-1" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    Save as PDF
+  </button>
+</div>
+
+<!-- ── Document ───────────────────────────────────── -->
+<div class="document">
+
+  <!-- Cover -->
+  <header class="cover">
+    <img src="/documents/TornadoLogo.png" alt="Volturiano" class="cover-logo">
+    <h1>Volturiano</h1>
+    <p class="cover-sub">Automotive Platform &mdash; Feature Specification</p>
+    <div class="cover-meta">
+      <div class="cover-meta-item">
+        <span class="cover-meta-label">Version</span>
+        <span class="cover-meta-value">1.0</span>
+      </div>
+      <div class="cover-meta-item">
+        <span class="cover-meta-label">Platform</span>
+        <span class="cover-meta-value">Web &middot; Desktop &middot; Tablet &middot; Mobile</span>
+      </div>
+      <div class="cover-meta-item">
+        <span class="cover-meta-label">Stack</span>
+        <span class="cover-meta-value">React 18 &middot; Supabase &middot; Stripe &middot; R3F</span>
+      </div>
+      <div class="cover-meta-item">
+        <span class="cover-meta-label">License</span>
+        <span class="cover-meta-value">White-Label Deployment</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- TOC -->
+  <nav class="toc">
+    <p class="toc-title">Table of Contents</p>
+    <ol class="toc-list">
+      <li><span>01</span> Platform Architecture &amp; Infrastructure</li>
+      <li><span>02</span> Authentication &amp; User Management</li>
+      <li><span>03</span> The Digital Garage</li>
+      <li><span>04</span> 2D Visual Configurator Engine</li>
+      <li><span>05</span> 3D Immersive Configurator Engine</li>
+      <li><span>06</span> Commerce, Pricing &amp; Payments</li>
+      <li><span>07</span> AI Assistant &amp; Customer Support</li>
+      <li><span>08</span> Admin Dashboard &amp; CMS</li>
+      <li><span>09</span> Operations, Monitoring &amp; Analytics</li>
+      <li><span>10</span> Internationalization &amp; Multi-Region</li>
+      <li><span>11</span> Performance &amp; Optimization</li>
+      <li><span>12</span> Security &amp; Compliance</li>
+      <li><span>13</span> Marketing &amp; Launch Communications</li>
+      <li><span>14</span> Database Schema Summary</li>
+    </ol>
+  </nav>
+
+
+  <!-- ════════════════════════════════════════════════ -->
+  <!-- SECTION 1 -->
+  <!-- ════════════════════════════════════════════════ -->
+  <section class="section">
+    <span class="section-number">Section 01</span>
+    <h2 class="section-title">Platform Architecture &amp; Infrastructure</h2>
+
+    <div class="subsection">
+      <div class="subsection-header">
+        <span class="subsection-num">1.1</span>
+        <span class="subsection-title">Frontend Framework</span>
+      </div>
+      <ul class="features">
+        <li>React 18+ with Vite for sub-second hot module replacement.</li>
+        <li>React Router v6 with route-level code splitting and lazy loading.</li>
+        <li>Feature-sliced architecture: each module is self-contained with its own components, API layer, store slice, and scoped CSS.</li>
+        <li>CSS Modules + PostCSS for zero-collision component styling.</li>
+        <li>Framer Motion for declarative scroll-reveal, page transitions, and micro-interactions across the entire UI.</li>
+        <li>Full progressive web app (PWA) readiness with service worker hooks.</li>
+      </ul>
+    </div>
+
+    <div class="subsection">
+      <div class="subsection-header">
+        <span class="subsection-num">1.2</span>
+        <span class="subsection-title">Backend &amp; Data Layer</span>
+      </div>
+      <ul class="features">
+        <li>Supabase (PostgreSQL 15) as the single source of truth.</li>
+        <li>Row-Level Security (RLS) on every table &mdash; no data leaks by design.</li>
+        <li>Supabase Auth with email/password, magic links, and social OAuth providers.</li>
+        <li>Supabase Realtime subscriptions for live dashboard updates, garage sync, and inventory changes pushed to every connected client instantly.</li>
+        <li>Supabase Edge Functions (Deno) for server-side logic: PDF generation, Stripe webhooks, email dispatch, AI proxy, and scheduled jobs.</li>
+        <li>Supabase Storage CDN with signed URLs for renders, 3D models, documents, and user-uploaded assets &mdash; globally distributed.</li>
+      </ul>
+    </div>
+
+    <div class="subsection">
+      <div class="subsection-header">
+        <span class="subsection-num">1.3</span>
+        <span class="subsection-title">State Management</span>
+      </div>
+      <ul class="features">
+        <li>Zustand stores with fine-grained subscriptions (no unnecessary re-renders).</li>
+        <li>Dedicated stores: userStore, uiStore, configStore, garageStore.</li>
+        <li>Optimistic updates with automatic rollback on server failure.</li>
+        <li>localStorage persistence for offline-capable core features.</li>
+        <li>Session management with automatic token refresh.</li>
+      </ul>
+    </div>
+
+    <div class="subsection">
+      <div class="subsection-header">
+        <span class="subsection-num">1.4</span>
+        <span class="subsection-title">CI/CD &amp; Deployment</span>
+      </div>
+      <ul class="features">
+        <li>GitHub Actions workflows for automated testing, linting, and deployment.</li>
+        <li>Vercel/Netlify frontend hosting with edge CDN and preview deployments.</li>
+        <li>Supabase CLI for database migrations with rollback capability.</li>
+        <li>Lighthouse CI for enforcing performance budgets on every pull request.</li>
+        <li>Zero-downtime deployments with atomic rollouts.</li>
+      </ul>
+    </div>
+
+    <div class="subsection">
+      <div class="subsection-header">
+        <span class="subsection-num">1.5</span>
+        <span class="subsection-title">Error Handling &amp; Monitoring</span>
+      </div>
+      <ul class="features">
+        <li>Global and route-level React Error Boundaries preventing full app crashes.</li>
+        <li>Structured logging utility with log levels (debug, info, warn, error).</li>
+        <li>Sentry integration for real-time error tracking and performance monitoring.</li>
+        <li>Request ID correlation across frontend and Edge Functions.</li>
+        <li>Alerting rules for critical error spikes.</li>
+      </ul>
+    </div>
+  </section>
+
+
+  <!-- ════════════════════════════════════════════════ -->
+  <!-- SECTION 2 -->
+  <!-- ════════════════════════════════════════════════ -->
+  <section class="section">
+    <span class="section-number">Section 02</span>
+    <h2 class="section-title">Authentication &amp; User Management</h2>
+
+    <div class="subsection">
+      <div class="subsection-header">
+        <span class="subsection-num">2.1</span>
+        <span class="subsection-title">Sign-Up &amp; Login</span>
+      </div>
+      <ul class="features">
+        <li>Email + password registration with server-side validation.</li>
+        <li>Magic link (passwordless) login via email.</li>
+        <li>Social OAuth: Google, Apple, GitHub (configurable per deployment).</li>
+        <li>Session persistence across tabs and browser restarts.</li>
+        <li>Automatic token refresh &mdash; users never get logged out mid-session.</li>
+      </ul>
+    </div>
+
+    <div class="subsection">
+      <div class="subsection-header">
+        <span class="subsection-num">2.2</span>
+        <span class="subsection-title">User Profiles</span>
+      </div>
+      <ul class="features">
+        <li>Profiles table linked to Supabase Auth with RLS.</li>
+        <li>Editable display name, avatar, phone, and preferred language.</li>
+        <li>Profile completion progress indicator.</li>
+        <li>Account deletion flow (GDPR-compliant data removal).</li>
+      </ul>
+    </div>
+
+    <div class="subsection">
+      <div class="subsection-header">
+        <span class="subsection-num">2.3</span>
+        <span class="subsection-title">Role-Based Access Control (RBAC)</span>
+      </div>
+      <ul class="features">
+        <li>Role hierarchy: user &rarr; dealer &rarr; admin &rarr; super_admin.</li>
+        <li>JWT claims carry role information for client-side gating.</li>
+        <li>RLS policies enforce role checks on every database query.</li>
+        <li>Admin role grants access to the Admin Dashboard.</li>
+        <li>Dealer role grants access to order management and test-drive requests.</li>
+      </ul>
+    </div>
+
+    <div class="subsection">
+      <div class="subsection-header">
+        <span class="subsection-num">2.4</span>
+        <span class="subsection-title">Account Settings</span>
+      </div>
+      <ul class="features">
+        <li>Password change with current-password verification.</li>
+        <li>Email change with re-verification flow.</li>
+        <li>Notification preferences (email, push, SMS toggles).</li>
+        <li>Language and region preference.</li>
+        <li>Connected accounts management (OAuth providers).</li>
+        <li>Two-factor authentication readiness (TOTP).</li>
+      </ul>
+    </div>
+  </section>
+
+
+  <!-- ════════════════════════════════════════════════ -->
+  <!-- SECTION 3 -->
+  <!-- ════════════════════════════════════════════════ -->
+  <section class="section">
+    <span class="section-number">Section 03</span>
+    <h2 class="section-title">The Digital Garage</h2>
+
+    <div class="subsection">
+      <div class="subsection-header">
+        <span class="subsection-num">3.1</span>
+        <span class="subsection-title">Core Garage UI</span>
+      </div>
+      <ul class="features">
+        <li>Four-lane layout: Saved Builds, Purchases, Prototypes, Wishlist.</li>
+        <li>Each lane displays vehicle configuration cards with thumbnail, title, model, price summary, tags, and last-modified timestamp.</li>
+        <li>Real-time synchronization via Supabase Realtime &mdash; changes on one device appear instantly on all others.</li>
+        <li>Responsive grid that adapts from 4-column desktop to single-column mobile.</li>
+        <li>Loading skeletons, empty states, and error recovery for every lane.</li>
+      </ul>
+    </div>
+
+    <div class="subsection">
+      <div class="subsection-header">
+        <span class="subsection-num">3.2</span>
+        <span class="subsection-title">Save to Garage</span>
+      </div>
+      <ul class="features">
+        <li>One-click save from any configurator view.</li>
+        <li>Full configuration JSON stored in garage_items.config_payload (JSONB).</li>
+        <li>Automatic initial version snapshot created on first save.</li>
+        <li>Auth-aware: redirects unauthenticated users to login, then returns them to the exact configurator state for seamless save completion.</li>
+        <li>Optimistic UI update with rollback on failure.</li>
+        <li>Success toast with link to open the saved item in the Garage.</li>
+      </ul>
+    </div>
+
+    <div class="subsection">
+      <div class="subsection-header">
+        <span class="subsection-num">3.3</span>
+        <span class="subsection-title">Edit &amp; Rename</span>
+      </div>
+      <ul class="features">
+        <li>Modal editor for title, description, and state.</li>
+        <li>Input validation: required title, max character limits.</li>
+        <li>Partial update support &mdash; only changed fields are sent to the server.</li>
+        <li>Automatic updated_at timestamp refresh.</li>
+        <li>Version snapshot created if the underlying configuration changes.</li>
+      </ul>
+    </div>
+
+    <div class="subsection">
+      <div class="subsection-header">
+        <span class="subsection-num">3.4</span>
+        <span class="subsection-title">Version History &amp; Diff View</span>
+      </div>
+      <ul class="features">
+        <li>Vertical timeline of every version ever saved for a garage item.</li>
+        <li>Each entry shows version number, date, and a human-readable diff summary.</li>
+        <li>Click any version to see the full configuration snapshot.</li>
+        <li>Visual diff: added options highlighted in green, removed in red, changed in amber, with price delta displayed for each change.</li>
+        <li>&ldquo;Restore to this version&rdquo; action: creates a new version from the restored state, preserving full history.</li>
+      </ul>
+    </div>
+
+    <div class="subsection">
+      <div class="subsection-header">
+        <span class="subsection-num">3.5</span>
+        <span class="subsection-title">Sharing &amp; Deep Links</span>
+      </div>
+      <ul class="features">
+        <li>Generate unique shareable URL for any garage item.</li>
+        <li>Share modal with: copy-to-clipboard button, QR code for mobile scanning, privacy controls, and optional link expiry.</li>
+        <li>Privacy levels: Public (anyone), Unlisted (link-only), Private (owner).</li>
+        <li>Access tracking: view count, last accessed timestamp.</li>
+        <li>Deep link handler renders a read-only view of the shared configuration with a &ldquo;Save to my garage&rdquo; call-to-action.</li>
+        <li>Supabase RPC functions: create_share_link, get_shared_item, update_share_settings &mdash; all secured with RLS.</li>
+      </ul>
+    </div>
+
+    <div class="subsection">
+      <div class="subsection-header">
+        <span class="subsection-num">3.6</span>
+        <span class="subsection-title">State Transitions &amp; Order Linking</span>
+      </div>
+      <ul class="features">
+        <li>State enum: saved, purchased, prototype, wishlist, archived.</li>
+        <li>Validated transitions (e.g., cannot move from archived to purchased).</li>
+        <li>Stripe webhook integration: on payment success, the linked garage item automatically transitions to &ldquo;purchased&rdquo; and a milestone is created.</li>
+        <li>On refund: state reverts to &ldquo;saved&rdquo; with a refund milestone logged.</li>
+        <li>Manual drag-and-drop between lanes with confirmation dialog.</li>
+        <li>Activity log entry created for every state change.</li>
+      </ul>
+    </div>
+
+    <div class="subsection">
+      <div class="subsection-header">
+        <span class="subsection-num">3.7</span>
+        <span class="subsection-title">Tags &amp; Goal Configuration</span>
+      </div>
+      <ul class="features">
+        <li>Chip-based multi-select tag system.</li>
+        <li>Predefined tags: track, grand-tourer, concept, daily-driver (extensible).</li>
+        <li>Tags displayed visually on each car card.</li>
+        <li>Tag filtering with AND/OR logic toggle.</li>
+        <li>Tag counts shown in filter bar.</li>
+        <li>Filter preferences persisted to localStorage.</li>
+      </ul>
+    </div>
+
+    <div class="subsection">
+      <div class="subsection-header">
+        <span class="subsection-num">3.8</span>
+        <span class="subsection-title">Open in Configurator (Deep Link)</span>
+      </div>
+      <ul class="features">
+        <li>&ldquo;Configure&rdquo; button on every garage card.</li>
+        <li>Loads the saved configuration, extracts vehicle selection and all option mappings, and hydrates the configurator store so the user picks up exactly where they left off.</li>
+        <li>Graceful handling of missing options (e.g., discontinued color).</li>
+        <li>Loading state with branded animation during extraction.</li>
+      </ul>
+    </div>
+
+    <div class="subsection">
+      <div class="subsection-header">
+        <span class="subsection-num">3.9</span>
+        <span class="subsection-title">Timeline &amp; Milestones</span>
+      </div>
+      <ul class="features">
+        <li>Vertical timeline attached to each garage item.</li>
+        <li>Milestone types: created, updated, purchased, delivered, custom.</li>
+        <li>Expandable detail view per milestone.</li>
+        <li>Users can add custom milestones (e.g., &ldquo;Showed dealer&rdquo;, &ldquo;Approved by spouse&rdquo;).</li>
+        <li>Future-date placeholders for estimated delivery.</li>
+      </ul>
+    </div>
+
+    <div class="subsection">
+      <div class="subsection-header">
+        <span class="subsection-num">3.10</span>
+        <span class="subsection-title">Advanced Filtering &amp; Sorting</span>
+      </div>
+      <ul class="features">
+        <li>Filter by: state, date range, price range, vehicle model, tags.</li>
+        <li>Sort by: date (newest/oldest), price (high/low), name (A&ndash;Z).</li>
+        <li>Saved filter presets with quick-apply buttons.</li>
+        <li>&ldquo;Clear all filters&rdquo; one-click reset.</li>
+        <li>Client-side search by title and description for instant results.</li>
+        <li>Server-side filtering for date and price ranges for efficiency.</li>
+      </ul>
+    </div>
+
+    <div class="subsection">
+      <div class="subsection-header">
+        <span class="subsection-num">3.11</span>
+        <span class="subsection-title">PDF Export</span>
+      </div>
+      <ul class="features">
+        <li>Edge Function generates a branded PDF specification sheet per garage item.</li>
+        <li>PDF contents: vehicle details, selected options with individual prices, pricing breakdown, high-res render image, QR code linking to the shared configuration, and branded header/footer with orange accents.</li>
+        <li>Asynchronous job queue: pdf_export_jobs table tracks status (queued, processing, completed, failed).</li>
+        <li>Generated PDFs stored in Supabase Storage with signed download URLs.</li>
+        <li>Typical generation time: 2&ndash;5 seconds.</li>
+      </ul>
+    </div>
+
+    <div class="subsection">
+      <div class="subsection-header">
+        <span class="subsection-num">3.12</span>
+        <span class="subsection-title">Test Drive Scheduling</span>
+      </div>
+      <ul class="features">
+        <li>Scheduling modal pre-filled with the garage item&rsquo;s model and the user&rsquo;s contact info.</li>
+        <li>Date picker restricted to future dates.</li>
+        <li>Dynamic dealer selector supporting multiple dealership locations.</li>
+        <li>On submit: record created, email dispatched to the selected dealer and confirmation sent to the user via Edge Function.</li>
+        <li>Status tracking: pending &rarr; confirmed &rarr; completed / cancelled.</li>
+        <li>Dealers can update status via API; users see live status on their card.</li>
+        <li>All actions logged for audit trail.</li>
+      </ul>
+    </div>
+  </section>
+
+
+  <!-- ════════════════════════════════════════════════ -->
+  <!-- SECTION 4 -->
+  <!-- ════════════════════════════════════════════════ -->
+  <section class="section">
+    <span class="section-number">Section 04</span>
+    <h2 class="section-title">2D Visual Configurator Engine</h2>
+
+    <div class="subsection">
+      <div class="subsection-header">
+        <span class="subsection-num">4.1</span>
+        <span class="subsection-title">Manifest-Driven Architecture</span>
+      </div>
+      <ul class="features">
+        <li>Every vehicle model defined by a JSON manifest stored in Supabase.</li>
+        <li>Layer stack with z-index ordering, dependency graphs between layers, and variant mapping from option values to asset URLs.</li>
+        <li>Manifest Editor UI for admin: drag-and-drop layer reordering, visual dependency graph, direct asset upload, JSON export/import, and validation before publish.</li>
+        <li>Versioned manifests with draft/published/archived lifecycle and one-click rollback.</li>
+      </ul>
+    </div>
+
+    <div class="subsection">
+      <div class="subsection-header">
+        <span class="subsection-num">4.2</span>
+        <span class="subsection-title">Layered Image Composition</span>
+      </div>
+      <ul class="features">
+        <li>High-fidelity 2D rendering by stacking transparent PNG/WebP layers.</li>
+        <li>Each configurable option (paint, wheels, calipers, aero, interior trim) maps to a layer with its own z-index.</li>
+        <li>Option swap triggers only the affected layer reload &mdash; all other layers remain cached, achieving &lt;100ms perceived swap time.</li>
+        <li>Multi-angle support: front &frac34;, side profile, rear &frac34;, and interior views, each with its own layer set.</li>
+      </ul>
+    </div>
+
+    <div class="subsection">
+      <div class="subsection-header">
+        <span class="subsection-num">4.3</span>
+        <span class="subsection-title">Adaptive Image Quality Scaling</span>
+      </div>
+      <ul class="features">
+        <li>Automatic detection of viewport size, device pixel ratio (DPR), and network speed.</li>
+        <li>Quality tiers: Low (800px, 70%), Medium (1200px, 85%), High (2000px, 95%), Ultra (original, lossless).</li>
+        <li>Supabase Storage CDN image transformations for on-the-fly resizing.</li>
+        <li>Progressive loading: low-quality placeholder &rarr; full resolution swap.</li>
+        <li>IntersectionObserver-based lazy loading and swatch hover prefetch.</li>
+        <li>Performance budgets: LCP &lt; 2.5s, image load &lt; 1s on 3G, zero layout shift.</li>
+      </ul>
+    </div>
+
+    <div class="subsection">
+      <div class="subsection-header">
+        <span class="subsection-num">4.4</span>
+        <span class="subsection-title">Compatibility Rules Engine</span>
+      </div>
+      <ul class="features">
+        <li>Rules stored in database with types: &ldquo;requires&rdquo; and &ldquo;incompatible&rdquo;.</li>
+        <li>Client-side evaluation engine re-evaluates all rules in &lt;10ms on every option change.</li>
+        <li>Violation feedback: inline alerts with i18n messages, affected options highlighted, and auto-resolve suggestions.</li>
+        <li>Automatic reconciliation: &ldquo;requires&rdquo; rules auto-select the dependency; &ldquo;incompatible&rdquo; rules disable the conflicting option.</li>
+        <li>Admin rule management UI: list, create, edit, delete, bulk import/export, test against sample configurations.</li>
+      </ul>
+    </div>
+
+    <div class="subsection">
+      <div class="subsection-header">
+        <span class="subsection-num">4.5</span>
+        <span class="subsection-title">Camera Angle Transitions</span>
+      </div>
+      <ul class="features">
+        <li>Smooth animated transitions between viewing angles.</li>
+        <li>Parallax depth effect: layers shift at different rates creating a subtle 3D illusion.</li>
+        <li>Configurable easing functions and durations via manifest metadata.</li>
+        <li>Respects prefers-reduced-motion for accessibility. 60fps target.</li>
+      </ul>
+    </div>
+
+    <div class="subsection">
+      <div class="subsection-header">
+        <span class="subsection-num">4.6</span>
+        <span class="subsection-title">Preset Configurations</span>
+      </div>
+      <ul class="features">
+        <li>Curated starter configurations: Performance Pack, Winter Pack, Launch Edition, etc.</li>
+        <li>Preset gallery with thumbnails, names, descriptions, and &ldquo;Start with this&rdquo; button.</li>
+        <li>&ldquo;Start from scratch&rdquo; option always available.</li>
+        <li>Presets managed via Supabase table with admin CRUD interface.</li>
+      </ul>
+    </div>
+
+    <div class="subsection">
+      <div class="subsection-header">
+        <span class="subsection-num">4.7</span>
+        <span class="subsection-title">Studio Lighting Filter</span>
+      </div>
+      <ul class="features">
+        <li>Background/lighting presets: Studio (neutral), Track (dynamic), Gallery (dramatic), Sunset (warm).</li>
+        <li>Segmented control with visual thumbnails and preloaded fade transitions.</li>
+        <li>User preference persisted per configuration.</li>
+      </ul>
+    </div>
+
+    <div class="subsection">
+      <div class="subsection-header">
+        <span class="subsection-num">4.8</span>
+        <span class="subsection-title">Undo / Redo System</span>
+      </div>
+      <ul class="features">
+        <li>Full history stack: past[] / present / future[] with immutable snapshots.</li>
+        <li>Keyboard shortcuts: Ctrl+Z (undo), Ctrl+Y (redo).</li>
+        <li>History depth limit (50 states) to bound memory usage.</li>
+        <li>Optional localStorage persistence so history survives page reloads.</li>
+      </ul>
+    </div>
+
+    <div class="subsection">
+      <div class="subsection-header">
+        <span class="subsection-num">4.9</span>
+        <span class="subsection-title">Compare Mode</span>
+      </div>
+      <ul class="features">
+        <li>Side-by-side comparison of two configurations.</li>
+        <li>Diff highlighting: added (green), removed (red), changed (amber).</li>
+        <li>Option-by-option and price-by-price comparison table.</li>
+        <li>Responsive: stacks vertically on mobile.</li>
+      </ul>
+    </div>
+
+    <div class="subsection">
+      <div class="subsection-header">
+        <span class="subsection-num">4.10</span>
+        <span class="subsection-title">Variant Availability Alerts</span>
+      </div>
+      <ul class="features">
+        <li>Real-time stock tracking per option value per region via Supabase Realtime.</li>
+        <li>Low-stock warnings and out-of-stock indicators shown inline.</li>
+        <li>Unavailable options automatically disabled with explanation.</li>
+      </ul>
+    </div>
+
+    <div class="subsection">
+      <div class="subsection-header">
+        <span class="subsection-num">4.11</span>
+        <span class="subsection-title">Wishlist Overlay</span>
+      </div>
+      <ul class="features">
+        <li>Floating &ldquo;Add to Wishlist&rdquo; button on the configurator page.</li>
+        <li>Auth-aware: redirects guests to login, returns to exact state.</li>
+        <li>Toast confirmation with link to Garage.</li>
+      </ul>
+    </div>
+
+    <div class="subsection">
+      <div class="subsection-header">
+        <span class="subsection-num">4.12</span>
+        <span class="subsection-title">Watermark Rendering</span>
+      </div>
+      <ul class="features">
+        <li>Client-side canvas watermark overlay on renders. Configurable opacity and position.</li>
+        <li>Server-side watermarking pipeline for high-res exports.</li>
+      </ul>
+    </div>
+
+    <div class="subsection">
+      <div class="subsection-header">
+        <span class="subsection-num">4.13</span>
+        <span class="subsection-title">Showcase Mode</span>
+      </div>
+      <ul class="features">
+        <li>Full-screen immersive presentation of the configured vehicle.</li>
+        <li>Environment presets: winter, summer, studio, track, gallery.</li>
+        <li>Text/copy overlays for marketing presentations.</li>
+        <li>Shareable showcase URLs. Deep link back to configurator for editing.</li>
+      </ul>
+    </div>
+
+    <div class="subsection">
+      <div class="subsection-header">
+        <span class="subsection-num">4.14</span>
+        <span class="subsection-title">AR Preview Integration</span>
+      </div>
+      <ul class="features">
+        <li>Device capability detection: WebXR, ARKit (iOS), ARCore (Android).</li>
+        <li>AR asset URLs in manifest: USDZ (iOS) and GLB (Android/Web).</li>
+        <li>Launches native AR viewer or WebXR session. Graceful fallback on unsupported devices.</li>
+      </ul>
+    </div>
+  </section>
+
+
+  <!-- ════════════════════════════════════════════════ -->
+  <!-- SECTION 5 -->
+  <!-- ════════════════════════════════════════════════ -->
+  <section class="section">
+    <span class="section-number">Section 05</span>
+    <h2 class="section-title">3D Immersive Configurator Engine</h2>
+
+    <div class="subsection">
+      <div class="subsection-header">
+        <span class="subsection-num">5.1</span>
+        <span class="subsection-title">React Three Fiber Scene</span>
+      </div>
+      <ul class="features">
+        <li>Full WebGL scene built with React Three Fiber + Drei.</li>
+        <li>Perspective camera with configurable FOV and position presets.</li>
+        <li>Orbit controls: rotate, pan, zoom with damping.</li>
+        <li>HDRI environment lighting + directional sun light. Ground plane with shadow receiver.</li>
+        <li>frameloop=&ldquo;demand&rdquo; for battery-efficient rendering &mdash; only re-renders when the scene changes.</li>
+      </ul>
+    </div>
+
+    <div class="subsection">
+      <div class="subsection-header">
+        <span class="subsection-num">5.2</span>
+        <span class="subsection-title">GLB Streaming &amp; Caching</span>
+      </div>
+      <ul class="features">
+        <li>Asset pipeline: source GLB &rarr; Draco compression &rarr; KTX2 texture conversion &rarr; geometry optimization &rarr; LOD variant generation &rarr; Supabase Storage.</li>
+        <li>DRACOLoader and KTX2Loader integration for maximum compression.</li>
+        <li>Progressive loading with placeholder meshes during download.</li>
+        <li>IndexedDB caching of decoded geometry buffers &mdash; repeat visits load from local cache with zero network requests.</li>
+        <li>Versioned assets with automatic cache invalidation. Retry logic with exponential backoff.</li>
+      </ul>
+    </div>
+
+    <div class="subsection">
+      <div class="subsection-header">
+        <span class="subsection-num">5.3</span>
+        <span class="subsection-title">Level of Detail (LOD)</span>
+      </div>
+      <ul class="features">
+        <li>Automatic device capability detection (GPU tier, available memory).</li>
+        <li>Camera-distance-based LOD switching. Three tiers: high, medium, low.</li>
+        <li>Automatic fallback to 2D configurator on low-end devices.</li>
+      </ul>
+    </div>
+
+    <div class="subsection">
+      <div class="subsection-header">
+        <span class="subsection-num">5.4</span>
+        <span class="subsection-title">Interior / Exterior Toggle</span>
+      </div>
+      <ul class="features">
+        <li>GLB node partitioning: interior group, exterior group, shared nodes.</li>
+        <li>Smooth camera transitions between exterior wide-angle and interior close-up.</li>
+        <li>Light rig swap: exterior uses HDRI + sun; interior uses ambient + accent.</li>
+      </ul>
+    </div>
+
+    <div class="subsection">
+      <div class="subsection-header">
+        <span class="subsection-num">5.5</span>
+        <span class="subsection-title">Paint Shader System</span>
+      </div>
+      <ul class="features">
+        <li>Custom MeshPhysicalMaterial-based paint shader with physical parameters: base color, metallic, roughness.</li>
+        <li>Metallic flake layer: configurable density, size, and color.</li>
+        <li>Clearcoat layer: adjustable strength and roughness.</li>
+        <li>Control panel with sliders, color pickers, and preset paint materials.</li>
+      </ul>
+    </div>
+
+    <div class="subsection">
+      <div class="subsection-header">
+        <span class="subsection-num">5.6</span>
+        <span class="subsection-title">Studio Light Presets (3D)</span>
+      </div>
+      <ul class="features">
+        <li>Preset picker with thumbnail grid and hover preview.</li>
+        <li>Smooth HDRI crossfade transitions. User preference persisted per configuration.</li>
+      </ul>
+    </div>
+
+    <div class="subsection">
+      <div class="subsection-header">
+        <span class="subsection-num">5.7</span>
+        <span class="subsection-title">Animated Parts System</span>
+      </div>
+      <ul class="features">
+        <li>GLTF animation tracks for doors, trunk/frunk, spoiler, and aero elements.</li>
+        <li>Visual timeline scrubber with play/pause, speed control, and loop.</li>
+        <li>useAnimationController hook for programmatic playback.</li>
+      </ul>
+    </div>
+
+    <div class="subsection">
+      <div class="subsection-header">
+        <span class="subsection-num">5.8</span>
+        <span class="subsection-title">Volumetric Lighting &amp; Fog</span>
+      </div>
+      <ul class="features">
+        <li>Quality tiers: off (low-end), basic fog (medium), full volumetric (high).</li>
+        <li>Automatic quality selection based on GPU tier with user override.</li>
+      </ul>
+    </div>
+
+    <div class="subsection">
+      <div class="subsection-header">
+        <span class="subsection-num">5.9</span>
+        <span class="subsection-title">Background Stage Configuration</span>
+      </div>
+      <ul class="features">
+        <li>HDRI environment selector with rotation and blur sliders.</li>
+        <li>Prefiltered PMREM generation for accurate reflections.</li>
+        <li>Preferences persisted per user profile and per configuration.</li>
+      </ul>
+    </div>
+
+    <div class="subsection">
+      <div class="subsection-header">
+        <span class="subsection-num">5.10</span>
+        <span class="subsection-title">WebXR / VR Integration</span>
+      </div>
+      <ul class="features">
+        <li>WebXR API capability detection with onboarding prompt.</li>
+        <li>Immersive VR sessions with teleport controls and safe play-area boundaries.</li>
+        <li>Hand tracking support (device-dependent). Graceful session management.</li>
+      </ul>
+    </div>
+
+    <div class="subsection">
+      <div class="subsection-header">
+        <span class="subsection-num">5.11</span>
+        <span class="subsection-title">High-Res Render Export</span>
+      </div>
+      <ul class="features">
+        <li>Multi-pass supersampled capture pipeline. Resolution presets: 1080p, 4K, 8K.</li>
+        <li>Format options: PNG, JPEG, WebP. Optional watermark overlay.</li>
+        <li>Edge Function for server-side ultra-high-res rendering. Job queue with status tracking.</li>
+      </ul>
+    </div>
+
+    <div class="subsection">
+      <div class="subsection-header">
+        <span class="subsection-num">5.12</span>
+        <span class="subsection-title">Sound Design Integration</span>
+      </div>
+      <ul class="features">
+        <li>Interaction-to-audio mapping: option click, camera whoosh, door latch, engine rev.</li>
+        <li>Spatial 3D audio via Web Audio API. Debounced playback. Global mute toggle.</li>
+      </ul>
+    </div>
+  </section>
+
+
+  <!-- ════════════════════════════════════════════════ -->
+  <!-- SECTION 6 -->
+  <!-- ════════════════════════════════════════════════ -->
+  <section class="section">
+    <span class="section-number">Section 06</span>
+    <h2 class="section-title">Commerce, Pricing &amp; Payments</h2>
+
+    <div class="subsection">
+      <div class="subsection-header">
+        <span class="subsection-num">6.1</span>
+        <span class="subsection-title">Dynamic Pricing Engine</span>
+      </div>
+      <ul class="features">
+        <li>Supabase RPC calculates: base price, option deltas, regional taxes, active incentives/discounts, and grand total.</li>
+        <li>Results cached for instant recall. Cache invalidated on every option change.</li>
+      </ul>
+    </div>
+
+    <div class="subsection">
+      <div class="subsection-header">
+        <span class="subsection-num">6.2</span>
+        <span class="subsection-title">Pricing Panel UI</span>
+      </div>
+      <ul class="features">
+        <li>Live-updating pricing summary on the configurator.</li>
+        <li>Itemized option list with individual prices.</li>
+        <li>Animated price change indicators (increase / decrease).</li>
+        <li>Multi-currency support (EUR, USD, SEK, NOK). Finance calculator stubs.</li>
+      </ul>
+    </div>
+
+    <div class="subsection">
+      <div class="subsection-header">
+        <span class="subsection-num">6.3</span>
+        <span class="subsection-title">Stripe Integration</span>
+      </div>
+      <ul class="features">
+        <li>Stripe Checkout Sessions created via Edge Function &mdash; keys never exposed to the client.</li>
+        <li>Support for deposits, reservations, and full payments.</li>
+        <li>Webhook handler: payment success &rarr; order &ldquo;paid&rdquo;, garage item &rarr; &ldquo;purchased&rdquo;, milestone created, confirmation email sent.</li>
+        <li>Refund handler: order &ldquo;refunded&rdquo;, garage item &rarr; &ldquo;saved&rdquo;, refund milestone created.</li>
+        <li>Idempotency keys. Comprehensive error handling and retry logic.</li>
+      </ul>
+    </div>
+
+    <div class="subsection">
+      <div class="subsection-header">
+        <span class="subsection-num">6.4</span>
+        <span class="subsection-title">Order Management</span>
+      </div>
+      <ul class="features">
+        <li>Order lifecycle: pending &rarr; paid &rarr; processing &rarr; completed / cancelled / refunded.</li>
+        <li>Line-item detail. User-facing order history with status badges.</li>
+        <li>Admin-facing order management console. Email notifications at each status transition.</li>
+      </ul>
+    </div>
+
+    <div class="subsection">
+      <div class="subsection-header">
+        <span class="subsection-num">6.5</span>
+        <span class="subsection-title">Inventory Intelligence</span>
+      </div>
+      <ul class="features">
+        <li>Real-time stock tracking per option per region.</li>
+        <li>Configurator links to in-stock inventory for &ldquo;available now&rdquo; delivery estimates.</li>
+        <li>Low-stock and out-of-stock alerts propagated via Realtime subscriptions.</li>
+      </ul>
+    </div>
+  </section>
+
+
+  <!-- ════════════════════════════════════════════════ -->
+  <!-- SECTION 7 -->
+  <!-- ════════════════════════════════════════════════ -->
+  <section class="section">
+    <span class="section-number">Section 07</span>
+    <h2 class="section-title">AI Assistant &amp; Customer Support</h2>
+
+    <div class="subsection">
+      <div class="subsection-header">
+        <span class="subsection-num">7.1</span>
+        <span class="subsection-title">Virtual Concierge</span>
+      </div>
+      <ul class="features">
+        <li>AI-powered chat assistant available on every page.</li>
+        <li>Context-aware: the assistant sees the user&rsquo;s current configurator state, garage items, and browsing context.</li>
+        <li>Natural language understanding for option compatibility, pricing comparisons, and configuration recommendations.</li>
+        <li>Powered by OpenAI / Anthropic via Edge Function proxy (keys never exposed).</li>
+      </ul>
+    </div>
+
+    <div class="subsection">
+      <div class="subsection-header">
+        <span class="subsection-num">7.2</span>
+        <span class="subsection-title">Lead Qualification</span>
+      </div>
+      <ul class="features">
+        <li>Automated conversation flow: budget, model preference, timeline, contact.</li>
+        <li>Qualified leads forwarded to dealership CRM or email inbox.</li>
+        <li>Conversation transcripts stored for sales team reference.</li>
+      </ul>
+    </div>
+
+    <div class="subsection">
+      <div class="subsection-header">
+        <span class="subsection-num">7.3</span>
+        <span class="subsection-title">Knowledge Base Integration</span>
+      </div>
+      <ul class="features">
+        <li>AI trained on vehicle specifications, option details, pricing, and brand FAQs.</li>
+        <li>Retrieval-augmented generation (RAG) for accurate, grounded answers.</li>
+        <li>Fallback to human handoff when confidence is low.</li>
+      </ul>
+    </div>
+  </section>
+
+
+  <!-- ════════════════════════════════════════════════ -->
+  <!-- SECTION 8 -->
+  <!-- ════════════════════════════════════════════════ -->
+  <section class="section">
+    <span class="section-number">Section 08</span>
+    <h2 class="section-title">Admin Dashboard &amp; Content Management</h2>
+
+    <div class="subsection">
+      <div class="subsection-header">
+        <span class="subsection-num">8.1</span>
+        <span class="subsection-title">Real-Time Analytics Dashboard</span>
+      </div>
+      <ul class="features">
+        <li>Live metrics: active users, configurator sessions, popular options, most-saved configurations.</li>
+        <li>Conversion funnel: visitor &rarr; configurator &rarr; save &rarr; order &rarr; payment.</li>
+        <li>Heatmaps of most-selected options and drop-off points.</li>
+        <li>Time-series charts for daily/weekly/monthly trends.</li>
+      </ul>
+    </div>
+
+    <div class="subsection">
+      <div class="subsection-header">
+        <span class="subsection-num">8.2</span>
+        <span class="subsection-title">Vehicle &amp; Option Management</span>
+      </div>
+      <ul class="features">
+        <li>No-code CRUD interface for vehicles, option groups, options, and values.</li>
+        <li>Drag-and-drop display ordering. Bulk import/export (CSV, JSON).</li>
+        <li>Price management with audit trail. Direct asset upload to storage.</li>
+      </ul>
+    </div>
+
+    <div class="subsection">
+      <div class="subsection-header">
+        <span class="subsection-num">8.3</span>
+        <span class="subsection-title">Configurator Manifest Management</span>
+      </div>
+      <ul class="features">
+        <li>Visual manifest editor. Draft &rarr; Published &rarr; Archived lifecycle.</li>
+        <li>Version history with one-click rollback.</li>
+        <li>Asset validation: checks all referenced URLs resolve before publish.</li>
+      </ul>
+    </div>
+
+    <div class="subsection">
+      <div class="subsection-header">
+        <span class="subsection-num">8.4</span>
+        <span class="subsection-title">Order &amp; Test Drive Management</span>
+      </div>
+      <ul class="features">
+        <li>Centralized order console. One-click status updates with customer notification.</li>
+        <li>Test drive request queue with dealer assignment and calendar view.</li>
+      </ul>
+    </div>
+
+    <div class="subsection">
+      <div class="subsection-header">
+        <span class="subsection-num">8.5</span>
+        <span class="subsection-title">Customer CRM</span>
+      </div>
+      <ul class="features">
+        <li>Unified customer profiles: account info, garages, orders, test drives, AI chat transcripts.</li>
+        <li>Search and filter by any field. Notes and tags for team collaboration.</li>
+      </ul>
+    </div>
+
+    <div class="subsection">
+      <div class="subsection-header">
+        <span class="subsection-num">8.6</span>
+        <span class="subsection-title">Role &amp; Permission Management</span>
+      </div>
+      <ul class="features">
+        <li>Admin UI for assigning roles. Granular permissions per module.</li>
+        <li>Audit log of all admin actions with timestamp and actor.</li>
+      </ul>
+    </div>
+  </section>
+
+
+  <!-- ════════════════════════════════════════════════ -->
+  <!-- SECTION 9 -->
+  <!-- ════════════════════════════════════════════════ -->
+  <section class="section">
+    <span class="section-number">Section 09</span>
+    <h2 class="section-title">Operations, Monitoring &amp; Analytics</h2>
+
+    <div class="subsection">
+      <div class="subsection-header">
+        <span class="subsection-num">9.1</span>
+        <span class="subsection-title">Performance Monitoring</span>
+      </div>
+      <ul class="features">
+        <li>Lighthouse CI with enforced budgets: LCP &lt; 2.5s, FID &lt; 100ms, CLS &lt; 0.1, bundle &lt; 500KB.</li>
+        <li>Web Vitals tracking in production. Image load time monitoring per quality tier.</li>
+        <li>3D scene FPS tracking with automatic quality downgrade.</li>
+      </ul>
+    </div>
+
+    <div class="subsection">
+      <div class="subsection-header">
+        <span class="subsection-num">9.2</span>
+        <span class="subsection-title">Uptime &amp; Health Checks</span>
+      </div>
+      <ul class="features">
+        <li>Health endpoint for automated monitoring. 99.9% uptime SLA target.</li>
+        <li>Edge Function invocation success rate tracking.</li>
+      </ul>
+    </div>
+
+    <div class="subsection">
+      <div class="subsection-header">
+        <span class="subsection-num">9.3</span>
+        <span class="subsection-title">Database Performance</span>
+      </div>
+      <ul class="features">
+        <li>Optimized indexes on all frequently queried columns. Common queries &lt;50ms.</li>
+        <li>Connection pooling via PGBouncer. Slow query logging and alerting.</li>
+      </ul>
+    </div>
+
+    <div class="subsection">
+      <div class="subsection-header">
+        <span class="subsection-num">9.4</span>
+        <span class="subsection-title">Scheduled Jobs</span>
+      </div>
+      <ul class="features">
+        <li>Edge Function cron jobs: expired share link cleanup, stale PDF job cleanup, inventory sync, monthly milestone generation, analytics aggregation.</li>
+      </ul>
+    </div>
+  </section>
+
+
+  <!-- ════════════════════════════════════════════════ -->
+  <!-- SECTION 10 -->
+  <!-- ════════════════════════════════════════════════ -->
+  <section class="section">
+    <span class="section-number">Section 10</span>
+    <h2 class="section-title">Internationalization &amp; Multi-Region</h2>
+
+    <div class="subsection">
+      <div class="subsection-header">
+        <span class="subsection-num">10.1</span>
+        <span class="subsection-title">Language Support</span>
+      </div>
+      <ul class="features">
+        <li>i18next integration with namespace-separated translation files.</li>
+        <li>Shipped with English and Swedish; adding a new language requires only a JSON file &mdash; zero code changes.</li>
+        <li>Language switcher in the navigation bar. User preference stored in profile and localStorage.</li>
+        <li>All UI text, error messages, validation messages, PDF exports, and email templates are translatable.</li>
+      </ul>
+    </div>
+
+    <div class="subsection">
+      <div class="subsection-header">
+        <span class="subsection-num">10.2</span>
+        <span class="subsection-title">Regional Configuration</span>
+      </div>
+      <ul class="features">
+        <li>Currency formatting per region (EUR, USD, SEK, NOK).</li>
+        <li>Tax calculation rules per region. Dealer/inventory filtering by region.</li>
+        <li>Date and number formatting per locale.</li>
+      </ul>
+    </div>
+
+    <div class="subsection">
+      <div class="subsection-header">
+        <span class="subsection-num">10.3</span>
+        <span class="subsection-title">Multi-Brand (White-Label) Deployment</span>
+      </div>
+      <ul class="features">
+        <li>Brand name, logo, colors, and fonts configurable via environment variables and CSS custom properties.</li>
+        <li>Single codebase deploys as a unique branded platform per client.</li>
+        <li>Brand-specific seed data and manifest assets.</li>
+      </ul>
+    </div>
+  </section>
+
+
+  <!-- ════════════════════════════════════════════════ -->
+  <!-- SECTION 11 -->
+  <!-- ════════════════════════════════════════════════ -->
+  <section class="section">
+    <span class="section-number">Section 11</span>
+    <h2 class="section-title">Performance &amp; Optimization</h2>
+
+    <div class="subsection">
+      <div class="subsection-header">
+        <span class="subsection-num">11.1</span>
+        <span class="subsection-title">Code Splitting &amp; Lazy Loading</span>
+      </div>
+      <ul class="features">
+        <li>Route-level code splitting: each page is a separate chunk.</li>
+        <li>Dynamic imports for heavy modules (3D engine, PDF library, AI chat).</li>
+        <li>Prefetching of likely-next routes on hover. Tree-shaking for minimal bundle.</li>
+      </ul>
+    </div>
+
+    <div class="subsection">
+      <div class="subsection-header">
+        <span class="subsection-num">11.2</span>
+        <span class="subsection-title">Rendering Optimization</span>
+      </div>
+      <ul class="features">
+        <li>Fine-grained Zustand subscriptions. React.memo and useMemo for expensive computations.</li>
+        <li>Virtual scrolling for long lists. requestAnimationFrame for 60fps animations.</li>
+      </ul>
+    </div>
+
+    <div class="subsection">
+      <div class="subsection-header">
+        <span class="subsection-num">11.3</span>
+        <span class="subsection-title">Network &amp; Asset Optimization</span>
+      </div>
+      <ul class="features">
+        <li>Optimistic updates. Debounced API calls. Batched Supabase queries.</li>
+        <li>WebP/AVIF images. Draco-compressed GLB (up to 90% reduction). KTX2 textures.</li>
+        <li>Hashed filenames for aggressive browser caching.</li>
+      </ul>
+    </div>
+  </section>
+
+
+  <!-- ════════════════════════════════════════════════ -->
+  <!-- SECTION 12 -->
+  <!-- ════════════════════════════════════════════════ -->
+  <section class="section">
+    <span class="section-number">Section 12</span>
+    <h2 class="section-title">Security &amp; Compliance</h2>
+
+    <div class="subsection">
+      <div class="subsection-header">
+        <span class="subsection-num">12.1</span>
+        <span class="subsection-title">Data Protection</span>
+      </div>
+      <ul class="features">
+        <li>Row-Level Security on every table &mdash; enforced at database level.</li>
+        <li>Service role keys used only in Edge Functions, never exposed to client.</li>
+        <li>Input validation on all endpoints. SQL injection prevention. XSS prevention via React escaping.</li>
+      </ul>
+    </div>
+
+    <div class="subsection">
+      <div class="subsection-header">
+        <span class="subsection-num">12.2</span>
+        <span class="subsection-title">Authentication Security</span>
+      </div>
+      <ul class="features">
+        <li>JWT tokens with short expiry and automatic refresh. Secure cookie storage.</li>
+        <li>Rate limiting on auth endpoints. CAPTCHA readiness for abuse prevention.</li>
+      </ul>
+    </div>
+
+    <div class="subsection">
+      <div class="subsection-header">
+        <span class="subsection-num">12.3</span>
+        <span class="subsection-title">Infrastructure Security</span>
+      </div>
+      <ul class="features">
+        <li>HTTPS everywhere. Security headers: CSP, HSTS, X-Frame-Options.</li>
+        <li>No source maps in production. Obfuscated chunk filenames.</li>
+        <li>Dependabot for automated dependency vulnerability scanning.</li>
+      </ul>
+    </div>
+
+    <div class="subsection">
+      <div class="subsection-header">
+        <span class="subsection-num">12.4</span>
+        <span class="subsection-title">Compliance</span>
+      </div>
+      <ul class="features">
+        <li>GDPR-ready: account deletion, data export, consent management.</li>
+        <li>WCAG 2.1 AA accessibility target. Cookie consent readiness.</li>
+        <li>Audit logging for all admin and financial actions.</li>
+      </ul>
+    </div>
+  </section>
+
+
+  <!-- ════════════════════════════════════════════════ -->
+  <!-- SECTION 13 -->
+  <!-- ════════════════════════════════════════════════ -->
+  <section class="section">
+    <span class="section-number">Section 13</span>
+    <h2 class="section-title">Marketing &amp; Launch Communications</h2>
+
+    <div class="subsection">
+      <div class="subsection-header">
+        <span class="subsection-num">13.1</span>
+        <span class="subsection-title">Email Templates</span>
+      </div>
+      <ul class="features">
+        <li>Branded transactional templates: welcome, password reset, order confirmation, test drive confirmation, PDF ready, share link notification.</li>
+        <li>Sent via Resend (or configurable SMTP provider) through Edge Functions.</li>
+      </ul>
+    </div>
+
+    <div class="subsection">
+      <div class="subsection-header">
+        <span class="subsection-num">13.2</span>
+        <span class="subsection-title">Push Notifications</span>
+      </div>
+      <ul class="features">
+        <li>Web Push API: order status updates, test drive reminders, new model announcements, price drop alerts on wishlisted configurations.</li>
+        <li>User opt-in/out controls in account settings.</li>
+      </ul>
+    </div>
+
+    <div class="subsection">
+      <div class="subsection-header">
+        <span class="subsection-num">13.3</span>
+        <span class="subsection-title">SEO &amp; Social Sharing</span>
+      </div>
+      <ul class="features">
+        <li>Dynamic meta tags per page. Structured data (JSON-LD) for vehicle listings.</li>
+        <li>Social share cards for configurations and showcase URLs. Sitemap generation.</li>
+      </ul>
+    </div>
+  </section>
+
+
+  <!-- ════════════════════════════════════════════════ -->
+  <!-- SECTION 14 -->
+  <!-- ════════════════════════════════════════════════ -->
+  <section class="section">
+    <span class="section-number">Section 14</span>
+    <h2 class="section-title">Database Schema Summary</h2>
+
+    <p class="schema-group-title">Core Tables</p>
+    <table class="schema-table">
+      <tr><td>profiles</td><td>User profiles linked to Supabase Auth</td></tr>
+      <tr><td>vehicles</td><td>Vehicle models with specs, pricing, media</td></tr>
+      <tr><td>option_groups</td><td>Groups of configurable options (Exterior, Interior&hellip;)</td></tr>
+      <tr><td>options</td><td>Individual options within groups (Paint, Wheels&hellip;)</td></tr>
+      <tr><td>option_values</td><td>Selectable values per option (Nero Black, Orange&hellip;)</td></tr>
+      <tr><td>materials</td><td>3D material definitions (shader properties)</td></tr>
+      <tr><td>compatibility_rules</td><td>Requires / incompatible rules between option values</td></tr>
+    </table>
+
+    <p class="schema-group-title">Configuration &amp; Garage</p>
+    <table class="schema-table">
+      <tr><td>user_configurations</td><td>Saved configurations with selected_options JSONB</td></tr>
+      <tr><td>garage_items</td><td>User&rsquo;s garage entries with config_payload</td></tr>
+      <tr><td>garage_versions</td><td>Version history snapshots per garage item</td></tr>
+      <tr><td>garage_item_tags</td><td>Tag associations per garage item</td></tr>
+      <tr><td>garage_share_links</td><td>Shareable links with privacy and expiry</td></tr>
+      <tr><td>garage_milestones</td><td>Timeline milestones per garage item</td></tr>
+      <tr><td>garage_activity</td><td>Activity log for all garage actions</td></tr>
+    </table>
+
+    <p class="schema-group-title">Commerce</p>
+    <table class="schema-table">
+      <tr><td>orders</td><td>Order records with Stripe references and status</td></tr>
+      <tr><td>order_items</td><td>Line items per order</td></tr>
+      <tr><td>variant_inventory</td><td>Stock tracking per option value per region</td></tr>
+    </table>
+
+    <p class="schema-group-title">Operations</p>
+    <table class="schema-table">
+      <tr><td>test_drive_requests</td><td>Test drive bookings with dealer assignment</td></tr>
+      <tr><td>dealers</td><td>Dealership locations</td></tr>
+      <tr><td>pdf_export_jobs</td><td>Async PDF generation job queue</td></tr>
+      <tr><td>config_2d_manifests</td><td>2D configurator manifest definitions</td></tr>
+      <tr><td>studio_light_presets</td><td>3D lighting preset definitions</td></tr>
+      <tr><td>showcase_presets</td><td>Showcase mode environment presets</td></tr>
+      <tr><td>ai_conversations</td><td>AI assistant chat history</td></tr>
+    </table>
+
+    <p class="schema-group-title">Admin</p>
+    <table class="schema-table">
+      <tr><td>admin_roles</td><td>Role definitions</td></tr>
+      <tr><td>admin_audit_log</td><td>All admin actions with timestamp and actor</td></tr>
+    </table>
+  </section>
+
+
+  <!-- ── Footer ──────────────────────────────────── -->
+  <footer class="doc-footer">
+    <img src="/documents/TornadoLogo.png" alt="Volturiano" class="footer-logo">
+    <p class="tagline">Platform available for licensing</p>
+    <p class="tagline">Your brand &middot; Your vehicles &middot; Live in weeks</p>
+    <p class="contact" style="margin-top: 16px;">create@volturiano.com</p>
+  </footer>
+
+</div>
+
+</body>
+</html>

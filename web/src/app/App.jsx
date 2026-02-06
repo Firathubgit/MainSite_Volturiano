@@ -1,7 +1,7 @@
 import React, { Suspense, lazy, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { NavBar } from '../components/NavBar/NavBar';
-import { Route, Routes, Navigate } from 'react-router-dom';
+import { Route, Routes, Navigate, useLocation } from 'react-router-dom';
 import { supabase } from '../lib/supabaseClient';
 import { useUserStore } from '../stores/userStore';
 import { useUiStore } from '../stores/uiStore';
@@ -80,9 +80,23 @@ export default function App() {
   const status = useUserStore((state) => state.status);
   const session = useUserStore((state) => state.session);
   const forceOverlay = useUiStore((state) => state.forceOverlay);
+  const platformMode = useUiStore((state) => state.platformMode);
+  const exitPlatform = useUiStore((state) => state.exitPlatform);
+  const location = useLocation();
   
   // Set dynamic page title based on current route
   usePageTitle();
+
+  // Auto-exit platform mode when user navigates TO an agency route (only on pathname change, not platformMode change)
+  const prevPathnameRef = React.useRef(location.pathname);
+  useEffect(() => {
+    const prevPath = prevPathnameRef.current;
+    prevPathnameRef.current = location.pathname;
+    // Only exit when navigating FROM a non-agency route TO an agency route
+    if (platformMode && location.pathname.startsWith('/agency') && !prevPath.startsWith('/agency')) {
+      exitPlatform();
+    }
+  }, [location.pathname, platformMode, exitPlatform]);
   
   console.log('[App] Current state:', {
     status,
@@ -251,15 +265,11 @@ export default function App() {
         show={forceOverlay || (!session && (status === 'loading' || status === 'idle'))}
       />
       <NavBar />
-      {PAUSE_MODE_ENABLED ? <AgencyMenu /> : <NavDrawer />}
+      {(PAUSE_MODE_ENABLED && !platformMode) ? <AgencyMenu /> : <NavDrawer />}
       <main>
         <Suspense fallback={<LoadingOverlay />}>
           <Routes>
-            {PAUSE_MODE_ENABLED ? (
-              <Route path="/" element={<Navigate to="/agency" replace />} />
-            ) : (
-              <Route path="/" element={<IndexGate />} />
-            )}
+            <Route path="/" element={<IndexGate />} />
             <Route path="/start" element={<StartAnim />} />
             <Route path="/models" element={<Models />} />
             <Route path="/agency" element={<Agency />} />

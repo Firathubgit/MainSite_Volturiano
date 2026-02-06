@@ -1,5 +1,118 @@
 {
-  "title": "Models",
-  "description": "Carousel placeholder. Animating 3D image slides and CTA buttons per model."
+  "pageTitle": "Available Volturiano",
+  "filterBar": {
+    "modelLabel": "Model",
+    "modelDefault": "All models",
+    "filterBtn": "Filter",
+    "sortLabel": "Sort by",
+    "sortDefault": "Price ascending",
+    "resetFilters": "Reset filters"
+  },
+  "tags": {
+    "performance": "Performance",
+    "longRange": "Long Range",
+    "allWheel": "All-Wheel"
+  },
+  "card": {
+    "modelYear": "Model year",
+    "offer": "Offer",
+    "package": "Package",
+    "drivetrain": "Drivetrain",
+    "delivery": "Estimated delivery",
+    "compare": "Compare",
+    "rwd": "Rear-wheel drive",
+    "awd": "All-wheel drive"
+  },
+  "vehicles": {
+    "v1": {
+      "name": "Long range Single motor",
+      "package": "Business edition",
+      "driveLabel": "Rear-wheel drive",
+      "deliveryEst": "Early March",
+      "price": "702 000 kr",
+      "oldPrice": "796 000 kr"
+    },
+    "v2": {
+      "name": "Long range Single motor",
+      "package": "Business edition",
+      "driveLabel": "Rear-wheel drive",
+      "deliveryEst": "Early March",
+      "price": "704 000 kr",
+      "oldPrice": "798 000 kr"
+    },
+    "v3": {
+      "name": "Long range Single motor",
+      "package": "Business edition",
+      "driveLabel": "Rear-wheel drive",
+      "deliveryEst": "Early April",
+      "price": "704 000 kr",
+      "oldPrice": "798 000 kr"
+    },
+    "v4": {
+      "name": "Long range Single motor",
+      "package": "Business edition",
+      "driveLabel": "Rear-wheel drive",
+      "deliveryEst": "Late February",
+      "price": "708 000 kr",
+      "oldPrice": "802 000 kr"
+    },
+    "v5": {
+      "name": "Long range Single motor",
+      "package": "Business edition",
+      "driveLabel": "Rear-wheel drive",
+      "deliveryEst": "Late February",
+      "price": "714 000 kr",
+      "oldPrice": "808 000 kr"
+    },
+    "v6": {
+      "name": "Long range Single motor",
+      "package": "Business edition",
+      "driveLabel": "Rear-wheel drive",
+      "deliveryEst": "Early March",
+      "price": "718 000 kr",
+      "oldPrice": "812 000 kr"
+    },
+    "v7": {
+      "name": "Long range Single motor",
+      "package": "Business edition",
+      "driveLabel": "Rear-wheel drive",
+      "deliveryEst": "Late March",
+      "price": "718 000 kr",
+      "oldPrice": "812 000 kr"
+    },
+    "v8": {
+      "name": "Long range Dual motor",
+      "package": "Business edition",
+      "driveLabel": "All-wheel drive",
+      "deliveryEst": "Late February",
+      "price": "722 000 kr",
+      "oldPrice": "846 000 kr"
+    }
+  },
+  "promo": {
+    "line1": "Private lease from 6 995 kr/mo. Winter wheels included.",
+    "line2": "Volturiano Business edition with Performance and Long Range packages, tinted rear windows, charging cable and winter wheels. Fixed rate during the entire lease period."
+  },
+  "testDrive": {
+    "title": "Test drive a Volturiano",
+    "check1": "Brief introduction before we head out",
+    "check2": "The test drive is free of charge",
+    "check3": "The drive is accompanied by a Volturiano specialist",
+    "cta": "Book a test drive"
+  },
+  "showMore": "Show more",
+  "faq": {
+    "title": "Frequently asked questions",
+    "q1": "How do I order a Volturiano as a company car?",
+    "q2": "Want to sell your current car while waiting for your Volturiano?",
+    "q3": "Does Volturiano have a recommended insurance?",
+    "q4": "When will I receive delivery date information for my order?",
+    "q5": "What data can my vehicle and connected services generate?"
+  },
+  "disclaimers": {
+    "title": "Disclaimers",
+    "d1title": "Delivery disclaimer",
+    "d2title": "Private lease",
+    "d2body": "The offer applies to delivery-ready Volturiano Business edition with financing option \"Volturiano Private Lease\" when ordering by 2026-03-31, subject to stock availability. The monthly cost is stated including VAT, calculated on 36-month lease period and 1 500 mil/year. 0 kr initial payment and fixed rate during the entire lease period. Cannot be combined with other offers."
+  }
 }
-

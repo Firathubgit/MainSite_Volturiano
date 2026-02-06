@@ -6,6 +6,7 @@ import { ThemeProvider, useTheme } from '../../context/ThemeContext';
 import { NavBar } from '../../../../components/NavBar/NavBar';
 import { Footer } from '../../components/Footer';
 import { usePageTitle } from '../../../../hooks/usePageTitle';
+
 import styles from './References.module.css';
 
 // Import project thumbnails
@@ -16,6 +17,7 @@ import euroTaxiThumbnail from '../../../../assets/EuroTaxiExample.png';
 import solarExampleThumbnail from '../../../../assets/SolarExample.png';
 import mathornanThumbnail from '../../../../assets/Mathörnan.png';
 import chockladThumbnail from '../../../../assets/Chocklad.png';
+import platformThumbnail from '../../../../assets/114shots_so.png';
 import heroVideo from '../../../../assets/BackgroundVid.mp4';
 import tornadoLogo from '../../../../assets/Logo/TornadoLogo.png';
 
@@ -88,6 +90,11 @@ function ReferencesContent() {
       id: 'oompaloompa',
       image: chockladThumbnail,
       link: 'https://chocolata-mvp-ksrb.vercel.app/',
+      external: true
+    },
+    {
+      id: 'volturiano-platform',
+      image: platformThumbnail,
       external: true
     }
   ];
@@ -177,34 +184,24 @@ function ReferencesContent() {
                 </motion.div>
               );
 
-              // Use external link for external projects, internal Link for internal/placeholders
+              // Navigate to internal project detail page for all external projects
               if (project.external) {
                 return (
-                  <a
+                  <Link
                     key={project.id}
-                    href={project.link}
-                    target="_blank"
-                    rel="noopener noreferrer"
+                    to={`/agency/references/${project.id}`}
                     className={styles.cardLink}
+                    onClick={() => window.scrollTo(0, 0)}
                   >
                     {content}
-                  </a>
-                );
-              }
-
-              // For placeholders or internal links, use Link or button
-              if (project.isPlaceholder) {
-                return (
-                  <div key={project.id} className={styles.cardLink} style={{ cursor: 'default', pointerEvents: 'none' }}>
-                    {content}
-                  </div>
+                  </Link>
                 );
               }
 
               return (
                 <Link
                   key={project.id}
-                  to={project.link}
+                  to={`/agency/references/${project.id}`}
                   className={styles.cardLink}
                   onClick={() => window.scrollTo(0, 0)}
                 >

@@ -1,0 +1,720 @@
+/* ============================================
+   VOLTURIANO MODELS — Polestar layout, dark mode
+   Black bg, white text, orange accents
+   ============================================ */
+
+/* ---------- PAGE WRAPPER ---------- */
+.page {
+  background: #0b0b0c;
+  color: white;
+  font-family: var(--font-body, Arial, sans-serif);
+  min-height: 100vh;
+}
+
+/* ---------- FULL-BLEED HELPER ---------- */
+.bleed {
+  width: 100vw;
+  margin-left: calc(50% - 50vw);
+  margin-right: calc(50% - 50vw);
+}
+
+/* ---------- GHOST BUTTON ---------- */
+.ghostBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 48px;
+  padding: 0 16px;
+  background: transparent;
+  box-shadow: 0 0 0 1px currentColor inset;
+  color: white;
+  font-family: var(--font-body, Arial, sans-serif);
+  font-size: 16px;
+  font-weight: 400;
+  line-height: 32px;
+  text-decoration: none;
+  cursor: pointer;
+  border: none;
+  transition: background 0.2s ease, box-shadow 0.2s ease;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.ghostBtn:hover {
+  background: rgba(255, 107, 0, 0.08);
+  box-shadow: 0 0 0 1px #FF6B00 inset;
+}
+
+/* ---------- TEXT LINK ---------- */
+.textLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-family: var(--font-body, Arial, sans-serif);
+  font-size: 16px;
+  font-weight: 400;
+  line-height: 32px;
+  color: white;
+  text-decoration: none;
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+.textLink:hover {
+  color: #FF6B00;
+}
+
+/* ============================================
+   1. PAGE TITLE
+   ============================================ */
+.titleRow {
+  composes: bleed;
+  background: #0b0b0c;
+  padding: clamp(24px, 3vw, 48px) clamp(24px, 8.3vw, 160px) 0;
+}
+
+.pageTitle {
+  font-size: 30px;
+  font-weight: 400;
+  line-height: 32px;
+  color: white;
+  margin: 0;
+}
+
+/* ============================================
+   2. FILTER BAR
+   ============================================ */
+.filterBar {
+  composes: bleed;
+  background: #0b0b0c;
+  padding: clamp(16px, 2vw, 32px) clamp(24px, 8.3vw, 160px);
+  display: flex;
+  align-items: flex-end;
+  gap: 24px;
+  flex-wrap: wrap;
+}
+
+.filterGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.filterLabel {
+  font-size: 16px;
+  color: rgba(255, 255, 255, 0.60);
+  line-height: 18px;
+}
+
+.filterSelect {
+  appearance: none;
+  -webkit-appearance: none;
+  height: 48px;
+  min-width: 200px;
+  padding: 0 40px 0 16px;
+  font-family: var(--font-body, Arial, sans-serif);
+  font-size: 16px;
+  font-weight: 400;
+  line-height: 18px;
+  color: white;
+  background: #262626 url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='9' viewBox='0 0 16 9'%3E%3Cpath d='M1 1l7 7 7-7' fill='none' stroke='rgba(255,255,255,0.6)' stroke-width='1.5'/%3E%3C/svg%3E") no-repeat right 16px center;
+  border: none;
+  border-radius: 0;
+  cursor: pointer;
+  outline: none;
+}
+
+.filterSelect:focus {
+  box-shadow: 0 0 0 1px #FF6B00 inset;
+}
+
+.sortSelect {
+  composes: filterSelect;
+  background-color: #1a1a1a;
+}
+
+.filterBtn {
+  composes: ghostBtn;
+}
+
+.filterBtnIcon {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+
+/* Tag chips row */
+.tagsRow {
+  composes: bleed;
+  background: #0b0b0c;
+  padding: 0 clamp(24px, 8.3vw, 160px) clamp(16px, 1.5vw, 24px);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 48px;
+  padding: 0 12px;
+  background: transparent;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.40) inset;
+  color: rgba(255, 255, 255, 0.60);
+  font-family: var(--font-body, Arial, sans-serif);
+  font-size: 16px;
+  font-weight: 400;
+  line-height: 18px;
+  border: none;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+}
+
+.tag:hover {
+  color: white;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.70) inset;
+}
+
+.tagActive {
+  composes: tag;
+  color: white;
+  box-shadow: 0 0 0 1px #FF6B00 inset;
+  background: rgba(255, 107, 0, 0.10);
+}
+
+.tagX {
+  width: 10px;
+  height: 10px;
+  opacity: 0.60;
+}
+
+.resetBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 48px;
+  padding: 0 16px;
+  margin-left: auto;
+  background: #1a1a1a;
+  border: none;
+  color: rgba(255, 255, 255, 0.60);
+  font-family: var(--font-body, Arial, sans-serif);
+  font-size: 16px;
+  font-weight: 400;
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+.resetBtn:hover {
+  color: white;
+}
+
+.resetIcon {
+  width: 10px;
+  height: 10px;
+  opacity: 0.60;
+}
+
+/* ============================================
+   3. VEHICLE CARDS GRID
+   ============================================ */
+.grid {
+  composes: bleed;
+  background: #0b0b0c;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 32px;
+  padding: 0 clamp(24px, 8.3vw, 160px);
+}
+
+/* ---------- Card link wrapper ---------- */
+.cardLink {
+  text-decoration: none;
+  color: inherit;
+  display: flex;
+  flex-direction: column;
+  cursor: pointer;
+  transition: border-color 0.2s;
+  border: 1px solid rgba(255, 255, 255, 0.10);
+}
+
+.cardLink:hover {
+  border-color: rgba(255, 107, 0, 0.40);
+}
+
+/* ---------- Single vehicle card ---------- */
+.card {
+  position: relative;
+  background: #0b0b0c;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+
+.cardHeader {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 20px 32px 12px;
+}
+
+.cardYear {
+  font-size: 16px;
+  color: rgba(255, 255, 255, 0.60);
+  line-height: 18px;
+}
+
+.cardYearVal {
+  font-size: 16px;
+  color: white;
+  line-height: 18px;
+  margin-left: 4px;
+}
+
+.offerBadge {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  height: 34px;
+  padding: 0 12px;
+  background: rgba(255, 107, 0, 0.15);
+  color: #FF6B00;
+  font-size: 16px;
+  font-weight: 400;
+  line-height: 18px;
+}
+
+/* ---------- Image carousel area ---------- */
+.cardImageWrap {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 782 / 335;
+  background: #111113;
+  overflow: hidden;
+}
+
+.cardImage {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  object-position: center;
+}
+
+.cardArrow {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.40);
+  border: none;
+  cursor: pointer;
+  color: rgba(255, 255, 255, 0.60);
+  transition: color 0.2s;
+  z-index: 2;
+}
+
+.cardArrow:hover {
+  color: white;
+}
+
+.cardArrowLeft {
+  composes: cardArrow;
+  left: 12px;
+}
+
+.cardArrowRight {
+  composes: cardArrow;
+  right: 12px;
+}
+
+/* ---------- Card meta row ---------- */
+.cardMeta {
+  display: flex;
+  gap: clamp(16px, 2vw, 32px);
+  padding: 16px 32px 0;
+  flex-wrap: wrap;
+}
+
+.metaItem {
+  font-size: 16px;
+  line-height: 18px;
+  color: rgba(255, 255, 255, 0.60);
+}
+
+.metaLabel {
+  display: block;
+}
+
+.metaValue {
+  display: block;
+}
+
+/* ---------- Card bottom row ---------- */
+.cardBottom {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  padding: 16px 32px 20px;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: auto;
+}
+
+.cardName {
+  font-size: 30px;
+  font-weight: 400;
+  line-height: 32px;
+  color: white;
+  margin: 0;
+}
+
+.cardPricing {
+  text-align: right;
+}
+
+.cardPrice {
+  font-size: 24px;
+  font-weight: 400;
+  line-height: 32px;
+  color: white;
+}
+
+.cardOldPrice {
+  font-size: 16px;
+  font-weight: 400;
+  line-height: 18px;
+  color: rgba(255, 255, 255, 0.60);
+  text-decoration: line-through;
+}
+
+/* ---------- Compare checkbox ---------- */
+.cardFooter {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0 32px 20px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  padding-top: 12px;
+}
+
+.checkbox {
+  width: 24px;
+  height: 24px;
+  appearance: none;
+  -webkit-appearance: none;
+  background: #1a1a1a;
+  border: 1px solid rgba(255, 255, 255, 0.40);
+  border-radius: 0;
+  cursor: pointer;
+  position: relative;
+  flex-shrink: 0;
+}
+
+.checkbox:checked {
+  background: #FF6B00;
+  border-color: #FF6B00;
+}
+
+.checkbox:checked::after {
+  content: '';
+  position: absolute;
+  left: 7px;
+  top: 3px;
+  width: 6px;
+  height: 12px;
+  border: solid white;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+
+.checkLabel {
+  font-size: 16px;
+  color: white;
+  line-height: 18px;
+  cursor: pointer;
+}
+
+/* ============================================
+   4. PROMO BANNER CARD
+   ============================================ */
+.promoCard {
+  background: #161618;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: clamp(40px, 5vw, 80px) clamp(32px, 4vw, 80px);
+}
+
+.promoLine1 {
+  font-size: 16px;
+  font-weight: 400;
+  line-height: 18px;
+  color: white;
+  margin: 0 0 16px;
+}
+
+.promoLine2 {
+  font-size: 16px;
+  font-weight: 400;
+  line-height: 18px;
+  color: rgba(255, 255, 255, 0.60);
+  margin: 0;
+  max-width: 600px;
+}
+
+/* ============================================
+   5. TEST DRIVE CTA CARD
+   ============================================ */
+.testDriveCard {
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+}
+
+.testDriveOverlay {
+  position: relative;
+  z-index: 2;
+  padding: clamp(32px, 4vw, 48px);
+}
+
+.testDriveTitle {
+  font-size: 30px;
+  font-weight: 400;
+  line-height: 32px;
+  color: white;
+  margin: 0 0 16px;
+}
+
+.testDriveChecks {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 24px;
+}
+
+.testDriveCheck {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 16px;
+  line-height: 24px;
+  color: white;
+}
+
+.checkIcon {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  color: #FF6B00;
+}
+
+.testDriveCta {
+  composes: textLink;
+  color: white;
+}
+
+.testDriveCta:hover {
+  color: #FF6B00;
+}
+
+/* ============================================
+   6. SHOW MORE BUTTON
+   ============================================ */
+.showMoreRow {
+  composes: bleed;
+  background: #0b0b0c;
+  display: flex;
+  justify-content: center;
+  padding: clamp(32px, 3vw, 56px) 0;
+}
+
+.showMoreBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 48px;
+  padding: 0 24px;
+  background: white;
+  border: none;
+  color: #0b0b0c;
+  font-family: var(--font-body, Arial, sans-serif);
+  font-size: 16px;
+  font-weight: 400;
+  line-height: 32px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.showMoreBtn:hover {
+  background: #FF6B00;
+  color: white;
+}
+
+.showMoreIcon {
+  width: 16px;
+  height: 16px;
+}
+
+/* ============================================
+   7. FAQ SECTION
+   ============================================ */
+.faqSection {
+  composes: bleed;
+  background: #0b0b0c;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: clamp(32px, 5vw, 96px);
+  padding: clamp(48px, 5vw, 96px) clamp(24px, 8.3vw, 160px);
+}
+
+.faqColumn {
+  display: flex;
+  flex-direction: column;
+}
+
+.faqTitle {
+  font-size: 30px;
+  font-weight: 400;
+  line-height: 32px;
+  color: white;
+  margin: 0 0 16px;
+}
+
+/* Accordion item */
+.faqItem {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.faqQuestion {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 24px 0;
+  background: transparent;
+  border: none;
+  color: white;
+  font-family: var(--font-body, Arial, sans-serif);
+  font-size: 16px;
+  font-weight: 400;
+  line-height: 18px;
+  cursor: pointer;
+  text-align: left;
+  transition: color 0.2s;
+}
+
+.faqQuestion:hover {
+  color: #FF6B00;
+}
+
+.faqIcon {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  transition: transform 0.3s;
+  color: white;
+}
+
+.faqIconOpen {
+  composes: faqIcon;
+  transform: rotate(45deg);
+}
+
+.faqAnswer {
+  padding: 0 0 20px;
+  font-size: 16px;
+  line-height: 18px;
+  color: rgba(255, 255, 255, 0.60);
+  max-width: 700px;
+}
+
+/* ============================================
+   RESPONSIVE
+   ============================================ */
+@media (max-width: 1024px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
+
+  .faqSection {
+    grid-template-columns: 1fr;
+  }
+
+  .filterBar {
+    gap: 16px;
+  }
+}
+
+@media (max-width: 768px) {
+  .titleRow {
+    padding-left: 24px;
+    padding-right: 24px;
+  }
+
+  .filterBar {
+    padding-left: 24px;
+    padding-right: 24px;
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .filterSelect,
+  .sortSelect {
+    min-width: 0;
+    width: 100%;
+  }
+
+  .tagsRow {
+    padding-left: 24px;
+    padding-right: 24px;
+  }
+
+  .grid {
+    padding-left: 24px;
+    padding-right: 24px;
+    gap: 24px;
+  }
+
+  .cardBottom {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .cardPricing {
+    text-align: left;
+  }
+
+  .faqSection {
+    padding-left: 24px;
+    padding-right: 24px;
+  }
+
+  .cardMeta {
+    padding-left: 20px;
+    padding-right: 20px;
+  }
+
+  .cardBottom {
+    padding-left: 20px;
+    padding-right: 20px;
+  }
+
+  .cardHeader {
+    padding-left: 20px;
+    padding-right: 20px;
+  }
+
+  .cardFooter {
+    padding-left: 20px;
+    padding-right: 20px;
+  }
+}

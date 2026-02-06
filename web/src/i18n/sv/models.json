@@ -1,5 +1,118 @@
 {
-  "title": "Modeller",
-  "description": "Karusellplatshållare. Animerade 3D-bilder och CTA-knappar per modell."
+  "pageTitle": "Tillgängliga Volturiano",
+  "filterBar": {
+    "modelLabel": "Modell",
+    "modelDefault": "Alla modeller",
+    "filterBtn": "Filter",
+    "sortLabel": "Sortera efter",
+    "sortDefault": "Pris stigande",
+    "resetFilters": "Återställ filter"
+  },
+  "tags": {
+    "performance": "Performance",
+    "longRange": "Long Range",
+    "allWheel": "All-Wheel"
+  },
+  "card": {
+    "modelYear": "Modellår",
+    "offer": "Erbjudande",
+    "package": "Paket",
+    "drivetrain": "Drivlina",
+    "delivery": "Beräknad leverans",
+    "compare": "Jämför",
+    "rwd": "Bakhjulsdrift",
+    "awd": "Fyrhjulsdrift"
+  },
+  "vehicles": {
+    "v1": {
+      "name": "Long range Single motor",
+      "package": "Business edition",
+      "driveLabel": "Bakhjulsdrift",
+      "deliveryEst": "Tidigt i mars",
+      "price": "702 000 kr",
+      "oldPrice": "796 000 kr"
+    },
+    "v2": {
+      "name": "Long range Single motor",
+      "package": "Business edition",
+      "driveLabel": "Bakhjulsdrift",
+      "deliveryEst": "Tidigt i mars",
+      "price": "704 000 kr",
+      "oldPrice": "798 000 kr"
+    },
+    "v3": {
+      "name": "Long range Single motor",
+      "package": "Business edition",
+      "driveLabel": "Bakhjulsdrift",
+      "deliveryEst": "Tidigt i april",
+      "price": "704 000 kr",
+      "oldPrice": "798 000 kr"
+    },
+    "v4": {
+      "name": "Long range Single motor",
+      "package": "Business edition",
+      "driveLabel": "Bakhjulsdrift",
+      "deliveryEst": "Sent i februari",
+      "price": "708 000 kr",
+      "oldPrice": "802 000 kr"
+    },
+    "v5": {
+      "name": "Long range Single motor",
+      "package": "Business edition",
+      "driveLabel": "Bakhjulsdrift",
+      "deliveryEst": "Sent i februari",
+      "price": "714 000 kr",
+      "oldPrice": "808 000 kr"
+    },
+    "v6": {
+      "name": "Long range Single motor",
+      "package": "Business edition",
+      "driveLabel": "Bakhjulsdrift",
+      "deliveryEst": "Tidigt i mars",
+      "price": "718 000 kr",
+      "oldPrice": "812 000 kr"
+    },
+    "v7": {
+      "name": "Long range Single motor",
+      "package": "Business edition",
+      "driveLabel": "Bakhjulsdrift",
+      "deliveryEst": "Sent i mars",
+      "price": "718 000 kr",
+      "oldPrice": "812 000 kr"
+    },
+    "v8": {
+      "name": "Long range Dual motor",
+      "package": "Business edition",
+      "driveLabel": "Fyrhjulsdrift",
+      "deliveryEst": "Sent i februari",
+      "price": "722 000 kr",
+      "oldPrice": "846 000 kr"
+    }
+  },
+  "promo": {
+    "line1": "Privatleasing från 6 995 kr/mån. Vinterhjul ingår.²",
+    "line2": "Volturiano Business edition med Performance- och Long Range-paket, tonade bakrutor, laddkabel och vinterhjul. Fast ränta under hela leasingperioden."
+  },
+  "testDrive": {
+    "title": "Provkör en Volturiano",
+    "check1": "Kort genomgång innan vi kör iväg",
+    "check2": "Provkörningen är kostnadsfri",
+    "check3": "Körningen görs tillsammans med en specialist från Volturiano",
+    "cta": "Boka en provkörning"
+  },
+  "showMore": "Visa mer",
+  "faq": {
+    "title": "Vanliga frågor och svar",
+    "q1": "Hur beställer jag Volturiano som tjänstebil?",
+    "q2": "Vill du sälja din nuvarande bil i väntan på din Volturiano?",
+    "q3": "Har Volturiano en rekommenderad försäkring?",
+    "q4": "När får jag information om leveransdatum för min order?",
+    "q5": "Vilka data kan mitt fordon och anslutna tjänster generera?"
+  },
+  "disclaimers": {
+    "title": "Ansvarsfriskrivning",
+    "d1title": "Ansvarsfriskrivning för leverans",
+    "d2title": "Privatleasing",
+    "d2body": "Erbjudandet gäller leveransklara Volturiano Business edition med finansieringsalternativ \"Volturiano Privatleasing\" vid beställning senast 2026-03-31, med reservation för slutförsäljning. Månadskostnaden är angiven inklusive moms, beräknad på 36 mån leasingperiod och 1 500 mil/år. 0 kr i första förhöjd hyra och fast ränta under hela leasingperioden. Kan inte kombineras med andra erbjudanden."
+  }
 }
-

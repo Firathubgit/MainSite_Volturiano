@@ -18,6 +18,7 @@ import solarExampleThumbnail from '../../../../assets/SolarExample.png';
 import mathornanThumbnail from '../../../../assets/Mathörnan.png';
 import chockladThumbnail from '../../../../assets/Chocklad.png';
 import platformThumbnail from '../../../../assets/114shots_so.png';
+import qyvoraClimateThumbnail from '../../../../assets/87shots_so.png';
 import heroVideo from '../../../../assets/BackgroundVid.mp4';
 import tornadoLogo from '../../../../assets/Logo/TornadoLogo.png';
 
@@ -48,7 +49,7 @@ function ReferencesContent() {
   }, [theme]);
 
   // Projects List with direct live links (project-specific pages kept for future use)
-  // Order: 1. Scale Intelligence, 2. Solar Panel Solutions, 3. Mathörnan, 4. Europa Bageri, 5. Euro Taxi, 6. Furglove, 7. Oompaloompa
+  // Order: 1. Scale Intelligence, 2. Solar Panel Solutions, 3. Mathörnan, 4. QYVORA Climate, 5. Europa Bageri, 6. Euro Taxi, 7. Furglove, 8. Oompaloompa, 9. Volturiano Platform
   const ProjectsList = [
     {
       id: 'scale-intelligence',
@@ -66,6 +67,12 @@ function ReferencesContent() {
       id: 'mathornan',
       image: mathornanThumbnail,
       link: 'https://matcorner.vercel.app/',
+      external: true
+    },
+    {
+      id: 'qyvora-climate',
+      image: qyvoraClimateThumbnail,
+      link: 'https://climate-nu-cyan.vercel.app/',
       external: true
     },
     {

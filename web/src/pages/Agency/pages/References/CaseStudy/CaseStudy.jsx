@@ -19,6 +19,7 @@ import solarExampleThumbnail from '../../../../../assets/SolarExample.png';
 import mathornanThumbnail from '../../../../../assets/Mathörnan.png';
 import chockladThumbnail from '../../../../../assets/Chocklad.png';
 import platformThumbnail from '../../../../../assets/114shots_so.png';
+import qyvoraClimateThumbnail from '../../../../../assets/87shots_so.png';
 import tornadoLogo from '../../../../../assets/Logo/TornadoLogo.png';
 
 // CTA banner background
@@ -71,6 +72,11 @@ const ProjectsData = {
     thumbnail: platformThumbnail,
     liveUrl: '/start',
     isInternal: true,
+  },
+  'qyvora-climate': {
+    id: 'qyvora-climate',
+    thumbnail: qyvoraClimateThumbnail,
+    liveUrl: 'https://climate-nu-cyan.vercel.app/',
   },
 };
 
@@ -199,12 +205,12 @@ function CaseStudyContent() {
         <img src={ctaBannerBg} alt="" className={styles.ctaBannerBg} aria-hidden="true" />
         <div className={styles.ctaBannerOverlay} />
         <div className={styles.ctaBannerContent}>
-          <h2 className={styles.ctaTitle}>Reimagine websites with us</h2>
+          <h2 className={styles.ctaTitle}>{t('caseStudy.ctaTitle', 'Reimagine websites with us')}</h2>
           <p className={styles.ctaSubtitle}>
-            Premium web experiences for your brand, built by Volturio Studios.
+            {t('caseStudy.ctaSubtitle', 'Premium web experiences for your brand, built by Volturio Studios.')}
           </p>
           <Link to="/agency/booking" className={styles.ctaBtn}>
-            Unlock Unlimited Access
+            {t('caseStudy.ctaButton', 'Unlock Unlimited Access')}
           </Link>
         </div>
       </section>

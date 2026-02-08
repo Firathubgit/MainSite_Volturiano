@@ -158,9 +158,9 @@ export default function Models() {
             <span className={s.filterLabel}>{t('filterBar.modelLabel')}</span>
             <select className={s.filterSelect}>
               <option>{t('filterBar.modelDefault')}</option>
-              <option>Volturiano</option>
-              <option>Volturiano Long</option>
-              <option>Volturiano SUV</option>
+              <option>Volturiano Sport</option>
+              <option>Volturiano GT</option>
+              <option>Volturiano X</option>
             </select>
           </div>
 

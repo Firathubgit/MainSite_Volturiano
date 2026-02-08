@@ -132,7 +132,7 @@ export default function Garage() {
   const sideLinks = useMemo(
     () => [
       { key: 'overview', label: 'Översikt' },
-      { key: 'zibbi', label: 'Zibbi page' },
+      { key: 'orders', label: 'Beställningar' },
       { key: 'configure', label: 'Konfigurera nytt', to: '/configurator' },
       { key: 'garage', label: 'Garage', to: '/garage', active: true },
       { key: 'showroom', label: 'Showroom', to: '/#showroom' },
@@ -142,8 +142,8 @@ export default function Garage() {
         to: worldEnabled ? '/world' : null,
         disabled: !worldEnabled
       },
-      { key: 'vet', label: 'Vet inte ens vad jao' },
-      { key: 'free', label: 'Free mehrab' }
+      { key: 'settings', label: 'Inställningar' },
+      { key: 'support', label: 'Support' }
     ],
     [worldEnabled]
   );

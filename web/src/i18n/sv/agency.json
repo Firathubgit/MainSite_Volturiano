@@ -58,6 +58,10 @@
       "volturiano-platform": {
         "title": "Volturiano",
         "category": "BILMÄRKESPLATTFORM"
+      },
+      "qyvora-climate": {
+        "title": "QYVORA Climate",
+        "category": "KLIMATMEDVETENHETSPLATTFORM"
       }
     }
   },
@@ -529,6 +533,9 @@
     "improvements": "Vad vi förbättrade",
     "doneWork": "Genomfört arbete",
     "viewLive": "Besök Live Sida",
+    "ctaTitle": "Förnya webbplatser med oss",
+    "ctaSubtitle": "Premium webbupplevelser för ditt varumärke, byggda av Volturio Studios.",
+    "ctaButton": "Lås upp obegränsad tillgång",
     "projects": {
       "europa-bageri": {
         "overview": "Europa Bageri är en premium restaurang- och bageriwebbplats som visar autentiska balkanska smaker i Göteborg. Vi skapade en modern, elegant webbplats med onlinebeställningsintegration, platshittare och smidig användarupplevelse som speglar varumärkets arv och kvalitet.",
@@ -726,6 +733,33 @@
       },
       "oompaloompa": {
         "overview": "Premium chokladmarknadsplats med Supabase-backend, realtidsautentisering, adminpanel, köparpanel, rollbaserad åtkomstkontroll, produkthantering, orderspårning och Stripe-kassa — fullt driftsatt och produktionsklar."
+      },
+      "qyvora-climate": {
+        "overview": "Demo-fallstudie — ej en riktig klient. Klimatmedvetenhetsplattform som omvandlar komplex klimatdata till enkla, visuella berättelser. Byggd av Volturio Studios som portfolio-exempel.",
+        "improvements": [
+          "Skapade slagkraftigt mörkt tema-gränssnitt med dynamisk visuell berättelse",
+          "Implementerade intuitivt navigationssystem för att utforska klimatämnen och data",
+          "Designade datavisualiseringskomponenter för att göra komplex klimatinformation tillgänglig",
+          "Optimerade responsiv design för alla enheter för att maximera utbildningsräckvidd"
+        ],
+        "doneWork": [
+          {
+            "title": "Klimatmedvetenhetsplattform",
+            "description": "Komplett plattformsgränssnitt för klimatutbildning och medvetenhet med visuell berättelse"
+          },
+          {
+            "title": "Datavisualisering",
+            "description": "Interaktiva komponenter som omvandlar komplex klimatdata till enkla, visuella berättelser"
+          },
+          {
+            "title": "Innehållssystem",
+            "description": "Strukturerat innehållssystem som täcker klimatämnen inklusive påverkan, uppdrag och handlingsbara insikter"
+          },
+          {
+            "title": "Premium UX för utbildning",
+            "description": "Världsklass användarupplevelsedesign som gör klimatinformation engagerande och tillgänglig"
+          }
+        ]
       }
     }
   },

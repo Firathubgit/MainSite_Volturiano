@@ -58,6 +58,10 @@
       "volturiano-platform": {
         "title": "Volturiano",
         "category": "CAR BRAND PLATFORM"
+      },
+      "qyvora-climate": {
+        "title": "QYVORA Climate",
+        "category": "CLIMATE AWARENESS PLATFORM"
       }
     }
   },
@@ -529,6 +533,9 @@
     "improvements": "What We Improved",
     "doneWork": "Work Completed",
     "viewLive": "View Live Site",
+    "ctaTitle": "Reimagine websites with us",
+    "ctaSubtitle": "Premium web experiences for your brand, built by Volturio Studios.",
+    "ctaButton": "Unlock Unlimited Access",
     "projects": {
       "europa-bageri": {
         "overview": "Europa Bageri is a premium restaurant and bakery website showcasing authentic Balkan flavors in Gothenburg. We created a modern, elegant website with online ordering integration, location finder, and seamless user experience that reflects the brand's heritage and quality.",
@@ -726,6 +733,33 @@
       },
       "oompaloompa": {
         "overview": "Premium chocolate marketplace with Supabase backend, real-time authentication, admin dashboard, buyer dashboard, role-based access control, product management, order tracking, and Stripe checkout — fully deployed and production-ready."
+      },
+      "qyvora-climate": {
+        "overview": "Demo case study — not a real client. Climate awareness platform that transforms complex climate data into simple, visual stories. Built by Volturio Studios as a portfolio showcase example.",
+        "improvements": [
+          "Created impactful dark-themed interface with dynamic visual storytelling",
+          "Implemented intuitive navigation system for exploring climate topics and data",
+          "Designed data visualization components to make complex climate information accessible",
+          "Optimized responsive design for all devices to maximize educational reach"
+        ],
+        "doneWork": [
+          {
+            "title": "Climate Awareness Platform",
+            "description": "Complete platform interface for climate education and awareness with visual storytelling"
+          },
+          {
+            "title": "Data Visualization",
+            "description": "Interactive components that transform complex climate data into simple, visual narratives"
+          },
+          {
+            "title": "Content System",
+            "description": "Structured content system covering climate topics including impact, mission, and actionable insights"
+          },
+          {
+            "title": "Premium UX for Education",
+            "description": "World-class user experience design that makes climate information engaging and accessible"
+          }
+        ]
       }
     }
   },

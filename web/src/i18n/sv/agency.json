@@ -62,6 +62,10 @@
       "qyvora-climate": {
         "title": "QYVORA Climate",
         "category": "KLIMATMEDVETENHETSPLATTFORM"
+      },
+      "rivelon-leather": {
+        "title": "Rivelon Leather Atelier",
+        "category": "PREMIUM LÄDER E-HANDEL"
       }
     }
   },
@@ -758,6 +762,33 @@
           {
             "title": "Premium UX för utbildning",
             "description": "Världsklass användarupplevelsedesign som gör klimatinformation engagerande och tillgänglig"
+          }
+        ]
+      },
+      "rivelon-leather": {
+        "overview": "Demo-fallstudie — ej en riktig klient. Rivelon Leather Atelier är en premium western läderbutik byggd för den moderna cowboyen. Filmisk mörk design med redaktionell typografi, produktvisningar och ett fältanteckningsgalleri. Byggd av Volturio Studios som portfolio-exempel.",
+        "improvements": [
+          "Skapade ett filmiskt mörkt tema-gränssnitt med rik redaktionell typografi som frammanar vilt västern-arv",
+          "Implementerade interaktiva produktdetaljsektioner med materialuppdelning och konstruktionshöjdpunkter",
+          "Designade ett fältanteckningsgalleri som visar produkter använda i det vilda i verkliga miljöer",
+          "Byggde en sömlös made-to-order-upplevelse med premium e-handelsflöde och tillbehörsbläddring"
+        ],
+        "doneWork": [
+          {
+            "title": "Premium E-handelsplattform",
+            "description": "Komplett läderbutik med produktvisningar, made-to-order-flöde och priser från $450"
+          },
+          {
+            "title": "Filmiskt designsystem",
+            "description": "Mörk redaktionell design med seriffypografi, mjuka animationer och gränslandsinspirerad estetik"
+          },
+          {
+            "title": "Produktdetaljupplevelse",
+            "description": "Interaktiva materialuppdelningar med rough-out bison, Goodyear welt, korkmellansula, Vibram-yttersula och massiv mässing"
+          },
+          {
+            "title": "Fältanteckningsgalleri",
+            "description": "Visuellt berättande sektion som visar lädervaror använda i det vilda med ett immersivt scrollgalleri"
           }
         ]
       }

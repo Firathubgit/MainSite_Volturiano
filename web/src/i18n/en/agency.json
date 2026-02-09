@@ -62,6 +62,10 @@
       "qyvora-climate": {
         "title": "QYVORA Climate",
         "category": "CLIMATE AWARENESS PLATFORM"
+      },
+      "rivelon-leather": {
+        "title": "Rivelon Leather Atelier",
+        "category": "PREMIUM LEATHER E-COMMERCE"
       }
     }
   },
@@ -758,6 +762,33 @@
           {
             "title": "Premium UX for Education",
             "description": "World-class user experience design that makes climate information engaging and accessible"
+          }
+        ]
+      },
+      "rivelon-leather": {
+        "overview": "Demo case study — not a real client. Rivelon Leather Atelier is a premium western leather goods store built for the modern cowboy. Cinematic dark-themed design with editorial typography, product showcases, and a field notes gallery. Built by Volturio Studios as a portfolio showcase example.",
+        "improvements": [
+          "Crafted a cinematic dark-themed interface with rich editorial typography evoking frontier heritage",
+          "Implemented interactive product detail sections with material breakdowns and construction highlights",
+          "Designed a field notes gallery showcasing products worn in the wild across real environments",
+          "Built a seamless made-to-order experience with premium e-commerce flow and accessory browsing"
+        ],
+        "doneWork": [
+          {
+            "title": "Premium E-commerce Platform",
+            "description": "Complete leather goods storefront with product showcases, made-to-order flow, and pricing from $450"
+          },
+          {
+            "title": "Cinematic Design System",
+            "description": "Dark editorial design with serif typography, smooth animations, and frontier-inspired aesthetics"
+          },
+          {
+            "title": "Product Detail Experience",
+            "description": "Interactive material breakdowns featuring rough-out bison, Goodyear welt, cork midsole, Vibram outsole, and solid brass hardware"
+          },
+          {
+            "title": "Field Notes Gallery",
+            "description": "Visual storytelling section showcasing leather goods worn in the wild with an immersive scrolling gallery"
           }
         ]
       }

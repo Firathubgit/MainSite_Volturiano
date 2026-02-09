@@ -19,6 +19,7 @@ import mathornanThumbnail from '../../../../assets/Mathörnan.png';
 import chockladThumbnail from '../../../../assets/Chocklad.png';
 import platformThumbnail from '../../../../assets/114shots_so.png';
 import qyvoraClimateThumbnail from '../../../../assets/87shots_so.png';
+import rivelonThumbnail from '../../../../assets/134shots_so.png';
 import heroVideo from '../../../../assets/BackgroundVid.mp4';
 import tornadoLogo from '../../../../assets/Logo/TornadoLogo.png';
 
@@ -102,6 +103,12 @@ function ReferencesContent() {
     {
       id: 'volturiano-platform',
       image: platformThumbnail,
+      external: true
+    },
+    {
+      id: 'rivelon-leather',
+      image: rivelonThumbnail,
+      link: 'https://aura-premium-digital-experience.vercel.app/',
       external: true
     }
   ];

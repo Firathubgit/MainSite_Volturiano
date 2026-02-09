@@ -20,6 +20,7 @@ import mathornanThumbnail from '../../../../../assets/Mathörnan.png';
 import chockladThumbnail from '../../../../../assets/Chocklad.png';
 import platformThumbnail from '../../../../../assets/114shots_so.png';
 import qyvoraClimateThumbnail from '../../../../../assets/87shots_so.png';
+import rivelonThumbnail from '../../../../../assets/134shots_so.png';
 import tornadoLogo from '../../../../../assets/Logo/TornadoLogo.png';
 
 // CTA banner background
@@ -77,6 +78,11 @@ const ProjectsData = {
     id: 'qyvora-climate',
     thumbnail: qyvoraClimateThumbnail,
     liveUrl: 'https://climate-nu-cyan.vercel.app/',
+  },
+  'rivelon-leather': {
+    id: 'rivelon-leather',
+    thumbnail: rivelonThumbnail,
+    liveUrl: 'https://aura-premium-digital-experience.vercel.app/',
   },
 };
 

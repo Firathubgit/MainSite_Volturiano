@@ -1,0 +1,132 @@
+═══════════════════════════════════════════════════════════════════════════════════
+     PHASE P4: PRODUCTION URLs — PUBLISH, DOWNLOAD, STAMP
+     MEGAPROMPTS FILE
+     Date: 2026-03-23
+     Note: GitHub Push is EXCLUDED — UI already shows "Available soon"
+═══════════════════════════════════════════════════════════════════════════════════
+
+OVERVIEW:
+Most of Phase 4 is ALREADY production-ready in the codebase:
+  ✅ publish.js liveUrl uses FRONTEND_URL env var
+  ✅ Stamp uses absolute URL https://volturiano.com/TornadoLogo.png
+  ✅ TornadoLogo.png exists in web/public/
+  ✅ vercel.json has /sites/:slug rewrites to Supabase Storage
+  ✅ Frontend Generation.jsx builds volturiano.com/sites/ URLs
+  ✅ create-zip.js returns volturiano-project.zip (environment-agnostic)
+  ✅ GitHub Push button shows "Available soon" — no backend exists
+
+REMAINING TASKS (verification + hardening):
+  • Verify publish flow returns production-clean URLs
+  • Verify download ZIP flow handles edge cases (large files, timeout)
+  • Verify stamp branding renders on Supabase-hosted published sites
+  • Add production error handling for edge cases in create-zip.js
+
+This phase requires only 1 megaprompt since most code changes were already
+completed. The prompt focuses on hardening and edge-case handling.
+
+═══════════════════════════════════════════════════════════════════════════════════
+
+────────────────────────────────────────────────────────────────────────────
+MEGAPROMPT 1 of 1 — Publish, Download & Stamp Production Hardening
+────────────────────────────────────────────────────────────────────────────
+
+Act as a Node.js Backend Engineer and Production Deployment Specialist. We need to harden the Publish, Download, and Stamp features for production deployment on Railway (backend) + Vercel (frontend) + Supabase Storage (published sites).
+
+Please execute the following tasks:
+
+**1. PUBLISH FLOW — Production Hardening (`web/server/routes/publish.js`)**
+
+Review `publish.js` and apply these production fixes:
+
+a) The `liveUrl` variable (around line 367-368) already uses `FRONTEND_URL`. Verify it looks like:
+   ```javascript
+   const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+   const liveUrl = `${frontendUrl}/sites/${slug}/`;
+   ```
+   If it already does, report "confirmed" and move on.
+
+b) The `publish_debug.log` file (line 28-34) writes to disk on every publish. In production on Railway, this is unnecessary and wastes ephemeral storage. Wrap the file-based logging with an environment check:
+   ```javascript
+   const log = (msg) => {
+       const time = new Date().toISOString();
+       console.log(`[Publish][${time}] ${msg}`);
+       if (process.env.NODE_ENV === 'development') {
+           fs.appendFile(logPath, `[${time}] ${msg}\n`).catch(() => {});
+       }
+   };
+   ```
+
+c) The temp extraction directory (line 129) `temp_extract` could grow large if cleanup fails. Add a size guard: after extracting, check if `totalSize` exceeds 50MB and reject the publish if so:
+   ```javascript
+   if (totalSize > 50 * 1024 * 1024) {
+       await fs.rm(tempDir, { recursive: true, force: true });
+       return res.status(413).json({ success: false, error: 'Site is too large to publish (max 50MB).' });
+   }
+   ```
+
+d) In the error catch-all (around line 485-503), the response currently leaks `error.message` and `error.stack` in development mode. This is fine, but ensure production mode returns a generic message only. Verify the existing code already checks `process.env.NODE_ENV === 'development'` before leaking details. If it does, report "confirmed".
+
+**2. DOWNLOAD FLOW — Edge Case Hardening (`web/server/routes/create-zip.js`)**
+
+Review `create-zip.js` and apply these production fixes:
+
+a) The endpoint currently returns the entire ZIP as a base64 data URL in a JSON response. For large projects this can be 10-50MB of JSON. Add a size check after creating the zip:
+   ```javascript
+   // After base64Result
+   const base64Content = (base64Result.stdout || '').replace(/\s/g, '');
+   
+   // Guard against massive payloads
+   const estimatedSizeMB = (base64Content.length * 0.75) / (1024 * 1024);
+   if (estimatedSizeMB > 100) {
+       console.warn(`[create-zip] ZIP too large: ${estimatedSizeMB.toFixed(1)}MB`);
+       return res.status(413).json({ 
+           success: false, 
+           error: 'Project is too large to download. Try removing unnecessary assets.' 
+       });
+   }
+   ```
+
+b) Add a timeout for the zip command. If the sandbox is unresponsive, the request hangs forever. The zip creation should fail gracefully:
+   ```javascript
+   // Before the zip command, set a 30-second timeout
+   const timeoutPromise = new Promise((_, reject) => 
+       setTimeout(() => reject(new Error('ZIP creation timed out')), 30000)
+   );
+   const zipResult = await Promise.race([
+       provider.runCommand(zipCmd),
+       timeoutPromise
+   ]);
+   ```
+
+**3. STAMP — Verification (`web/server/routes/publish.js`)**
+
+The Volturiano branding stamp is injected into published site HTML. Verify:
+
+a) The stamp logo `src` attribute uses the absolute URL `https://volturiano.com/TornadoLogo.png`. Search for the `stamp-logo` img tag in publish.js and confirm it does NOT use a relative path like `/TornadoLogo.png`. If it already uses the absolute URL, report "confirmed".
+
+b) The stamp link `href` points to `https://volturiano.com`. Confirm this in the code and report.
+
+c) Verify `web/public/TornadoLogo.png` exists. If it does, report "confirmed — file will be served by Vercel at volturiano.com/TornadoLogo.png".
+
+**4. FINAL REPORT**
+
+After making all changes, output a summary table:
+
+| Task | Status | Notes |
+|------|--------|-------|
+| P4.1a liveUrl uses FRONTEND_URL | ✅/❌ | ... |
+| P4.1b publish_debug.log guarded | ✅/❌ | ... |
+| P4.1c 50MB publish size limit | ✅/❌ | ... |
+| P4.1d Error sanitization in prod | ✅/❌ | ... |
+| P4.3a ZIP size guard (100MB) | ✅/❌ | ... |
+| P4.3b ZIP timeout (30s) | ✅/❌ | ... |
+| P4.2a Stamp logo absolute URL | ✅/❌ | ... |
+| P4.2b Stamp link to volturiano.com | ✅/❌ | ... |
+| P4.2c TornadoLogo.png in public/ | ✅/❌ | ... |
+| P4.4 GitHub Push | DEFERRED | UI shows "Available soon" |
+
+Then green-checkmark the completed tasks in `BeforeProdNeedsToBeDone.txt` under Phase P4.
+
+═══════════════════════════════════════════════════════════════════════════════════
+END OF PHASE 4 MEGAPROMPTS — 1 PROMPT TOTAL
+═══════════════════════════════════════════════════════════════════════════════════

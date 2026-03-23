@@ -150,6 +150,7 @@ export function BuilderAuthProvider({ children }) {
                 data: {
                     full_name: fullName || '',
                     display_name: fullName || '',
+                    gdpr_consent_at: new Date().toISOString(),
                 },
                 emailRedirectTo: window.location.origin + '/builder',
             },

@@ -14,6 +14,7 @@ import { OnboardingPopup } from './components/OnboardingPopup';
 import GradualBlur from './GradualBlur';
 import { useRouteTransition } from '../../../../contexts/RouteTransitionContext';
 import CommunitySelectorPopup from './Generation/CommunitySelectorPopup';
+import AuthGateModal from '../../../../components/Modals/AuthGateModal';
 
 // Import assets (Reference page thumbnails)
 import scaleIntelligenceThumbnail from '../../../../assets/ScaleIntelegenceMocup.png';
@@ -139,6 +140,7 @@ const BuilderContent = () => {
     const [isCommunityOpen, setIsCommunityOpen] = useState(false);
     const [selectedComponents, setSelectedComponents] = useState([]);
     const [strictMode, setStrictMode] = useState(false);
+    const [showAuthModal, setShowAuthModal] = useState(false);
 
     const premiumPhrases = [
         "design a luxury real estate site...",
@@ -443,6 +445,12 @@ const BuilderContent = () => {
     const handleSubmit = (e) => {
         e.preventDefault();
 
+        // Phase P7: Auth Gating
+        if (!isAuthenticated) {
+            setShowAuthModal(true);
+            return;
+        }
+
         if (isSubmitting) return;
 
         if (inputValue.trim() || images.length > 0 || selectedComponents.length > 0) {
@@ -488,6 +496,12 @@ const BuilderContent = () => {
     };
 
     const handleTemplateSelect = (templateId) => {
+        // Phase P7: Auth Gating
+        if (!isAuthenticated) {
+            setShowAuthModal(true);
+            return;
+        }
+        
         if (isSubmitting) return;
         setIsSubmitting(true);
 
@@ -897,6 +911,12 @@ const BuilderContent = () => {
                     setSelectedComponents(items);
                     setIsCommunityOpen(false);
                 }}
+            />
+
+            {/* Phase P7: Auth Gating */}
+            <AuthGateModal 
+                isOpen={showAuthModal} 
+                onClose={() => setShowAuthModal(false)} 
             />
         </div>
     );

@@ -1,4 +1,4 @@
-import { checkGuestLimit, checkAndDeductUserCredit, createProject } from '../lib/db/projects.js';
+import { checkAndDeductUserCredit, createProject } from '../lib/db/projects.js';
 import crypto from 'crypto';
 
 export default async function initProject(req, res) {
@@ -10,27 +10,14 @@ export default async function initProject(req, res) {
 
         const projectId = buildId || crypto.randomUUID();
 
-        // 1. Auth & Rate Limiting Check
-        if (!userId) {
-            // Guest User Flow
-            const limitCheck = await checkGuestLimit(ip);
-            if (!limitCheck.allowed) {
-                return res.status(429).json({
-                    success: false,
-                    error: limitCheck.message,
-                    code: 'GUEST_LIMIT_EXCEEDED'
-                });
-            }
-        } else {
-            // Authenticated User Flow
-            const creditCheck = await checkAndDeductUserCredit(userId);
-            if (!creditCheck.allowed) {
-                return res.status(402).json({
-                    success: false,
-                    error: creditCheck.message,
-                    code: 'PAYMENT_REQUIRED'
-                });
-            }
+        // 1. Credit Check (Now mandatory as route is requireAuth)
+        const creditCheck = await checkAndDeductUserCredit(userId);
+        if (!creditCheck.allowed) {
+            return res.status(402).json({
+                success: false,
+                error: creditCheck.message,
+                code: 'PAYMENT_REQUIRED'
+            });
         }
 
         // 2. Initialize the project in Supabase

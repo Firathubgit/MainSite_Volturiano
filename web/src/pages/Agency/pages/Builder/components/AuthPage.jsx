@@ -27,6 +27,7 @@ export function AuthPage() {
   const [isSignUp, setIsSignUp] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
 
   // Redirect if already logged in
   React.useEffect(() => {
@@ -265,7 +266,28 @@ export function AuthPage() {
               </div>
             )}
 
-            <button className={s.submitButton} type="submit" disabled={isSubmitting}>
+            {isSignUp && (
+              <div className={s.termsCheckboxGroup}>
+                <label className={s.termsCheckboxLabel}>
+                  <input
+                    type="checkbox"
+                    className={s.termsCheckbox}
+                    checked={agreedToTerms}
+                    onChange={(e) => setAgreedToTerms(e.target.checked)}
+                    required
+                  />
+                  <span>
+                    I agree to the <a href="/terms" target="_blank" className={s.termsLink}>Terms</a> and <a href="/privacy" target="_blank" className={s.termsLink}>Privacy Policy</a>
+                  </span>
+                </label>
+              </div>
+            )}
+
+            <button 
+              className={s.submitButton} 
+              type="submit" 
+              disabled={isSubmitting || (isSignUp && !agreedToTerms)}
+            >
               {isSubmitting ? (
                 <><Loader2Icon size={16} className={s.spinnerIcon} /> Processing...</>
               ) : authMode === "magic-link" ? (

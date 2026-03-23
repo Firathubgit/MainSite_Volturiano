@@ -1,73 +1,6 @@
 import { supabaseAdmin } from '../supabase-admin.js';
 
-/**
- * Validates guest rate limits.
- * @param {string} ip - User's IP address.
- * @returns {Promise<{allowed: boolean, message?: string}>}
- */
-export async function checkGuestLimit(ip) {
-    if (!ip) return { allowed: true };
-    if (!supabaseAdmin) return { allowed: true };
-
-    try {
-        const isDev = process.env.NODE_ENV === 'development' || !process.env.NODE_ENV;
-        if (isDev) return { allowed: true };
-
-        const today = new Date().toISOString().split('T')[0];
-
-        // Read or create limit row
-        let { data: guestLimit, error: fetchErr } = await supabaseAdmin
-            .from('guest_rate_limits')
-            .select('*')
-            .eq('ip_address', ip)
-            .single();
-
-        if (fetchErr && fetchErr.code !== 'PGRST116') { // PGRST116 = no rows returned
-            console.error('[DB] checkGuestLimit error:', fetchErr);
-            return { allowed: true }; // Fail open locally
-        }
-
-        if (!guestLimit) {
-            // First time guest
-            const { error: insertErr } = await supabaseAdmin
-                .from('guest_rate_limits')
-                .insert({ ip_address: ip, builds_today: 1 });
-            if (insertErr) console.error('[DB] Insert guest limit err:', insertErr);
-            return { allowed: true };
-        }
-
-        // Reset daily limit if needed
-        if (guestLimit.reset_date !== today) {
-            const { error: updateErr } = await supabaseAdmin
-                .from('guest_rate_limits')
-                .update({ builds_today: 1, reset_date: today })
-                .eq('ip_address', ip);
-            if (updateErr) console.error('[DB] Update guest limit err:', updateErr);
-            return { allowed: true };
-        }
-
-        // Check against limit (2 per day)
-        if (guestLimit.builds_today >= 2) {
-            return {
-                allowed: false,
-                message: "You've used your 2 free builds today. Sign up for 15 builds/day — it's free!"
-            };
-        }
-
-        // Increment
-        const { error: incrementErr } = await supabaseAdmin
-            .from('guest_rate_limits')
-            .update({ builds_today: guestLimit.builds_today + 1 })
-            .eq('ip_address', ip);
-
-        if (incrementErr) console.error('[DB] Increment guest limit err:', incrementErr);
-        return { allowed: true };
-
-    } catch (error) {
-        console.error('[DB] checkGuestLimit exception:', error);
-        return { allowed: true }; // Fail open
-    }
-}
+// checkGuestLimit removed - no longer supporting guest builds
 
 /**
  * Checks and deducts user credits.
@@ -167,13 +100,12 @@ export async function createProject({ userId, prompt, buildId }) {
     if (!supabaseAdmin) return buildId;
     try {
         const payload = {
-            id: buildId, // Using the frontend provided UUID for continuity
+            id: buildId,
             name: prompt ? prompt.substring(0, 50) + '...' : 'Untitled Project',
             prompt: prompt || '',
-            build_status: 'generating'
+            build_status: 'generating',
+            user_id: userId
         };
-
-        if (userId) payload.user_id = userId;
 
         const { data, error } = await supabaseAdmin
             .from('projects')
@@ -239,10 +171,9 @@ export async function createSnapshot({ projectId, userId, chatIndex, text, files
             files: files || {},
             packages: packages || [],
             design_system: designSystem || null,
-            component_plan: componentPlan || null
+            component_plan: componentPlan || null,
+            user_id: userId
         };
-
-        if (userId) payload.user_id = userId;
 
         // Convert string size roughly to bytes (2 bytes per char generally, simplified)
         const jsonStr = JSON.stringify(payload);

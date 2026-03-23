@@ -4,6 +4,7 @@ import { FiX, FiLayers, FiSearch, FiMonitor, FiTablet, FiSmartphone, FiArrowRigh
 import styles from './CommunitySelectorPopup.module.css';
 import ComponentCard from '../Community/ComponentCard';
 import SandpackPreviewPopup from '../Community/SandpackPreviewPopup';
+import AuthGateModal from '../../../../../components/Modals/AuthGateModal';
 import { useBuilderAuth } from '../../../../../contexts/BuilderAuthContext';
 import tornadoLogo from '../../../../../assets/Logo/TornadoLogo.png';
 import weirdButtonGradient from '../Dashboard/Assets/WeirdButtonGradient.png';
@@ -28,6 +29,8 @@ export default function CommunitySelectorPopup({ isOpen, onClose, onConfirm, max
     const [sidebarActiveItem, setSidebarActiveItem] = useState('Home');
     const [activeTab] = useState('components');
     const [isSelectMode, setIsSelectMode] = useState(false);
+    const [showAuthModal, setShowAuthModal] = useState(false);
+    const { isAuthenticated } = useBuilderAuth();
 
     // Data states
     const [items, setItems] = useState([]);
@@ -201,6 +204,10 @@ export default function CommunitySelectorPopup({ isOpen, onClose, onConfirm, max
     };
 
     const handleConfirm = () => {
+        if (!isAuthenticated) {
+            setShowAuthModal(true);
+            return;
+        }
         const selectedItems = Object.values(selectedItemsMap);
         if (selectedItems.length === 0) return;
         onConfirm(selectedItems);
@@ -454,6 +461,11 @@ export default function CommunitySelectorPopup({ isOpen, onClose, onConfirm, max
                     isSelectMode={isSelectMode}
                     isSelected={previewItem ? !!selectedItemsMap[previewItem.id] : false}
                     onToggleSelect={(id) => handleToggleSelect(id, previewItem)}
+                />
+
+                <AuthGateModal 
+                    isOpen={showAuthModal} 
+                    onClose={() => setShowAuthModal(false)} 
                 />
             </motion.div>
         </div>

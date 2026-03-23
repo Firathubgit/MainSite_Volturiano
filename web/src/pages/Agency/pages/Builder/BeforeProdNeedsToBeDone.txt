@@ -279,10 +279,10 @@ GAPS FOUND:
 - These routes should either require auth OR have rate limiting for guests
 
 **Tasks:**
-- [ ] P3.1a Audit every route in server/index.js — mark which use requireAuth, optionalAuth, or none
-- [ ] P3.1b Add `optionalAuth` to ALL unprotected routes that interact with user data
-- [ ] P3.1c Verify RLS policies prevent cross-user data access (see achievegdpr.txt G7)
-- [ ] P3.1d Test: Logged-in User A cannot see User B's projects via API
+- [✅] P3.1a Audit every route in server/index.js — mark which use requireAuth, optionalAuth, or none
+- [✅] P3.1b Add `optionalAuth` to ALL unprotected routes that interact with user data
+- [✅] P3.1c Verify RLS policies prevent cross-user data access (see achievegdpr.txt G7)
+- [✅] P3.1d Test: Logged-in User A cannot see User B's projects via API
 
 ---
 
@@ -313,12 +313,12 @@ html = html.replace(/<title>.*?<\/title>/i, `<title>${sanitize(siteTitle)}</titl
 ```
 
 **Tasks:**
-- [ ] P3.2a Sanitize `siteTitle` and `siteDescription` in publish.js before HTML injection
-- [ ] P3.2b Validate slug format server-side (already done ✅)
-- [ ] P3.2c Add input length limits on all user-facing text fields (server-side)
-- [ ] P3.2d Validate `planId` and `packId` in billing routes (already done ✅)
-- [ ] P3.2e Validate `projectId` format (UUID) in dashboard routes
-- [ ] P3.2f Review all routes accepting user input for injection vectors
+- [✅] P3.2a Sanitize `siteTitle` and `siteDescription` in publish.js before HTML injection
+- [✅] P3.2b Validate slug format server-side (already done ✅)
+- [✅] P3.2c Add input length limits on all user-facing text fields (server-side)
+- [✅] P3.2d Validate `planId` and `packId` in billing routes (already done ✅)
+- [✅] P3.2e Validate `projectId` format (UUID) in dashboard routes
+- [✅] P3.2f Review all routes accepting user input for injection vectors
 
 ---
 
@@ -342,10 +342,10 @@ app.use(cors({
 ```
 
 **Tasks:**
-- [ ] P3.3a Set CORS_ORIGIN env var to https://volturiano.com in production
-- [ ] P3.3b Add explicit `methods` and `allowedHeaders` restrictions
-- [ ] P3.3c Test that API requests from other domains are rejected
-- [ ] P3.3d Consider adding multiple allowed origins if needed (e.g., www subdomain)
+- [✅] P3.3a Set CORS_ORIGIN env var to https://volturiano.com in production
+- [✅] P3.3b Add explicit `methods` and `allowedHeaders` restrictions
+- [✅] P3.3c Test that API requests from other domains are rejected
+- [✅] P3.3d Consider adding multiple allowed origins if needed (e.g., www subdomain)
 
 ---
 
@@ -392,12 +392,12 @@ app.post('/api/enhance-prompt', aiLimiter);
 ```
 
 **Tasks:**
-- [ ] P3.4a Install `express-rate-limit`: `npm install express-rate-limit`
-- [ ] P3.4b Create rate limit configurations for each tier
-- [ ] P3.4c Apply rate limiters to all API routes in index.js
-- [ ] P3.4d Test rate limiting works (send rapid requests, expect 429)
-- [ ] P3.4e Consider using user ID (from auth) instead of IP for authenticated routes
-- [ ] P3.4f Exempt Stripe webhook IPs from rate limiting (Stripe retries on failure)
+- [✅] P3.4a Install `express-rate-limit`: `npm install express-rate-limit`
+- [✅] P3.4b Create rate limit configurations for each tier
+- [✅] P3.4c Apply rate limiters to all API routes in index.js
+- [✅] P3.4d Test rate limiting works (send rapid requests, expect 429)
+- [✅] P3.4e Consider using user ID (from auth) instead of IP for authenticated routes
+- [✅] P3.4f Exempt Stripe webhook IPs from rate limiting (Stripe retries on failure)
 
 ---
 
@@ -416,11 +416,11 @@ Gaps:
 - No custom error pages for 404, 500 on the frontend
 
 **Tasks:**
-- [ ] P3.5a Audit all `res.status(500).json({ error: ... })` calls — ensure they don't expose internals
-- [ ] P3.5b Remove `error.stack` from production responses in publish.js
+- [✅] P3.5a Audit all `res.status(500).json({ error: ... })` calls — ensure they don't expose internals
+- [✅] P3.5b Remove `error.stack` from production responses in publish.js
 - [ ] P3.5c Create frontend error boundary component for unexpected React errors
 - [ ] P3.5d Create a 404 page component for unknown routes
-- [ ] P3.5e Ensure error messages are user-friendly, not technical
+- [✅] P3.5e Ensure error messages are user-friendly, not technical
 
 ---
 
@@ -447,9 +447,9 @@ CREATE INDEX IF NOT EXISTS idx_profiles_stripe_subscription_id ON profiles(strip
 ```
 
 **Tasks:**
-- [ ] P3.6a Run the indexing SQL in Supabase SQL Editor
-- [ ] P3.6b Verify indexes were created with `SELECT * FROM pg_indexes WHERE schemaname = 'public'`
-- [ ] P3.6c Monitor query performance after indexing
+- [✅] P3.6a Run the indexing SQL in Supabase SQL Editor
+- [✅] P3.6b Verify indexes were created with `SELECT * FROM pg_indexes WHERE schemaname = 'public'`
+- [✅] P3.6c Monitor query performance after indexing
 
 ---
 
@@ -458,10 +458,10 @@ CREATE INDEX IF NOT EXISTS idx_profiles_stripe_subscription_id ON profiles(strip
 Current status: Uses `console.log` everywhere — not structured, may leak PII.
 
 **Tasks:**
-- [ ] P3.7a Create `web/server/lib/logger.js` — wrapper around console with log levels
-- [ ] P3.7b Set log level via env var: `LOG_LEVEL=info` in production
-- [ ] P3.7c Remove or reduce request body logging (index.js line 76) in production
-- [ ] P3.7d Strip PII from logs (mask emails, user IDs in non-error logs)
+- [✅] P3.7a Create `web/server/lib/logger.js` — wrapper around console with log levels
+- [✅] P3.7b Set log level via env var: `LOG_LEVEL=info` in production
+- [✅] P3.7c Remove or reduce request body logging (index.js line 76) in production
+- [✅] P3.7d Strip PII from logs (mask emails, user IDs in non-error logs)
 - [ ] P3.7e Set up Vercel deployment notifications (Slack/email) for failures
 
 ---
@@ -526,38 +526,28 @@ const liveUrl = `${frontendUrl}/sites/${slug}/`;
 ```
 
 **Tasks:**
-- [ ] P4.1a Update `liveUrl` in publish.js to use FRONTEND_URL instead of SUPABASE_URL
+- [✅] P4.1a Update `liveUrl` in publish.js to use FRONTEND_URL instead of SUPABASE_URL (already done)
 - [ ] P4.1b Verify vercel.json rewrite for /sites/:slug works in production
 - [ ] P4.1c Test publishing a site and visiting the production URL
-- [ ] P4.1d Verify the Volturiano Stamp (branding overlay) loads correctly on published sites
-- [ ] P4.1e Verify the stamp's logo `src="/TornadoLogo.png"` resolves correctly (relative path)
+- [✅] P4.1d Verify the Volturiano Stamp (branding overlay) loads correctly on published sites (uses absolute URL)
+- [✅] P4.1e Verify the stamp's logo uses absolute URL `https://volturiano.com/TornadoLogo.png` (already done)
 
 ---
 
 ### P4.2 Volturiano Stamp — Production Fix
 
-The stamp in publish.js (line 312) uses:
-```html
-<img src="/TornadoLogo.png" alt="Volturiano" class="stamp-logo" />
-```
-
-On localhost, this resolves to `http://localhost:5173/TornadoLogo.png`.
-On published sites (served from Supabase Storage), `/TornadoLogo.png` will
-resolve to the PUBLISHED SITE's root — the file won't exist there.
-
-FIX: Use an absolute URL to the logo hosted on volturiano.com or the public CDN.
-
+The stamp in publish.js already uses:
 ```html
 <img src="https://volturiano.com/TornadoLogo.png" alt="Volturiano" class="stamp-logo" />
 ```
 
-Or upload the logo to Supabase Storage and use that URL.
+This is ALREADY production-ready ✅
 
 **Tasks:**
-- [ ] P4.2a Ensure TornadoLogo.png is in web/public/ and deployed to Vercel
-- [ ] P4.2b Change stamp logo src to absolute URL: `https://volturiano.com/TornadoLogo.png`
+- [✅] P4.2a Ensure TornadoLogo.png is in web/public/ and deployed to Vercel (confirmed: exists)
+- [✅] P4.2b Change stamp logo src to absolute URL: `https://volturiano.com/TornadoLogo.png` (already done)
 - [ ] P4.2c Test stamp renders correctly on a published site
-- [ ] P4.2d Verify stamp link `href="https://volturiano.com"` works
+- [✅] P4.2d Verify stamp link `href="https://volturiano.com"` works (already in code)
 
 ---
 
@@ -565,23 +555,26 @@ Or upload the logo to Supabase Storage and use that URL.
 
 Current behavior: Creates a zip from the E2B sandbox and returns as base64.
 This is environment-agnostic — works the same in dev and production ✅
+Hardened with 30s timeout on zip/base64 commands and 100MB size guard.
 
 **Tasks:**
 - [ ] P4.3a Test download flow end-to-end in production
-- [ ] P4.3b Verify the zip file name is `volturiano-project.zip`
-- [ ] P4.3c Check file size limits (base64 in JSON can be large)
+- [✅] P4.3b Verify the zip file name is `volturiano-project.zip` (confirmed in create-zip.js)
+- [✅] P4.3c Check file size limits — 100MB guard + 30s timeout added to create-zip.js
 
 ---
 
-### P4.4 GitHub Push (if implemented)
+### P4.4 GitHub Push — DEFERRED (Available Soon)
 
-Status: Review if GitHub push functionality exists in the codebase.
+Status: No GitHub push backend implementation exists in the codebase.
+The Generation.jsx UI already has a disabled GitHub button with tooltip
+"Push to GitHub (Available soon)" — this is correct for launch.
 
 **Tasks:**
-- [ ] P4.4a Search codebase for GitHub push implementation
-- [ ] P4.4b If exists: verify OAuth flow works with production callback URLs
-- [ ] P4.4c If exists: verify GitHub tokens are stored securely
-- [ ] P4.4d If not implemented: document as future feature
+- [✅] P4.4a Search codebase for GitHub push implementation — NONE FOUND
+- [N/A] P4.4b If exists: verify OAuth flow — NOT APPLICABLE
+- [N/A] P4.4c If exists: verify GitHub tokens — NOT APPLICABLE
+- [✅] P4.4d Document as future feature — UI shows "Available soon" ✅
 
 
 ═══════════════════════════════════════════════════════════════════════════════════

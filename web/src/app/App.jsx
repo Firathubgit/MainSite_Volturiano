@@ -20,6 +20,7 @@ import { PAUSE_MODE_ENABLED } from "../config/pauseMode";
 import { BuilderAuthProvider } from "../contexts/BuilderAuthContext";
 import { RouteTransitionProvider } from "../contexts/RouteTransitionContext";
 import { RouteTransitionOverlay } from "../components/RouteTransitionOverlay/RouteTransitionOverlay";
+import CookieConsent from "../components/CookieConsent/CookieConsent";
 
 const Home = lazy(() => import("../pages/Home/Home"));
 const Models = lazy(() => import("../pages/Models/Models"));
@@ -154,6 +155,16 @@ export default function App() {
   const platformMode = useUiStore((state) => state.platformMode);
   const exitPlatform = useUiStore((state) => state.exitPlatform);
   const location = useLocation();
+  const [gdprConsent, setGdprConsent] = React.useState(() => {
+    const saved = localStorage.getItem('volturiano_gdpr_consent');
+    return saved ? JSON.parse(saved) : { analytics: false, performance: false };
+  });
+
+  useEffect(() => {
+    const handleConsent = (e) => setGdprConsent(e.detail);
+    window.addEventListener('gdpr-consent-updated', handleConsent);
+    return () => window.removeEventListener('gdpr-consent-updated', handleConsent);
+  }, []);
 
   // Set dynamic page title based on current route
   usePageTitle();
@@ -358,9 +369,12 @@ export default function App() {
     <BuilderAuthProvider>
       <RouteTransitionProvider>
         <div>
+          {location.pathname.startsWith("/agency") || location.pathname === "/" ? null : (
+            <CookieConsent />
+          )}
           {!location.pathname.startsWith("/builder") && !location.pathname.startsWith("/community") && !location.pathname.startsWith("/guidelines") && <CustomCursor />}
-          <Analytics />
-          <SpeedInsights />
+          {gdprConsent.analytics && <Analytics />}
+          {gdprConsent.performance && <SpeedInsights />}
           <LoadingOverlay
             show={
               forceOverlay ||

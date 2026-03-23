@@ -26,12 +26,14 @@ function sanitizeSlug(raw) {
 export default async function publishSite(req, res) {
     const startTime = Date.now();
     const logPath = path.join(__dirname, '..', 'publish_debug.log');
+    const isDev = process.env.NODE_ENV === 'development' || !process.env.NODE_ENV;
 
     const log = (msg) => {
         const time = new Date().toISOString();
-        const line = `[${time}] ${msg}\n`;
-        console.log(msg);
-        fs.appendFile(logPath, line).catch(() => { });
+        console.log(`[Publish][${time}] ${msg}`);
+        if (isDev) {
+            fs.appendFile(logPath, `[${time}] ${msg}\n`).catch(() => { });
+        }
     };
 
     try {
@@ -196,6 +198,10 @@ export default async function publishSite(req, res) {
                          .replace(/'/g, "&#039;");
                  };
 
+                // Truncate sizes prevent blob attacks
+                if (siteTitle && siteTitle.length > 150) siteTitle = siteTitle.substring(0, 150);
+                if (siteDescription && siteDescription.length > 300) siteDescription = siteDescription.substring(0, 300);
+
                 if (siteTitle) {
                     html = html.replace(/<title>.*?<\/title>/i, `<title>${escapeHtml(siteTitle)}</title>`);
                 }
@@ -358,6 +364,13 @@ export default async function publishSite(req, res) {
             uploadedCount++;
         }
 
+        // ── SIZE GUARD: Reject publishes exceeding 50MB ──
+        if (totalSize > 50 * 1024 * 1024) {
+            log(`[Publish] ❌ REJECTED — site too large: ${(totalSize / (1024 * 1024)).toFixed(1)}MB`);
+            await fs.rm(tempDir, { recursive: true, force: true }).catch(() => {});
+            return res.status(413).json({ success: false, error: 'Site is too large to publish (max 50MB).' });
+        }
+
         // 6. DB Registration (supports both initial publish and updates)
         console.log(`[Publish] Registering in DB...`);
         const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
@@ -488,7 +501,7 @@ export default async function publishSite(req, res) {
         try {
             return res.status(500).json({
                 success: false,
-                error: error.message || 'Internal server error during publish process.',
+                error: process.env.NODE_ENV === 'development' ? (error.message || 'Internal error') : 'Internal server error during publish process.',
                 details: process.env.NODE_ENV === 'development' ? error.stack : undefined
             });
         } catch (jsonErr) {

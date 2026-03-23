@@ -3,6 +3,8 @@ import express from 'express';
 import cors from 'cors';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import rateLimit from 'express-rate-limit';
+import { logger } from './lib/logger.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -34,7 +36,7 @@ import renderApp from './routes/render-app.js';
 import validateImportsRoute from './routes/validate-imports.js';
 import verifyBuildRoute from './routes/verify-build.js';
 import finalizeCodebase from './routes/finalize-codebase.js';
-import { optionalAuth } from './middleware/authMiddleware.js';
+import { optionalAuth, requireAuth } from './middleware/authMiddleware.js';
 import initProject from './routes/init-project.js';
 import updateProjectRoute from './routes/update-project.js';
 import getProject from './routes/get-project.js';
@@ -56,12 +58,17 @@ const PORT = process.env.PORT || 3001;
 
 // Early Request Logger (before body parsing)
 app.use((req, res, next) => {
-  console.log(`[Server] INCOMING: ${req.method} ${req.url}`);
+  logger.info('Server', `INCOMING: ${req.method} ${req.url}`);
   next();
 });
 
 // Middleware
-app.use(cors({ origin: process.env.CORS_ORIGIN || 'https://volturiano.com' }));
+app.use(cors({ 
+  origin: process.env.CORS_ORIGIN || 'https://volturiano.com',
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: true 
+}));
 
 // ═══ CRITICAL: Stripe Webhook needs RAW body BEFORE express.json() ═══
 // Stripe signature verification requires the raw request bytes.
@@ -73,7 +80,11 @@ app.use(express.json({ limit: '50mb' }));
 // Final JSON Logger
 app.use((req, res, next) => {
   if (req.body && Object.keys(req.body).length > 0) {
-    console.log(`[Server] PARSED: ${req.method} ${req.url} | Payload: ${JSON.stringify(req.body).length} bytes`);
+    if (process.env.NODE_ENV === 'development') {
+      logger.info('Server', `PARSED: ${req.method} ${req.url}`, req.body);
+    } else {
+      logger.info('Server', `PARSED: ${req.method} ${req.url} | Payload: ${JSON.stringify(req.body).length} bytes`);
+    }
   }
   next();
 });
@@ -86,66 +97,96 @@ global.existingFiles = new Set();
 
 import sandboxKeepAlive from './routes/sandbox-keepalive.js';
 
+// Initialize Rate Limiters
+const strictLimiter = rateLimit({ windowMs: 60000, max: 10, message: { error: 'Too many requests' } });
+const aiLimiter = rateLimit({ windowMs: 60000, max: 50, message: { error: 'AI generation rate limited' } });
+const standardLimiter = rateLimit({ windowMs: 60000, max: 30, message: { error: 'Rate limit exceeded' } });
+const relaxedLimiter = rateLimit({ windowMs: 60000, max: 60, message: { error: 'Rate limit exceeded' } });
+
+// Apply AI Limiters
+app.use(['/api/enhance-prompt', '/api/derive-design-system', '/api/plan-website-components', '/api/generate-single-component', '/api/generate-ai-code-stream', '/api/apply-ai-code-stream', '/api/create-ai-sandbox-v2'], aiLimiter);
+
+// Apply Standard Limiters
+app.use(['/api/projects', '/api/snapshots', '/api/publish-site'], standardLimiter);
+
+// Global Prompt Bloat & Denial of Wallet Protection
+const promptTruncationMiddleware = (req, res, next) => {
+  if (req.body && typeof req.body === 'object') {
+    if (typeof req.body.prompt === 'string') {
+      req.body.prompt = req.body.prompt.substring(0, 4000); // Max 4000 chars for prompts
+    }
+    if (typeof req.body.overallContext === 'string') {
+      req.body.overallContext = req.body.overallContext.substring(0, 4000);
+    }
+    if (typeof req.body.siteTitle === 'string') {
+      req.body.siteTitle = req.body.siteTitle.substring(0, 150);
+    }
+  }
+  next();
+};
+
+const aiProtections = [aiLimiter, requireAuth, promptTruncationMiddleware];
+
 // Routes
-app.post('/api/enhance-prompt', enhancePrompt);
-app.post('/api/cinematic-response', cinematicResponse);
-app.post('/api/derive-design-system', deriveDesignSystem);
-app.post('/api/plan-website-components', planWebsiteComponents);
-app.post('/api/generate-single-component', generateSingleComponent);
-app.post('/api/generate-ai-code-stream', generateAiCodeStream);
-app.post('/api/apply-ai-code-stream', applyAiCodeStream);
-app.post('/api/create-ai-sandbox-v2', createAiSandboxV2);
-app.post('/api/sandbox/keepalive', optionalAuth, sandboxKeepAlive);
+app.post('/api/enhance-prompt', aiProtections, enhancePrompt);
+app.post('/api/cinematic-response', aiProtections, cinematicResponse);
+app.post('/api/derive-design-system', aiProtections, deriveDesignSystem);
+app.post('/api/plan-website-components', aiProtections, planWebsiteComponents);
+app.post('/api/generate-single-component', aiProtections, generateSingleComponent);
+app.post('/api/generate-ai-code-stream', aiProtections, generateAiCodeStream);
+app.post('/api/apply-ai-code-stream', aiProtections, applyAiCodeStream);
+app.post('/api/create-ai-sandbox-v2', aiProtections, createAiSandboxV2);
+app.post('/api/sandbox/keepalive', requireAuth, sandboxKeepAlive);
 app.get('/api/sandbox-status', sandboxStatus);
 app.get('/api/get-sandbox-files', getSandboxFiles);
-app.post('/api/install-packages', installPackages);
-app.post('/api/analyze-edit-intent', analyzeEditIntent);
-app.post('/api/create-zip', createZip);
+app.post('/api/install-packages', aiProtections, installPackages);
+app.post('/api/analyze-edit-intent', aiProtections, analyzeEditIntent);
+app.post('/api/create-zip', aiProtections, createZip);
 
 app.post('/api/feedback', optionalAuth, submitFeedback);
 
 // Premium component registry routes
-app.get('/api/component-catalog', componentCatalog);
-app.post('/api/select-components', selectComponents);
-app.get('/api/component-bundle', componentBundle);
-app.post('/api/component-bundle', componentBundle);
-app.post('/api/build-from-selection', buildFromSelection);
-app.post('/api/build-template', buildTemplate);
-app.get('/api/build-template', buildTemplate);
+app.get('/api/component-catalog', relaxedLimiter, componentCatalog);
+app.post('/api/select-components', standardLimiter, selectComponents);
+app.get('/api/component-bundle', relaxedLimiter, componentBundle);
+app.post('/api/component-bundle', relaxedLimiter, componentBundle);
+app.post('/api/build-from-selection', aiProtections, buildFromSelection);
+app.post('/api/build-template', aiProtections, buildTemplate);
+app.get('/api/build-template', relaxedLimiter, optionalAuth, buildTemplate);
 // Deterministic App.jsx renderer
-app.post('/api/render-app', renderApp);
+app.post('/api/render-app', aiProtections, renderApp);
 
 // Import Graph Validator (Prompt 7)
-app.post('/api/validate-imports', validateImportsRoute);
+app.post('/api/validate-imports', aiProtections, validateImportsRoute);
 
 // Verify Build (Prompt 8)
-app.post('/api/verify-build', verifyBuildRoute);
+app.post('/api/verify-build', standardLimiter, optionalAuth, verifyBuildRoute);
 
 // Finalize Codebase (Polish Step)
-app.post('/api/finalize-codebase', finalizeCodebase);
+app.post('/api/finalize-codebase', aiProtections, finalizeCodebase);
 
 // Project & Database Routes
-app.post('/api/projects/init', optionalAuth, initProject);
-app.post('/api/projects/update', optionalAuth, updateProjectRoute);
-app.get('/api/projects/get', optionalAuth, getProject);
-app.post('/api/snapshots', optionalAuth, saveSnapshot);
-app.get('/api/snapshots', optionalAuth, getSnapshots);
+app.post('/api/projects/init', requireAuth, initProject);
+app.post('/api/projects/update', requireAuth, updateProjectRoute);
+app.get('/api/projects/get', requireAuth, getProject);
+app.post('/api/snapshots', requireAuth, saveSnapshot);
+app.get('/api/snapshots', requireAuth, getSnapshots);
 
-// Publish Site (Phase 5) — optionalAuth attaches user if logged in
-app.post('/api/publish-site', optionalAuth, publishSite);
+// Publish Site (Phase 5)
+app.post('/api/publish-site', requireAuth, publishSite);
 
 // Phase S7: Taxonomy & Blueprint System
-app.use('/api/taxonomy', taxonomyApi);
-app.post('/api/resolve-blueprint', resolveBlueprintRoute);
+app.use('/api/taxonomy', relaxedLimiter, taxonomyApi);
+app.post('/api/resolve-blueprint', standardLimiter, resolveBlueprintRoute);
 
 // Phase S9: Community Routes (Component submissions, ratings, etc.)
-app.use('/api/community', communityRoutes);
+app.use('/api/community', relaxedLimiter, communityRoutes);
 
 // Phase S9.14: Usage Feedback Loop (Retention Tracking)
-app.post('/api/track-retention', optionalAuth, trackRetention);
+app.post('/api/track-retention', standardLimiter, optionalAuth, trackRetention);
 
 // Phase S12: Credits & Billing (Stripe Integration)
-app.use('/api/billing', billingRoutes);
+app.use('/api/billing', strictLimiter, billingRoutes);
 
 // Phase S12: Stripe Webhook (Credit Fulfillment)
 app.use('/api/webhooks', webhookRoutes);
@@ -287,7 +328,10 @@ app.use((err, req, res, next) => {
     fs.appendFile(logPath, line).catch(() => { });
   }).catch(() => { });
 
-  res.status(500).json({ success: false, error: err.message || 'Internal server error' });
+  res.status(500).json({ 
+    success: false, 
+    error: process.env.NODE_ENV === 'development' ? err.message : 'Internal server error' 
+  });
 });
 
 // Global error handling to prevent server crashes

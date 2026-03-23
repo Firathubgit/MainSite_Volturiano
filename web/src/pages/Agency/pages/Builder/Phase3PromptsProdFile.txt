@@ -1,0 +1,79 @@
+═══════════════════════════════════════════════════════════════════════════════════
+ PHASE 3: SECURITY HARDENING MEGAPROMPTS
+ Document: Phase3PromptsProdFile.txt
+ Goal: Provide copy-pasteable prompts to execute Phase 3 security protocols.
+═══════════════════════════════════════════════════════════════════════════════════
+
+As your Vercel frontend and Railway backend are now separated and live, we must 
+lock down the API. Because your backend is exposed to the internet, anyone can 
+theoretically ping it. If they spam the AI routes without rate limits, they 
+can rack up a massive OpenAI/Anthropic bill. If they inject XSS through the 
+builder, they can hack other users' published websites.
+
+Run these 3 Megaprompts sequentially to build the security fortress.
+
+-----------------------------------------------------------------------------------
+                            MEGAPROMPT 4
+    Use this to install Rate Limiting, CORS, and wipe stack traces (P3.3, P3.4, P3.5)
+-----------------------------------------------------------------------------------
+
+Copy and paste the following into the AI chat:
+
+"""
+Act as a Node.js SecOps Engineer. We need to implement API-level protections on our Express backend (web/server/index.js) running on Railway.
+
+Please execute the following sequence of terminal commands and code changes:
+
+1. Use your terminal tools to run `npm install express-rate-limit` inside `web/server`.
+2. Modify `web/server/index.js` to import and configure `express-rate-limit`. Create the following limiters and apply them to the respective routes:
+   - `aiLimiter`: 5 requests per minute, message: 'AI generation rate limited'. Apply to `/api/generate-*`, `/api/enhance-prompt`, `/api/create-ai-sandbox-v2`.
+   - `strictLimiter`: 10 requests per minute. Apply to `/api/billing/*`.
+   - `standardLimiter`: 30 requests per minute. Apply to remaining dashboard/sync routes.
+   - Note: Do NOT rate-limit `/api/webhooks/stripe` as Stripe implements its own retry logic and verifying the signature is sufficient.
+3. Review the existing CORS configuration in `index.js`. Ensure `methods` is explicitly restricted to `['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS']` and `credentials: true` is enabled.
+4. Audit `index.js` global error handler and `web/server/routes/publish.js`. Ensure that `error.stack` or raw database error messages are completely stripped from HTTP 500 JSON responses in production.
+
+Do not ask me for permission, use your tools to modify the files and run the install automatically.
+"""
+
+-----------------------------------------------------------------------------------
+                            MEGAPROMPT 5
+    Use this to patch Auth Gaps and fix XSS Injection Vectors (P3.1, P3.2)
+-----------------------------------------------------------------------------------
+
+Copy and paste the following into the AI chat once Megaprompt 4 is done:
+
+"""
+Act as an Application Security Expert. I need to close logic and authorization gaps across my backend before public launch.
+
+Please execute the following code changes:
+
+1. Analyze `web/server/index.js` and identify all generation and Sandbox routes (like `/api/generate-ai-code-stream`, `/api/build-template`, `/api/create-ai-sandbox-v2`). Currently, these rely only on CORS for protection. Import `optionalAuth` or `requireAuth` from `authMiddleware.js` and securely attach it to these endpoints so we restrict generations to logged-in users, or attach the user ID limitation to our new rate limiter.
+2. Open `web/server/routes/publish.js`. In the HTML generation logic (around lines 190-211), `siteTitle` and `siteDescription` are injected via literal string replacement (`<title>${siteTitle}</title>`). This is a critical stored XSS vulnerability. Build a sanitizer function `const sanitizeHTML = (str) => ...` and apply it to all user inputs injected into the public HTML template.
+3. In `index.js` and `publish.js`, introduce strict 150-character truncation limits on strings like `siteTitle` and 1000-character limits on AI prompts before passing them to external SDKs to prevent Prompt Bloat Denial of Wallet attacks.
+
+Use your file replacement tools to inject the middleware and sanitization directly into the code.
+"""
+
+-----------------------------------------------------------------------------------
+                            MEGAPROMPT 6
+    Use this to inject Database Indexes and Production Logging (P3.6, P3.7)
+-----------------------------------------------------------------------------------
+
+Copy and paste the following into the AI chat:
+
+"""
+Act as a Database Architect and SRE. We need our backend to handle scale without burning CPU on raw table scans, and we need production-grade logging.
+
+Please execute the following tasks:
+
+1. Create a new utility file at `web/server/lib/logger.js`. It should be a wrapper around `console.log` that includes timestamps, log levels (info, warn, error), and explicitly scrubs or masks obvious PII or raw secrets from object payloads.
+2. In `web/server/index.js`, find the blanket `app.use((req, ...` middleware that logs `req.body` and replace it with our new `logger.js` so we stop logging raw PII/credit cards in our server dashboards.
+3. Review the database schema mentally and output the exact SQL commands I need to copy-paste into my Supabase SQL Editor. The SQL should proactively create high-performance indexes on foreign keys, specifically:
+   - `user_id` on projects, published_sites, credit_transactions
+   - `stripe_payment_id` on credit_transactions
+   - `stripe_customer_id` and `stripe_subscription_id` on profiles
+   - Include `IF NOT EXISTS` so it is safe to run.
+
+Provide the SQL blocked cleanly in your response so I can run it immediately in Supabase.
+"""

@@ -2108,8 +2108,6 @@ Just position the new components in a logical order (e.g. after the Hero or befo
         iconFileName: iconFileName || undefined
       };
       console.log('[Publish] 📤 Sending POST /api/publish-site');
-      console.log('[Publish] Request body contains icon:', !!iconBase64);
-      console.log('[Publish] Auth header:', session?.access_token ? 'Bearer <token present>' : 'NO AUTH HEADER');
 
       const res = await fetch('/api/publish-site', {
         method: 'POST',
@@ -2120,9 +2118,7 @@ Just position the new components in a logical order (e.g. after the Hero or befo
         body: JSON.stringify(requestBody)
       });
 
-      console.log('[Publish] 📥 Response status:', res.status, res.statusText);
       const data = await safeParseJson(res, 'publish-site');
-      console.log('[Publish] Response data:', JSON.stringify(data, null, 2));
 
       if (!data.success) {
         if (res.status === 409) {
@@ -2148,8 +2144,7 @@ Just position the new components in a logical order (e.g. after the Hero or befo
         finalUrl = `https://volturiano.com/sites/${data.slug}`;
       }
 
-      console.log(`[Publish] ✅ SUCCESS — slug:`, data.slug, 'url:', finalUrl);
-      console.log('[Publish] Published site data:', { slug: data.slug, siteId: data.siteId, fileCount: data.fileCount });
+      console.log(`[Publish] ✅ SUCCESS — site live at: ${finalUrl}`);
       setPublishUrl(finalUrl);
       setExistingPublishedSlug(data.slug); // Track that this project is now published
       setShowPublishModal(true);

@@ -255,31 +255,6 @@ router.post('/subscribe', requireAuth, async (req, res) => {
     // 2. Get or create Stripe Customer
     const customerId = await getOrCreateStripeCustomer(userId, userEmail);
 
-    // Prevent duplicate subscriptions: If already active, send to Customer Portal to upgrade/downgrade
-    const { data: profile } = await supabaseAdmin
-      .from('profiles')
-      .select('stripe_subscription_id, subscription_status')
-      .eq('id', userId)
-      .single();
-
-    if (
-      profile?.stripe_subscription_id && 
-      profile.subscription_status !== 'canceled' && 
-      profile.subscription_status !== 'cancelled' && 
-      profile.subscription_status !== 'free'
-    ) {
-      console.log(`[Billing] User already has an active subscription. Redirecting to Customer Portal.`);
-      const portalSession = await stripe.billingPortal.sessions.create({
-        customer: customerId,
-        return_url: `${FRONTEND_URL}/builder`,
-      });
-      return res.json({
-        success: true,
-        sessionId: portalSession.id,
-        url: portalSession.url,
-      });
-    }
-
     // 3. Create Stripe Checkout Session (subscription mode)
     const session = await stripe.checkout.sessions.create({
       mode: 'subscription',

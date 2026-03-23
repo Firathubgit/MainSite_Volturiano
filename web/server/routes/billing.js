@@ -46,15 +46,16 @@ const FRONTEND_URL = process.env.FRONTEND_URL || 'https://volturiano.com';
 
 
 // ─────────────────────────────────────────────────────────────
-// Subscription Plan Definitions (SERVER-SIDE ONLY, SEK)
+// ─────────────────────────────────────────────────────────────
+// Subscription Plan Definitions (SERVER-SIDE ONLY, EUR)
 // ─────────────────────────────────────────────────────────────
 const SUBSCRIPTION_PLANS = {
   starter: {
     id: 'starter',
     name: 'Starter',
     credits: 20,
-    priceSek: 249,
-    priceDisplay: '249 kr/mo',
+    priceEur: 24,
+    priceDisplay: '24 €/mo',
     priceId: process.env.STRIPE_PRICE_STARTER_SUB || 'price_starter_sub_placeholder',
     description: '20 credits per month for curious builders',
   },
@@ -62,8 +63,8 @@ const SUBSCRIPTION_PLANS = {
     id: 'pro',
     name: 'Pro',
     credits: 55,
-    priceSek: 499,
-    priceDisplay: '499 kr/mo',
+    priceEur: 49,
+    priceDisplay: '49 €/mo',
     priceId: process.env.STRIPE_PRICE_PRO_SUB || 'price_pro_sub_placeholder',
     description: '55 credits per month for serious creators',
     popular: true,
@@ -72,8 +73,8 @@ const SUBSCRIPTION_PLANS = {
     id: 'studio',
     name: 'Studio',
     credits: 120,
-    priceSek: 999,
-    priceDisplay: '999 kr/mo',
+    priceEur: 99,
+    priceDisplay: '99 €/mo',
     priceId: process.env.STRIPE_PRICE_STUDIO_SUB || 'price_studio_sub_placeholder',
     description: '120 credits per month for agencies & teams',
   },
@@ -81,15 +82,15 @@ const SUBSCRIPTION_PLANS = {
 
 
 // ─────────────────────────────────────────────────────────────
-// One-Time Credit Pack Definitions (SERVER-SIDE ONLY, SEK)
+// One-Time Credit Pack Definitions (SERVER-SIDE ONLY, EUR)
 // ─────────────────────────────────────────────────────────────
 const CREDIT_PACKS = {
   pack_10: {
     id: 'pack_10',
     name: '10 Credits',
     credits: 10,
-    priceSek: 129,
-    priceDisplay: '129 kr',
+    priceEur: 14,
+    priceDisplay: '14 €',
     priceId: process.env.STRIPE_PRICE_PACK_10 || 'price_pack_10_placeholder',
     description: '10 build credits — try before you subscribe',
   },
@@ -97,8 +98,8 @@ const CREDIT_PACKS = {
     id: 'pack_25',
     name: '25 Credits',
     credits: 25,
-    priceSek: 329,
-    priceDisplay: '329 kr',
+    priceEur: 34,
+    priceDisplay: '34 €',
     priceId: process.env.STRIPE_PRICE_PACK_25 || 'price_pack_25_placeholder',
     description: '25 build credits — great for a project sprint',
     popular: true,
@@ -107,8 +108,8 @@ const CREDIT_PACKS = {
     id: 'pack_60',
     name: '60 Credits',
     credits: 60,
-    priceSek: 749,
-    priceDisplay: '749 kr',
+    priceEur: 79,
+    priceDisplay: '79 €',
     priceId: process.env.STRIPE_PRICE_PACK_60 || 'price_pack_60_placeholder',
     description: '60 build credits — best one-time value',
   },
@@ -176,12 +177,13 @@ async function getOrCreateStripeCustomer(userId, userEmail) {
 // GET /api/billing/plans
 // Public endpoint — returns subscription plans for the frontend.
 // ─────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────
 router.get('/plans', (req, res) => {
   const plans = Object.values(SUBSCRIPTION_PLANS).map(plan => ({
     id: plan.id,
     name: plan.name,
     credits: plan.credits,
-    priceSek: plan.priceSek,
+    priceEur: plan.priceEur,
     priceDisplay: plan.priceDisplay,
     description: plan.description,
     popular: plan.popular || false,
@@ -195,12 +197,13 @@ router.get('/plans', (req, res) => {
 // GET /api/billing/packs
 // Public endpoint — returns credit packs for the frontend.
 // ─────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────
 router.get('/packs', (req, res) => {
   const packs = Object.values(CREDIT_PACKS).map(pack => ({
     id: pack.id,
     name: pack.name,
     credits: pack.credits,
-    priceSek: pack.priceSek,
+    priceEur: pack.priceEur,
     priceDisplay: pack.priceDisplay,
     description: pack.description,
     popular: pack.popular || false,

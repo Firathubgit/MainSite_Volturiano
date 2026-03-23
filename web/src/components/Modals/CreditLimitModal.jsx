@@ -11,7 +11,7 @@ const PLANS = [
     id: 'starter',
     name: 'Starter',
     subtitle: 'For curious builders',
-    price: 249,
+    price: 24,
     credits: 20,
     features: [
       '20 credits per month',
@@ -24,7 +24,7 @@ const PLANS = [
     id: 'pro',
     name: 'Pro',
     subtitle: 'For serious creators',
-    price: 499,
+    price: 49,
     credits: 55,
     isPopular: true,
     features: [
@@ -38,7 +38,7 @@ const PLANS = [
     id: 'studio',
     name: 'Studio',
     subtitle: 'For agencies & teams',
-    price: 999,
+    price: 99,
     credits: 120,
     features: [
       '120 credits per month',
@@ -50,9 +50,9 @@ const PLANS = [
 ];
 
 const PACKS = [
-  { id: 'pack_10', name: '10 Credits', credits: 10, price: 129 },
-  { id: 'pack_25', name: '25 Credits', credits: 25, price: 329, isPopular: true },
-  { id: 'pack_60', name: '60 Credits', credits: 60, price: 749 }
+  { id: 'pack_10', name: '10 Credits', credits: 10, price: 14 },
+  { id: 'pack_25', name: '25 Credits', credits: 25, price: 34, isPopular: true },
+  { id: 'pack_60', name: '60 Credits', credits: 60, price: 79 }
 ];
 
 export default function CreditLimitModal({ isOpen, onClose }) {
@@ -172,7 +172,7 @@ export default function CreditLimitModal({ isOpen, onClose }) {
 
                     <div className={styles.priceSection}>
                       <div className={styles.mainPrice}>
-                        <span className={styles.amount}>{plan.price} kr</span>
+                        <span className={styles.amount}>{plan.price} €</span>
                         <span className={styles.period}>/ mo</span>
                       </div>
                     </div>
@@ -229,7 +229,7 @@ export default function CreditLimitModal({ isOpen, onClose }) {
                     <img src={coinIcon} alt="Credits" className={styles.packIcon} />
                     <span className={styles.packCredits}>{pack.credits} Credits</span>
                   </div>
-                  <div className={styles.packPrice}>{pack.price} kr</div>
+                  <div className={styles.packPrice}>{pack.price} €</div>
                   <button 
                     className={styles.packBtn} 
                     onClick={() => handleBuyPack(pack.id)}

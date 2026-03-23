@@ -57,7 +57,7 @@ const PACKS = [
 
 export default function CreditLimitModal({ isOpen, onClose }) {
   const { getAccessToken } = useBuilderAuth();
-  const { plan: currentPlan, isPaid } = useCredits();
+  const { plan: currentPlan, isPaid, subscriptionStatus } = useCredits();
   const [loading, setLoading] = useState(null);
 
   if (!isOpen) return null;
@@ -189,7 +189,7 @@ export default function CreditLimitModal({ isOpen, onClose }) {
 
                     {isActive ? (
                       <button className={styles.activeBtn} disabled>
-                        Current Plan
+                        {subscriptionStatus === 'canceling' ? 'Expires soon' : 'Current Plan'}
                       </button>
                     ) : (
                       <button 
@@ -197,7 +197,7 @@ export default function CreditLimitModal({ isOpen, onClose }) {
                         onClick={() => handleSubscribe(plan.id)}
                         disabled={loading !== null}
                       >
-                        {loading === plan.id ? 'Loading...' : `Get ${plan.name}`}
+                        {loading === plan.id ? 'Loading...' : (isPaid ? `Switch to ${plan.name}` : `Get ${plan.name}`)}
                       </button>
                     )}
 

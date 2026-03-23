@@ -367,7 +367,7 @@ async function handleSubscriptionUpdated(event) {
 
   const userId = profile.id;
   const updateData = {
-    subscription_status: subscription.status,
+    subscription_status: subscription.cancel_at_period_end ? 'canceling' : subscription.status,
     subscription_period_end: subscription.current_period_end
       ? new Date(subscription.current_period_end * 1000).toISOString()
       : null,

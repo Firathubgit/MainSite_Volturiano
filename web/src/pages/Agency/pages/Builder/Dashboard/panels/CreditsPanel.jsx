@@ -182,7 +182,8 @@ export default function CreditsPanel() {
                         </h4>
                         {isPaid && subscriptionPeriodEnd && (
                             <p style={{ color: '#666', fontSize: '13px', margin: '4px 0 0 0' }}>
-                                Renews on {format(subscriptionPeriodEnd, 'MMM d, yyyy')}
+                                {subscriptionStatus === 'canceling' ? 'Expires on ' : 'Renews on '}
+                                {format(subscriptionPeriodEnd, 'MMM d, yyyy')}
                             </p>
                         )}
                     </div>

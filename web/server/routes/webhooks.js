@@ -211,8 +211,7 @@ async function fulfillSubscription(session, userId, planId, credits) {
       p_user_id: userId,
       p_amount: credits,
       p_description: `${planId} plan activated (${credits} credits/month)`,
-      p_stripe_payment_id: session.id,
-      p_credit_type: 'subscription',
+      p_stripe_payment_id: session.id
     });
 
     if (error) {
@@ -242,8 +241,7 @@ async function fulfillCreditPack(session, userId, packId, packName, credits) {
       p_user_id: userId,
       p_amount: credits,
       p_description: `${packName || 'Credit Pack'} purchase (${credits} credits)`,
-      p_stripe_payment_id: session.id,
-      p_credit_type: 'purchased',
+      p_stripe_payment_id: session.id
     });
 
     if (error) {

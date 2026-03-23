@@ -65,8 +65,14 @@ export function useCredits() {
       Math.max(0, monthlyFreeCap - effectiveMonthlyEarned)
     ));
 
-    const subscriptionRemaining = Math.max(0, profile.subscription_credits ?? 0);
-    const purchasedRemaining = Math.max(0, profile.purchased_credits ?? 0);
+    // The database column from Phase S12 is 'total_credits_purchased'
+    const dbPurchasedCredits = Math.max(0, profile.total_credits_purchased ?? 0);
+    
+    // In our simplified setup, all non-free credits (packs and subs) go to total_credits_purchased.
+    // If the user has an active sub, we can display them in the subscription box, otherwise purchased box.
+    const hasSub = profile.subscription_plan && profile.subscription_plan !== 'free';
+    const subscriptionRemaining = hasSub ? dbPurchasedCredits : 0;
+    const purchasedRemaining = hasSub ? 0 : dbPurchasedCredits;
 
     const totalAvailable = isUnlimited
       ? Infinity

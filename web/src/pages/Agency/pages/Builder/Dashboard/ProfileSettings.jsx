@@ -16,6 +16,7 @@ import AccountSettings from './panels/AccountSettings';
 import WebsitesTab from './panels/WebsitesTab';
 import PlatformSettings from './panels/PlatformSettings';
 import CreditLimitModal from '../components/CreditLimitModal';
+import gradientCornerImage from './Assets/GradientCornerOne.png';
 
 
 export default function ProfileSettings() {
@@ -186,7 +187,7 @@ export default function ProfileSettings() {
                 height: '100vh',
                 pointerEvents: 'none',
                 zIndex: 0,
-                backgroundImage: 'url("/src/pages/Agency/pages/Builder/Dashboard/Assets/GradientCornerOne.png")',
+                backgroundImage: `url(${gradientCornerImage})`,
                 backgroundSize: 'max(800px, 80vw)',
                 backgroundPosition: 'bottom right',
                 backgroundRepeat: 'no-repeat'

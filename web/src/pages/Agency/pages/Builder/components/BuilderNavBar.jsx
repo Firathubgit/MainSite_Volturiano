@@ -379,7 +379,9 @@ function CreditBadge({ isCinematic }) {
           WebkitBackgroundClip: 'text',
           WebkitTextFillColor: 'transparent',
           backgroundClip: 'text',
-        }}>Upgrade</span>
+        }}>
+          {plan && plan !== 'free' ? (plan.charAt(0).toUpperCase() + plan.slice(1)) : 'Upgrade'}
+        </span>
       </button>
 
       {/* Credit Counter Area */}

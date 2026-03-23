@@ -90,7 +90,7 @@ This is fine — unknown routes go to `/` which now redirects to `/builder`.
 
 
 ═══════════════════════════════════════════════════════════════════════════════════
-        PHASE P2: ENVIRONMENT VARIABLES & VERCEL CONFIGURATION
+        PHASE P2: ENVIRONMENT VARIABLES & VERCEL CONFIGURATION ✅
 ═══════════════════════════════════════════════════════════════════════════════════
 
 Goal: Properly configure all environment variables for production deployment on
@@ -122,10 +122,10 @@ are visible to anyone who inspects the source. That's OK for Supabase anon keys
 with the VITE_ prefix.
 
 **Tasks:**
-- [ ] P2.1a Add all VITE_ variables to Vercel Dashboard → Environment Variables
-- [ ] P2.1b Set scope to "Production" (and optionally "Preview")
-- [ ] P2.1c Verify anon keys are the CORRECT project's anon keys
-- [ ] P2.1d Confirm no secret keys have VITE_ prefix
+- [✅] P2.1a Add all VITE_ variables to Vercel Dashboard → Environment Variables
+- [✅] P2.1b Set scope to "Production" (and optionally "Preview")
+- [✅] P2.1c Verify anon keys are the CORRECT project's anon keys
+- [✅] P2.1d Confirm no secret keys have VITE_ prefix
 
 ---
 
@@ -159,14 +159,14 @@ server separately (e.g., Railway, Render, Fly.io, or a VPS). See P2.4.
 | STRIPE_PRICE_AGENCY         | price_...                     | Live price IDs from Stripe          |
 
 **Tasks:**
-- [ ] P2.2a Create production .env template (`.env.example`) listing all required vars
-- [ ] P2.2b Set all server env vars on the hosting platform for the backend
-- [ ] P2.2c Change CORS_ORIGIN to https://volturiano.com
-- [ ] P2.2d Change FRONTEND_URL to https://volturiano.com
-- [ ] P2.2e Replace sk_test_ Stripe key with sk_live_ key
-- [ ] P2.2f Create NEW live webhook endpoint in Stripe Dashboard pointing to production URL
-- [ ] P2.2g Copy the new whsec_ webhook secret
-- [ ] P2.2h Replace test price IDs with live price IDs
+- [✅] P2.2a Create production .env template (`.env.example`) listing all required vars
+- [✅] P2.2b Set all server env vars on the hosting platform for the backend
+- [✅] P2.2c Change CORS_ORIGIN to https://volturiano.com
+- [✅] P2.2d Change FRONTEND_URL to https://volturiano.com
+- [✅] P2.2e Replace sk_test_ Stripe key with sk_live_ key
+- [✅] P2.2f Create NEW live webhook endpoint in Stripe Dashboard pointing to production URL
+- [✅] P2.2g Copy the new whsec_ webhook secret
+- [✅] P2.2h Replace test price IDs with live price IDs
 
 ---
 
@@ -189,11 +189,11 @@ But also verify:
 - No `.env` files exist in the git history (if they were accidentally committed before)
 
 **Tasks:**
-- [ ] P2.3a Run `git log --all --full-history -- "**/.env"` to check if .env was ever committed
-- [ ] P2.3b If found in history, rotate ALL affected keys immediately
-- [ ] P2.3c Create `web/.env.example` with placeholder values (no real keys)
-- [ ] P2.3d Create `web/server/.env.example` with placeholder values
-- [ ] P2.3e Double-check `git status` shows NO .env files staged
+- [✅] P2.3a Run `git log --all --full-history -- "**/.env"` to check if .env was ever committed
+- [✅] P2.3b If found in history, rotate ALL affected keys immediately
+- [✅] P2.3c Create `web/.env.example` with placeholder values (no real keys)
+- [✅] P2.3d Create `web/server/.env.example` with placeholder values
+- [✅] P2.3e Double-check `git status` shows NO .env files staged
 
 ---
 
@@ -225,12 +225,12 @@ RECOMMENDATION: Option (a) — separate backend hosting. The sandbox operations
 and SSE streaming require a persistent server.
 
 **Tasks:**
-- [ ] P2.4a DECIDE on backend hosting platform
-- [ ] P2.4b Set up the chosen platform with Node.js 20.x
-- [ ] P2.4c Deploy server/index.js with all environment variables
-- [ ] P2.4d Configure CORS_ORIGIN to allow https://volturiano.com
-- [ ] P2.4e Update Vite proxy OR add VITE_API_URL for production API endpoint
-- [ ] P2.4f Test all API endpoints work from the production frontend
+- [✅] P2.4a DECIDE on backend hosting platform
+- [✅] P2.4b Set up the chosen platform with Node.js 20.x
+- [✅] P2.4c Deploy server/index.js with all environment variables
+- [✅] P2.4d Configure CORS_ORIGIN to allow https://volturiano.com
+- [✅] P2.4e Update Vite proxy OR add VITE_API_URL for production API endpoint
+- [✅] P2.4f Test all API endpoints work from the production frontend
 - [ ] P2.4g Set up health check monitoring on the backend service
 
 ---
@@ -248,12 +248,12 @@ Current vercel.json includes:
 Additional production tasks:
 
 **Tasks:**
-- [ ] P2.5a Verify custom domain volturiano.com is connected in Vercel Dashboard
-- [ ] P2.5b Verify SSL/TLS certificate is active and auto-renewing
-- [ ] P2.5c Verify www.volturiano.com redirects to volturiano.com (or vice versa)
-- [ ] P2.5d Update CSP header to include production API domain (if backend is separate)
-- [ ] P2.5e Test the /sites/:slug rewrite works with production Supabase Storage URL
-- [ ] P2.5f Review and tighten CSP: consider removing 'unsafe-eval' if possible
+- [✅] P2.5a Verify custom domain volturiano.com is connected in Vercel Dashboard
+- [✅] P2.5b Verify SSL/TLS certificate is active and auto-renewing
+- [✅] P2.5c Verify www.volturiano.com redirects to volturiano.com (or vice versa)
+- [✅] P2.5d Update CSP header to include production API domain (if backend is separate)
+- [✅] P2.5e Test the /sites/:slug rewrite works with production Supabase Storage URL
+- [✅] P2.5f Review and tighten CSP: consider removing 'unsafe-eval' if possible
 
 
 ═══════════════════════════════════════════════════════════════════════════════════

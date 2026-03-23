@@ -1,0 +1,241 @@
+═══════════════════════════════════════════════════════════════════════════════════
+     PHASE P5: STRIPE PRODUCTION READINESS
+     MEGAPROMPTS FILE
+     Date: 2026-03-23
+═══════════════════════════════════════════════════════════════════════════════════
+
+CURRENT STATE — WHAT'S BROKEN:
+
+1. STRIPE PRODUCTS ARE WRONG
+   The Stripe Dashboard (test mode) has 3 old products in USD:
+     - Starter Pack: $9/mo
+     - Builder Pack: $19/mo
+     - Agency Pack: $39/mo
+   These need to be DELETED and recreated in SEK with correct pricing.
+
+2. ENV VARS DON'T MATCH CODE
+   The `.env` file has:
+     STRIPE_PRICE_STARTER=price_xxx (old)
+     STRIPE_PRICE_BUILDER=price_xxx (old)
+     STRIPE_PRICE_AGENCY=price_xxx  (old)
+   
+   But `billing.js` expects:
+     STRIPE_PRICE_STARTER_SUB   (subscription)
+     STRIPE_PRICE_PRO_SUB       (subscription)
+     STRIPE_PRICE_STUDIO_SUB    (subscription)
+     STRIPE_PRICE_PACK_10       (one-time)
+     STRIPE_PRICE_PACK_25       (one-time)
+     STRIPE_PRICE_PACK_60       (one-time)
+
+3. PRODUCTION AUTH IS BROKEN
+   Console shows: "Missing VITE_BUILDER_SUPABASE_URL or VITE_BUILDER_SUPABASE_ANON_KEY"
+   These env vars are NOT set in the Vercel project settings.
+   FIX: Add them in Vercel Dashboard → Settings → Environment Variables.
+
+4. CSP BLOCKS highlight.js
+   The Content-Security-Policy in vercel.json blocks cdn.jsdelivr.net.
+   FIX ALREADY APPLIED: Added cdn.jsdelivr.net to script-src and style-src.
+
+═══════════════════════════════════════════════════════════════════════════════════
+TARGET PRODUCT CATALOG (SEK — Swedish Kronor)
+═══════════════════════════════════════════════════════════════════════════════════
+
+SUBSCRIPTIONS (recurring monthly):
+┌─────────┬────────┬─────────┬──────────────────────────┐
+│ Plan    │ Price  │ Credits │ Env Var Name             │
+├─────────┼────────┼─────────┼──────────────────────────┤
+│ Starter │ 249 kr │ 20/mo   │ STRIPE_PRICE_STARTER_SUB │
+│ Pro     │ 499 kr │ 55/mo   │ STRIPE_PRICE_PRO_SUB     │
+│ Studio  │ 999 kr │ 120/mo  │ STRIPE_PRICE_STUDIO_SUB  │
+└─────────┴────────┴─────────┴──────────────────────────┘
+
+CREDIT PACKS (one-time):
+┌───────────┬────────┬─────────┬──────────────────────┐
+│ Pack      │ Price  │ Credits │ Env Var Name         │
+├───────────┼────────┼─────────┼──────────────────────┤
+│ 10 Pack   │ 129 kr │ 10      │ STRIPE_PRICE_PACK_10 │
+│ 25 Pack   │ 329 kr │ 25      │ STRIPE_PRICE_PACK_25 │
+│ 60 Pack   │ 749 kr │ 60      │ STRIPE_PRICE_PACK_60 │
+└───────────┴────────┴─────────┴──────────────────────┘
+
+═══════════════════════════════════════════════════════════════════════════════════
+PREREQUISITE: MANUAL STEPS YOU MUST DO BEFORE RUNNING MEGAPROMPTS
+═══════════════════════════════════════════════════════════════════════════════════
+
+These steps CANNOT be automated — you must do them in the browser:
+
+──── STEP A: Fix Production Auth (Vercel Dashboard) ────
+
+1. Go to: https://vercel.com → Your Project → Settings → Environment Variables
+2. Add these TWO variables (scope: Production + Preview):
+   
+   VITE_BUILDER_SUPABASE_URL = https://bfmqeuczlipocjqtzawj.supabase.co
+   VITE_BUILDER_SUPABASE_ANON_KEY = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJmbXFldWN6bGlwb2NqcXR6YXdqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE3OTg3OTgsImV4cCI6MjA4NzM3NDc5OH0.SjSF0DWaDZzO4921beKpub_wGCBfe3YxgRScEm2O_uk
+
+3. Redeploy (push a commit or trigger manual redeploy)
+
+Without this, the builder login page will NEVER work in production.
+
+──── STEP B: Create Stripe Products (Stripe Dashboard) ────
+
+1. Go to: https://dashboard.stripe.com/test/products
+2. Archive the old 3 products (Starter Pack $9, Builder Pack $19, Agency Pack $39)
+3. Create 6 NEW products:
+
+   SUBSCRIPTION PRODUCTS (recurring):
+   a) "Starter" — 249 SEK/month → Copy the price_xxx ID
+   b) "Pro"     — 499 SEK/month → Copy the price_xxx ID
+   c) "Studio"  — 999 SEK/month → Copy the price_xxx ID
+
+   ONE-TIME PRODUCTS:
+   d) "10 Credits" — 129 SEK one-time → Copy the price_xxx ID
+   e) "25 Credits" — 329 SEK one-time → Copy the price_xxx ID
+   f) "60 Credits" — 749 SEK one-time → Copy the price_xxx ID
+
+   IMPORTANT: Set currency to SEK for all products!
+
+4. Write down all 6 price IDs. You'll need them in Megaprompt 1.
+
+──── STEP C: Create Test Webhook ────
+
+1. Go to: https://dashboard.stripe.com/test/webhooks
+2. Create endpoint:
+   URL: https://mainsitevolturiano-production.up.railway.app/api/webhooks/stripe
+3. Select events:
+   - checkout.session.completed
+   - invoice.payment_succeeded
+   - customer.subscription.updated
+   - customer.subscription.deleted
+   - invoice.payment_failed
+4. Copy the "Signing secret" (whsec_xxx)
+
+
+═══════════════════════════════════════════════════════════════════════════════════
+
+────────────────────────────────────────────────────────────────────────────
+MEGAPROMPT 1 of 2 — Backend Env Vars & Stripe Integration Fix
+────────────────────────────────────────────────────────────────────────────
+
+Act as a Backend Payment Engineer. I have completed the manual Stripe setup
+and have my 6 new price IDs ready. I need you to update my environment and
+verify the integration works.
+
+**1. Update Server .env (`web/server/.env`)**
+
+Replace the old Stripe price variables with the new ones. The user will
+provide the actual price IDs when running this prompt.
+
+Remove these old lines:
+```
+STRIPE_PRICE_STARTER=price_xxx
+STRIPE_PRICE_BUILDER=price_xxx
+STRIPE_PRICE_AGENCY=price_xxx
+```
+
+Add these new lines (user provides the IDs):
+```
+# Subscription Plans (SEK monthly)
+STRIPE_PRICE_STARTER_SUB=<USER_PROVIDED_STARTER_PRICE_ID>
+STRIPE_PRICE_PRO_SUB=<USER_PROVIDED_PRO_PRICE_ID>
+STRIPE_PRICE_STUDIO_SUB=<USER_PROVIDED_STUDIO_PRICE_ID>
+
+# Credit Packs (SEK one-time)
+STRIPE_PRICE_PACK_10=<USER_PROVIDED_PACK10_PRICE_ID>
+STRIPE_PRICE_PACK_25=<USER_PROVIDED_PACK25_PRICE_ID>
+STRIPE_PRICE_PACK_60=<USER_PROVIDED_PACK60_PRICE_ID>
+```
+
+Also update `STRIPE_WEBHOOK_SECRET` if the user provides a new whsec_ value.
+
+**2. Update Railway Production Env Vars**
+
+Remind the user to also set these same 6 price IDs + webhook secret in
+Railway Dashboard → Variables. The backend runs there, not on Vercel.
+
+**3. Verify billing.js references**
+
+Open `web/server/routes/billing.js` and confirm:
+- Line 58: `process.env.STRIPE_PRICE_STARTER_SUB` → matches .env
+- Line 67: `process.env.STRIPE_PRICE_PRO_SUB` → matches .env
+- Line 77: `process.env.STRIPE_PRICE_STUDIO_SUB` → matches .env
+- Line 93: `process.env.STRIPE_PRICE_PACK_10` → matches .env
+- Line 102: `process.env.STRIPE_PRICE_PACK_25` → matches .env
+- Line 112: `process.env.STRIPE_PRICE_PACK_60` → matches .env
+
+If all match, report "confirmed". If any mismatch, fix the .env var names.
+
+**4. Verify webhooks.js**
+
+Open `web/server/routes/webhooks.js` and confirm:
+- It uses `process.env.STRIPE_WEBHOOK_SECRET` for signature verification
+- It handles all 5 required event types
+- Credits are added via the Supabase function after payment
+
+Report the verification results.
+
+**5. Update BeforeProdNeedsToBeDone.txt**
+
+Green-checkmark all P5 tasks that are now complete.
+
+
+────────────────────────────────────────────────────────────────────────────
+MEGAPROMPT 2 of 2 — End-to-End Stripe Test & Frontend Verification
+────────────────────────────────────────────────────────────────────────────
+
+Act as a QA Engineer testing the Stripe payment flow. The env vars are now
+set correctly. Run through this verification checklist:
+
+**1. Frontend Pricing Display**
+
+Open the pricing modal/page component (likely `CreditLimitModal.jsx` or
+similar) and verify:
+- Starter shows: 249 kr/mo, 20 credits
+- Pro shows: 499 kr/mo, 55 credits
+- Studio shows: 999 kr/mo, 120 credits
+- Pack 10: 129 kr, 10 credits
+- Pack 25: 329 kr, 25 credits
+- Pack 60: 749 kr, 60 credits
+
+If the frontend HARDCODES prices instead of fetching from /api/billing/plans,
+verify the hardcoded values match the server definitions.
+
+**2. Test Subscribe Flow (localhost)**
+
+a) Start the dev server: `npm run dev` (frontend) and server
+b) Navigate to the builder, trigger the pricing modal
+c) Click "Get Pro" (or any subscription plan)
+d) Verify:
+   - No "price_pro_sub_placeholder" error
+   - Stripe Checkout page loads with correct SEK price
+   - After payment (use Stripe test card 4242424242424242), redirect works
+   - Credits are added to the user's balance
+
+**3. Test Credit Pack Flow**
+
+a) Click "Buy Now" on a credit pack
+b) Verify Stripe Checkout shows the correct SEK amount
+c) Complete payment
+d) Verify credits appear in balance
+
+**4. Webhook Verification**
+
+a) Check the Stripe Dashboard → Webhooks → Recent deliveries
+b) Verify events are being received and have 200 status
+c) If any failures, check the Railway logs for errors
+
+**5. Production Deployment Checklist**
+
+After tests pass on localhost with test keys:
+- [ ] Set LIVE Stripe keys in Railway (sk_live_xxx, whsec_xxx for live webhook)
+- [ ] Create LIVE products with same SEK pricing
+- [ ] Update Railway env vars with live price IDs
+- [ ] Test one real payment ($1 test or smallest amount)
+- [ ] Verify Customer Portal works (/api/billing/manage)
+
+Green-checkmark all completed P5 tasks in BeforeProdNeedsToBeDone.txt.
+
+
+═══════════════════════════════════════════════════════════════════════════════════
+END OF PHASE 5 MEGAPROMPTS — 2 PROMPTS TOTAL
+(Plus manual prerequisite steps A, B, C that must be done first)
+═══════════════════════════════════════════════════════════════════════════════════

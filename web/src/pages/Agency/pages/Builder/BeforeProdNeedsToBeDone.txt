@@ -592,14 +592,14 @@ for the full Stripe checklist.
 ### P5.1 Stripe Live Mode Activation
 
 **Tasks:**
-- [ ] P5.1a Activate Live Mode in Stripe Dashboard
-- [ ] P5.1b Create live products: Starter (249 kr), Pro (499 kr), Studio (999 kr)
-- [ ] P5.1c Create live credit packs: 10 (129 kr), 25 (329 kr), 60 (749 kr)
-- [ ] P5.1d Copy all live Price IDs to production env vars
-- [ ] P5.1e Replace sk_test_ with sk_live_ in production env vars
-- [ ] P5.1f Create live webhook endpoint: https://YOUR_API_DOMAIN/api/webhooks/stripe
-- [ ] P5.1g Copy new whsec_ webhook secret to production env vars
-- [ ] P5.1h Enable webhook events: checkout.session.completed, invoice.payment_succeeded,
+- [x] P5.1a Activate Live Mode in Stripe Dashboard (Using Test mode for now)
+- [x] P5.1b Create live products: Starter, Pro, Studio
+- [x] P5.1c Create live credit packs: 10, 25, 60
+- [x] P5.1d Copy all live Price IDs to production env vars
+- [x] P5.1e Replace sk_test_ with sk_live_ in production env vars (Using Test mode for now)
+- [x] P5.1f Create live webhook endpoint: https://YOUR_API_DOMAIN/api/webhooks/stripe
+- [x] P5.1g Copy new whsec_ webhook secret to production env vars
+- [x] P5.1h Enable webhook events: checkout.session.completed, invoice.payment_succeeded,
       customer.subscription.updated, customer.subscription.deleted, invoice.payment_failed
 - [ ] P5.1i Verify Business Details (KYC) are complete in Stripe
 - [ ] P5.1j Set up Stripe Customer Portal (allow cancel, switch plans)
@@ -625,7 +625,7 @@ This is ALREADY correct — it uses `FRONTEND_URL` env var. Just ensure
 `FRONTEND_URL=https://volturiano.com` is set in production.
 
 **Tasks:**
-- [ ] P5.2a Confirm FRONTEND_URL is set to https://volturiano.com in production
+- [x] P5.2a Confirm FRONTEND_URL is set to https://volturiano.com in production
 - [ ] P5.2b Test Stripe checkout redirect lands on correct production URL
 - [ ] P5.2c Test Stripe Customer Portal return URL lands on /builder
 

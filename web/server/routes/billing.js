@@ -133,8 +133,17 @@ async function getOrCreateStripeCustomer(userId, userEmail) {
   }
 
   if (profile?.stripe_customer_id) {
-    console.log(`[Billing] Found existing Stripe customer: ${profile.stripe_customer_id}`);
-    return profile.stripe_customer_id;
+    try {
+      // Verify customer actually exists in Stripe and isn't deleted
+      const existing = await stripe.customers.retrieve(profile.stripe_customer_id);
+      if (!existing.deleted) {
+        console.log(`[Billing] Found existing active Stripe customer: ${profile.stripe_customer_id}`);
+        return profile.stripe_customer_id;
+      }
+      console.log(`[Billing] Stripe customer ${profile.stripe_customer_id} was deleted in Stripe. Recreating...`);
+    } catch (err) {
+      console.warn(`[Billing] Stripe customer ${profile.stripe_customer_id} not found:`, err.message);
+    }
   }
 
   // 2. Check if a Stripe customer already exists with this email

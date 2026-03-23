@@ -1,0 +1,93 @@
+═══════════════════════════════════════════════════════════════════════════════════
+ PHASE 2: MEGAPROMPTS & ARCHITECTURE DECISIONS
+ Document: Phase2PromptsProdFile.txt
+ Goal: Provide copy-pasteable prompts to execute Phase 2 perfectly.
+═══════════════════════════════════════════════════════════════════════════════════
+
+Before you run these prompts, you need to make the biggest architectural decision
+for your platform. Because Vercel kills Serverless Functions after 10-60 seconds, 
+it cannot host your Express backend (`server/index.js`), which runs long sandboxes.
+
+Here are your options for hosting the backend. Read them, make a choice, and then
+use the Megaprompts below.
+
+-----------------------------------------------------------------------------------
+DECISION MATRIX: BACKEND HOSTING OPTIONS
+-----------------------------------------------------------------------------------
+
+🟢 OPTION A: Railway.app (Highly Recommended)
+- Pros: Incredible developer experience. You just link your GitHub, point it to
+  the `web/server` folder, and it automatically builds and runs it. Great pricing 
+  ($5/mo hobby tier gives you plenty of compute). Easy env var management.
+- Cons: Slightly more expensive at scale compared to a raw VPS.
+
+🟡 OPTION B: Render.com (Solid Alternative)
+- Pros: Similar to Railway, very easy Git-based deployment. Offers a free tier 
+  (though it spins down when inactive, which you don't want for production).
+- Cons: Builds can be a bit slower than Railway. 
+
+🟠 OPTION C: DigitalOcean Droplet / AWS EC2 / Custom VPS
+- Pros: Cheapest option at high scale. Complete control over the OS.
+- Cons: You have to configure everything manually (Node.js, PM2, Nginx, SSL certs,
+  GitHub Actions for CI/CD). It's a huge DevOps headache.
+
+Recommendation: Go with Railway.app. It pairs perfectly with Vercel frontend.
+
+═══════════════════════════════════════════════════════════════════════════════════
+                            MEGAPROMPT 1
+    Use this to lock down your .env files and fix git security (P2.1, P2.2, P2.3)
+═══════════════════════════════════════════════════════════════════════════════════
+
+Copy and paste the following into the AI chat:
+
+"""
+Act as a Senior DevOps and Security Engineer. We are executing Phase 2 of our deployment plan. Our application has a Vite/React frontend and a Node.js/Express backend. 
+
+Please perform the following exact sequence of tasks:
+
+1. Create a `web/.env.example` file that contains all the `VITE_` prefixed environment variables currently used in `web/.env`, but leave the values blank or as dummy placeholder text.
+2. Create a `web/server/.env.example` file that contains all the backend environment variables used in `web/server/.env` (like API keys, Supabase role keys, Stripe keys, PORT, CORS_ORIGIN,FRONTEND_URL), leaving the actual secret values blank.
+3. Review my `.gitignore` file to ensure that `.env`, `.env.local`, `.env.*` are totally ignored in both the root folder, the `web` folder, and the `web/server` folder. 
+4. Provide me with a safe terminal command to check my git history to ensure I have never accidentally committed an `.env` file in the past.
+5. In my `web/server/routes/billing.js` and `web/server/index.js`, ensure that `CORS_ORIGIN` and `FRONTEND_URL` defaults are set safely, and give me a checklist of exactly which variables I need to grab from Stripe for Live Mode.
+
+Do not output the real secrets in our chat, just construct the templates.
+"""
+
+═══════════════════════════════════════════════════════════════════════════════════
+                            MEGAPROMPT 2
+    Use this once you pick your backend host (e.g., Railway) to wire up the API
+═══════════════════════════════════════════════════════════════════════════════════
+
+Once you have deployed the backend somewhere (let's say it gives you the URL 
+https://api.volturiano.com), copy and paste this:
+
+"""
+Act as a Full Stack Architect. I have decided to host my Vite/React frontend on Vercel (https://volturiano.com) and my Express backend on a separate hosting provider. The new production URL for my backend API is [INSERT YOUR RAILWAY/RENDER URL HERE].
+
+We need to decouple the frontend from the local proxy. Please execute the following:
+
+1. Update `vite.config.js`. Keep the `/api` proxy for local development (`npm run dev`), but ensure that production builds do not rely on the Vite proxy (since Vercel doesn't process Vite proxies in production static builds).
+2. Create a new environment variable standard: `VITE_API_URL`. 
+3. Search the frontend codebase (`web/src`) for any `fetch()` or `axios` calls that use relative paths (like `fetch('/api/projects')`). 
+4. Write a utility file (e.g., `web/src/utils/apiClient.js`) or instruct me on how to automatically prefix all API calls with `VITE_API_URL` when in production, while falling back to the relative `/api` path in development. 
+5. Modify `web/server/index.js` to ensure the CORS configuration explicitly accepts requests from `https://volturiano.com`.
+"""
+
+═══════════════════════════════════════════════════════════════════════════════════
+                            MEGAPROMPT 3
+    Use this to finalize Vercel configs & Security Headers (P2.5, Stripe config)
+═══════════════════════════════════════════════════════════════════════════════════
+
+Copy and paste this once the API connection is built:
+
+"""
+Act as a Web Security and Vercel Deployment Expert. We are finalizing our server setup before launching on our custom domain, volturiano.com.
+
+Please review and execute the following:
+1. Examine my current `web/vercel.json` file. Provide the exact updated code to ensure strict security headers are applied to all routes. Specifically restrict X-Frame-Options, X-Content-Type-Options, and configure a strict, production-ready Content-Security-Policy (CSP) that explicitly allows our frontend to talk to our new external backend API, and allows loading images/scripts from Stripe.
+2. Ensure the SPA fallback rewrite (`"source": "/(.*)", "destination": "/index.html"`) is perfectly configured so React Router handles 404s, but without breaking the `/sites/:slug` Supabase rewrite.
+3. Review `web/server/routes/webhooks.js` and confirm if there are any hardcoded localhost URLs remaining that would break Stripe Live mode. 
+
+Output the fully completed `vercel.json` file.
+"""

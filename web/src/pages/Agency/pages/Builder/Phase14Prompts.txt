@@ -1,0 +1,90 @@
+# ==============================================================================
+# PHASE S14: GITHUB INTEGRATION — MEGAPROMPTS (⏸️ PAUSED / ON HOLD)
+# ==============================================================================
+# This phase adds automated "Push to GitHub" functionality to the Volturiano Builder.
+# It allows users to create repositories and push their generated code with one click.
+# ==============================================================================
+
+---
+
+### MEGAPROMPT A: FOUNDATION & SECURITY (DB + BACKEND)
+**Target:** Backend Engineer / Supabase Admin
+**Goal:** Prepare the database for GitHub token storage and install core dependencies.
+
+```markdown
+I am implementing Phase S14 of the Volturiano project: GitHub Integration (OAuth + Push).
+The user can already log in via GitHub, but I need to store repository-scoped access tokens to allow the backend to push code to GitHub.
+
+Please perform the following operations:
+
+1. **SQL Migration:** 
+   Add the following columns to the `profiles` table to store GitHub-related information:
+   - `github_access_token`: TEXT (to store the encrypted access token)
+   - `github_username`: TEXT (optional, for UI display)
+   - `github_repo_url`: TEXT (to track if a project is already pushed, or add this to `projects` instead - let's add `github_repo_url` to the `projects` table as well).
+   Please provide the SQL for adding these columns safely (IF NOT EXISTS).
+
+2. **Backend Dependencies:**
+   Update `web/server/package.json` to include:
+   - `octokit`: For interaction with the GitHub API.
+   - `crypto-js`: (or use Node.js natively) for symmetric encryption of tokens at rest.
+
+3. **Encryption Utility:**
+   Create a utility `web/server/lib/github-crypto.js` that uses an environment variable `GITHUB_TOKEN_SECRET` to encrypt and decrypt the GitHub tokens before saving/loading from Supabase.
+
+4. **Environment Check:**
+   Remind me to add `GITHUB_TOKEN_SECRET` and `OCTOKIT_USER_AGENT` to my `.env` file.
+
+Please generate the SQL and the encryption utility file first.
+```
+
+---
+
+### MEGAPROMPT B: GITHUB PUSH LOGIC (SERVER-SIDE)
+**Target:** API Developer
+**Goal:** Create the core API route that handles repository creation and file pushing.
+
+```markdown
+I need a new API route `POST /api/github/push` in the Volturiano Builder server (Node.js/Express). 
+
+This route must perform the following steps:
+
+1. **Auth Check:** Verify the user is logged in (using the existing supabase auth middleware).
+2. **Retrieve Files:** Use `sandboxManager` or fetch snapshots to get the current state of files for the requested `buildId`.
+3. **Retrieve Token:** Fetch the `github_access_token` from the `profiles` table for the current user and decrypt it using our `github-crypto.js` utility.
+4. **GitHub Operation (Octokit):**
+   - Check if a repo with the specified name (or a default generated from the project name) exists.
+   - If not, create a new private repository.
+   - Use the GitHub "Trees" and "Commits" API through Octokit to perform a "blind push" of all files (index.html, src/, etc.) in a single commit.
+   - Add a default `README.md` and `.gitignore`.
+5. **Update Project:** If successful, save the repository URL back to the `projects` table in Supabase.
+6. **Response:** Return the new repo URL and success status.
+
+Reference `web/server/routes/publish.js` for how sandbox files are accessed and how Supabase is queried.
+Please write the complete code for `web/server/routes/github-push.js` and show how to mount it in `server/index.js`.
+```
+
+---
+
+### MEGAPROMPT C: FRONTEND UI & OAUTH FLOW
+**Target:** React Frontend Developer
+**Goal:** Integrate the "Push to GitHub" button and handle the scoped OAuth re-authentication.
+
+```markdown
+I need to add a "Push to GitHub" button to the `Generation.jsx` component in the Volturiano Builder.
+
+The logic should work as follows:
+
+1. **UI Placement:** Add the button in the action row of the `Generation.jsx` sidebar, ideally between the "Download" and "Publish" buttons. Use a GitHub icon from `react-icons/fi`.
+2. **Click Handler:** 
+   - Check if `github_access_token` is present in the user's profile.
+   - **If NOT present (or scoped re-auth needed):** Trigger `supabase.auth.signInWithOAuth` with `provider: 'github'` and `scopes: 'repo'`. Set the `redirectTo` to a new callback handler or the current page with a parameter. 
+   - **Capture Token:** On return from OAuth (detected via URL hash/fragment), check if a provider token exists in the session. Send this token to a new API endpoint `POST /api/github/store-token` to encrypt and save it to the profile.
+3. **The Push Action:**
+   - Once connected, clicking the button should trigger `POST /api/github/push`.
+   - Show a loading spinner/state ("Creating repository...", "Pushing code...").
+   - On success, show a confirmation message with a link to the GitHub repository.
+4. **Account Settings:** Briefly explain how to add a "Disconnect GitHub" option in `AccountSettings.jsx`.
+
+Please provide the updated JSX and the logic for `Generation.jsx`, and a small helper function/hook for token capture.
+```

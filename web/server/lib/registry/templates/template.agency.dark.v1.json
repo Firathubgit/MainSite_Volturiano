@@ -1,0 +1,55 @@
+{
+    "templateId": "template.agency.dark.v1",
+    "catalogVersion": "2026.02",
+    "name": "Dark Agency Landing",
+    "description": "Monolithic dark aesthetic with liquid motion waveforms.",
+    "thumbnailUrl": null,
+    "appWrapperClass": "relative min-h-screen w-full overflow-x-hidden bg-black text-white selection:bg-purple-500 selection:text-white",
+    "components": [
+        {
+            "componentId": "navigation.island.v1",
+            "props": {
+                "logoUrl": "https://lgrzyvuobexphamgnmqj.supabase.co/storage/v1/object/public/pics/TornadoMainLogo.png",
+                "navLinks": [
+                    {
+                        "name": "Platform",
+                        "href": "#products"
+                    },
+                    {
+                        "name": "Pricing",
+                        "href": "#"
+                    }
+                ]
+            }
+        },
+        {
+            "componentId": "hero.video.waveform.v1",
+            "props": {
+                "headline": "Scale Intelligence",
+                "subheadline": "Deploy custom AI agents and fluid neural interfaces. We bridge the gap between complex LLMs and world-class UX.",
+                "videoUrl": "https://lgrzyvuobexphamgnmqj.supabase.co/storage/v1/object/public/Vids/Make_it_wave_202602010003_kn9xo.mp4"
+            }
+        },
+        {
+            "componentId": "feature.code.integration.v1",
+            "props": {
+                "headline": "Simplicity by Design.",
+                "description": "We've abstracted the complexity of neural networks into a single, type-safe primitive. Drop it into your codebase and let the engine handle the rest."
+            }
+        },
+        {
+            "componentId": "footer.waveform.v1",
+            "props": {
+                "brandLogo": "https://lgrzyvuobexphamgnmqj.supabase.co/storage/v1/object/public/pics/TornadoMainLogo.png",
+                "tagline": "Crafting digital experiences that flow naturally. Based in Gothenburg, operating throughout sweden."
+            }
+        }
+    ],
+    "theme": {
+        "tokens": {
+            "radius": "18px",
+            "accent": "#7C3AED"
+        },
+        "globalCss": ".volturianoStamp {\n  display: inline-flex;\n  align-items: center;\n  justify-content: flex-start;\n  gap: 0; \n  padding: 0px 5px;\n  width: 55px; \n  height: 55px; \n  border-radius: 14px;\n  text-decoration: none;\n  overflow: hidden;\n  white-space: nowrap;\n  border: 2px solid transparent;\n  background-image: \n    linear-gradient(to bottom, #0a0a0a, #141414),\n    linear-gradient(135deg, rgba(255,255,255,0.9) 0%, rgba(80,80,80,0.5) 50%, rgba(255,255,255,0.8) 100%);\n  background-origin: padding-box, border-box;\n  background-clip: padding-box, border-box;\n  box-shadow: 0px 4px 30px -5px rgba(255, 255, 255, 0.15);\n  transition: width 0.5s cubic-bezier(0.25, 0.8, 0.25, 1), padding 0.5s cubic-bezier(0.25, 0.8, 0.25, 1), box-shadow 0.3s ease, transform 0.3s ease;\n}\n\n.volturianoStamp:hover {\n  width: 230px; \n  padding: 0px 20px; \n  box-shadow: 0px 8px 40px -4px rgba(255, 255, 255, 0.35);\n}\n\n.stampContent {\n  display: flex;\n  align-items: center;\n  gap: 15px; \n  opacity: 0;\n  max-width: 0;\n  padding-right: 0;\n  overflow: hidden;\n  transition: max-width 0.5s cubic-bezier(0.25, 0.8, 0.25, 1), opacity 0.4s ease-out, padding-right 0.5s cubic-bezier(0.25, 0.8, 0.25, 1), transform 0.4s ease-out;\n}\n\n.volturianoStamp:hover .stampContent {\n  opacity: 1;\n  max-width: 200px;\n  padding-right: 15px; \n}\n\n.stampText {\n  font-family: sans-serif;\n  font-size: 14px;\n  font-weight: 800;\n  letter-spacing: 2.5px;\n  text-transform: uppercase;\n  background: linear-gradient(to bottom, #ffffff 0%, #b0b0b0 100%);\n  -webkit-background-clip: text;\n  background-clip: text;\n  color: transparent;\n}\n\n.stampSeparator {\n  width: 1.5px;\n  height: 24px;\n  background: linear-gradient(to bottom, #ffffff, rgba(255,255,255,0.5));\n  border-radius: 10px;\n}\n\n.stampLogo {\n  height: 45px;\n  width: auto;\n  filter: brightness(0) invert(1);\n}"
+    }
+}

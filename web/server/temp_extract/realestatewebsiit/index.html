@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Sandbox App</title>
+<script>
+  (function() {
+    const oldLog = console.log;
+    const oldErr = console.error;
+    const oldWarn = console.warn;
+    const oldInfo = console.info;
+
+    function send(type, args) {
+      try {
+        // safely serialize args
+        const safeArgs = args.map(a => {
+          try {
+            if (a instanceof Error) return a.stack || a.message;
+            if (typeof a === 'object') return JSON.stringify(a);
+            return String(a);
+          } catch (e) { return '[Circular/Unserializable]'; }
+        });
+        window.parent.postMessage({ type: 'sandbox-console', level: type, args: safeArgs, timestamp: Date.now() }, '*');
+      } catch (e) { /* ignore */ }
+    }
+
+    console.log = (...args) => { oldLog(...args); send('log', args); };
+    console.error = (...args) => { oldErr(...args); send('error', args); };
+    console.warn = (...args) => { oldWarn(...args); send('warn', args); };
+    console.info = (...args) => { oldInfo(...args); send('info', args); };
+
+    window.onerror = (msg, url, line, col, error) => {
+      send('error', [msg, `at ${url}: ${line}: ${col}`, error || '']);
+    };
+  })();
+</script>
+  <script type="module" crossorigin src="./assets/index-bf635e61.js"></script>
+  <link rel="stylesheet" href="./assets/index-1d19d53d.css">
+</head>
+<body><div id="root"></div></body></html>

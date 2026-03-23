@@ -1,0 +1,1079 @@
+# Codebase Overview & Rendering Order
+
+## Application Entry Point
+1.  **`index.tsx`**: This is the entry point. It finds the root element and renders the `App` component wrapped in `React.StrictMode`.
+
+## Component Rendering Hierarchy (App.tsx)
+The `App` component acts as the main layout container. Components are rendered in this specific vertical order:
+
+1.  **`Navbar`** (`components/Navbar.tsx`):
+    - Rendered at the top, outside the `<main>` tag.
+    - It is `fixed` positioned and handles its own visibility based on scroll.
+
+2.  **`main`** Content Area:
+    - **`Hero`** (`components/Hero.tsx`):
+        - The first section visible.
+        - Contains the video background, the main "RIVELON" title, and the "Explore" button.
+        - Uses **`Button`** (`components/Button.tsx`).
+    
+    - **`ProductShowcase`** (`components/ProductShowcase.tsx`):
+        - A full-screen section showcasing a specific product (The Drifter Boot).
+        - Contains the product image and details.
+
+    - **`FeatureScroll`** (`components/FeatureScroll.tsx`):
+        - A logical "scrollytelling" section where users scroll through product features (Goodyear welt, Vibram sole, etc.).
+        - It uses a sticky layout to keep the text/image in view while content changes.
+
+    - **`CommunityGrid`** (`components/CommunityGrid.tsx`):
+        - A grid of images ("Worn in the Wild") showing the community/lifestyle shots.
+
+    - **`KeepExploring`** (`components/KeepExploring.tsx`):
+        - A navigation section with cards leading to other parts of the site (Store, Accessories, etc.).
+
+    - **`Footer`** (Inline in `App.tsx`):
+        - The bottom section with contact links, social links, and the branding stamp.
+
+## Available Components (Not currently rendered in App.tsx)
+- **`Philosophy.tsx`**: A purely presentational section with a "Manifesto" and image. It is available in the components folder but not currently used in the main flow of `App.tsx`.
+- **`Concierge.tsx`**: An AI-powered chat interface component. It is fully implemented with `geminiService.ts` but not currently placed in the render tree of `App.tsx`.
+
+## Utilities & Services
+- **`types.ts`**: TypeScript definitions for shared interfaces like `ChatMessage` and `SectionId`.
+- **`services/geminiService.ts`**: Handles the communication with the Google Gemini API for the Concierge component.
+- **`index.css`**: Global styles, Tailwind directives, and the specific CSS for the "Volturiano Stamp".
+
+---
+
+# File Contents
+
+## /index.tsx
+```tsx
+import React from 'react';
+import ReactDOM from 'react-dom/client';
+import App from './App';
+
+const rootElement = document.getElementById('root');
+if (!rootElement) {
+  throw new Error("Could not find root element to mount to");
+}
+
+const root = ReactDOM.createRoot(rootElement);
+root.render(
+  <React.StrictMode>
+    <App />
+  </React.StrictMode>
+);
+```
+
+## /App.tsx
+```tsx
+import React from 'react';
+import Navbar from './components/Navbar';
+import Hero from './components/Hero';
+import ProductShowcase from './components/ProductShowcase';
+import FeatureScroll from './components/FeatureScroll';
+import CommunityGrid from './components/CommunityGrid';
+import KeepExploring from './components/KeepExploring';
+import { SectionId } from './types';
+
+const App: React.FC = () => {
+  return (
+    <div className="bg-black min-h-screen text-white selection:bg-white/20 selection:text-white">
+      <Navbar />
+
+      <main>
+        <Hero />
+
+        {/* Massive White Product Showcase */}
+        <ProductShowcase />
+
+        {/* Sticky Abstract Feature List */}
+        <FeatureScroll />
+
+        {/* Community Gallery Grid */}
+        <CommunityGrid />
+
+
+
+        {/* Keep Exploring Section */}
+        <KeepExploring />
+
+        {/* Footer/Contact */}
+        <footer id={SectionId.CONTACT} className="py-24 px-6 border-t border-neutral-900 bg-black text-center relative overflow-hidden">
+          <div className="absolute inset-0 opacity-20 pointer-events-none bg-[url('https://grainy-gradients.vercel.app/noise.svg')]"></div>
+
+          <h2 className="text-[15vw] font-western text-neutral-900 leading-none select-none pointer-events-none absolute left-1/2 -translate-x-1/2 top-10 whitespace-nowrap opacity-50">
+            RIVELON
+          </h2>
+
+          <div className="relative z-10 pt-32">
+            <p className="text-neutral-500 text-xs tracking-[0.4em] uppercase mb-8 font-bold">End of the Line</p>
+            <a href="mailto:hello@volturiano.com" className="text-4xl md:text-5xl font-serif text-neutral-400 hover:text-white transition-colors border-b border-neutral-800 pb-2 hover:border-white">hello@volturiano.com</a>
+
+            <div className="mt-16 flex justify-center gap-12 text-xs text-stone-500 uppercase tracking-[0.2em] font-medium">
+              <span className="hover:text-white cursor-pointer transition-colors">Atelier</span>
+              <span className="hover:text-white cursor-pointer transition-colors">Telegram</span>
+              <span className="hover:text-white cursor-pointer transition-colors">Journal</span>
+            </div>
+
+            <p className="mt-16 mb-8 text-[10px] text-neutral-600">© 2024 Rivelon. All rights reserved.</p>
+
+            <div className="flex justify-center pb-8">
+              <a href="https://volturiano.com" target="_blank" className="volturianoStamp" rel="noopener noreferrer">
+                <div className="stampContent">
+                  <span className="stampText">POWERED BY</span>
+                  <div className="stampSeparator"></div>
+                </div>
+                <img src="/TornadoMainLogo.png" alt="Volturiano" className="stampLogo" />
+              </a>
+            </div>
+          </div>
+        </footer>
+      </main>
+    </div>
+  );
+};
+
+export default App;
+```
+
+## /components/Navbar.tsx
+```tsx
+import React, { useState, useEffect } from 'react';
+import { SectionId } from '../types';
+
+const Navbar: React.FC = () => {
+  const [isVisible, setIsVisible] = useState(true);
+  const [isAtTop, setIsAtTop] = useState(true);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      const currentScrollY = window.scrollY;
+
+      // Only visible at the very top (threshold < 50px)
+      const atTop = currentScrollY < 50;
+      setIsVisible(atTop);
+      setIsAtTop(atTop);
+    };
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    // Trigger once on mount to handle refresh position
+    handleScroll();
+
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  const navLinks = [
+    { name: 'Contact', href: `#${SectionId.CONTACT}` },
+  ];
+
+  return (
+    <nav
+      className={`fixed top-0 left-0 w-full z-40 transition-transform duration-500 ease-in-out border-b ${isVisible ? 'translate-y-0' : '-translate-y-full'
+        } ${!isAtTop ? 'bg-black/90 backdrop-blur-md border-white/5 py-4 shadow-lg' : 'bg-transparent border-transparent py-8'
+        }`}
+    >
+      <div className="w-full px-6 md:px-12 flex items-center justify-between">
+        {/* Logo */}
+        {/* Logo */}
+        <a href="#" className="z-50 mix-blend-difference hover:opacity-80 transition-opacity">
+          <img src="/TornadoMainLogo.png" alt="RIVELON" className="h-8 md:h-10 w-auto object-contain" />
+        </a>
+
+        {/* Links */}
+        <div className="hidden md:flex items-center space-x-12 mix-blend-difference z-50">
+          {navLinks.map((link) => (
+            <a
+              key={link.name}
+              href={link.href}
+              className="text-[10px] uppercase tracking-[0.25em] font-medium text-white/90 hover:text-white transition-colors relative group"
+            >
+              {link.name}
+              <span className="absolute -bottom-2 left-0 w-0 h-[1px] bg-white transition-all duration-300 group-hover:w-full"></span>
+            </a>
+          ))}
+        </div>
+
+        {/* Mobile Menu Icon */}
+        <div className="md:hidden text-white cursor-pointer mix-blend-difference z-50">
+          <svg width="24" height="12" viewBox="0 0 24 12" fill="none" stroke="currentColor">
+            <line x1="0" y1="1" x2="24" y2="1" strokeWidth="1" />
+            <line x1="12" y1="11" x2="24" y2="11" strokeWidth="1" />
+          </svg>
+        </div>
+      </div>
+    </nav>
+  );
+};
+
+export default Navbar;
+```
+
+## /components/Hero.tsx
+```tsx
+import React, { useEffect, useRef, useState } from 'react';
+import Button from './Button';
+import { SectionId } from '../types';
+
+const Hero: React.FC = () => {
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const [isLoaded, setIsLoaded] = useState(false);
+  const [scrollY, setScrollY] = useState(0);
+
+  useEffect(() => {
+    if (videoRef.current) {
+      videoRef.current.playbackRate = 0.9;
+    }
+
+    const handleScroll = () => {
+      // Direct state update for snappy responsiveness
+      setScrollY(window.scrollY);
+    };
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  const scrollToNext = () => {
+    const nextSection = document.getElementById(SectionId.PHILOSOPHY);
+    if (nextSection) {
+      nextSection.scrollIntoView({ behavior: 'smooth' });
+    }
+  };
+
+  // "Poof" logic: Rapid fade out.
+  // Using 250px for a slightly more forgiving but still quick fade.
+  const poofOpacity = Math.max(0, 1 - scrollY / 250);
+  const poofBlur = Math.min(10, scrollY / 20); // Subtle blur
+  const poofScale = 1 + scrollY * 0.0005;
+
+  return (
+    <section id={SectionId.HERO} className="relative h-[120vh] w-full overflow-hidden bg-black">
+      {/* Video Background with Parallax */}
+      <div
+        className="absolute inset-0 z-0 h-[120%] w-full"
+        style={{ transform: `translate3d(0, ${scrollY * 0.2}px, 0)` }}
+      >
+        <video
+          ref={videoRef}
+          autoPlay
+          muted
+          loop
+          playsInline
+          onLoadedData={() => setIsLoaded(true)}
+          className={`w-full h-full object-cover opacity-80 transition-opacity duration-[2000ms] ease-out ${isLoaded ? 'opacity-80' : 'opacity-0'}`}
+        >
+          <source src="https://lgrzyvuobexphamgnmqj.supabase.co/storage/v1/object/public/Vids/Make_it_move_202602090108_b7eba.mp4" type="video/mp4" />
+        </video>
+        {/* Grain overlay */}
+        <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-30 brightness-100 contrast-150 mix-blend-overlay"></div>
+        {/* Dark Cinematic darkening */}
+        <div className="absolute inset-0 bg-black/60 mix-blend-multiply" />
+      </div>
+
+      {/* Content Container */}
+      <div className="relative z-10 h-screen w-full px-6 md:px-12 pt-24 md:pt-28 flex flex-col justify-between pointer-events-none">
+
+        {/* Top Section: Massive Text with INSTANT POOF effect */}
+        <div
+          className="pointer-events-auto will-change-transform will-change-opacity"
+          style={{
+            opacity: isLoaded ? poofOpacity : 0,
+            filter: `blur(${poofBlur}px)`,
+            transform: `translate3d(0, ${scrollY * -0.5}px, 0) scale(${poofScale})`,
+            // Logic: Smooth entrance on load (1s), but INSTANT 'none' transition during scroll for that "click" feeling.
+            transition: isLoaded && scrollY > 5 ? 'none' : 'opacity 1s cubic-bezier(0.16, 1, 0.3, 1), transform 1s cubic-bezier(0.16, 1, 0.3, 1)'
+          }}
+        >
+          <div className="max-w-full">
+            <div className="flex flex-col select-none mix-blend-overlay -ml-1">
+              <h1 className="text-[15vw] leading-[0.8] font-serif font-normal text-[#e7e5e4] tracking-tighter">
+                RIVELON
+              </h1>
+              <h1 className="text-[15vw] leading-[0.8] font-serif font-normal bg-gradient-to-r from-neutral-200 to-neutral-600 bg-clip-text text-transparent tracking-tighter">
+                LEATHER
+              </h1>
+              <h1 className="text-[15vw] leading-[0.8] font-serif font-normal text-[#e7e5e4] tracking-tighter">
+                ATELIER
+              </h1>
+            </div>
+            <div className="ml-2 md:ml-4 mt-8 overflow-hidden">
+              <p className="text-2xl md:text-4xl font-light font-sans text-neutral-300 tracking-wide animate-slideUp flex items-center gap-4">
+                {/* Est. 2024 White Again */}
+                <span className="font-western text-white text-sm md:text-lg tracking-widest uppercase">Est. 2024</span>
+                <span className="w-12 h-px bg-neutral-600"></span>
+                <span className="font-serif italic opacity-90">A Quieter Frontier</span>
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Middle/Bottom Section: Magazine Columns */}
+        <div className="grid grid-cols-1 md:grid-cols-12 gap-6 pb-12 items-end">
+
+          {/* Left Column (Removed) */}
+          <div className="md:col-span-3 hidden md:block pointer-events-auto">
+            {/* Text block removed */}
+          </div>
+
+          {/* Center/Right: Action - aligned to right now */}
+          <div className="md:col-span-9 flex flex-col md:flex-row justify-end items-end w-full">
+
+            {/* Text description removed */}
+            <div className="hidden"></div>
+
+            <div className={`pointer-events-auto transition-all duration-1000 delay-700 ${isLoaded ? 'opacity-100' : 'opacity-0'}`}>
+              <Button onClick={scrollToNext} variant="outline" className="backdrop-blur-sm bg-neutral-900/30 border-neutral-700 hover:bg-white hover:text-black hover:border-white">
+                Explore
+              </Button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+};
+
+export default Hero;
+```
+
+## /components/ProductShowcase.tsx
+```tsx
+import React from 'react';
+
+const ProductShowcase: React.FC = () => {
+  return (
+    <section className="relative h-screen w-full bg-white overflow-hidden">
+
+      {/* Product Image - Full Cover End-to-End */}
+      <div className="absolute inset-0 w-full h-full z-0 bg-[#f5f5f7]">
+        <picture className="w-full h-full block">
+          <source media="(min-width: 768px)" srcSet="https://lgrzyvuobexphamgnmqj.supabase.co/storage/v1/object/public/pics/Gemini_Generated_Image_qbdqw3qbdqw3qbdq.png" />
+          <img
+            src="https://lgrzyvuobexphamgnmqj.supabase.co/storage/v1/object/public/pics/Gemini_Generated_Image_qbdqw3qbdqw3qbdq.png"
+            alt="RIVELON Drifter Boot"
+            className="w-full h-full object-cover object-center"
+          />
+        </picture>
+      </div>
+
+      {/* Content Overlay - Absolute Positioning */}
+      <div className="absolute inset-0 z-10 pointer-events-none p-6 md:p-12 flex flex-col justify-between">
+
+        {/* Top Header Area */}
+        <div className="flex flex-col md:flex-row md:items-start md:justify-between w-full pointer-events-auto">
+          {/* Title & Pills */}
+          <div className="space-y-6 max-w-xl">
+            <h2 className="text-5xl md:text-7xl font-sans font-medium tracking-tight text-[#1d1d1f] leading-none">
+              The Drifter
+            </h2>
+
+            <div className="flex flex-wrap gap-2 md:gap-3">
+              {['Rough-out bison', 'Goodyear welt', 'Vibram® 100 outsole', 'Solid brass hardware'].map((tag) => (
+                <span key={tag} className="px-3 py-1.5 md:px-4 md:py-2 bg-[#e8e8ed]/80 backdrop-blur-sm text-[#1d1d1f] text-[10px] md:text-xs font-medium rounded-full hover:bg-[#d2d2d7] transition-colors cursor-default border border-transparent">
+                  + {tag}
+                </span>
+              ))}
+            </div>
+          </div>
+
+          {/* Custom/Standard Toggle - Minimalist */}
+          <div className="hidden md:flex mt-4 md:mt-0 bg-white/50 backdrop-blur-md p-1 rounded-full border border-stone-200/50 shadow-sm">
+            <button className="px-5 py-1.5 bg-[#1d1d1f] text-white rounded-full text-xs font-medium shadow-sm transition-all">
+              Ready
+            </button>
+            <button className="px-5 py-1.5 text-stone-600 hover:text-stone-900 rounded-full text-xs font-medium transition-colors">
+              Made to order
+            </button>
+          </div>
+        </div>
+
+        {/* Bottom Area: Navigation */}
+        <div className="flex justify-end items-end w-full pointer-events-auto">
+          {/* Price/CTA (Optional Addition for balance, purely text) */}
+          <div className="hidden md:block text-right">
+            <p className="text-xs font-mono tracking-widest text-stone-500 uppercase mb-1">From</p>
+            <p className="text-xl font-bold text-[#1d1d1f]">$450.00</p>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+};
+
+export default ProductShowcase;
+```
+
+## /components/FeatureScroll.tsx
+```tsx
+import React, { useRef, useState, useEffect } from 'react';
+
+const features = [
+  {
+    title: "Rough-out bison",
+    description: "Sourced from the deep plains. Tough, textured, and gets better with every scar.",
+    image: "/1lether.png"
+  },
+  {
+    title: "Goodyear welt",
+    description: "The gold standard of construction. Resoleable, water-resistant, built for a lifetime.",
+    image: "/2booty.png"
+  },
+  {
+    title: "Cork midsole",
+    description: "Molds to your foot pattern over time. A custom fit carved by your own journey.",
+    image: "/3closish.png"
+  },
+  {
+    title: "Vibram® outsole",
+    description: "Italian rubber designed for the mountains. Grip that refuses to let go.",
+    image: "/4sole.png"
+  },
+  {
+    title: "Solid brass",
+    description: "Antique-finish brass hardware—built to hold its shape, season after season.",
+    image: "/5braass.png"
+  }
+];
+
+const FeatureScroll: React.FC = () => {
+  const sectionRef = useRef<HTMLDivElement>(null);
+  const [activeIndex, setActiveIndex] = useState(0);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      if (!sectionRef.current) return;
+
+      const { top, height } = sectionRef.current.getBoundingClientRect();
+      const viewportHeight = window.innerHeight;
+      const totalScrollDistance = height - viewportHeight;
+
+      // Calculate how far we've scrolled into the section (0 to 1)
+      let progress = -top / totalScrollDistance;
+      progress = Math.max(0, Math.min(1, progress));
+
+      // Determine active index
+      const newIndex = Math.min(features.length - 1, Math.floor(progress * features.length));
+      setActiveIndex(newIndex);
+    };
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  return (
+    // Reduced height from 400vh to 250vh to effectively halve the scroll effort
+    <section ref={sectionRef} className="h-[250vh] bg-black relative">
+
+      <div className="sticky top-0 h-screen w-full flex flex-col md:flex-row p-4 md:p-24 gap-4 md:gap-24 overflow-hidden box-border">
+
+        {/* Left Card: Text List (Top on mobile) */}
+        <div className="w-full h-[45vh] md:h-auto md:flex-1 bg-white rounded-[1.5rem] md:rounded-[2rem] relative overflow-hidden shadow-2xl order-1">
+
+          <div className="absolute top-6 left-6 md:top-12 md:left-20 z-10">
+            <span className="text-[10px] md:text-xs font-mono uppercase tracking-widest text-stone-400">Details</span>
+          </div>
+
+          {/* Text Container: Positioned absolute top-1/2, then translated to center the ACTIVE item */}
+          <div
+            className="absolute top-1/2 left-0 w-full px-6 md:px-20 transition-transform duration-500 ease-out will-change-transform"
+            style={{ transform: `translateY(calc(-${activeIndex * 140}px - 70px))` }}
+          >
+            {features.map((feature, i) => (
+              <div
+                key={i}
+                className={`h-[140px] flex flex-col justify-center transition-all duration-500 ${i === activeIndex ? 'opacity-100 blur-0 translate-x-0' : 'opacity-20 blur-[2px] translate-x-4'}`}
+              >
+                <h2 className="text-3xl md:text-6xl font-sans font-medium tracking-tight text-neutral-900 leading-none">
+                  {feature.title}
+                </h2>
+                {/* Only show description for active item */}
+                <div className={`overflow-hidden transition-all duration-500 ${i === activeIndex ? 'max-h-24 opacity-100 mt-2 md:mt-4' : 'max-h-0 opacity-0 mt-0'}`}>
+                  <p className="text-neutral-600 text-xs md:text-base max-w-md leading-relaxed line-clamp-2 md:line-clamp-none">
+                    {feature.description}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Progress Indicator Line */}
+          <div className="absolute left-6 md:left-12 top-1/2 -translate-y-1/2 w-0.5 h-32 md:h-64 bg-neutral-200 rounded-full overflow-hidden">
+            <div
+              className="w-full bg-neutral-900 transition-all duration-300"
+              style={{ height: `${(activeIndex + 1) / features.length * 100}%` }}
+            ></div>
+          </div>
+        </div>
+
+        {/* Right Card: Images (Bottom on mobile) */}
+        <div className="w-full h-[45vh] md:h-auto md:flex-1 bg-[#292524] rounded-[1.5rem] md:rounded-[2rem] relative overflow-hidden shadow-2xl order-2">
+          {features.map((feature, i) => (
+            <div
+              key={i}
+              className={`absolute inset-0 w-full h-full transition-all duration-700 ease-in-out ${i === activeIndex ? 'opacity-100 scale-100 z-10' : 'opacity-0 scale-110 z-0'}`}
+            >
+              <img
+                src={feature.image}
+                alt={feature.title}
+                className="w-full h-full object-cover opacity-90 grayscale-[0.2] scale-[1.2]"
+              />
+
+              <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent"></div>
+
+              {/* Floating Tag within image */}
+              <div className="absolute bottom-6 left-6 md:bottom-10 md:left-10 bg-white/10 backdrop-blur-md border border-white/20 px-3 py-1.5 md:px-4 md:py-2 rounded-full">
+                <span className="text-[9px] md:text-[10px] text-white/80 font-mono tracking-widest uppercase">Fig. 0{i + 1} — {feature.title}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+
+      </div>
+    </section>
+  );
+};
+
+export default FeatureScroll;
+```
+
+## /components/CommunityGrid.tsx
+```tsx
+import React from 'react';
+
+const mediaItems = [
+  { type: 'image', src: '/21photo/Gemini_Generated_Image_2n41sy2n41sy2n41.png' },
+  { type: 'image', src: '/21photo/Gemini_Generated_Image_3q2x0h3q2x0h3q2x.png' },
+  { type: 'image', src: '/21photo/Gemini_Generated_Image_3yb8ny3yb8ny3yb8.png' },
+  { type: 'image', src: '/21photo/Gemini_Generated_Image_5gg8b65gg8b65gg8.png' },
+  { type: 'image', src: '/21photo/Gemini_Generated_Image_8es9468es9468es9.png' },
+  { type: 'image', src: '/21photo/Gemini_Generated_Image_8oequj8oequj8oeq.png' },
+  { type: 'image', src: '/21photo/Gemini_Generated_Image_806qi6806qi6806q.png' }, // 6
+  { type: 'image', src: '/21photo/Gemini_Generated_Image_851ecc851ecc851e.png' },
+  { type: 'image', src: '/21photo/Gemini_Generated_Image_b599ulb599ulb599.png' },
+  { type: 'image', src: '/21photo/Gemini_Generated_Image_d2bgfed2bgfed2bg.png' },
+  { type: 'image', src: '/21photo/Gemini_Generated_Image_dnjlttdnjlttdnjl.png' },
+  { type: 'image', src: '/21photo/Gemini_Generated_Image_ioovh9ioovh9ioov.png' },
+  { type: 'image', src: '/21photo/Gemini_Generated_Image_mpfjkcmpfjkcmpfj.png' },
+  { type: 'image', src: '/21photo/Gemini_Generated_Image_q7snofq7snofq7sn.png' }, // 13
+  { type: 'image', src: '/21photo/Gemini_Generated_Image_s2wouds2wouds2wo.png' },
+  { type: 'image', src: '/21photo/Gemini_Generated_Image_tag83utag83utag8.png' },
+  { type: 'image', src: '/21photo/Gemini_Generated_Image_to4bybto4bybto4b.png' },
+  { type: 'image', src: '/21photo/Gemini_Generated_Image_wenf14wenf14wenf.png' },
+  { type: 'image', src: '/21photo/Gemini_Generated_Image_xytvnbxytvnbxytv.png' },
+  { type: 'image', src: '/21photo/Gemini_Generated_Image_yw9tehyw9tehyw9t.png' },
+  { type: 'image', src: '/21photo/Gemini_Generated_Image_2n41sy2n41sy2n41.png' }, // 20 (Duplicate first to make 21)
+];
+
+const CommunityGrid: React.FC = () => {
+  // Logic to calculate the "wave" offset based on the 7-column grid layout from the original design
+  // Pattern: 0px, 18.5px, 37px, 55.7px, 37px, 18.5px, 0px
+  const getTransformStyle = (index: number) => {
+    // Only apply transforms on desktop (md breakpoint and up)
+    if (typeof window !== 'undefined' && window.innerWidth < 768) {
+      return {};
+    }
+
+    const column = index % 7;
+    // Calculate distance from center column (3)
+    const distFromCenter = Math.abs(column - 3);
+    // Base step roughly 18.57px based on original css
+    const offset = (3 - distFromCenter) * 18.57;
+
+    return {
+      transform: `translate3d(0px, ${offset}px, 0px)`
+    };
+  };
+
+  return (
+    <section className="py-24 px-4 bg-black overflow-hidden">
+      <div className="max-w-[1800px] mx-auto mb-16 px-4 md:px-12 text-center">
+        <span className="font-western text-neutral-500 text-lg mb-2 block">Field Notes</span>
+        <h2 className="text-3xl md:text-5xl font-serif text-white">Worn in the Wild</h2>
+      </div>
+
+      <div className="grid grid-cols-2 md:grid-cols-7 gap-3 md:gap-4 pb-12 md:pb-24">
+        {mediaItems.map((item, i) => (
+          <div
+            key={i}
+            className="w-full relative group"
+            // Apply inline style directly for the wave effect on desktop
+            style={{
+              ...getTransformStyle(i)
+            }}
+          >
+            <div className="w-full h-auto aspect-[180/276] rounded-lg overflow-hidden bg-neutral-900 relative">
+              <img
+                src={item.src}
+                alt={`Field Note ${String(i + 1).padStart(2, '0')}`}
+                loading="lazy"
+                className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+              />
+              {/* Dark gradient overlay on hover */}
+              <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors duration-300"></div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+};
+
+export default CommunityGrid;
+```
+
+## /components/KeepExploring.tsx
+```tsx
+import React from 'react';
+
+const KeepExploring: React.FC = () => {
+    const cards = [
+        { title: "Try in store", href: "#" },
+        { title: "Accessories", href: "#" },
+        { title: "Find a stockist", href: "#" },
+        { title: "Concierge", href: "#" }
+    ];
+
+    return (
+        <section className="relative min-h-[1000px] w-full overflow-hidden bg-black flex flex-col justify-start">
+            {/* Background Image with "Happy" Random Unsplash */}
+            <div className="absolute inset-0 z-0">
+                <img
+                    src="https://images.unsplash.com/photo-1516939884455-1445c8652f83?auto=format&fit=crop&w=2000&q=80"
+                    alt="Overland Background"
+                    className="w-full h-full object-cover opacity-80"
+                />
+
+                {/* Top Gradient: Smooth fade from black (top) to transparent */}
+                <div className="absolute top-0 left-0 w-full h-[600px] bg-gradient-to-b from-black via-black/60 to-transparent"></div>
+
+                {/* Bottom gradient to blend into footer */}
+                <div className="absolute bottom-0 left-0 w-full h-[400px] bg-gradient-to-t from-black to-transparent"></div>
+            </div>
+
+            <div className="relative z-10 w-full max-w-7xl mx-auto px-6 md:px-12 pt-[300px] text-center">
+                <h2 className="text-5xl md:text-7xl font-serif text-white mb-12 md:mb-20 tracking-tight">Continue</h2>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-6">
+                    {cards.map((card, index) => (
+                        <a
+                            key={index}
+                            href={card.href}
+                            className="group flex items-end justify-between p-4 md:p-8 bg-white rounded-lg hover:bg-neutral-200 transition-colors duration-300 min-h-[140px] md:min-h-[200px] cursor-pointer text-left"
+                        >
+                            <p className="text-xl md:text-2xl font-medium text-black tracking-tight leading-none mb-1">
+                                {card.title}
+                            </p>
+
+                            <div className="w-8 h-8 md:w-10 md:h-10 flex items-center justify-center bg-neutral-200 rounded-full group-hover:bg-black group-hover:text-white transition-all duration-300 flex-shrink-0 ml-4">
+                                <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5" className="rotate-180 transform group-hover:rotate-[-135deg] transition-transform duration-300 w-3 h-3 md:w-[14px] md:h-[14px]">
+                                    <path d="M6 1L1 6L6 11" strokeLinecap="round" strokeLinejoin="round" />
+                                </svg>
+                            </div>
+                        </a>
+                    ))}
+                </div>
+            </div>
+        </section>
+    );
+};
+
+export default KeepExploring;
+```
+
+## /components/Button.tsx
+```tsx
+import React from 'react';
+
+interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
+  variant?: 'primary' | 'secondary' | 'outline' | 'ghost';
+  children: React.ReactNode;
+}
+
+const Button: React.FC<ButtonProps> = ({ 
+  variant = 'primary', 
+  children, 
+  className = '', 
+  ...props 
+}) => {
+  const baseStyles = "px-8 py-3 transition-all duration-500 ease-out text-sm tracking-[0.2em] uppercase font-light border relative overflow-hidden group";
+  
+  const variants = {
+    primary: "bg-white text-black border-white hover:bg-black hover:text-white hover:border-white",
+    secondary: "bg-transparent text-white border-white/30 hover:border-white hover:bg-white/5",
+    outline: "bg-transparent text-white border-white hover:bg-white hover:text-black",
+    ghost: "bg-transparent border-transparent text-white/70 hover:text-white"
+  };
+
+  return (
+    <button 
+      className={`${baseStyles} ${variants[variant]} ${className}`}
+      {...props}
+    >
+      <span className="relative z-10">{children}</span>
+    </button>
+  );
+};
+
+export default Button;
+```
+
+## /components/Philosophy.tsx
+```tsx
+import React from 'react';
+import { SectionId } from '../types';
+
+const Philosophy: React.FC = () => {
+  return (
+    <section id={SectionId.PHILOSOPHY} className="py-32 px-6 md:px-12 bg-[#1c1917] relative overflow-hidden">
+      {/* Texture Overlay */}
+      <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cardboard.png')] opacity-5 mix-blend-overlay pointer-events-none"></div>
+      
+      <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-20 items-center">
+        
+        {/* Image / Visual */}
+        <div className="order-2 md:order-1 relative group">
+           {/* Decorative Western Border */}
+           <div className="absolute -inset-4 border border-stone-600/30 opacity-60 group-hover:scale-105 transition-transform duration-700"></div>
+           
+           <div className="aspect-[3/4] overflow-hidden relative">
+              <img 
+                src="https://images.unsplash.com/photo-1536693527297-c866d5257904?q=80&w=1000&auto=format&fit=crop" 
+                alt="Desert Rider" 
+                className="w-full h-full object-cover grayscale sepia-[.3] contrast-125 group-hover:scale-110 transition-transform duration-1000" 
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-[#1c1917] via-transparent to-transparent opacity-60"></div>
+              
+              {/* Overlay Text */}
+              <div className="absolute bottom-6 left-6">
+                <span className="font-western text-4xl text-white/90 drop-shadow-lg">Wild</span>
+              </div>
+           </div>
+        </div>
+        
+        {/* Content */}
+        <div className="order-1 md:order-2 space-y-10">
+          <div>
+            <span className="text-amber-600 text-xs tracking-[0.4em] uppercase font-bold mb-4 block">Manifesto</span>
+            <h2 className="text-5xl md:text-7xl text-[#e7e5e4] font-serif leading-[0.9]">
+              Saddle Up in <br />
+              <span className="italic text-stone-500 font-light">High Style.</span>
+            </h2>
+          </div>
+          
+          <div className="space-y-6 text-stone-400 font-light leading-relaxed text-lg border-l border-stone-700 pl-8">
+            <p>
+              The digital landscape is the new Wild West. Limitless, untamed, and unforgiving to those who hesitate.
+            </p>
+            <p>
+              At Aura, we don't just build websites; we claim territory. We blend the rugged authenticity of the ranch with the sleek minimalism of modern art. It's about grit, soul, and the freedom of the open code.
+            </p>
+          </div>
+
+          <div className="pt-8 flex flex-col md:flex-row gap-12">
+             <div className="flex flex-col">
+                <span className="text-5xl font-western text-stone-700 mb-2 group-hover:text-amber-600 transition-colors">01.</span>
+                <span className="text-lg font-serif text-stone-200">Heritage</span>
+                <p className="text-xs text-stone-500 mt-2 max-w-[150px]">Rooted in tradition, built for tomorrow.</p>
+             </div>
+             <div className="flex flex-col">
+                <span className="text-5xl font-western text-stone-700 mb-2">02.</span>
+                <span className="text-lg font-serif text-stone-200">Horizon</span>
+                <p className="text-xs text-stone-500 mt-2 max-w-[150px]">Always chasing the setting sun.</p>
+             </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+};
+
+export default Philosophy;
+```
+
+## /components/Concierge.tsx
+```tsx
+import React, { useState, useRef, useEffect } from 'react';
+import { ChatMessage } from '../types';
+import { sendConciergeMessage } from '../services/geminiService';
+import Button from './Button';
+
+const Concierge: React.FC = () => {
+  const [isOpen, setIsOpen] = useState(false);
+  const [messages, setMessages] = useState<ChatMessage[]>([
+    { role: 'model', text: "Tips hat. Welcome to the frontier. What are you looking for?" }
+  ]);
+  const [input, setInput] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages, isOpen]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!input.trim() || isLoading) return;
+
+    const userMsg: ChatMessage = { role: 'user', text: input };
+    setMessages(prev => [...prev, userMsg]);
+    setInput('');
+    setIsLoading(true);
+
+    const responseText = await sendConciergeMessage(messages, userMsg.text);
+    
+    setMessages(prev => [...prev, { role: 'model', text: responseText }]);
+    setIsLoading(false);
+  };
+
+  return (
+    <>
+      {/* Floating Action Button */}
+      <div className={`fixed bottom-8 right-8 z-50 transition-all duration-700 ${isOpen ? 'opacity-0 pointer-events-none translate-y-4' : 'opacity-100 translate-y-0'}`}>
+        <button
+          onClick={() => setIsOpen(true)}
+          className="w-16 h-16 rounded-full bg-[#292524] backdrop-blur-md border border-stone-600 text-stone-200 flex items-center justify-center hover:bg-amber-900/40 hover:border-amber-600 transition-all duration-500 shadow-2xl hover:scale-105 group"
+        >
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1} stroke="currentColor" className="w-6 h-6 group-hover:rotate-12 transition-transform duration-500">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 00-2.456 2.456zM16.894 20.567L16.5 21.75l-.394-1.183a2.25 2.25 0 00-1.423-1.423L13.5 18.75l1.183-.394a2.25 2.25 0 001.423-1.423l.394-1.183.394 1.183a2.25 2.25 0 001.423 1.423l1.183.394-1.183.394a2.25 2.25 0 00-1.423 1.423z" />
+            </svg>
+        </button>
+      </div>
+
+      {/* Chat Interface */}
+      <div className={`fixed inset-y-0 right-0 w-full sm:w-[400px] bg-[#1c1917]/95 backdrop-blur-xl border-l border-stone-800 z-50 transform transition-transform duration-700 cubic-bezier(0.16, 1, 0.3, 1) ${isOpen ? 'translate-x-0' : 'translate-x-full'}`}>
+        <div className="flex flex-col h-full">
+          {/* Header */}
+          <div className="flex items-center justify-between p-6 border-b border-stone-800">
+            <div>
+              <h3 className="text-xl font-western text-stone-200 tracking-wide">The Concierge</h3>
+              <p className="text-xs text-amber-700 tracking-widest uppercase mt-1">Always Online</p>
+            </div>
+            <button 
+              onClick={() => setIsOpen(false)}
+              className="text-stone-500 hover:text-stone-200 transition-colors"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1} stroke="currentColor" className="w-6 h-6">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+
+          {/* Messages */}
+          <div className="flex-1 overflow-y-auto p-6 space-y-6 scrollbar-hide">
+            {messages.map((msg, idx) => (
+              <div key={idx} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                <div className={`max-w-[85%] p-4 text-sm leading-relaxed ${
+                  msg.role === 'user' 
+                    ? 'bg-stone-800 text-stone-200 border border-stone-700 rounded-2xl rounded-tr-sm' 
+                    : 'text-stone-400 font-serif italic'
+                }`}>
+                  {msg.text}
+                </div>
+              </div>
+            ))}
+            {isLoading && (
+              <div className="flex justify-start">
+                <div className="text-stone-600 text-xs animate-pulse tracking-widest font-mono">
+                  CONSULTING THE STARS...
+                </div>
+              </div>
+            )}
+            <div ref={messagesEndRef} />
+          </div>
+
+          {/* Input */}
+          <div className="p-6 border-t border-stone-800 bg-[#171412]">
+            <form onSubmit={handleSubmit} className="relative">
+              <input
+                type="text"
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                placeholder="Ask the rancher..."
+                className="w-full bg-transparent border-b border-stone-700 py-3 pr-10 text-sm font-light text-stone-200 placeholder-stone-600 focus:outline-none focus:border-amber-700 transition-colors"
+              />
+              <button 
+                type="submit" 
+                disabled={isLoading}
+                className="absolute right-0 top-3 text-stone-600 hover:text-amber-600 disabled:opacity-30 transition-colors"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1} stroke="currentColor" className="w-5 h-5">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
+                </svg>
+              </button>
+            </form>
+          </div>
+        </div>
+      </div>
+    </>
+  );
+};
+
+export default Concierge;
+```
+
+## /types.ts
+```ts
+export interface ChatMessage {
+  role: 'user' | 'model';
+  text: string;
+  isThinking?: boolean;
+}
+
+export interface ConciergeState {
+  isOpen: boolean;
+  messages: ChatMessage[];
+  isLoading: boolean;
+}
+
+export enum SectionId {
+  HERO = 'hero',
+  PHILOSOPHY = 'philosophy',
+  ESSENCE = 'essence',
+  CONTACT = 'contact'
+}
+```
+
+## /services/geminiService.ts
+```ts
+import { GoogleGenAI } from "@google/genai";
+
+const apiKey = process.env.API_KEY || '';
+const ai = new GoogleGenAI({ apiKey });
+
+export const sendConciergeMessage = async (
+  history: { role: 'user' | 'model'; text: string }[],
+  newMessage: string
+): Promise<string> => {
+  try {
+    const model = 'gemini-3-flash-preview';
+    
+    // Construct the conversation history for the model
+    const recentHistory = history.slice(-6).map(msg => ({
+      role: msg.role,
+      parts: [{ text: msg.text }]
+    }));
+
+    const chat = ai.chats.create({
+      model,
+      history: recentHistory,
+      config: {
+        systemInstruction: `You are 'The Rancher', a digital concierge for 'Aura', a brand blending high-end web design with the spirit of the American West.
+        
+        Your persona:
+        - Rugged, sophisticated, and calm.
+        - You use metaphors related to the desert, horses, stars, and the open range.
+        - You value silence and only speak when it matters ("Less is more").
+        - Your tone is warm but firm, like worn leather.
+        - Do NOT talk like a cartoon cowboy (avoid excessive "Yeehaw"). Think more "Yellowstone" or Cormac McCarthy.
+        
+        If asked about the site: It is a digital sanctuary for those who seek clarity in the noise.
+        If asked about the video: "Time flows like a river through the canyon. We just watch it pass."
+        
+        Keep responses concise (under 3 sentences).`,
+        temperature: 0.7,
+        maxOutputTokens: 150,
+      }
+    });
+
+    const result = await chat.sendMessage({ message: newMessage });
+    return result.text || "The wind is howling. I didn't quite catch that.";
+  } catch (error) {
+    console.error("Gemini API Error:", error);
+    return "The line is down. Storm's interfering with the signal.";
+  }
+};
+```
+
+## /index.css
+```css
+/* Volturiano Stamp CSS */
+.volturianoStamp {
+  /* Layout */
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-start;
+  padding: 0px 5px;
+  width: 55px; 
+  height: 55px; 
+  border-radius: 14px;
+  text-decoration: none;
+  overflow: hidden;
+  white-space: nowrap;
+  cursor: pointer;
+
+  /* Premium Design */
+  border: 2px solid transparent;
+  background-image: 
+    linear-gradient(to bottom, #0a0a0a, #141414),
+    linear-gradient(135deg, rgba(255,255,255,0.9) 0%, rgba(80,80,80,0.5) 50%, rgba(255,255,255,0.8) 100%);
+  background-origin: padding-box, border-box;
+  background-clip: padding-box, border-box;
+  box-shadow: 0px 4px 30px -5px rgba(255, 255, 255, 0.15);
+
+  /* Animations */
+  transition: width 0.5s cubic-bezier(0.25, 0.8, 0.25, 1), 
+              padding 0.5s cubic-bezier(0.25, 0.8, 0.25, 1), 
+              box-shadow 0.3s ease, 
+              transform 0.3s ease;
+}
+
+.volturianoStamp:hover {
+  width: 230px; 
+  padding: 0px 20px; 
+  box-shadow: 0px 8px 40px -4px rgba(255, 255, 255, 0.35);
+  transform: translateY(-2px);
+}
+
+.stampContent {
+  display: flex;
+  align-items: center;
+  gap: 15px; 
+  opacity: 0;
+  max-width: 0; 
+  padding-right: 0;
+  overflow: hidden;
+  transition: all 0.5s cubic-bezier(0.25, 0.8, 0.25, 1);
+  transform: translateX(10px);
+}
+
+.volturianoStamp:hover .stampContent {
+  opacity: 1;
+  max-width: 200px; 
+  padding-right: 15px; 
+  transform: translateX(0);
+}
+
+.stampText {
+  font-family: -apple-system, system-ui, sans-serif;
+  font-size: 14px;
+  font-weight: 800;
+  letter-spacing: 2.5px;
+  text-transform: uppercase;
+  background: linear-gradient(to bottom, #ffffff 0%, #b0b0b0 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));
+}
+
+.stampSeparator {
+  width: 1.5px;
+  height: 24px;
+  background: linear-gradient(to bottom, #ffffff, rgba(255,255,255,0.5));
+  border-radius: 10px;
+  opacity: 0.9;
+}
+
+.stampLogo {
+  height: 45px;
+  width: auto;
+  filter: brightness(0) invert(1);
+  opacity: 0.95;
+  margin-left: auto; 
+}
+```

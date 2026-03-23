@@ -1,0 +1,266 @@
+╔══════════════════════════════════════════════════════════════════════════════════╗
+║             ✅ PHASE S12 — COMPLETED (Stripe & Credits Integration) ✅           ║
+║                 Credits System & Stripe Integration — The Vault                  ║
+║                                                                                  ║
+║  Status: 100% Implemented (Production environment will handle final tunnel fixes) ║
+║  All 5 Mega-Prompts successfully executed and verified.                          ║
+╚══════════════════════════════════════════════════════════════════════════════════╝
+
+
+================================================================================
+██  MEGA-PROMPT 1 of 5: The "Iron-Clad" Database Security Foundation (SQL & RLS) ✅
+================================================================================
+
+CONTEXT:
+You are the Lead Database Architect for Volturiano Builder. We are implementing a mission-critical
+billing system that must be immune to frontend tampering, race conditions, and "double-spending."
+The source of truth for all credits must live inside the PostgreSQL engine in Supabase.
+
+LOCATION:
+This prompt focuses on executing SQL in the Supabase Dashboard. No files are modified except 
+recording the migration in your internal logs or project documentation.
+
+DATABASE STATE:
+- Existing table `profiles`: id (uuid), username, plan (text), created_at.
+- Existing table `credit_transactions`: id, user_id, amount, type, description, created_at.
+
+TASK:
+Implement the secure foundation for the credit system by running the following SQL logic. This 
+logic MUST ensure that users cannot manually update their own balances through the API.
+
+1. SCHEMA ENHANCEMENT:
+   - Add the following columns to the `profiles` table:
+     • total_credits_purchased (INTEGER, default 0) - Persistent paid credits.
+     • daily_credits_limit (INTEGER, default 15) - Free tier limit.
+     • daily_credits_used (INTEGER, default 0) - Tracking daily free usage.
+     • daily_credits_reset_at (TIMESTAMPTZ, default now()) - When to reset the daily counter.
+
+2. ATOMIC DEDUCTION FUNCTION (`deduct_credits_safe`):
+   - Create a PostgreSQL function that performs the check and subtraction in ONE atomic step.
+   - Requirements:
+     • Use a ROW LOCK (`FOR UPDATE`) on the profile row to prevent concurrent request hacking.
+     • Reset the `daily_credits_used` if `daily_credits_reset_at` is in the past.
+     • Deduction Priority: Use "Daily Free" credits first, then "Purchased" credits.
+     • Handle 'admin' and 'enterprise' plans (unlimited usage, just log the transaction).
+     • Insert a record into `credit_transactions` on every successful deduction.
+     • Return a JSON object: `{ "success": boolean, "error": string | null }`.
+   - Security: Set the function to `SECURITY DEFINER` so it can bypass RLS but is only callable via RPC or internal logic.
+
+3. ROW LEVEL SECURITY (RLS) LOCKDOWN:
+   - Enable RLS on the `profiles` table.
+   - Create a policy that allows users to SELECT their own profile.
+   - Create a policy for UPDATE that EXPLICITLY forbids touching the credit columns.
+     The `WITH CHECK` clause must ensure `total_credits_purchased`, `daily_credits_limit`, 
+     and `plan` remain identical to their previous state in any user-initiated update.
+
+4. CREDIT ADDITION FUNCTION (`add_credits_safe`):
+   - A secure function for the Stripe Webhook to call.
+   - Adds the specified amount to `total_credits_purchased` and logs the transaction.
+
+GOAL:
+After this prompt, any attempt by a user to change their credit count using `supabase.from('profiles').update(...)`
+will be REJECTED by the database, while the `deduct_credits_safe` function remains the only 
+sanctioned way to use a service.
+
+ESTIMATED LINES OF LOGIC: 80+ lines of SQL.
+
+
+================================================================================
+██  MEGA-PROMPT 2 of 5: Backend Secure Fulfillment (Stripe Checkout API) ✅
+================================================================================
+
+CONTEXT:
+The database is now locked down. Now we build the secure bridge between the user and Stripe.
+We will use Express as the "Trusted Messenger" that initiates the payment process and 
+communicates with the Supabase Vault.
+
+FILES TO MODIFY/CREATE:
+- web/server/routes/billing.js (New)
+- web/server/index.js (Register route)
+- web/server/.env (Verification)
+
+TASK:
+Implement the Stripe Checkout pipeline. We must never handle credit card data ourselves; we 
+delegate that to Stripe's hosted checkout.
+
+1. ROUTE CREATION (`web/server/routes/billing.js`):
+   - Create an Express router protected by `authMiddleware`.
+   - Implement `POST /api/billing/create-checkout-session`.
+   - Logic:
+     • Define our "Credit Packs" (Products) securely on the server (never trust pack info from the frontend).
+       - Pack: "Starter" (50 credits), PriceID: [From Stripe Dashboard placeholder].
+       - Pack: "Builder" (150 credits), PriceID: [From Stripe Dashboard placeholder].
+     • Initialize the Stripe client using `process.env.STRIPE_SECRET_KEY`.
+     • Create a `stripe.checkout.sessions.create` call.
+     • Metadata is CRITICAL: Attach `user_id`, `credit_amount`, and `pack_id` to the session.
+     • Use environment variables for `SUCCESS_URL` and `CANCEL_URL`.
+
+2. APP INTEGRATION:
+   - Update `web/server/index.js` to mount the billing router at `/api/billing`.
+   - Ensure the Stripe secret key is loaded from the environment.
+
+3. SECURITY REQUIREMENTS:
+   - Validate that the requested `packId` actually exists in our server-side definition.
+   - Ensure the `user_id` passed to Stripe comes from the JWT (`req.user.id`), not from the request body.
+
+HIGH-END UI DESIGN CONTEXT:
+The backend must be ready to support a premium checkout experience. Provide clear JSON 
+responses including the `sessionId` and the `url` for the frontend to redirect the user.
+
+VERIFY:
+- Calling the endpoint with a valid token returns a Stripe URL.
+- Redirecting to that URL shows the correct pack price and customer email.
+
+ESTIMATED LINES OF LOGIC: 85+ lines of Node.js.
+
+
+================================================================================
+██  MEGA-PROMPT 3 of 5: Backend Webhook Orchestrator & Fulfillment Guard ✅
+================================================================================
+
+CONTEXT:
+Payments are happening, but we need to fulfill the orders. Stripe will asynchronously call 
+our "Webhook" several seconds after the payment succeeds. This is the only place where 
+credits are actually minted in the database.
+
+FILES TO MODIFY/CREATE:
+- web/server/routes/webhooks.js (New)
+- web/server/index.js (Special raw middleware handling)
+- web/server/.env (Add STRIPE_WEBHOOK_SECRET)
+
+TASK:
+Implement the `stripe-fulfillment` webhook. This must be the most secure endpoint in the 
+entire infrastructure.
+
+1. RAW BODY MIDDLEWARE:
+   - Stripe Webhooks require the RAW request body for signature verification.
+   - Update `web/server/index.js` to use `express.raw` for the `/api/webhooks/stripe` path 
+     BEFORE the standard `express.json()` middleware.
+
+2. WEBHOOK HANDLER (`web/server/routes/webhooks.js`):
+   - Implement `POST /api/webhooks/stripe`.
+   - SIGNATURE VERIFICATION: Use `stripe.webhooks.constructEvent` with your webhook secret.
+   - Logic for `checkout.session.completed`:
+     • Extract `user_id` and `credit_amount` from the `session.metadata`.
+     • Sanity Check: Ensure the amount is a positive integer.
+     • Call the Supabase RPC `add_credits_safe` (created in Prompt 1) using the `supabaseAdmin` 
+       client (service role). This bypasses user RLS because it's a server-level action.
+     • Log the success with the Stripe Session ID for auditing.
+
+3. ERROR HANDLING:
+   - If the signature is invalid, return a 400 immediately.
+   - If the DB update fails, log the error but return a 200/500 depending on if we want Stripe 
+     to retry (recommending 200 to acknowledge receipt, but logging for manual fix).
+
+GOAL:
+Create a solid, idempotent fulfillment loop that ensures every dollar spent results in 
+exactly the right number of credits added, with zero possibility of spoofed payments.
+
+ESTIMATED LINES OF LOGIC: 90+ lines of Node.js.
+
+
+================================================================================
+██  MEGA-PROMPT 4 of 5: Frontend Credit Sync & Navbar Indicator ✅
+================================================================================
+
+CONTEXT:
+The backend and database are secure. Now we must surface this information to the user 
+in a way that feels premium, smooth, and reactive. The user should always see their 
+balance without needing to refresh the page.
+
+FILES TO MODIFY/CREATE:
+- web/src/hooks/useCredits.js (New)
+- web/src/components/Navigation/BuilderNavBar.jsx
+- web/src/components/Navigation/BuilderNavBar.module.css
+
+TASK:
+Implement the `useCredits` hook and the Navbar credit badge.
+
+1. THE REUSABLE HOOK (`web/src/hooks/useCredits.js`):
+   - Wrap our `useAuth` profile data.
+   - Calculate:
+     • `dailyRemaining`: `daily_credits_limit` - `daily_credits_used`.
+     • `purchasedRemaining`: `total_credits_purchased`.
+     • `totalAvailable`: sum of both.
+     • `isLow`: boolean if total < 5.
+     • `isOut`: boolean if total <= 0.
+   - This hook should provide a "reactive" view of the user's current status.
+
+2. THE NAVBAR BADGE:
+   - Locate the `BuilderNavBar.jsx`. 
+   - Add a "Credit Hub" element next to the user profile.
+   - Visual Specs (High-Aesthetics):
+     • A small, glassmorphism badge: `bg: rgba(255,255,255,0.05)`, `border: 1px solid rgba(255,255,255,0.1)`.
+     • Show the total credits with a sparkle icon ✨.
+     • On hover: Show a tooltip breakdown (e.g., "10 Daily Free • 25 Purchased").
+     • Animation: If the balance changes, use a "pulsing color" transition (purple glow).
+
+3. SYNC LOGIC:
+   - Ensure that whenever a build is completed, the frontend refreshes the profile data from 
+     Supabase to reflect the -1 deduction.
+
+DESIGN VISION:
+The credit count shouldn't look like a "bank account." It should look like "Creative Energy." 
+Use soft gradients (indigo/violet) and sharp, modern typography (Inter).
+
+ESTIMATED LINES OF LOGIC: 85+ lines of React/CSS.
+
+
+================================================================================
+██  MEGA-PROMPT 5 of 5: Premium Checkout Experience & Build Logic Integration ✅
+================================================================================
+
+CONTEXT:
+This is the final integration. We must connect the credit system to the actual "Build" 
+process. If a user has 0 credits, we show them a beautiful "Limit Reached" modal 
+instead of letting the AI start the generation.
+
+FILES TO MODIFY/CREATE:
+- web/src/pages/Agency/pages/Builder/Generation/Generation.jsx
+- web/src/components/Modals/CreditLimitModal.jsx (New)
+- web/src/components/Modals/CreditLimitModal.module.css (New)
+- web/server/routes/apply-ai-code-stream.js (Backend secondary check)
+
+TASK:
+Implement the "Gatekeeper" logic and the checkout UI.
+
+1. THE "LIMIT REACHED" MODAL (`CreditLimitModal.jsx`):
+   - Create a stunning, high-end modal with:
+     • Title: "Creative Energy Depleted" or "Daily Pulse Reached."
+     • A visual representation of the three credit packs (Starter, Builder, Agency).
+     • Each pack shows: Credit amount, Price, and a "Buy Now" button.
+     • Clicking "Buy Now" triggers the `create-checkout-session` API.
+     • Add a "Success" state if the user just returned from a successful Stripe redirect.
+
+2. GENERATION INTEGRATION:
+   - In `Generation.jsx`, before calling the start generation API:
+     • Check `useCredits`. If `isOut`, intercept the click and open the `CreditLimitModal`.
+     • During the build sequence, show a "Deducting 1 Credit..." micro-animation in the 
+       progress bar area for transparency.
+
+3. BACKEND SECONDARY CHECK:
+   - In `web/server/routes/apply-ai-code-stream.js`, add a final check:
+     • Call the `deduct_credits_safe` RPC BEFORE initiating the LLM stream.
+     • If the RPC returns `success: false`, terminate the stream immediately with a 
+       `402 Payment Required` error. This is the ultimate "Anti-Cheat" that protects 
+       your expensive AI API costs.
+
+4. POLISH:
+   - Handle the `?billing=success` URL parameter in the Builder. When detected, show a 
+     "Celebration" confetti effect or a "Payment Verified — 50 Credits Added" toast notification.
+
+GOAL:
+A seamless, professional monetization loop where charging for the service is treated as 
+an upgrade to the user's "Creative Power," rather than a restrictive paywall.
+
+ESTIMATED LINES OF LOGIC: 110+ lines of React/Node.js.
+
+**Deliverables:**
+- ✅ **SQL:** `profiles` schema update + RLS Lock policies.
+- ✅ **SQL Function:** `deduct_credits_safe` atomic logic.
+- ✅ **Express routes:** `/api/create-checkout-session` for Stripe.
+- ✅ **Express Webhook:** `/api/stripe-fulfillment` (Stripe signing logic verified).
+- ✅ **Frontend UI:** Sticky credit badge in Navbar & Generation popup.
+- ✅ **Frontend Modal:** "Credit Limit Reached" purchase overlay.
+- ✅ **Internal Logic:** AI Build generation prevented if credit check fails (Backend RPC Gatekeeper).
+

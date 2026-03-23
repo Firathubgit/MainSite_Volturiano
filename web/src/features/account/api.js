@@ -1,4 +1,5 @@
 import { supabase } from '../../lib/supabaseClient';
+import { withRetry } from '../../lib/supabaseUtils';
 
 function ensureClient() {
   if (!supabase) {
@@ -42,7 +43,7 @@ export async function sendPasswordReset(email) {
 export async function signOut() {
   const { client, error } = ensureClient();
   if (error) return { error };
-  
+
   // Critical: Close all realtime channels BEFORE signing out
   // This prevents signOut from hanging on active websocket connections
   try {
@@ -52,7 +53,7 @@ export async function signOut() {
       if (typeof client.realtime.disconnect === 'function') {
         client.realtime.disconnect();
       }
-      
+
       // Also try to remove all channels if channels property exists
       if (client.realtime.channels) {
         const channels = Array.from(client.realtime.channels.values() || []);
@@ -69,16 +70,16 @@ export async function signOut() {
     // Continue with signOut even if channel cleanup fails
     console.warn('Error cleaning up realtime channels (non-blocking):', err);
   }
-  
+
   // Use global scope to sign out from all devices/sessions
   // Add timeout to prevent hanging - reduced timeout since channels are closed
   try {
-    const timeoutPromise = new Promise((_, reject) => 
+    const timeoutPromise = new Promise((_, reject) =>
       setTimeout(() => reject(new Error('Sign out timeout')), 2000)
     );
-    
+
     const signOutPromise = client.auth.signOut({ scope: 'global' });
-    
+
     return await Promise.race([signOutPromise, timeoutPromise]);
   } catch (err) {
     // If timeout or error, still return error but don't block UI
@@ -92,24 +93,15 @@ export async function fetchProfile(userId) {
   if (!userId) {
     return { data: null, error: new Error('Missing user id for profile lookup.') };
   }
-  
-  // Add timeout to prevent infinite hanging due to RLS recursion
-  const profilePromise = client
-    .from('profiles')
-    .select('id, display_name, locale, avatar_url, preferences, role')
-    .eq('id', userId)
-    .single();
-    
-  const timeoutPromise = new Promise((_, reject) =>
-    setTimeout(() => reject(new Error('Profile fetch timeout - check database RLS policies')), 5000)
-  );
-  
-  try {
-    return await Promise.race([profilePromise, timeoutPromise]);
-  } catch (err) {
-    console.error('[fetchProfile] Query failed or timed out:', err);
-    return { data: null, error: err };
-  }
+
+  // Use withRetry to handle intermittent network issues or cold starts
+  return withRetry(async () => {
+    return await client
+      .from('profiles')
+      .select('id, display_name, locale, avatar_url, preferences, role')
+      .eq('id', userId)
+      .single();
+  }, { maxRetries: 3, delayMs: 800 });
 }
 
 /**
@@ -159,7 +151,7 @@ function buildGarageQuery(filters = {}, pagination = {}) {
   if (dateRange && dateRange !== 'all') {
     const now = new Date();
     let startDate;
-    
+
     switch (dateRange) {
       case '7d':
         startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
@@ -176,7 +168,7 @@ function buildGarageQuery(filters = {}, pagination = {}) {
       default:
         startDate = null;
     }
-    
+
     if (startDate) {
       // Filter by date field (created_at or updated_at)
       console.log('[API] Adding date range filter:', { dateRange, dateField, startDate: startDate.toISOString() });
@@ -189,12 +181,12 @@ function buildGarageQuery(filters = {}, pagination = {}) {
     console.log('[API] Adding priceMin filter:', priceMin);
     query = query.gte('price_cents', priceMin);
   }
-  
+
   if (priceMax !== null && priceMax !== undefined) {
     console.log('[API] Adding priceMax filter:', priceMax);
     query = query.lte('price_cents', priceMax);
   }
-  
+
   console.log('[API] Final query built, returning query object');
 
   // Apply tag filtering
@@ -229,12 +221,12 @@ export async function fetchGarage(filters = {}, pagination = {}) {
     console.log('[API] Checking authentication...');
     const authResult = await client.auth.getUser();
     console.log('[API] Auth result:', authResult);
-    
+
     const {
       data: { user },
       error: authError
     } = authResult;
-    
+
     if (authError || !user) {
       console.error('[API] Not authenticated:', authError);
       console.error('[API] User object:', user);
@@ -251,15 +243,15 @@ export async function fetchGarage(filters = {}, pagination = {}) {
     console.log('[API] Executing query with filters:', filters);
     console.log('[API] Query will filter by owner_id =', user.id);
     console.log('[API] Query object:', query);
-    
+
     // Add explicit owner_id filter as backup (RLS should handle this, but explicit is safer)
     const queryWithOwner = query.eq('owner_id', user.id);
     console.log('[API] Executing query with explicit owner_id filter...');
-    
+
     console.log('[API] Awaiting query response...');
     const queryResponse = await queryWithOwner;
     console.log('[API] Query response received:', queryResponse);
-    
+
     const { data, error: queryError, count } = queryResponse;
 
     if (queryError) {
@@ -322,7 +314,7 @@ export async function fetchGarageItemById(itemId) {
       data: { user },
       error: authError
     } = await client.auth.getUser();
-    
+
     if (authError || !user) {
       return { data: null, error: authError || new Error('Not authenticated') };
     }
@@ -458,17 +450,17 @@ export async function createGarageItem(payload) {
           const normalizedTags = tags
             .map(tag => normalizeTag(tag))
             .filter(tag => tag && isValidTag(tag));
-          
+
           if (normalizedTags.length > 0) {
             const tagInserts = normalizedTags.map(tag => ({
               garage_item_id: data.id,
               tag: tag
             }));
-            
+
             const { error: tagError } = await client
               .from('garage_item_tags')
               .insert(tagInserts);
-            
+
             if (tagError) {
               console.warn('[API] Failed to insert tags:', tagError);
               // Don't fail the entire operation if tags fail
@@ -507,7 +499,7 @@ export async function updateGarageState(itemId, newState) {
   console.log('[API] updateGarageState called');
   console.log('[API] Parameters:', { itemId, newState });
   const startTime = Date.now();
-  
+
   const { client, error } = ensureClient();
   if (error) {
     console.error('[API] Supabase client error:', error);
@@ -618,7 +610,7 @@ export async function updateGarageItem(itemId, updates) {
         .from('garage_item_tags')
         .select('tag')
         .eq('garage_item_id', itemId);
-      
+
       if (!tagFetchError && tagData) {
         currentTags = tagData.map(row => row.tag);
       }
@@ -626,7 +618,7 @@ export async function updateGarageItem(itemId, updates) {
 
     // Extract tags from updates (don't update garage_items table with tags)
     const { tags: newTags, ...updatesWithoutTags } = updates;
-    
+
     // Normalize config_payload if it's being updated
     let normalizedUpdates = { ...updatesWithoutTags };
     if (updates.config_payload) {
@@ -641,7 +633,7 @@ export async function updateGarageItem(itemId, updates) {
     }
 
     // Check if config_payload is being updated
-    const configChanged = normalizedUpdates.config_payload && 
+    const configChanged = normalizedUpdates.config_payload &&
       JSON.stringify(currentItem.config_payload) !== JSON.stringify(normalizedUpdates.config_payload);
 
     // Detect configurator type change
@@ -719,13 +711,13 @@ export async function updateGarageItem(itemId, updates) {
       try {
         const { normalizeTag, isValidTag } = await import('../../features/garage/utils/tagConstants');
         const { getTagDiff } = await import('../../features/garage/utils/tagUtils');
-        
+
         const normalizedNewTags = Array.isArray(newTags)
           ? newTags.map(tag => normalizeTag(tag)).filter(tag => tag && isValidTag(tag))
           : [];
-        
+
         const { toAdd, toRemove } = getTagDiff(currentTags, normalizedNewTags);
-        
+
         // Remove tags
         if (toRemove.length > 0) {
           for (const tag of toRemove) {
@@ -736,22 +728,22 @@ export async function updateGarageItem(itemId, updates) {
               .eq('tag', tag);
           }
         }
-        
+
         // Add tags
         if (toAdd.length > 0) {
           const tagInserts = toAdd.map(tag => ({
             garage_item_id: itemId,
             tag: tag
           }));
-          
+
           await client
             .from('garage_item_tags')
             .insert(tagInserts);
         }
-        
+
         // Add tags to returned data
         data.tags = normalizedNewTags;
-        
+
         // Create activity log entry if tags changed
         if (toAdd.length > 0 || toRemove.length > 0) {
           try {
@@ -1028,7 +1020,7 @@ export async function createShareLink(itemId, options = {}) {
   console.log('[API] createShareLink called');
   console.log('[API] Parameters:', { itemId, options });
   const startTime = Date.now();
-  
+
   const { client, error } = ensureClient();
   if (error) {
     console.error('[API] Supabase client error:', error);
@@ -1042,7 +1034,7 @@ export async function createShareLink(itemId, options = {}) {
       p_expires_at: options.expiresAt || null
     };
     console.log('[API] Calling RPC create_share_link with params:', rpcParams);
-    
+
     const { data, error: rpcError } = await client.rpc('create_share_link', rpcParams);
     const duration = Date.now() - startTime;
 
@@ -1085,7 +1077,7 @@ export async function fetchSharedItem(shareCode) {
   console.log('[API] fetchSharedItem called');
   console.log('[API] Share code:', shareCode);
   const startTime = Date.now();
-  
+
   const { client, error } = ensureClient();
   if (error) {
     console.error('[API] Supabase client error:', error);
@@ -1142,7 +1134,7 @@ export async function updateShareSettings(shareLinkId, settings) {
   console.log('[API] updateShareSettings called');
   console.log('[API] Parameters:', { shareLinkId, settings });
   const startTime = Date.now();
-  
+
   const { client, error } = ensureClient();
   if (error) {
     console.error('[API] Supabase client error:', error);
@@ -1156,7 +1148,7 @@ export async function updateShareSettings(shareLinkId, settings) {
       p_expires_at: settings.expiresAt !== undefined ? settings.expiresAt : null
     };
     console.log('[API] Calling RPC update_share_settings with params:', rpcParams);
-    
+
     const { data, error: rpcError } = await client.rpc('update_share_settings', rpcParams);
     const duration = Date.now() - startTime;
 
@@ -1198,7 +1190,7 @@ export async function getShareLinks(itemId) {
   console.log('[API] getShareLinks called');
   console.log('[API] Item ID:', itemId);
   const startTime = Date.now();
-  
+
   const { client, error } = ensureClient();
   if (error) {
     console.error('[API] Supabase client error:', error);
@@ -1263,7 +1255,7 @@ export async function deleteShareLink(shareLinkId) {
   console.log('[API] deleteShareLink called');
   console.log('[API] Share link ID:', shareLinkId);
   const startTime = Date.now();
-  
+
   const { client, error } = ensureClient();
   if (error) {
     console.error('[API] Supabase client error:', error);
@@ -1323,7 +1315,7 @@ export async function createMilestone(itemId, milestoneData) {
   console.log('[API] createMilestone called');
   console.log('[API] Parameters:', { itemId, milestoneData });
   const startTime = Date.now();
-  
+
   const { client, error } = ensureClient();
   if (error) {
     console.error('[API] Supabase client error:', error);
@@ -1395,7 +1387,7 @@ export async function fetchMilestones(itemId, options = {}) {
   console.log('[API] fetchMilestones called');
   console.log('[API] Item ID:', itemId, 'Options:', { order, type });
   const startTime = Date.now();
-  
+
   const { client, error } = ensureClient();
   if (error) {
     console.error('[API] Supabase client error:', error);
@@ -1418,15 +1410,15 @@ export async function fetchMilestones(itemId, options = {}) {
       .from('garage_milestones')
       .select('*')
       .eq('garage_item_id', itemId);
-    
+
     // Apply type filter if provided
     if (type) {
       query = query.eq('milestone_type', type);
     }
-    
+
     // Apply ordering
     query = query.order('occurred_at', { ascending: order === 'asc' });
-    
+
     const { data, error: queryError } = await query;
     const duration = Date.now() - startTime;
 
@@ -1465,7 +1457,7 @@ export async function createActivityLog(itemId, action, metadata = {}) {
   console.log('[API] createActivityLog called');
   console.log('[API] Parameters:', { itemId, action, metadata });
   const startTime = Date.now();
-  
+
   const { client, error } = ensureClient();
   if (error) {
     console.error('[API] Supabase client error:', error);
@@ -1531,7 +1523,7 @@ export async function fetchActivityLog(itemId, limit = 50) {
   console.log('[API] fetchActivityLog called');
   console.log('[API] Parameters:', { itemId, limit });
   const startTime = Date.now();
-  
+
   const { client, error } = ensureClient();
   if (error) {
     console.error('[API] Supabase client error:', error);
@@ -1592,7 +1584,7 @@ export async function addTag(itemId, tag) {
   console.log('[API] addTag called');
   console.log('[API] Parameters:', { itemId, tag });
   const startTime = Date.now();
-  
+
   const { client, error } = ensureClient();
   if (error) {
     console.error('[API] Supabase client error:', error);
@@ -1602,13 +1594,13 @@ export async function addTag(itemId, tag) {
   try {
     // Import tag utilities
     const { normalizeTag, isValidTag } = await import('../../features/garage/utils/tagConstants');
-    
+
     // Normalize and validate tag
     const normalizedTag = normalizeTag(tag);
     if (!normalizedTag) {
       return { data: null, error: new Error('Invalid tag format') };
     }
-    
+
     if (!isValidTag(normalizedTag)) {
       return { data: null, error: new Error(`Tag "${normalizedTag}" is not a valid predefined tag`) };
     }
@@ -1681,7 +1673,7 @@ export async function removeTag(itemId, tag) {
   console.log('[API] removeTag called');
   console.log('[API] Parameters:', { itemId, tag });
   const startTime = Date.now();
-  
+
   const { client, error } = ensureClient();
   if (error) {
     console.error('[API] Supabase client error:', error);
@@ -1691,7 +1683,7 @@ export async function removeTag(itemId, tag) {
   try {
     // Import tag utilities
     const { normalizeTag } = await import('../../features/garage/utils/tagConstants');
-    
+
     // Normalize tag
     const normalizedTag = normalizeTag(tag);
     if (!normalizedTag) {
@@ -1743,7 +1735,7 @@ export async function getTags(itemId) {
   console.log('[API] getTags called');
   console.log('[API] Item ID:', itemId);
   const startTime = Date.now();
-  
+
   const { client, error } = ensureClient();
   if (error) {
     console.error('[API] Supabase client error:', error);
@@ -1808,7 +1800,7 @@ export async function getTags(itemId) {
 export async function getAllTags() {
   console.log('[API] getAllTags called');
   const startTime = Date.now();
-  
+
   const { client, error } = ensureClient();
   if (error) {
     console.error('[API] Supabase client error:', error);
@@ -1833,23 +1825,23 @@ export async function getAllTags() {
       .select('id')
       .eq('owner_id', user.id)
       .is('archived_at', null);
-    
+
     if (itemsError) {
       console.error('[API] Failed to fetch user items:', itemsError);
       const duration = Date.now() - startTime;
       console.log('[API] getAllTags failed in', duration, 'ms');
       return { data: null, error: itemsError };
     }
-    
+
     const itemIds = (userItems || []).map(item => item.id);
-    
+
     if (itemIds.length === 0) {
       const duration = Date.now() - startTime;
       console.log('[API] No items found, returning empty tags');
       console.log('[API] getAllTags completed in', duration, 'ms');
       return { data: [], error: null };
     }
-    
+
     // Fetch tags for user's items
     const { data, error: queryError } = await client
       .from('garage_item_tags')
@@ -1895,7 +1887,7 @@ export async function getAllTags() {
 export async function getModelCounts() {
   const startTime = Date.now();
   console.log('[API] getModelCounts called');
-  
+
   try {
     const { client, error } = ensureClient();
     if (error) {
@@ -1921,7 +1913,7 @@ export async function getModelCounts() {
       .select('vehicle_model')
       .eq('owner_id', user.id)
       .is('archived_at', null);
-    
+
     const duration = Date.now() - startTime;
 
     if (queryError) {
@@ -1969,7 +1961,7 @@ export async function createPdfExportJob(garageItemId, options = {}) {
   console.log('[API] createPdfExportJob called');
   console.log('[API] Parameters:', { garageItemId, options });
   const startTime = Date.now();
-  
+
   try {
     console.log('[API] Getting Supabase client...');
     const { client, error } = ensureClient();
@@ -1978,7 +1970,7 @@ export async function createPdfExportJob(garageItemId, options = {}) {
       console.error('[API] Supabase client error:', error);
       return { data: null, error };
     }
-    
+
     if (!client) {
       console.error('[API] Client is null/undefined');
       return { data: null, error: new Error('Supabase client is null') };
@@ -1990,19 +1982,19 @@ export async function createPdfExportJob(garageItemId, options = {}) {
       error: authError
     } = await client.auth.getUser();
     console.log('[API] Step 1: Auth check result:', { userId: user?.id, authError });
-    
+
     if (authError || !user) {
       console.error('[API] Authentication failed:', authError || 'No user');
       return { data: null, error: authError || new Error('Not authenticated') };
     }
-    
+
     // Get the session token for Edge Function invocation
     console.log('[API] Step 1.5: Getting session...');
     console.log('[API] Step 1.5: Client auth object:', {
       hasAuth: !!client.auth,
       authMethods: client.auth ? Object.keys(client.auth) : []
     });
-    
+
     const sessionResult = await client.auth.getSession();
     console.log('[API] Step 1.5: Session result:', {
       hasData: !!sessionResult.data,
@@ -2010,7 +2002,7 @@ export async function createPdfExportJob(garageItemId, options = {}) {
       hasError: !!sessionResult.error,
       error: sessionResult.error?.message
     });
-    
+
     const { data: { session }, error: sessionError } = sessionResult;
     console.log('[API] Step 1.5: Session details:', {
       hasSession: !!session,
@@ -2027,7 +2019,7 @@ export async function createPdfExportJob(garageItemId, options = {}) {
       tokenType: session?.token_type,
       sessionError: sessionError?.message
     });
-    
+
     // Also check user directly
     const userResult = await client.auth.getUser();
     console.log('[API] Step 1.5: User check:', {
@@ -2035,12 +2027,12 @@ export async function createPdfExportJob(garageItemId, options = {}) {
       userId: userResult.data?.user?.id,
       userError: userResult.error?.message
     });
-    
+
     if (sessionError) {
       console.error('[API] Session error:', sessionError);
       return { data: null, error: sessionError };
     }
-    
+
     if (!session?.access_token) {
       console.error('[API] No session token available');
       console.error('[API] Session object:', session);
@@ -2062,7 +2054,7 @@ export async function createPdfExportJob(garageItemId, options = {}) {
       }
       return { data: null, error: new Error('No session token available') };
     }
-    
+
     console.log('[API] Step 1.5: Session token validated successfully');
 
     // Check if functions API is available
@@ -2070,16 +2062,16 @@ export async function createPdfExportJob(garageItemId, options = {}) {
     console.log('[API] Step 2: client type:', typeof client);
     console.log('[API] Step 2: client.functions exists?', !!client.functions);
     console.log('[API] Step 2: client keys:', Object.keys(client));
-    
+
     if (!client.functions) {
       console.error('[API] client.functions is not available');
       console.error('[API] Available client methods:', Object.keys(client));
       return { data: null, error: new Error('Edge Functions API not available. Check Supabase client configuration.') };
     }
-    
+
     console.log('[API] Step 2: client.functions keys:', Object.keys(client.functions));
     console.log('[API] Step 2: client.functions.invoke type:', typeof client.functions.invoke);
-    
+
     if (typeof client.functions.invoke !== 'function') {
       console.error('[API] client.functions.invoke is not a function');
       console.error('[API] client.functions:', client.functions);
@@ -2097,14 +2089,14 @@ export async function createPdfExportJob(garageItemId, options = {}) {
       }
     };
     console.log('[API] Request body:', requestBody);
-    
+
     let data, functionError, invokeResult;
     try {
       // Add timeout wrapper (60 seconds max for PDF generation)
-      const timeoutPromise = new Promise((_, reject) => 
+      const timeoutPromise = new Promise((_, reject) =>
         setTimeout(() => reject(new Error('Edge Function invocation timeout (60s)')), 60000)
       );
-      
+
       console.log('[API] Calling client.functions.invoke...');
       console.log('[API] Session details before invoke:', {
         hasSession: !!session,
@@ -2115,17 +2107,17 @@ export async function createPdfExportJob(garageItemId, options = {}) {
         tokenType: session?.token_type
       });
       console.log('[API] Supabase key (first 20 chars):', client.supabaseKey?.substring(0, 20));
-      
+
       // Ensure session is fully ready before invoking Edge Function
       // Retry up to 3 times if session isn't ready
       let currentSession = null;
       let retries = 0;
       const maxRetries = 3;
-      
+
       while (retries < maxRetries && !currentSession?.access_token) {
         const sessionCheck = await client.auth.getSession();
         currentSession = sessionCheck.data?.session || session;
-        
+
         console.log('[API] Pre-invoke session check (attempt ' + (retries + 1) + '):', {
           hasSession: !!sessionCheck.data?.session,
           hasAccessToken: !!sessionCheck.data?.session?.access_token,
@@ -2133,7 +2125,7 @@ export async function createPdfExportJob(garageItemId, options = {}) {
           sessionMatch: sessionCheck.data?.session?.access_token === session?.access_token,
           retry: retries
         });
-        
+
         if (!currentSession?.access_token) {
           retries++;
           if (retries < maxRetries) {
@@ -2142,18 +2134,18 @@ export async function createPdfExportJob(garageItemId, options = {}) {
           }
         }
       }
-      
+
       if (!currentSession?.access_token) {
         console.error('[API] No access token available after', maxRetries, 'attempts');
         return { data: null, error: new Error('No access token available - session may not be fully restored') };
       }
-      
+
       // Verify token hasn't expired
       if (currentSession.expires_at && currentSession.expires_at < Math.floor(Date.now() / 1000)) {
         console.error('[API] Access token expired');
         return { data: null, error: new Error('Access token expired - please refresh the page') };
       }
-      
+
       // Explicitly pass Authorization header to ensure it's sent
       console.log('[API] Invoking with body and explicit Authorization header');
       console.log('[API] Using access token:', currentSession.access_token.substring(0, 30) + '...');
@@ -2165,13 +2157,13 @@ export async function createPdfExportJob(garageItemId, options = {}) {
           'apikey': client.supabaseKey
         }
       });
-      
+
       console.log('[API] Waiting for Edge Function response (max 60s)...');
       invokeResult = await Promise.race([invokePromise, timeoutPromise]);
       console.log('[API] Edge Function invoke completed');
       console.log('[API] Invoke result type:', typeof invokeResult);
       console.log('[API] Invoke result:', invokeResult);
-      
+
       // Handle different response formats
       if (invokeResult && typeof invokeResult === 'object') {
         if ('data' in invokeResult) {
@@ -2189,7 +2181,7 @@ export async function createPdfExportJob(garageItemId, options = {}) {
         data = invokeResult;
         functionError = null;
       }
-      
+
       // If there's an error, try to extract more details from the response
       if (functionError && invokeResult?.response) {
         try {
@@ -2208,7 +2200,7 @@ export async function createPdfExportJob(garageItemId, options = {}) {
           console.error('[API] Could not read error response:', e);
         }
       }
-      
+
       console.log('[API] Parsed result - data:', data, 'error:', functionError);
     } catch (invokeErr) {
       console.error('[API] Exception during Edge Function invoke:', invokeErr);
@@ -2222,7 +2214,7 @@ export async function createPdfExportJob(garageItemId, options = {}) {
       console.log('[API] createPdfExportJob failed after', duration, 'ms');
       return { data: null, error: invokeErr };
     }
-    
+
     const duration = Date.now() - startTime;
     console.log('[API] Edge Function response received in', duration, 'ms');
 
@@ -2235,7 +2227,7 @@ export async function createPdfExportJob(garageItemId, options = {}) {
         code: functionError.code,
         details: functionError.details
       });
-      
+
       // Try to get more details from the response if available
       if (invokeResult?.response) {
         try {
@@ -2257,7 +2249,7 @@ export async function createPdfExportJob(garageItemId, options = {}) {
           console.error('[API] Could not read response:', e);
         }
       }
-      
+
       console.log('[API] createPdfExportJob failed in', duration, 'ms');
       return { data: null, error: functionError };
     }
@@ -2294,7 +2286,7 @@ export async function getPdfJobStatus(jobId) {
   console.log('[API] getPdfJobStatus called');
   console.log('[API] Job ID:', jobId);
   const startTime = Date.now();
-  
+
   const { client, error } = ensureClient();
   if (error) {
     console.error('[API] Supabase client error:', error);
@@ -2347,7 +2339,7 @@ export async function getPdfDownloadUrl(jobId) {
   console.log('[API] getPdfDownloadUrl called');
   console.log('[API] Job ID:', jobId);
   const startTime = Date.now();
-  
+
   const { client, error } = ensureClient();
   if (error) {
     console.error('[API] Supabase client error:', error);
@@ -2409,7 +2401,7 @@ export async function listPdfExports(garageItemId) {
   console.log('[API] listPdfExports called');
   console.log('[API] Garage item ID:', garageItemId);
   const startTime = Date.now();
-  
+
   const { client, error } = ensureClient();
   if (error) {
     console.error('[API] Supabase client error:', error);
@@ -2464,7 +2456,7 @@ export async function listPdfExports(garageItemId) {
 export async function fetchDealers() {
   console.log('[API] fetchDealers called');
   const startTime = Date.now();
-  
+
   const { client, error } = ensureClient();
   if (error) {
     console.error('[API] Supabase client error:', error);
@@ -2479,7 +2471,7 @@ export async function fetchDealers() {
       .select('id, name, email, phone, location, address, is_active, metadata, created_at, updated_at')
       .eq('is_active', true)
       .order('name', { ascending: true });
-    
+
     const duration = Date.now() - startTime;
 
     if (queryError) {
@@ -2489,7 +2481,7 @@ export async function fetchDealers() {
       console.error('[API] Error details:', queryError.details);
       console.error('[API] Error hint:', queryError.hint);
       console.log('[API] fetchDealers failed in', duration, 'ms');
-      
+
       // Provide more helpful error message
       let errorMessage = queryError.message || 'Failed to fetch dealers';
       if (queryError.code === '42P01') {
@@ -2497,7 +2489,7 @@ export async function fetchDealers() {
       } else if (queryError.code === '42501') {
         errorMessage = 'Permission denied. Check RLS policies on dealers table.';
       }
-      
+
       return { data: null, error: { ...queryError, message: errorMessage } };
     }
 
@@ -2535,7 +2527,7 @@ export async function createTestDriveRequest(garageItemId, data) {
   console.log('[API] createTestDriveRequest called');
   console.log('[API] Parameters:', { garageItemId, data });
   const startTime = Date.now();
-  
+
   const { client, error } = ensureClient();
   if (error) {
     console.error('[API] Supabase client error:', error);
@@ -2593,7 +2585,7 @@ export async function createTestDriveRequest(garageItemId, data) {
       .insert(insertData)
       .select()
       .single();
-    
+
     const duration = Date.now() - startTime;
 
     if (insertError) {
@@ -2651,7 +2643,7 @@ export async function fetchTestDriveRequests(filters = {}) {
   console.log('[API] fetchTestDriveRequests called');
   console.log('[API] Filters:', filters);
   const startTime = Date.now();
-  
+
   const { client, error } = ensureClient();
   if (error) {
     console.error('[API] Supabase client error:', error);
@@ -2728,7 +2720,7 @@ export async function updateTestDriveRequestStatus(requestId, status, notes = nu
   console.log('[API] updateTestDriveRequestStatus called');
   console.log('[API] Parameters:', { requestId, status, notes });
   const startTime = Date.now();
-  
+
   const { client, error } = ensureClient();
   if (error) {
     console.error('[API] Supabase client error:', error);
@@ -2765,7 +2757,7 @@ export async function updateTestDriveRequestStatus(requestId, status, notes = nu
       status,
       updated_by: user.id
     };
-    
+
     if (notes !== null) {
       updateData.notes = notes;
     }
@@ -2777,7 +2769,7 @@ export async function updateTestDriveRequestStatus(requestId, status, notes = nu
       .eq('id', requestId)
       .select()
       .single();
-    
+
     const duration = Date.now() - startTime;
 
     if (updateError) {
@@ -2833,7 +2825,7 @@ export async function cancelTestDriveRequest(requestId) {
   console.log('[API] cancelTestDriveRequest called');
   console.log('[API] Request ID:', requestId);
   const startTime = Date.now();
-  
+
   const { client, error } = ensureClient();
   if (error) {
     console.error('[API] Supabase client error:', error);
@@ -2874,7 +2866,7 @@ export async function cancelTestDriveRequest(requestId) {
       .eq('id', requestId)
       .select()
       .single();
-    
+
     const duration = Date.now() - startTime;
 
     if (updateError) {

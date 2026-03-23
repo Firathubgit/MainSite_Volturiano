@@ -1,0 +1,28 @@
+{
+  "name": "volturiano-builder-server",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "node --watch index.js"
+  },
+  "dependencies": {
+    "@ai-sdk/anthropic": "^1.1.0",
+    "@ai-sdk/google": "^1.1.0",
+    "@ai-sdk/groq": "^1.1.0",
+    "@ai-sdk/openai": "^1.1.0",
+    "@anthropic-ai/sdk": "^0.78.0",
+    "@e2b/code-interpreter": "^2.3.3",
+    "@google/genai": "^1.44.0",
+    "@google/generative-ai": "^0.24.1",
+    "@supabase/supabase-js": "^2.97.0",
+    "ai": "^4.1.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.6.1",
+    "express": "^4.21.0",
+    "openai": "^6.22.0",
+    "puppeteer": "^24.37.5",
+    "tar": "^7.5.9",
+    "zod": "^3.23.8"
+  }
+}

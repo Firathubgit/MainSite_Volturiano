@@ -1,41 +1,248 @@
 <!doctype html>
 <html lang="en" data-theme="base">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="color-scheme" content="dark light">
-    <meta name="description" content="Vi bygger avancerade webblösningar, från 3D-konfiguratorer till kundportaler. Paket från 30k till 100k för företag som vill växa." />
-    <!-- Open Graph / Facebook -->
-    <meta property="og:type" content="website" />
-    <meta property="og:title" content="Volturio Studios | Premium Webbyrå i Göteborg – Skräddarsydda system" />
-    <meta property="og:description" content="Vi bygger avancerade webblösningar, från 3D-konfiguratorer till kundportaler. Paket från 30k till 100k för företag som vill växa." />
-    <meta property="og:image" content="https://volturiano.com/og-image.png" />
-    <meta property="og:image:width" content="1200" />
-    <meta property="og:image:height" content="630" />
-    <!-- Twitter -->
-    <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="Volturio Studios | Premium Webbyrå i Göteborg – Skräddarsydda system" />
-    <meta name="twitter:description" content="Vi bygger avancerade webblösningar, från 3D-konfiguratorer till kundportaler. Paket från 30k till 100k för företag som vill växa." />
-    <!-- Default title (will be dynamically updated by usePageTitle hook) -->
-    <title>Volturio Studios | Premium Webbyrå i Göteborg – Skräddarsydda system</title>
-    <!-- Primary favicon - optimized for browser tabs -->
-    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
-    <!-- High-resolution favicons -->
-    <link rel="icon" type="image/png" sizes="192x192" href="/favicon-192x192.png" />
-    <link rel="icon" type="image/png" sizes="512x512" href="/favicon-512x512.png" />
-    <!-- Apple touch icon -->
-    <link rel="apple-touch-icon" sizes="180x180" href="/favicon-192x192.png" />
-    <!-- Fallback -->
-    <link rel="shortcut icon" href="/favicon-32x32.png" />
-    <!-- Web manifest for PWA -->
-    <link rel="manifest" href="/site.webmanifest" />
-    <!-- Fonts -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400..900&family=Rajdhani:wght@300;400;500;600;700&family=Manrope:wght@200;300;400;500;600;700;800&family=Syne:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.jsx"></script>
-  </body>
-  </html>
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="color-scheme" content="dark light">
+  <meta name="description"
+    content="Vi bygger avancerade webblösningar, från 3D-konfiguratorer till kundportaler. Paket från 30k till 100k för företag som vill växa." />
+  <!-- Open Graph / Facebook -->
+  <meta property="og:type" content="website" />
+  <meta property="og:title" content="Volturio Studios | Premium Webbyrå i Göteborg – Skräddarsydda system" />
+  <meta property="og:description"
+    content="Vi bygger avancerade webblösningar, från 3D-konfiguratorer till kundportaler. Paket från 30k till 100k för företag som vill växa." />
+  <meta property="og:image" content="https://volturiano.com/og-image.png" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <!-- Twitter -->
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="Volturio Studios | Premium Webbyrå i Göteborg – Skräddarsydda system" />
+  <meta name="twitter:description"
+    content="Vi bygger avancerade webblösningar, från 3D-konfiguratorer till kundportaler. Paket från 30k till 100k för företag som vill växa." />
+  <!-- Default title (will be dynamically updated by usePageTitle hook) -->
+  <title>Volturio Studios | Premium Webbyrå i Göteborg – Skräddarsydda system</title>
+  <!-- Primary favicon - optimized for browser tabs -->
+  <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
+  <!-- High-resolution favicons -->
+  <link rel="icon" type="image/png" sizes="192x192" href="/favicon-192x192.png" />
+  <link rel="icon" type="image/png" sizes="512x512" href="/favicon-512x512.png" />
+  <!-- Apple touch icon -->
+  <link rel="apple-touch-icon" sizes="180x180" href="/favicon-192x192.png" />
+  <!-- Fallback -->
+  <link rel="shortcut icon" href="/favicon-32x32.png" />
+  <!-- Web manifest for PWA -->
+  <link rel="manifest" href="/site.webmanifest" />
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400..900&family=Rajdhani:wght@300;400;500;600;700&family=Manrope:wght@200;300;400;500;600;700;800&family=Syne:wght@400;500;600;700;800&display=swap"
+    rel="stylesheet">
+  <!-- highlight.js for Code Viewer -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/highlight.js@11.9.0/styles/github-dark.css">
+  <script src="https://cdn.jsdelivr.net/npm/highlight.js@11.9.0/lib/common.min.js"></script>
+  <style>
+    @property --pos-x {
+      syntax: '<percentage>';
+      inherits: false;
+      initial-value: 0%;
+    }
+
+    @property --pos-y {
+      syntax: '<percentage>';
+      inherits: false;
+      initial-value: 0%;
+    }
+
+    @property --spread-x {
+      syntax: '<percentage>';
+      inherits: false;
+      initial-value: 0%;
+    }
+
+    @property --spread-y {
+      syntax: '<percentage>';
+      inherits: false;
+      initial-value: 0%;
+    }
+
+    @property --color-1 {
+      syntax: '<color>';
+      inherits: false;
+      initial-value: transparent;
+    }
+
+    @property --color-2 {
+      syntax: '<color>';
+      inherits: false;
+      initial-value: transparent;
+    }
+
+    @property --color-3 {
+      syntax: '<color>';
+      inherits: false;
+      initial-value: transparent;
+    }
+
+    @property --color-4 {
+      syntax: '<color>';
+      inherits: false;
+      initial-value: transparent;
+    }
+
+    @property --color-5 {
+      syntax: '<color>';
+      inherits: false;
+      initial-value: transparent;
+    }
+
+    @property --border-angle {
+      syntax: '<angle>';
+      inherits: false;
+      initial-value: 0deg;
+    }
+
+    @property --border-color-1 {
+      syntax: '<color>';
+      inherits: false;
+      initial-value: transparent;
+    }
+
+    @property --border-color-2 {
+      syntax: '<color>';
+      inherits: false;
+      initial-value: transparent;
+    }
+
+    @property --stop-1 {
+      syntax: '<percentage>';
+      inherits: false;
+      initial-value: 0%;
+    }
+
+    @property --stop-2 {
+      syntax: '<percentage>';
+      inherits: false;
+      initial-value: 0%;
+    }
+
+    @property --stop-3 {
+      syntax: '<percentage>';
+      inherits: false;
+      initial-value: 0%;
+    }
+
+    @property --stop-4 {
+      syntax: '<percentage>';
+      inherits: false;
+      initial-value: 0%;
+    }
+
+    @property --stop-5 {
+      syntax: '<percentage>';
+      inherits: false;
+      initial-value: 0%;
+    }
+
+    .publish-btn-raw-v2 {
+      color: rgb(255, 255, 255);
+      line-height: 19px;
+      font-weight: 700;
+      font-size: 14px;
+      font-family: ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+      padding: 10px 24px;
+      border-radius: 11px;
+      justify-content: center;
+      align-items: center;
+      min-width: 132px;
+      display: flex;
+      position: relative;
+      cursor: pointer;
+      appearance: none;
+      border-width: 0px;
+      border-style: solid;
+      border-color: rgb(39, 39, 42);
+      text-transform: none;
+      margin: 0px;
+      box-sizing: border-box;
+
+      /* Aurora Base Colors */
+      --color-1: #000022;
+      --color-2: #1f3f6d;
+      --color-3: #469396;
+      --color-4: #f1ffa5;
+      --color-5: #000000;
+      /* Pure Black outer rim */
+
+      /* Border Glow */
+      --border-angle: 200deg;
+      --border-color-1: hsla(320, 75%, 90%, .6);
+      --border-color-2: hsla(320, 50%, 90%, .15);
+
+      /* IDLE Position (Bottom Left, wide spread) */
+      --pos-x: 11.14%;
+      --pos-y: 140%;
+      --spread-x: 150%;
+      --spread-y: 180%;
+
+      /* Stops */
+      --stop-1: 37.35%;
+      --stop-2: 61.36%;
+      --stop-3: 78.42%;
+      --stop-4: 89.52%;
+      --stop-5: 100%;
+
+      background: radial-gradient(var(--spread-x) var(--spread-y) at var(--pos-x) var(--pos-y), var(--color-1) var(--stop-1), var(--color-2) var(--stop-2), var(--color-3) var(--stop-3), var(--color-4) var(--stop-4), var(--color-5) var(--stop-5));
+      transition: --pos-x 0.5s ease-in-out, --pos-y 0.5s ease-in-out, --spread-x 0.5s ease-in-out, --spread-y 0.5s ease-in-out, --border-angle 0.5s ease-in-out;
+    }
+
+    .publish-btn-raw-v2:before {
+      content: "";
+      position: absolute;
+      top: 0;
+      right: 0;
+      bottom: 0;
+      left: 0;
+      border-radius: inherit;
+      padding: 1px;
+      background: linear-gradient(var(--border-angle), var(--border-color-1), var(--border-color-2));
+      -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+      mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+      -webkit-mask-composite: xor;
+      mask-composite: exclude;
+      pointer-events: none;
+    }
+
+    .publish-btn-raw-v2:hover {
+      /* HOVER Position (Top Right, slightly tighter spread for motion arc) */
+      --pos-x: 100%;
+      --pos-y: 0%;
+      --spread-x: 120%;
+      --spread-y: 120%;
+      --border-angle: 210deg;
+    }
+
+    .publish-btn-raw-v2:active {
+      /* ACTIVE Position (Continue the swoop up and to the right) */
+      --pos-x: 130%;
+      --pos-y: -30%;
+      --spread-x: 120%;
+      --spread-y: 120%;
+      --border-angle: 220deg;
+      transition: --pos-x 0.2s ease-out, --pos-y 0.2s ease-out, --spread-x 0.2s ease-out, --spread-y 0.2s ease-out, --border-angle 0.2s ease-out;
+    }
+
+    .publish-btn-raw-v2:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+  </style>
+</head>
+
+<body>
+  <div id="root"></div>
+  <script type="module" src="/src/main.jsx"></script>
+</body>
+
+</html>

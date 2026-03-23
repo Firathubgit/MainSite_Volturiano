@@ -1,0 +1,1027 @@
+═══════════════════════════════════════════════════════════════════════════════════
+ VOLTURIANO BUILDER — BEFORE PRODUCTION: MASTER CHECKLIST
+ Document: BeforeProdNeedsToBeDone.txt
+ Date: 2026-03-23
+ Status: MVP PRE-LAUNCH
+ Companion: achievegdpr.txt (GDPR-specific implementation)
+═══════════════════════════════════════════════════════════════════════════════════
+
+This document is the single source of truth for every task that must be completed
+before the Volturiano Builder platform goes live on volturiano.com. It covers
+routing changes, environment configuration, security hardening, production URLs,
+Stripe production readiness, auth gating, Supabase table refactoring, GDPR, and
+deployment verification.
+
+ARCHITECTURE:
+- Frontend: Vite + React SPA → web/src/ (builds to web/dist/)
+- Backend: Express API server → web/server/ (port 3001)
+- DB: Supabase (VolturianoBuilder project) — PostgreSQL + Auth + Storage
+- Payments: Stripe (test mode → needs live mode)
+- Hosting: Vercel (volturiano.com)
+- Sandboxes: E2B (AI code execution)
+- AI: Anthropic Claude, Google Gemini, OpenAI GPT, Morph
+
+═══════════════════════════════════════════════════════════════════════════════════
+             PHASE P1: ROUTING — ROOT DOMAIN → /builder ✅
+═══════════════════════════════════════════════════════════════════════════════════
+
+Goal: Make volturiano.com (root /) take users to /builder instead of /agency.
+Keep /agency fully functional for anyone who navigates there directly.
+
+---
+
+### P1.1 Update IndexGate to Redirect to /builder
+
+**File:** `web/src/pages/Start/IndexGate.jsx`
+
+Current behavior (line 14):
+```javascript
+if (PAUSE_MODE_ENABLED && !platformMode) {
+  navigate('/agency', { replace: true });
+  return;
+}
+```
+
+New behavior:
+```javascript
+if (PAUSE_MODE_ENABLED && !platformMode) {
+  navigate('/builder', { replace: true });
+  return;
+}
+```
+
+This is a single-line change. The `PAUSE_MODE_ENABLED` flag is `true` in
+`web/src/config/pauseMode.js`, so the root `/` currently redirects to `/agency`.
+Change destination to `/builder`.
+
+**Tasks:**
+- [✅] P1.1a Change `/agency` to `/builder` in IndexGate.jsx line 15
+- [✅] P1.1b Verify /agency still loads when navigated to directly
+- [✅] P1.1c Verify / now redirects to /builder
+- [✅] P1.1d Verify /builder loads correctly with BuilderNavBar
+
+---
+
+### P1.2 Update App.jsx Navigation Logic (if needed)
+
+**File:** `web/src/app/App.jsx`
+
+Check lines 167-173 — the auto-exit platform mode logic references `/agency`:
+```javascript
+if (platformMode && location.pathname.startsWith("/agency") && !prevPath.startsWith("/agency")) {
+  exitPlatform();
+}
+```
+
+This should remain as-is — it only fires when navigating TO /agency routes,
+which is still valid behavior. No change needed here.
+
+The catch-all route (line 603) redirects unknown paths to `/`:
+```jsx
+<Route path="*" element={<Navigate to="/" replace />} />
+```
+
+This is fine — unknown routes go to `/` which now redirects to `/builder`.
+
+**Tasks:**
+- [✅] P1.2a Verify App.jsx catch-all still works (unknown → / → /builder)
+- [✅] P1.2b Verify /agency, /agency/about, /agency/services etc. still work
+- [✅] P1.2c Verify BuilderNavBar shows on /builder but NavBar shows on /agency
+
+
+═══════════════════════════════════════════════════════════════════════════════════
+        PHASE P2: ENVIRONMENT VARIABLES & VERCEL CONFIGURATION
+═══════════════════════════════════════════════════════════════════════════════════
+
+Goal: Properly configure all environment variables for production deployment on
+Vercel. Ensure no secrets leak and all URLs point to production.
+
+---
+
+### P2.1 Frontend Environment Variables (Vite — VITE_ prefix)
+
+These are embedded in the client bundle at build time. ONLY public keys here.
+
+**File:** `web/.env` (local dev only — NEVER committed)
+**Vercel:** Dashboard → Project Settings → Environment Variables
+
+| Variable                        | Dev Value                          | Production Value                    | Where to Set    |
+|---------------------------------|-----------------------------------|-------------------------------------|----------------|
+| VITE_SUPABASE_URL               | https://qqtkxeedvubknnjmjdzr...   | Same (or prod Supabase project)     | Vercel Env Vars |
+| VITE_SUPABASE_ANON_KEY          | eyJ...                            | Same (or prod project anon key)     | Vercel Env Vars |
+| VITE_BUILDER_SUPABASE_URL       | https://bfmqeuczlipocjqtzawj...   | Same                                | Vercel Env Vars |
+| VITE_BUILDER_SUPABASE_ANON_KEY  | eyJ...                            | Same                                | Vercel Env Vars |
+| VITE_ENABLE_R3F_MODE            | false                             | false                               | Vercel Env Vars |
+| VITE_ENABLE_WORLD               | false                             | false                               | Vercel Env Vars |
+| VITE_ENABLE_INVEST              | false                             | false                               | Vercel Env Vars |
+| VITE_ENABLE_AI_HELPER           | false                             | false                               | Vercel Env Vars |
+
+IMPORTANT: The `VITE_` prefix means these are EMBEDDED in the JS bundle. They
+are visible to anyone who inspects the source. That's OK for Supabase anon keys
+(they are designed to be public + RLS protects the data) but NEVER put secrets
+with the VITE_ prefix.
+
+**Tasks:**
+- [ ] P2.1a Add all VITE_ variables to Vercel Dashboard → Environment Variables
+- [ ] P2.1b Set scope to "Production" (and optionally "Preview")
+- [ ] P2.1c Verify anon keys are the CORRECT project's anon keys
+- [ ] P2.1d Confirm no secret keys have VITE_ prefix
+
+---
+
+### P2.2 Backend Environment Variables (Server — NO prefix)
+
+These are server-side only. They MUST be set as Vercel Environment Variables
+for the serverless functions, but they are NOT exposed to the client.
+
+CRITICAL: The Express server currently runs as a standalone process (port 3001).
+For Vercel production, you need a Vercel Serverless Function adapter OR run the
+server separately (e.g., Railway, Render, Fly.io, or a VPS). See P2.4.
+
+| Variable                    | Dev Value                      | Production Value                    |
+|-----------------------------|-------------------------------|-------------------------------------|
+| PORT                        | 3001                          | Set by hosting platform             |
+| CORS_ORIGIN                 | http://localhost:5173          | https://volturiano.com              |
+| FRONTEND_URL                | http://localhost:5173          | https://volturiano.com              |
+| SANDBOX_PROVIDER            | e2b                           | e2b                                 |
+| E2B_API_KEY                 | e2b_...                       | Same (or production E2B key)        |
+| ANTHROPIC_API_KEY           | sk-ant-...                    | Same (or production key)            |
+| GEMINI_API_KEY              | AIza...                       | Same                                |
+| OPENAI_API_KEY              | sk-proj-...                   | Same (or production key)            |
+| MORPH_API_KEY               | sk-...                        | Same                                |
+| SUPABASE_URL                | https://bfmqeuczlipocjqtzawj..| Same                                |
+| SUPABASE_ANON_KEY           | eyJ...                        | Same                                |
+| SUPABASE_SERVICE_ROLE_KEY   | eyJ...                        | Same — KEEP SECRET                  |
+| STRIPE_SECRET_KEY           | sk_test_...                   | sk_live_... (from Stripe Dashboard) |
+| STRIPE_WEBHOOK_SECRET       | whsec_...                     | New whsec_ for live webhook         |
+| STRIPE_PRICE_STARTER        | price_...                     | Live price IDs from Stripe          |
+| STRIPE_PRICE_BUILDER        | price_...                     | Live price IDs from Stripe          |
+| STRIPE_PRICE_AGENCY         | price_...                     | Live price IDs from Stripe          |
+
+**Tasks:**
+- [ ] P2.2a Create production .env template (`.env.example`) listing all required vars
+- [ ] P2.2b Set all server env vars on the hosting platform for the backend
+- [ ] P2.2c Change CORS_ORIGIN to https://volturiano.com
+- [ ] P2.2d Change FRONTEND_URL to https://volturiano.com
+- [ ] P2.2e Replace sk_test_ Stripe key with sk_live_ key
+- [ ] P2.2f Create NEW live webhook endpoint in Stripe Dashboard pointing to production URL
+- [ ] P2.2g Copy the new whsec_ webhook secret
+- [ ] P2.2h Replace test price IDs with live price IDs
+
+---
+
+### P2.3 .env Security Verification
+
+**File:** `.gitignore` — ALREADY covers .env files ✅
+
+Current .gitignore (verified):
+```
+.env
+.env.*
+!*.env.example
+web/.env
+web/.env.*
+!web/.env.example
+```
+
+But also verify:
+- `web/server/.env` is NOT committed (it contains ALL the secrets)
+- No `.env` files exist in the git history (if they were accidentally committed before)
+
+**Tasks:**
+- [ ] P2.3a Run `git log --all --full-history -- "**/.env"` to check if .env was ever committed
+- [ ] P2.3b If found in history, rotate ALL affected keys immediately
+- [ ] P2.3c Create `web/.env.example` with placeholder values (no real keys)
+- [ ] P2.3d Create `web/server/.env.example` with placeholder values
+- [ ] P2.3e Double-check `git status` shows NO .env files staged
+
+---
+
+### P2.4 Backend Hosting Decision for Production
+
+CRITICAL ARCHITECTURE DECISION:
+
+The Express server (web/server/index.js) runs as a long-running Node.js process
+on port 3001. Vercel only supports serverless functions (max 10s default, 60s pro).
+Your server has:
+- Long-running sandbox operations (AI generation can take 60-300 seconds)
+- WebSocket-like streaming (SSE for code generation)
+- Background workers (submission-analyzer.js)
+- Global state (sandboxState, activeSandboxProvider)
+
+OPTIONS:
+a) Keep backend on a separate hosting service (Railway, Render, Fly.io, VPS)
+   - Frontend on Vercel, API on separate service
+   - Change Vite proxy to point to production API URL
+   - Add API URL as env var: VITE_API_URL
+   
+b) Restructure as Vercel Serverless Functions  
+   - Major refactor, NOT recommended given sandbox architecture
+   
+c) Use Vercel with Edge Functions + external compute for sandboxes
+   - Hybrid approach, complex
+
+RECOMMENDATION: Option (a) — separate backend hosting. The sandbox operations
+and SSE streaming require a persistent server.
+
+**Tasks:**
+- [ ] P2.4a DECIDE on backend hosting platform
+- [ ] P2.4b Set up the chosen platform with Node.js 20.x
+- [ ] P2.4c Deploy server/index.js with all environment variables
+- [ ] P2.4d Configure CORS_ORIGIN to allow https://volturiano.com
+- [ ] P2.4e Update Vite proxy OR add VITE_API_URL for production API endpoint
+- [ ] P2.4f Test all API endpoints work from the production frontend
+- [ ] P2.4g Set up health check monitoring on the backend service
+
+---
+
+### P2.5 Vercel Project Configuration
+
+**File:** `web/vercel.json` — already has good configuration ✅
+
+Current vercel.json includes:
+- Rewrites for /sites/:slug to Supabase Storage ✅
+- SPA fallback rewrite ✅
+- Security headers (X-Content-Type-Options, X-Frame-Options, CSP, etc.) ✅
+- Asset caching ✅
+
+Additional production tasks:
+
+**Tasks:**
+- [ ] P2.5a Verify custom domain volturiano.com is connected in Vercel Dashboard
+- [ ] P2.5b Verify SSL/TLS certificate is active and auto-renewing
+- [ ] P2.5c Verify www.volturiano.com redirects to volturiano.com (or vice versa)
+- [ ] P2.5d Update CSP header to include production API domain (if backend is separate)
+- [ ] P2.5e Test the /sites/:slug rewrite works with production Supabase Storage URL
+- [ ] P2.5f Review and tighten CSP: consider removing 'unsafe-eval' if possible
+
+
+═══════════════════════════════════════════════════════════════════════════════════
+           PHASE P3: SECURITY HARDENING (PRE-PRODUCTION CHECKLIST)
+═══════════════════════════════════════════════════════════════════════════════════
+
+Goal: Address every item from the production security checklist conversation.
+Each sub-phase maps to a checklist item.
+
+---
+
+### P3.1 Authorization — Users Can Only Access Their Own Data
+
+Current status:
+- Auth middleware exists: `requireAuth` and `optionalAuth` in authMiddleware.js ✅
+- RLS is enabled on Supabase tables ✅
+- Dashboard routes use `requireAuth` ✅
+- Billing routes use `requireAuth` for mutations ✅
+
+GAPS FOUND:
+- Many generation/sandbox routes have NO auth: `enhance-prompt`, `plan-website-components`,
+  `generate-ai-code-stream`, `create-ai-sandbox-v2`, `create-zip`, etc.
+- These routes should either require auth OR have rate limiting for guests
+
+**Tasks:**
+- [ ] P3.1a Audit every route in server/index.js — mark which use requireAuth, optionalAuth, or none
+- [ ] P3.1b Add `optionalAuth` to ALL unprotected routes that interact with user data
+- [ ] P3.1c Verify RLS policies prevent cross-user data access (see achievegdpr.txt G7)
+- [ ] P3.1d Test: Logged-in User A cannot see User B's projects via API
+
+---
+
+### P3.2 Input Validation & Sanitization
+
+Current status: MINIMAL validation exists.
+
+GAPS FOUND:
+- `publish.js`: slug is sanitized ✅ but `siteTitle` and `siteDescription` are
+  injected into HTML via string replacement (line 190-211) — XSS RISK
+- `init-project.js`: project name validation unknown
+- `feedback.js`: user input goes to DB — check for SQL injection (Supabase
+  parameterizes queries, so SQL injection is handled, but XSS in stored data is not)
+- `plan-website-components.js`: user prompts sent to AI — prompt injection risk
+  (acceptable for AI, but log sanitization needed)
+
+**File:** `web/server/routes/publish.js` — XSS FIX NEEDED
+
+Current code injects user-provided `siteTitle` directly into HTML:
+```javascript
+html = html.replace(/<title>.*?<\/title>/i, `<title>${siteTitle}</title>`);
+```
+
+Must sanitize first:
+```javascript
+const sanitize = (str) => str.replace(/[<>"'&]/g, c => ({'<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;','&':'&amp;'}[c]));
+html = html.replace(/<title>.*?<\/title>/i, `<title>${sanitize(siteTitle)}</title>`);
+```
+
+**Tasks:**
+- [ ] P3.2a Sanitize `siteTitle` and `siteDescription` in publish.js before HTML injection
+- [ ] P3.2b Validate slug format server-side (already done ✅)
+- [ ] P3.2c Add input length limits on all user-facing text fields (server-side)
+- [ ] P3.2d Validate `planId` and `packId` in billing routes (already done ✅)
+- [ ] P3.2e Validate `projectId` format (UUID) in dashboard routes
+- [ ] P3.2f Review all routes accepting user input for injection vectors
+
+---
+
+### P3.3 CORS Policy Configuration
+
+**File:** `web/server/index.js` (line 64)
+
+Current:
+```javascript
+app.use(cors({ origin: process.env.CORS_ORIGIN || 'http://localhost:5173' }));
+```
+
+Production:
+```javascript
+app.use(cors({
+  origin: process.env.CORS_ORIGIN || 'https://volturiano.com',
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: true,
+}));
+```
+
+**Tasks:**
+- [ ] P3.3a Set CORS_ORIGIN env var to https://volturiano.com in production
+- [ ] P3.3b Add explicit `methods` and `allowedHeaders` restrictions
+- [ ] P3.3c Test that API requests from other domains are rejected
+- [ ] P3.3d Consider adding multiple allowed origins if needed (e.g., www subdomain)
+
+---
+
+### P3.4 Rate Limiting on All API Endpoints
+
+Current status: NO rate limiting exists anywhere ❌
+
+This is critical for:
+- Preventing AI API abuse (each call costs money — Anthropic, OpenAI, Gemini)
+- Preventing billing endpoint abuse
+- Preventing brute force on auth-related endpoints
+- Preventing webhook replay attacks
+
+**File:** `web/server/index.js` [MODIFY]
+**Package:** `express-rate-limit` [NEW DEPENDENCY]
+
+#### P3.4.1 Rate Limit Tiers
+
+| Tier               | Routes                                    | Limit             |
+|--------------------|-------------------------------------------|--------------------|
+| Strict             | /api/billing/*, /api/webhooks/*           | 10 req/min per IP  |
+| AI Generation      | /api/generate-*, /api/enhance-prompt,     | 5 req/min per user |
+|                    | /api/plan-website-*, /api/apply-ai-*      |                    |
+| Standard           | /api/projects/*, /api/dashboard/*         | 30 req/min per IP  |
+| Relaxed            | /api/component-catalog, /api/community/*  | 60 req/min per IP  |
+| Open               | /api/health                               | No limit           |
+
+#### P3.4.2 Implementation
+
+```javascript
+import rateLimit from 'express-rate-limit';
+
+const strictLimiter = rateLimit({ windowMs: 60000, max: 10, message: { error: 'Too many requests' } });
+const aiLimiter = rateLimit({ windowMs: 60000, max: 5, message: { error: 'AI generation rate limited' } });
+const standardLimiter = rateLimit({ windowMs: 60000, max: 30 });
+const relaxedLimiter = rateLimit({ windowMs: 60000, max: 60 });
+
+// Apply to routes:
+app.use('/api/billing', strictLimiter);
+app.use('/api/webhooks', strictLimiter);
+app.post('/api/generate-ai-code-stream', aiLimiter);
+app.post('/api/enhance-prompt', aiLimiter);
+// ... etc.
+```
+
+**Tasks:**
+- [ ] P3.4a Install `express-rate-limit`: `npm install express-rate-limit`
+- [ ] P3.4b Create rate limit configurations for each tier
+- [ ] P3.4c Apply rate limiters to all API routes in index.js
+- [ ] P3.4d Test rate limiting works (send rapid requests, expect 429)
+- [ ] P3.4e Consider using user ID (from auth) instead of IP for authenticated routes
+- [ ] P3.4f Exempt Stripe webhook IPs from rate limiting (Stripe retries on failure)
+
+---
+
+### P3.5 Error Handling — No Raw Stack Traces to Frontend
+
+Current status: PARTIALLY implemented.
+
+Good:
+- Global error handler in index.js (line 278-291) catches errors ✅
+- `process.on('uncaughtException')` prevents crashes ✅
+- `process.on('unhandledRejection')` logs but doesn't crash ✅
+
+Gaps:
+- Some routes return `error.message` directly which may expose internal info
+- `publish.js` line 480: exposes `error.stack` in development mode
+- No custom error pages for 404, 500 on the frontend
+
+**Tasks:**
+- [ ] P3.5a Audit all `res.status(500).json({ error: ... })` calls — ensure they don't expose internals
+- [ ] P3.5b Remove `error.stack` from production responses in publish.js
+- [ ] P3.5c Create frontend error boundary component for unexpected React errors
+- [ ] P3.5d Create a 404 page component for unknown routes
+- [ ] P3.5e Ensure error messages are user-friendly, not technical
+
+---
+
+### P3.6 Database Indexing for Common Queries
+
+Run in Supabase SQL Editor:
+
+```sql
+-- Already likely indexed (primary keys):
+-- profiles.id, projects.id, published_sites.id, credit_transactions.id
+
+-- Additional indexes needed:
+CREATE INDEX IF NOT EXISTS idx_projects_user_id ON projects(user_id);
+CREATE INDEX IF NOT EXISTS idx_projects_updated_at ON projects(updated_at DESC);
+CREATE INDEX IF NOT EXISTS idx_published_sites_user_id ON published_sites(user_id);
+CREATE INDEX IF NOT EXISTS idx_published_sites_slug ON published_sites(slug);
+CREATE INDEX IF NOT EXISTS idx_published_sites_project_id ON published_sites(project_id);
+CREATE INDEX IF NOT EXISTS idx_credit_transactions_user_id ON credit_transactions(user_id);
+CREATE INDEX IF NOT EXISTS idx_credit_transactions_created_at ON credit_transactions(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_credit_transactions_stripe_payment_id ON credit_transactions(stripe_payment_id);
+CREATE INDEX IF NOT EXISTS idx_snapshots_project_id ON snapshots(project_id);
+CREATE INDEX IF NOT EXISTS idx_profiles_stripe_customer_id ON profiles(stripe_customer_id);
+CREATE INDEX IF NOT EXISTS idx_profiles_stripe_subscription_id ON profiles(stripe_subscription_id);
+```
+
+**Tasks:**
+- [ ] P3.6a Run the indexing SQL in Supabase SQL Editor
+- [ ] P3.6b Verify indexes were created with `SELECT * FROM pg_indexes WHERE schemaname = 'public'`
+- [ ] P3.6c Monitor query performance after indexing
+
+---
+
+### P3.7 Production Logging
+
+Current status: Uses `console.log` everywhere — not structured, may leak PII.
+
+**Tasks:**
+- [ ] P3.7a Create `web/server/lib/logger.js` — wrapper around console with log levels
+- [ ] P3.7b Set log level via env var: `LOG_LEVEL=info` in production
+- [ ] P3.7c Remove or reduce request body logging (index.js line 76) in production
+- [ ] P3.7d Strip PII from logs (mask emails, user IDs in non-error logs)
+- [ ] P3.7e Set up Vercel deployment notifications (Slack/email) for failures
+
+---
+
+### P3.8 Rollback Strategy
+
+Vercel provides instant rollback to any previous deployment.
+
+**Tasks:**
+- [ ] P3.8a Verify Vercel deployment history shows previous builds
+- [ ] P3.8b Practice a rollback: deploy → rollback → verify site works
+- [ ] P3.8c For backend: set up a tagged release strategy (git tags for deployments)
+- [ ] P3.8d Document the rollback procedure for both frontend and backend
+
+
+═══════════════════════════════════════════════════════════════════════════════════
+     PHASE P4: PRODUCTION URLs — PUBLISH, DOWNLOAD, GITHUB PUSH, STAMP
+═══════════════════════════════════════════════════════════════════════════════════
+
+Goal: Ensure the Generation page features (Download Code, GitHub Push, Publish
+Website, Volturiano Stamp) all work correctly with production URLs.
+
+---
+
+### P4.1 Publish Website — Production URL Fix
+
+Current behavior in `publish.js` (line 352):
+```javascript
+const liveUrl = `${process.env.SUPABASE_URL}/storage/v1/object/public/published-sites/${slug}/index.html`;
+```
+
+This generates a Supabase Storage URL like:
+`https://bfmqeuczlipocjqtzawj.supabase.co/storage/v1/object/public/published-sites/my-site/index.html`
+
+But `vercel.json` already has a rewrite:
+```json
+{ "source": "/sites/:slug", "destination": "https://bfmqeuczlipocjqtzawj.supabase.co/storage/v1/object/public/published-sites/:slug/index.html" }
+```
+
+So the PRODUCTION URL should be: `https://volturiano.com/sites/my-site/`
+
+The frontend already handles this correctly in Generation.jsx (line 2148):
+```javascript
+finalUrl = `https://volturiano.com/sites/${data.slug}`;
+```
+
+And line 2999 conditionally shows localhost vs production:
+```javascript
+{window.location.hostname === 'localhost' ? `${window.location.host}/sites/` : 'volturiano.com/sites/'}
+```
+
+So the frontend is ALREADY production-ready for publish URLs ✅
+
+The only fix needed is the server-side `liveUrl` stored in the DB (for reference):
+
+**File:** `web/server/routes/publish.js` (line 352)
+
+Change to:
+```javascript
+const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+const liveUrl = `${frontendUrl}/sites/${slug}/`;
+```
+
+**Tasks:**
+- [ ] P4.1a Update `liveUrl` in publish.js to use FRONTEND_URL instead of SUPABASE_URL
+- [ ] P4.1b Verify vercel.json rewrite for /sites/:slug works in production
+- [ ] P4.1c Test publishing a site and visiting the production URL
+- [ ] P4.1d Verify the Volturiano Stamp (branding overlay) loads correctly on published sites
+- [ ] P4.1e Verify the stamp's logo `src="/TornadoLogo.png"` resolves correctly (relative path)
+
+---
+
+### P4.2 Volturiano Stamp — Production Fix
+
+The stamp in publish.js (line 312) uses:
+```html
+<img src="/TornadoLogo.png" alt="Volturiano" class="stamp-logo" />
+```
+
+On localhost, this resolves to `http://localhost:5173/TornadoLogo.png`.
+On published sites (served from Supabase Storage), `/TornadoLogo.png` will
+resolve to the PUBLISHED SITE's root — the file won't exist there.
+
+FIX: Use an absolute URL to the logo hosted on volturiano.com or the public CDN.
+
+```html
+<img src="https://volturiano.com/TornadoLogo.png" alt="Volturiano" class="stamp-logo" />
+```
+
+Or upload the logo to Supabase Storage and use that URL.
+
+**Tasks:**
+- [ ] P4.2a Ensure TornadoLogo.png is in web/public/ and deployed to Vercel
+- [ ] P4.2b Change stamp logo src to absolute URL: `https://volturiano.com/TornadoLogo.png`
+- [ ] P4.2c Test stamp renders correctly on a published site
+- [ ] P4.2d Verify stamp link `href="https://volturiano.com"` works
+
+---
+
+### P4.3 Download Code (create-zip.js)
+
+Current behavior: Creates a zip from the E2B sandbox and returns as base64.
+This is environment-agnostic — works the same in dev and production ✅
+
+**Tasks:**
+- [ ] P4.3a Test download flow end-to-end in production
+- [ ] P4.3b Verify the zip file name is `volturiano-project.zip`
+- [ ] P4.3c Check file size limits (base64 in JSON can be large)
+
+---
+
+### P4.4 GitHub Push (if implemented)
+
+Status: Review if GitHub push functionality exists in the codebase.
+
+**Tasks:**
+- [ ] P4.4a Search codebase for GitHub push implementation
+- [ ] P4.4b If exists: verify OAuth flow works with production callback URLs
+- [ ] P4.4c If exists: verify GitHub tokens are stored securely
+- [ ] P4.4d If not implemented: document as future feature
+
+
+═══════════════════════════════════════════════════════════════════════════════════
+        PHASE P5: STRIPE PRODUCTION READINESS
+═══════════════════════════════════════════════════════════════════════════════════
+
+Goal: Switch Stripe from test mode to live mode. Ensure all payment flows work.
+
+NOTE: The existing `BeforeProductionChecklist.txt` (200 items) covers Stripe
+in detail. This phase summarizes the CRITICAL items. Refer to that document
+for the full Stripe checklist.
+
+---
+
+### P5.1 Stripe Live Mode Activation
+
+**Tasks:**
+- [ ] P5.1a Activate Live Mode in Stripe Dashboard
+- [ ] P5.1b Create live products: Starter (249 kr), Pro (499 kr), Studio (999 kr)
+- [ ] P5.1c Create live credit packs: 10 (129 kr), 25 (329 kr), 60 (749 kr)
+- [ ] P5.1d Copy all live Price IDs to production env vars
+- [ ] P5.1e Replace sk_test_ with sk_live_ in production env vars
+- [ ] P5.1f Create live webhook endpoint: https://YOUR_API_DOMAIN/api/webhooks/stripe
+- [ ] P5.1g Copy new whsec_ webhook secret to production env vars
+- [ ] P5.1h Enable webhook events: checkout.session.completed, invoice.payment_succeeded,
+      customer.subscription.updated, customer.subscription.deleted, invoice.payment_failed
+- [ ] P5.1i Verify Business Details (KYC) are complete in Stripe
+- [ ] P5.1j Set up Stripe Customer Portal (allow cancel, switch plans)
+
+---
+
+### P5.2 Stripe URLs Fix
+
+**File:** `web/server/routes/billing.js`
+
+Current (line 45):
+```javascript
+const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5173';
+```
+
+Success/cancel URLs (lines 268-269, 339-340):
+```javascript
+success_url: `${FRONTEND_URL}/builder?billing=success&session_id={CHECKOUT_SESSION_ID}`,
+cancel_url: `${FRONTEND_URL}/builder?billing=cancelled`,
+```
+
+This is ALREADY correct — it uses `FRONTEND_URL` env var. Just ensure
+`FRONTEND_URL=https://volturiano.com` is set in production.
+
+**Tasks:**
+- [ ] P5.2a Confirm FRONTEND_URL is set to https://volturiano.com in production
+- [ ] P5.2b Test Stripe checkout redirect lands on correct production URL
+- [ ] P5.2c Test Stripe Customer Portal return URL lands on /builder
+
+---
+
+### P5.3 Webhook Endpoint Security
+
+**File:** `web/server/routes/webhooks.js`
+
+Already implemented correctly:
+- Signature verification via `stripe.webhooks.constructEvent` ✅
+- Idempotency check via `stripe_payment_id` ✅
+- All 5 event types handled ✅
+
+**Tasks:**
+- [ ] P5.3a Verify webhook signature verification works with live whsec_
+- [ ] P5.3b Test a live payment end-to-end (use a real card, small amount)
+- [ ] P5.3c Verify credits are correctly added after purchase
+- [ ] P5.3d Verify subscription lifecycle (create, renew, cancel)
+- [ ] P5.3e Check Stripe webhook logs for delivery failures
+
+
+═══════════════════════════════════════════════════════════════════════════════════
+    PHASE P6: GDPR COMPLIANCE (→ achievegdpr.txt)
+═══════════════════════════════════════════════════════════════════════════════════
+
+This phase is fully documented in the companion file `achievegdpr.txt`.
+
+Complete ALL phases G1 through G9 in achievegdpr.txt before proceeding to P7.
+
+Summary of GDPR phases:
+  G1: Data Audit & Mapping (~20 tasks)
+  G2: Consent & Cookie Management (~12 tasks)
+  G3: Privacy Policy & Legal Pages (~8 tasks)
+  G4: Technical Security / Privacy by Design (~14 tasks)
+  G5: Data Subject Rights: Export, Delete, Rectify (~18 tasks)
+  G6: Data Breach Protocols (~6 tasks)
+  G7: Supabase RLS & Security Hardening (~12 tasks)
+  G8: Production Logging GDPR Compliance (~6 tasks)
+  G9: Final GDPR Validation (~4 tasks)
+
+**Tasks:**
+- [ ] P6.0 Complete ALL tasks in achievegdpr.txt (phases G1-G9, ~100 tasks)
+
+
+═══════════════════════════════════════════════════════════════════════════════════
+    PHASE P7: AUTH GATING — REQUIRE LOGIN TO CREATE WEBSITES
+═══════════════════════════════════════════════════════════════════════════════════
+
+Goal: Require users to be logged in before they can create a website. They can
+still browse Builder, type prompts, and explore — but submitting (going through
+component selection and triggering generation) requires an account.
+
+---
+
+### P7.1 Frontend: Block Generation Without Auth
+
+**File:** `web/src/pages/Agency/pages/Builder/Builder.jsx` [MODIFY]
+
+When user clicks "Generate" or selects components to submit:
+1. Check if `session` exists (from `useBuilderAuth`)
+2. If NOT logged in → show a modal: "Create an account to build your website"
+   with buttons: "Sign Up" → /builder/login, "Log In" → /builder/login
+3. If logged in → proceed as normal
+
+#### P7.1.1 Auth Gate Modal Component
+
+**File:** `web/src/components/Modals/AuthGateModal.jsx` [NEW]
+**File:** `web/src/components/Modals/AuthGateModal.module.css` [NEW]
+
+```jsx
+// Simple modal: "You need an account to create a website"
+// CTA buttons: "Create Account" and "Sign In"
+// Both navigate to /builder/login
+// Dark premium design matching the builder
+```
+
+**Tasks:**
+- [ ] P7.1a Create AuthGateModal component
+- [ ] P7.1b In Builder.jsx, check auth before submitting prompt/template
+- [ ] P7.1c Show AuthGateModal when unauthenticated user tries to generate
+- [ ] P7.1d Allow unauthenticated users to still browse, type, and explore
+- [ ] P7.1e After login, redirect back to /builder with their prompt preserved
+
+---
+
+### P7.2 Frontend: Block Component Selection Without Auth
+
+**File:** `web/src/pages/Agency/pages/Builder/Generation/ComponentSelector.jsx` [MODIFY]
+
+When component selection is submitted:
+1. Check if session exists
+2. If NOT logged in → show AuthGateModal
+3. If logged in → proceed
+
+**Tasks:**
+- [ ] P7.2a Add auth check before component selection submission
+- [ ] P7.2b Show AuthGateModal for unauthenticated users
+
+---
+
+### P7.3 Backend: Enforce Auth on Critical Routes
+
+Switch from `optionalAuth` to `requireAuth` on routes that create/modify data:
+
+| Route                           | Current Auth  | New Auth      | Reason                    |
+|---------------------------------|--------------|---------------|---------------------------|
+| POST /api/projects/init         | optionalAuth | requireAuth   | Creating a project        |
+| POST /api/projects/update       | optionalAuth | requireAuth   | Modifying a project       |
+| GET  /api/projects/get          | optionalAuth | requireAuth   | Reading own project       |
+| POST /api/snapshots             | optionalAuth | requireAuth   | Creating snapshot         |
+| GET  /api/snapshots             | optionalAuth | requireAuth   | Reading own snapshots     |
+| POST /api/publish-site          | optionalAuth | requireAuth   | Publishing a site         |
+| POST /api/sandbox/keepalive     | optionalAuth | requireAuth   | Sandbox management        |
+| POST /api/track-retention       | optionalAuth | optionalAuth  | Keep optional (analytics) |
+
+**Tasks:**
+- [ ] P7.3a Change optionalAuth to requireAuth on projects/init
+- [ ] P7.3b Change optionalAuth to requireAuth on projects/update
+- [ ] P7.3c Change optionalAuth to requireAuth on projects/get
+- [ ] P7.3d Change optionalAuth to requireAuth on snapshots (both GET/POST)
+- [ ] P7.3e Change optionalAuth to requireAuth on publish-site
+- [ ] P7.3f Change optionalAuth to requireAuth on sandbox/keepalive
+- [ ] P7.3g Test that unauthenticated requests to these routes return 401
+- [ ] P7.3h Test that authenticated requests still work correctly
+
+---
+
+### P7.4 Supabase Table Adjustments for Auth Requirement
+
+Since projects NOW require auth:
+- `user_id` column on projects should be NOT NULL
+- `user_id` column on published_sites should be NOT NULL
+- Remove any guest-mode fallback logic
+
+```sql
+-- Enforce user_id on projects
+ALTER TABLE projects ALTER COLUMN user_id SET NOT NULL;
+
+-- Enforce user_id on published_sites
+ALTER TABLE published_sites ALTER COLUMN user_id SET NOT NULL;
+```
+
+**Tasks:**
+- [ ] P7.4a Check if any existing rows have NULL user_id (clean up first)
+- [ ] P7.4b Add NOT NULL constraint to projects.user_id
+- [ ] P7.4c Add NOT NULL constraint to published_sites.user_id
+- [ ] P7.4d Remove guest project creation logic from init-project.js
+- [ ] P7.4e Remove guest snapshot logic from save-snapshot.js
+
+
+═══════════════════════════════════════════════════════════════════════════════════
+         PHASE P8: FRONTEND PRODUCTION CLEANUP
+═══════════════════════════════════════════════════════════════════════════════════
+
+Goal: Remove development artifacts, debug code, and unnecessary logging from
+the frontend before production push.
+
+---
+
+### P8.1 Remove Console Logging from Production Builds
+
+**File:** `web/src/app/App.jsx` — extensive console.log statements (lines 135-338)
+
+These log auth state, session details, etc. They should be removed or wrapped
+in `import.meta.env.DEV` checks.
+
+**Tasks:**
+- [ ] P8.1a Wrap all console.log in App.jsx with `if (import.meta.env.DEV)` checks
+- [ ] P8.1b Review Generation.jsx for excessive console.log statements
+- [ ] P8.1c Consider using the existing `src/utils/logger.js` utility across the app
+- [ ] P8.1d Verify `vite.config.js` strips debug flags (line 46) ✅ already done
+
+---
+
+### P8.2 Remove Debug Routes
+
+**File:** `web/src/app/App.jsx`
+
+Lines 463-474: Debug routes are already behind `import.meta.env.DEV` ✅
+These won't appear in production builds. No action needed.
+
+**Tasks:**
+- [ ] P8.2a Confirm debug routes are behind DEV flag ✅
+
+---
+
+### P8.3 Remove Development Files from Git Push
+
+Files that should NOT be in the production repository:
+
+- `web/build-err.txt`, `web/build_error.txt`, `web/build-output.log`
+- `web/check_result.json`, `web/cred-res.json`, `web/jobs.json`
+- `web/comp.json`, `web/output_bucket.json`, `web/output_subs.json`
+- `web/test-*.js`, `web/test-*.mjs`, `web/test-*.html`, `web/test-*.jsx`
+- `web/colorbends-temp.tsx`, `web/darkveil-temp.tsx`, `web/debug-bends.jsx`
+- `web/temp_bundle.js`, `web/fix_bundle*.js`, `web/repaired-bends.jsx`
+- `web/migration_log.txt`, `web/migration_out.txt`
+- `web/server/error.txt`, `web/server/publish_debug.log`, `web/server/verify-output.txt`
+- `web/server/temp_extract/` directory
+- Various `.txt` prompt files in Builder directory (Phase10Prompts, etc.)
+- `web/src/pages/Agency/pages/Builder/dashboardComunityCode.txt` (7.1 MB!)
+
+**Tasks:**
+- [ ] P8.3a Add all test/debug/temp files to .gitignore
+- [ ] P8.3b Remove temp files from git tracking: `git rm --cached <file>`
+- [ ] P8.3c Remove the 7.1MB dashboardComunityCode.txt from tracking
+- [ ] P8.3d Clean up server temp_extract directory
+- [ ] P8.3e Verify .gitignore covers: *.log, temp_extract/, test-*, *-temp.*
+
+---
+
+### P8.4 SEO & Meta Tags
+
+**File:** `web/index.html`
+
+Ensure production meta tags are set:
+- Title: "Volturiano — AI Website Builder"
+- Description: compelling meta description
+- Open Graph tags for social sharing
+- Favicon
+- robots.txt allowing indexing
+
+**Tasks:**
+- [ ] P8.4a Update index.html <title> tag
+- [ ] P8.4b Add meta description
+- [ ] P8.4c Add Open Graph tags (og:title, og:description, og:image)
+- [ ] P8.4d Verify favicon is present
+- [ ] P8.4e Create robots.txt allowing search engine indexing
+- [ ] P8.4f Create sitemap.xml with key pages
+
+
+═══════════════════════════════════════════════════════════════════════════════════
+           PHASE P9: SUPABASE CONFIGURATION FOR PRODUCTION
+═══════════════════════════════════════════════════════════════════════════════════
+
+Goal: Verify Supabase is properly configured for production use.
+
+---
+
+### P9.1 Supabase Auth Configuration
+
+In Supabase Dashboard → Authentication → URL Configuration:
+
+| Setting              | Dev Value                              | Production Value                    |
+|----------------------|---------------------------------------|------------------------------------|
+| Site URL             | http://localhost:5173                  | https://volturiano.com             |
+| Redirect URLs        | http://localhost:5173/builder          | https://volturiano.com/builder     |
+|                      | http://localhost:5173/builder/login    | https://volturiano.com/builder/login|
+
+**Tasks:**
+- [ ] P9.1a Set Site URL to https://volturiano.com
+- [ ] P9.1b Add production redirect URLs
+- [ ] P9.1c Keep localhost URLs for development (Supabase allows multiple)
+- [ ] P9.1d Verify email templates use production URLs
+- [ ] P9.1e Test password reset flow with production URLs
+- [ ] P9.1f Verify email confirmation flow works
+
+---
+
+### P9.2 Supabase Storage Bucket Configuration
+
+| Bucket             | Public? | Max File Size | Allowed MIME Types      |
+|--------------------|---------|---------------|-------------------------|
+| published-sites    | Yes     | 50MB          | All web assets          |
+| components         | Yes     | 10MB          | JS, CSS, JSON, images   |
+| project-thumbnails | Yes     | 5MB           | Images only             |
+| builder-assets     | Yes     | 10MB          | Images, SVG             |
+| site-icons         | Yes     | 2MB           | Images only             |
+
+**Tasks:**
+- [ ] P9.2a Verify all storage buckets exist in production
+- [ ] P9.2b Set appropriate file size limits per bucket
+- [ ] P9.2c Set allowed MIME types where possible
+- [ ] P9.2d Verify public access policies are correct
+
+---
+
+### P9.3 Supabase Database Backups
+
+**Tasks:**
+- [ ] P9.3a Verify Point-in-Time Recovery is enabled (Pro plan feature)
+- [ ] P9.3b Set up daily backup schedule
+- [ ] P9.3c Test backup restoration procedure
+- [ ] P9.3d Document restoration procedure
+
+
+═══════════════════════════════════════════════════════════════════════════════════
+               PHASE P10: FINAL DEPLOYMENT & VALIDATION
+═══════════════════════════════════════════════════════════════════════════════════
+
+Goal: Deploy to production and validate everything works end-to-end.
+
+---
+
+### P10.1 Pre-Deployment Checklist
+
+- [ ] P10.1a All phases P1-P9 completed
+- [ ] P10.1b All GDPR tasks (achievegdpr.txt G1-G9) completed
+- [ ] P10.1c `npm run build` succeeds locally with zero errors
+- [ ] P10.1d All environment variables set on hosting platforms
+- [ ] P10.1e Backend server deployed and health check passes
+- [ ] P10.1f DNS configured: volturiano.com → Vercel
+- [ ] P10.1g SSL certificate active and valid
+
+---
+
+### P10.2 Deployment Steps
+
+1. Push frontend to Vercel (automatic via git push to main branch)
+2. Deploy backend to chosen hosting (Railway/Render/etc.)
+3. Verify backend health: `curl https://api.yourdomain.com/api/health`
+4. Verify frontend loads: `https://volturiano.com` → redirects to /builder
+5. Test end-to-end generation flow
+6. Test Stripe payment flow (live, small amount)
+7. Test publish flow
+8. Monitor Vercel and backend logs for errors
+
+**Tasks:**
+- [ ] P10.2a Push to main branch on GitHub (triggers Vercel deploy)
+- [ ] P10.2b Verify Vercel build succeeds
+- [ ] P10.2c Verify backend deployment succeeds
+- [ ] P10.2d Run smoke test: visit volturiano.com, expect /builder
+- [ ] P10.2e Run smoke test: login flow
+- [ ] P10.2f Run smoke test: generate a website with AI
+- [ ] P10.2g Run smoke test: publish a site → visit volturiano.com/sites/slug
+- [ ] P10.2h Run smoke test: download code
+- [ ] P10.2i Run smoke test: Stripe payment (use test card if available, else small real payment)
+- [ ] P10.2j Check Vercel Analytics dashboard
+- [ ] P10.2k Check Stripe webhook delivery in Stripe Dashboard
+
+---
+
+### P10.3 Post-Deployment Monitoring
+
+- [ ] P10.3a Set up Vercel deployment notifications
+- [ ] P10.3b Set up Stripe webhook failure alerts
+- [ ] P10.3c Monitor Supabase dashboard for unusual activity
+- [ ] P10.3d Check error logs daily for the first week
+- [ ] P10.3e Have a rollback plan ready (Vercel instant rollback)
+
+
+═══════════════════════════════════════════════════════════════════════════════════
+                    EXECUTION ORDER SUMMARY
+═══════════════════════════════════════════════════════════════════════════════════
+
+Recommended order of execution:
+
+1. P1 — Routing change (5 min, simple)
+2. P2 — Environment variables & hosting decision (1-2 days)
+3. P3 — Security hardening: rate limiting, input validation, CORS (1-2 days)
+4. P4 — Production URLs: publish, stamp, download (0.5 day)
+5. P5 — Stripe live mode activation (1 day)
+6. P7 — Auth gating refactor (1-2 days)
+7. P8 — Frontend cleanup & SEO (0.5 day)
+8. P9 — Supabase production config (0.5 day)
+9. P6 — GDPR compliance (→ achievegdpr.txt, 3-5 days)
+10. P10 — Deployment & validation (1 day)
+
+ESTIMATED TOTAL: 10-15 days of implementation work.
+
+
+═══════════════════════════════════════════════════════════════════════════════════
+                    FILE CHANGE SUMMARY
+═══════════════════════════════════════════════════════════════════════════════════
+
+| Action | File                                              | Phase | Description                        |
+|--------|---------------------------------------------------|-------|------------------------------------|
+| MODIFY | web/src/pages/Start/IndexGate.jsx                 | P1    | Change /agency → /builder redirect |
+| MODIFY | web/server/index.js                               | P3    | Rate limiting, CORS, logging       |
+| MODIFY | web/server/routes/publish.js                       | P3,P4 | XSS fix, production URL fix        |
+| MODIFY | web/server/routes/billing.js                       | P5    | Verify FRONTEND_URL usage          |
+| MODIFY | web/src/app/App.jsx                               | P8,G2 | Console cleanup, cookie consent    |
+| MODIFY | web/src/pages/Agency/pages/Builder/Builder.jsx    | P7    | Auth gate before generation        |
+| MODIFY | web/src/pages/Agency/pages/Builder/Generation/ComponentSelector.jsx | P7 | Auth gate on submission |
+| NEW    | web/.env.example                                  | P2    | Template env vars (no secrets)     |
+| NEW    | web/server/.env.example                           | P2    | Template server env vars           |
+| NEW    | web/src/components/Modals/AuthGateModal.jsx       | P7    | Login required modal               |
+| NEW    | web/src/components/CookieConsent/CookieConsent.jsx| G2    | GDPR cookie banner                 |
+| NEW    | web/src/pages/Legal/PrivacyPolicy.jsx             | G3    | Privacy policy page                |
+| NEW    | web/src/pages/Legal/TermsOfService.jsx            | G3    | Terms of service page              |
+| NEW    | web/server/lib/logger.js                          | P3,G8 | Production-safe logger             |
+| NEW    | supabase/migrations/20260323_gdpr_compliance.sql  | G7    | GDPR columns + RLS updates         |
+| NEW    | supabase/migrations/20260323_indexes.sql          | P3    | Database indexes                   |
+
+TOTAL NEW FILES: ~8
+TOTAL MODIFIED FILES: ~8
+TOTAL TASKS ACROSS ALL PHASES: ~180 (P1-P10) + ~100 (G1-G9) = ~280 tasks
+
+═══════════════════════════════════════════════════════════════════════════════════
+                    END OF DOCUMENT
+═══════════════════════════════════════════════════════════════════════════════════

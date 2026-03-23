@@ -1,0 +1,128 @@
+╔══════════════════════════════════════════════════════════════════════════════════╗
+║                       PHASE S13 — MEGA-PROMPTS (3 total)                       ║
+║                  Dashboard & Project Management Infrastructure                   ║
+║                                                                                  ║
+║  Status: READY FOR IMPLEMENTATION                                                ║
+║  Disclaimer: Production environment will fix 408/503 tunnel issues.              ║
+║  These prompts transform the builder from a single-session tool into a platform. ║
+╚══════════════════════════════════════════════════════════════════════════════════╝
+
+
+================================================================================
+██  MEGA-PROMPT 1 of 3: The Persistence Engine (Backend & Auto-Save)
+================================================================================
+
+CONTEXT:
+We have the basic database schema (projects, snapshots, profiles). Now we need to bridge 
+the gap so that every build in the Generation.jsx is automatically saved and can be 
+listed in a dashboard. The user should never lose work if they close the tab.
+
+FILES TO MODIFY/CREATE:
+- web/server/routes/dashboard.js (New)
+- web/server/index.js (Register new routes)
+- web/src/pages/Agency/pages/Builder/Generation/Generation.jsx (Auto-save injection)
+
+TASK:
+1. BACKEND: Create the Dashboard API (`web/server/routes/dashboard.js`):
+   - Implement `GET /api/dashboard/projects`: Fetch all projects for the authenticated user, 
+     ordered by `updated_at` DESC.
+   - Implement `GET /api/dashboard/stats`: Return a summary object (Total Projects, Total 
+     Credits, Total Published Sites).
+   - Implement `DELETE /api/dashboard/projects/:id`: Securely delete a project if owned by user.
+   - Update `web/server/index.js` to handle these routes with `requireAuth`.
+
+2. FRONTEND: "The Persistence Hook":
+   - Update `Generation.jsx` to perform "Incremental Saves".
+   - Trigger a `fetch('/api/projects/update', ...)` call after ANY major state change:
+     • After a new file is written.
+     • After a chat message is added.
+     • When the design system or component plan is finalized.
+   - Ensure `generated_files` and `chatMessages` are stored in the `projects` table.
+
+3. SNAPSHOT LOGIC:
+   - Implement a "Manual Snapshot" button in the builder UI that hits `/api/snapshots`.
+   - This allows users to create "Version 1.0", "Version 2.0" etc.
+
+GOAL:
+After this prompt, the database will be a living reflection of the user's progress in the 
+builder, and we will have the JSON endpoints needed to build the UI.
+
+
+================================================================================
+██  MEGA-PROMPT 2 of 3: The Dashboard Shell & "My Websites" Grid
+================================================================================
+
+CONTEXT:
+Now we build the visual home for the user's creations. We want a "SaaS-grade" dashboard 
+that feels extremely premium, using the established dark/glassmorphism aesthetic.
+
+FILES TO MODIFY/CREATE:
+- web/src/pages/Agency/pages/Builder/Dashboard/BuilderDashboard.jsx (New)
+- web/src/pages/Agency/pages/Builder/Dashboard/components/ProjectGrid.jsx (New)
+- web/src/pages/Agency/pages/Builder/Dashboard/components/ProjectCard.jsx (New)
+- web/src/App.jsx (Route registration)
+
+TASK:
+1. DASHBOARD SHELL:
+   - Create a layout with a high-end sidebar and a main content area.
+   - Sidebar Nav: My Websites, Published Sites, Billing, Settings.
+   - Show User Profile (Avatar + Name) at the bottom of the sidebar.
+   - Theme: Deep charcoals, subtle border-glows, and 24px backdrop blurs.
+
+2. "MY WEBSITES" VIEW:
+   - Fetch the projects from `/api/dashboard/projects`.
+   - Implement the `ProjectGrid`: A responsive grid (1 col mobile, 3-4 cols desktop).
+   - Implement the `ProjectCard`:
+     • Visual: A placeholder thumbnail (use a generic modern abstract SVG or AI-generated pattern).
+     • Info: Project Name, Last Updated (Relative time like "2 hours ago"), status badge.
+     • Actions: "Edit Site" (Opens Builder with that projectID), "Preview", "Delete".
+
+3. ROUTING:
+   - Register `/builder/dashboard` routes.
+   - Ensure navigation between the Builder and Dashboard is seamless.
+
+GOAL:
+A fully functional portal where users can see their portfolio of AI-generated sites and 
+resume any session instantly.
+
+
+================================================================================
+██  MEGA-PROMPT 3 of 3: Published Sites, Billing History & Settings
+================================================================================
+
+CONTEXT:
+The final piece of the platform. We need to handle management of live sites, 
+administrative settings, and a clear view of the credit economy.
+
+FILES TO MODIFY/CREATE:
+- web/src/pages/Agency/pages/Builder/Dashboard/panels/PublishedSites.jsx (New)
+- web/src/pages/Agency/pages/Builder/Dashboard/panels/CreditsPanel.jsx (New)
+- web/src/pages/Agency/pages/Builder/Dashboard/panels/AccountSettings.jsx (New)
+
+TASK:
+1. PUBLISHED SITES PANEL:
+   - Fetch data from `/api/published-sites` (filtering for current user).
+   - Display as a clean list/table.
+   - Show: Site Name, Slug (clickable link), Views (analytics), Date Published.
+   - Action: "Unpublish" (sets status to 'paused').
+
+2. CREDITS & BILLING PANEL:
+   - Integration of the `useCredits` hook.
+   - Show big "Available Energy" cards.
+   - Implement a `TransactionHistory` table fetching from `/api/billing/history`.
+   - Add a prominent "Top up Credits" button that opens our `CreditLimitModal`.
+
+3. ACCOUNT SETTINGS:
+   - Simple form to edit `display_name` and `avatar_url`.
+   - Show "Current Plan" (Admin, Pro, Free).
+   - Integration with Supabase Storage for avatar uploads.
+
+4. SITE BRANDING (THE "STAMP"):
+   - Small toggle for "Volturiano Watermark" (Managed via the `has_stamp` column in 
+     `published_sites`). Only Pro/Admin users can turn this off.
+
+GOAL:
+A complete management hub that makes the user feel like they are running a small 
+agency of AI-generated websites.
+
+ESTIMATED TOTAL LINES FOR PHASE 13: 800+ lines across components and routes.

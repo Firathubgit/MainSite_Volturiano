@@ -1,0 +1,104 @@
+# Phase S10: ULTRA Community Template Builder
+## Master Implementation Plan (5 Sequential Mega-Prompts)
+
+### Vision Alignment
+The goal of Phase S10 is to enable users to create and share full-website templates. These "templates" are intelligent recipes combining multiple components. 
+
+The two primary modes of creation:
+1. **Visual Composer (Playlist Mode):** Hand-pick existing community/official components and stack them into a template.
+2. **Smart Extraction (Website-to-Template Mode):** This is the user's specific powerful vision—if a user builds a regular website in the builder, they can click "Make Template" to publish that specific live site structure *as a template* for the community. The system will extract the components used, package them as a template, and deploy it to the template library.
+
+### Strategy Tracker
+The following 5 Mega-Prompts are designed to be completed in exact order. Each prompt is isolated, robust, and provides all the context needed for an LLM to execute the step flawlessly.
+
+---
+
+### MEGA-PROMPT 1: DATABASE SCHEMA & RLS FOR TEMPLATES ✅
+**Goal:** Establish the foundation for Templateversioning, relationships to components, and secure access.
+
+**Context:** 
+Templates are recipes (lists of components in a specific order). We need to track `templates`, `template_sections` (the junction table linking templates to components), and `template_versions`. We also need robust RLS and full text search for templates so they can be discovered.
+
+**Tasks:**
+1. **Create Migration SQL file (`011_phase_s10_templates.sql`):**
+   - Alter existing `templates` table (if needed, otherwise create it) to include:
+     - `source_mode` ('official', 'community-composed', 'community-extracted')
+     - `version_number`, `is_latest`, `quality_score`, `rating_avg`, `rating_count`, `usage_count`, `parent_template_id`, `search_vector`, `suitable_for`, `color_mode_type`.
+   - Create `template_sections` table:
+     - `id`, `template_id` (FK to templates), `component_id` (FK to components), `component_version`, `section_order`, `section_label`.
+   - Create `template_versions` table:
+     - `id`, `template_id`, `version_number`, `changes_summary`, `author_id`, `snapshot_data`.
+2. **Implement RLS (Row Level Security):**
+   - `templates`: public visible if active, authors can insert/update their drafts.
+   - `template_sections`: visible if parent template is visible.
+3. **Full-Text Search:**
+   - Add trigger to auto-update `search_vector` on `templates` based on name, description, tags, and industries.
+4. **Execute:** Run the migration to ensure it applies cleanly to Supabase.
+
+---
+
+### MEGA-PROMPT 2: TEMPLATE SUBMISSION & LLM ANALYSIS API ✅
+**Goal:** Create the backend pipeline for submitting templates, similar to the `submit-component` pipeline, including LLM analysis for categorization.
+
+**Context:** 
+When users create templates (either via Visual Composer or by extracting a live site), they submit an array of `component_ids` and screenshots to the backend. The backend must orchestrate an async LLM job to analyze the *combination* of components.
+
+**Tasks:**
+1. **Sync Route (`server/routes/community/submit-template.js`):**
+   - Receive `{ name, description, componentIdsInOrder(array of UUIDs), source_mode, thumbnail }`.
+   - Validate auth, check rate limits, verify the `componentIds` actually exist and are 'active'.
+   - Insert into `community_submissions` with `submission_type = 'template'`.
+   - Insert placeholder into `templates` and map the children into `template_sections`.
+   - Queue async job in `submission_jobs`.
+2. **LLM Schema (`server/lib/template-analyzer.js`):**
+   - Create `templateAnalysisSchema` using Zod (theme_score, industry_primary, quality_score, generated_description, etc. as defined in S10.8).
+   - Create `analyzeTemplate()` function calling Gemini Flash with screenshots of the combined site.
+3. **Async Worker Update (`submission-analyzer.js`):**
+   - Expand the worker to handle `job_type = 'analyze_template'`.
+   - Fetch the component details for all sections in the template.
+   - Feed data to `analyzeTemplate()`.
+   - Update `templates` record with the resulting metadata, quality score, and status (auto-approve if score > 8).
+   - Update user reputation (+8 for submit, +15 for approval).
+
+---
+
+### MEGA-PROMPT 3: VISUAL COMPOSER UI & "MY TEMPLATES" DASHBOARD ✅ (REVISED)
+**Goal:** Build the frontend interfaces for creating templates from scratch and managing them.
+**REVISION:** Visual Composer (component assembly UI) deferred to Phase S11 community UI. Template creation via drag-and-drop will happen alongside the community browsing experience.
+
+**What was implemented (revised scope):**
+1. **MySubmissions.jsx** — Replaced status tabs (All/Active/Pending/Processing/Rejected) with content-type tabs: **Components | Templates**. Templates tab fetches from Supabase `templates` table.
+2. **ProfileSettings.jsx > Projects Tab** — Published sites shown as dark cards with site name, slug, date, and external link.
+3. **Backend** — Template submission route + LLM analysis worker already built in Mega Prompt 2.
+
+**Deferred to Phase S11:**
+- Visual Composer (drag-and-drop component assembly → template creation)
+- Community browsing/marketplace UI
+- Template preview within community
+
+---
+
+### MEGA-PROMPT 4: LIVE WEBSITE EXTRACTION TO TEMPLATE (MODE B) ✅
+**Goal:** Implement the user's ultimate vision: Converting a live AI-built website directly into a publishable Community Template.
+
+**What was implemented:**
+1. **"Publish as Template" Button (Frontend):** Added to the Publish Success Modal in `Generation.jsx`. Shows a dashed CTA that expands into a name/description form. Calls extract-template API on submit.
+2. **Extraction API (`server/routes/community/extract-template.js`):** Receives `projectId`, looks up `ai_selection_events` (kept components first, fallback to selected), deduplicates, validates, and delegates to existing `submit-template.js` pipeline with `source_mode = 'community-extracted'`.
+3. **SSE Progress:** Deferred — sync response is instant, LLM analysis runs async via job worker. Toast notification confirms submission.
+
+---
+
+### MEGA-PROMPT 5: AI PIPELINE INTEGRATION & WEIGHTED SELECTION ✅
+**Goal:** Hook the new Community Templates into the main Website Builder so the AI can actually use them to generate new sites.
+
+**What was implemented:**
+1. **SQL View (`weighted_templates`):** Already existed from Mega Prompt 1 migration. No changes needed.
+2. **Template Matching (Step 0 in `select-components-v2.js`):**
+   - New `matchTemplateFromDB()` queries `weighted_templates` view (top 10 by composite_weight)
+   - New `llm.matchTemplate()` sends compact list to LLM for confidence-scored matching
+   - If confidence ≥ 0.75 → `getTemplateBlueprint()` fetches ordered `template_sections` with component data
+   - Short-circuits Steps 1-5, jumping to compatibility validation + bundle fetch
+   - Returns `templateUsed` metadata for tracking
+3. **Usage Tracking (`plan-website-components.js`):**
+   - When `v2Result.templateUsed` is present: increments `usage_count` (via RPC or fallback)
+   - Awards +3 reputation to template author via `increment_reputation` RPC

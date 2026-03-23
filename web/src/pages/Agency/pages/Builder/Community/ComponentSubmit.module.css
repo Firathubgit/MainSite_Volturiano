@@ -1,0 +1,786 @@
+/* ComponentSubmit.module.css — Phase S9.16: Community Submission UI */
+
+/* ═══════════════════════════════════════════════════════
+   OUTER CONTAINER
+   ═══════════════════════════════════════════════════════ */
+.page {
+    min-height: 100vh;
+    background: #0a0a0f;
+    color: #e4e4e7;
+    font-family: 'Inter', system-ui, sans-serif;
+    padding: 2rem;
+}
+
+.header {
+    text-align: center;
+    margin-bottom: 2.5rem;
+}
+
+.title {
+    font-family: 'Syne', 'Inter', sans-serif;
+    font-size: 2rem;
+    font-weight: 700;
+    color: #fff;
+    margin: 0 0 0.5rem;
+    letter-spacing: -0.03em;
+}
+
+.subtitle {
+    color: rgba(255, 255, 255, 0.45);
+    font-size: 0.95rem;
+    margin: 0;
+}
+
+/* ═══════════════════════════════════════════════════════
+   PREVIEW AND EDITOR CONTAINER
+   ═══════════════════════════════════════════════════════ */
+.sandpackContainer {
+    margin-bottom: 2rem;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
+.previewControls {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+}
+
+.zoomBtn {
+    width: 24px;
+    height: 24px;
+    border-radius: 6px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: transparent;
+    color: rgba(255, 255, 255, 0.6);
+    font-size: 0.85rem;
+    font-weight: 500;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s;
+    padding: 0;
+    line-height: 1;
+}
+
+.zoomBtn:hover {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.25);
+    color: #fff;
+}
+
+.zoomLabel {
+    font-size: 0.68rem;
+    color: rgba(255, 255, 255, 0.45);
+    min-width: 32px;
+    text-align: center;
+    font-variant-numeric: tabular-nums;
+    user-select: none;
+}
+
+.controlDivider {
+    width: 1px;
+    height: 16px;
+    background: rgba(255, 255, 255, 0.1);
+    margin: 0 2px;
+}
+
+.previewScaler {
+    flex: 1;
+    overflow: auto;
+    position: relative;
+}
+
+.previewToggle {
+    padding: 4px 10px;
+    border-radius: 6px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: transparent;
+    color: rgba(255, 255, 255, 0.5);
+    font-size: 0.7rem;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.previewToggle:hover {
+    border-color: rgba(255, 255, 255, 0.25);
+    color: #fff;
+}
+
+.previewToggle.active {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.2);
+    color: #fff;
+}
+
+.lightControls .previewToggle {
+    border-color: rgba(0, 0, 0, 0.1);
+    color: rgba(0, 0, 0, 0.45);
+}
+
+.lightControls .previewToggle:hover {
+    border-color: rgba(0, 0, 0, 0.25);
+    color: #000;
+}
+
+.lightControls .previewToggle.active {
+    background: rgba(0, 0, 0, 0.05);
+    border-color: rgba(0, 0, 0, 0.15);
+    color: #000;
+}
+
+.previewFrame {
+    flex: 1;
+    border: none;
+    width: 100%;
+    min-height: 420px;
+    background: #000;
+}
+
+.previewFrame.lightBg {
+    background: #f5f5f5;
+}
+
+/* ── Preview Error Bar + Suggest Fix ── */
+.previewErrorBar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 14px;
+    background: rgba(251, 191, 36, 0.08);
+    border-top: 1px solid rgba(251, 191, 36, 0.15);
+    flex-wrap: wrap;
+}
+
+.previewErrorText {
+    flex: 1;
+    font-size: 0.75rem;
+    color: #fbbf24;
+    font-family: 'JetBrains Mono', 'Fira Code', monospace;
+    line-height: 1.4;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.suggestFixBtn {
+    padding: 6px 14px;
+    border-radius: 8px;
+    border: none;
+    background: linear-gradient(135deg, #6366f1, #8b5cf6);
+    color: #fff;
+    font-size: 0.72rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    white-space: nowrap;
+    font-family: inherit;
+    letter-spacing: 0.02em;
+}
+
+.suggestFixBtn:hover:not(:disabled) {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px -2px rgba(99, 102, 241, 0.4);
+}
+
+.suggestFixBtn:disabled {
+    opacity: 0.5;
+    cursor: wait;
+}
+
+.fixControls {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-left: auto;
+    /* Pushes controls to the right if flex wraps */
+}
+
+.modelSelect {
+    background: rgba(0, 0, 0, 0.4);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: #e4e4e7;
+    padding: 6px 10px;
+    border-radius: 8px;
+    font-size: 0.72rem;
+    font-family: 'Inter', system-ui, sans-serif;
+    outline: none;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.modelSelect:hover {
+    border-color: rgba(255, 255, 255, 0.2);
+    background: rgba(0, 0, 0, 0.6);
+}
+
+.modelSelect:focus {
+    border-color: rgba(99, 102, 241, 0.5);
+    box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.2);
+}
+
+/* ═══════════════════════════════════════════════════════
+   COMPONENT DETAILS FORM
+   ═══════════════════════════════════════════════════════ */
+.detailsSection {
+    background: rgba(15, 15, 20, 0.85);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 16px;
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+}
+
+.sectionLabel {
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: rgba(255, 255, 255, 0.4);
+    margin: 0 0 1rem;
+}
+
+.formGrid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 1rem;
+}
+
+@media (max-width: 768px) {
+    .formGrid {
+        grid-template-columns: 1fr;
+    }
+}
+
+.fieldGroup {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.fieldLabel {
+    font-size: 0.78rem;
+    color: rgba(255, 255, 255, 0.5);
+}
+
+.fieldRequired {
+    color: #f87171;
+    font-weight: 600;
+}
+
+.fieldInput {
+    padding: 10px 14px;
+    border-radius: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.04);
+    color: #e4e4e7;
+    font-size: 0.88rem;
+    font-family: inherit;
+    outline: none;
+    transition: border-color 0.2s;
+}
+
+.fieldInput:focus {
+    border-color: rgba(99, 102, 241, 0.5);
+}
+
+.fieldInput::placeholder {
+    color: rgba(255, 255, 255, 0.25);
+}
+
+/* ═══════════════════════════════════════════════════════
+   SUBMIT BUTTON
+   ═══════════════════════════════════════════════════════ */
+.submitRow {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1.5rem;
+    margin-top: 1rem;
+}
+
+.licenseAgreement {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    font-size: 0.85rem;
+    color: rgba(255, 255, 255, 0.6);
+    line-height: 1.4;
+    max-width: 600px;
+    margin: 0 auto;
+    cursor: pointer;
+    text-align: left;
+}
+
+.licenseCheckbox {
+    margin-top: 2px;
+    cursor: pointer;
+    width: 16px;
+    height: 16px;
+    accent-color: rgba(99, 102, 241, 0.8);
+}
+
+.link {
+    color: rgba(99, 102, 241, 0.9);
+    text-decoration: none;
+    transition: color 0.2s;
+}
+
+.link:hover {
+    text-decoration: underline;
+    color: rgba(99, 102, 241, 1);
+}
+
+.submitButton {
+    padding: 14px 40px;
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(25, 25, 25, 0.9);
+    color: #fff;
+    font-size: 1rem;
+    font-weight: 500;
+    font-family: inherit;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    letter-spacing: 0.01em;
+}
+
+.submitButton:hover:not(:disabled) {
+    background: rgba(40, 40, 40, 0.9);
+    border-color: rgba(255, 255, 255, 0.15);
+    transform: translateY(-1px);
+}
+
+.submitButton:active:not(:disabled) {
+    transform: scale(0.98);
+}
+
+.submitButton:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.legalNote {
+    font-size: 0.72rem;
+    color: rgba(255, 255, 255, 0.3);
+    text-align: center;
+    max-width: 500px;
+}
+
+/* ═══════════════════════════════════════════════════════
+   SSE PROGRESS STEPPER (Post-Submit)
+   ═══════════════════════════════════════════════════════ */
+.progressOverlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.85);
+    backdrop-filter: blur(20px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+    animation: fadeIn 0.3s ease-out;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
+.progressCard {
+    background: rgba(18, 18, 25, 0.95);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 20px;
+    padding: 2.5rem;
+    width: 90%;
+    max-width: 520px;
+    box-shadow: 0 30px 60px -15px rgba(0, 0, 0, 0.6);
+}
+
+.progressTitle {
+    font-family: 'Syne', 'Inter', sans-serif;
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: #fff;
+    margin: 0 0 1.5rem;
+    text-align: center;
+}
+
+/* Progress bar */
+.progressBarTrack {
+    width: 100%;
+    height: 6px;
+    border-radius: 3px;
+    background: rgba(255, 255, 255, 0.08);
+    margin-bottom: 2rem;
+    overflow: hidden;
+}
+
+.progressBarFill {
+    height: 100%;
+    border-radius: 3px;
+    background: linear-gradient(90deg, #6366f1, #a78bfa);
+    transition: width 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Steps */
+.stepList {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.step {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 0.9rem;
+    color: rgba(255, 255, 255, 0.35);
+    transition: color 0.3s;
+}
+
+.step.completed {
+    color: #4ade80;
+}
+
+.step.active {
+    color: #a78bfa;
+}
+
+.step.failed {
+    color: #f87171;
+}
+
+.stepIcon {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    font-size: 0.7rem;
+    border: 1px solid currentColor;
+}
+
+.step.completed .stepIcon {
+    background: rgba(74, 222, 128, 0.15);
+    border-color: #4ade80;
+}
+
+.step.active .stepIcon {
+    border-color: #a78bfa;
+    animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+
+    0%,
+    100% {
+        opacity: 0.7;
+    }
+
+    50% {
+        opacity: 1;
+    }
+}
+
+/* Result badge */
+.resultBadge {
+    margin-top: 1.5rem;
+    padding: 14px;
+    border-radius: 12px;
+    text-align: center;
+    font-size: 0.9rem;
+    font-weight: 500;
+}
+
+.resultBadge.success {
+    background: rgba(74, 222, 128, 0.1);
+    border: 1px solid rgba(74, 222, 128, 0.2);
+    color: #4ade80;
+}
+
+.resultBadge.pending {
+    background: rgba(251, 191, 36, 0.1);
+    border: 1px solid rgba(251, 191, 36, 0.2);
+    color: #fbbf24;
+}
+
+.resultBadge.rejected {
+    background: rgba(248, 113, 113, 0.1);
+    border: 1px solid rgba(248, 113, 113, 0.2);
+    color: #f87171;
+}
+
+.submitButton {
+    width: 100%;
+    padding: 14px;
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: linear-gradient(135deg, #4f46e5, #7c3aed);
+    color: #fff;
+    font-size: 1rem;
+    font-weight: 500;
+    font-family: inherit;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    letter-spacing: 0.01em;
+}
+
+.submitButton:hover:not(:disabled) {
+    background: rgba(40, 40, 40, 0.9);
+    border-color: rgba(255, 255, 255, 0.15);
+    transform: translateY(-1px);
+}
+
+.submitButton:active:not(:disabled) {
+    transform: scale(0.98);
+}
+
+.submitButton:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.legalNote {
+    font-size: 0.72rem;
+    color: rgba(255, 255, 255, 0.3);
+    text-align: center;
+    max-width: 500px;
+}
+
+/* ═══════════════════════════════════════════════════════
+   SSE PROGRESS STEPPER (Post-Submit)
+   ═══════════════════════════════════════════════════════ */
+.progressOverlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.85);
+    backdrop-filter: blur(20px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+    animation: fadeIn 0.3s ease-out;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
+.progressCard {
+    background: rgba(18, 18, 25, 0.95);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 20px;
+    padding: 2.5rem;
+    width: 90%;
+    max-width: 520px;
+    box-shadow: 0 30px 60px -15px rgba(0, 0, 0, 0.6);
+}
+
+.progressTitle {
+    font-family: 'Syne', 'Inter', sans-serif;
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: #fff;
+    margin: 0 0 1.5rem;
+    text-align: center;
+}
+
+/* Progress bar */
+.progressBarTrack {
+    width: 100%;
+    height: 6px;
+    border-radius: 3px;
+    background: rgba(255, 255, 255, 0.08);
+    margin-bottom: 2rem;
+    overflow: hidden;
+}
+
+.progressBarFill {
+    height: 100%;
+    border-radius: 3px;
+    background: linear-gradient(90deg, #6366f1, #a78bfa);
+    transition: width 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Steps */
+.stepList {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.step {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 0.9rem;
+    color: rgba(255, 255, 255, 0.35);
+    transition: color 0.3s;
+}
+
+.step.completed {
+    color: #4ade80;
+}
+
+.step.active {
+    color: #a78bfa;
+}
+
+.step.failed {
+    color: #f87171;
+}
+
+.stepIcon {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    font-size: 0.7rem;
+    border: 1px solid currentColor;
+}
+
+.step.completed .stepIcon {
+    background: rgba(74, 222, 128, 0.15);
+    border-color: #4ade80;
+}
+
+.step.active .stepIcon {
+    border-color: #a78bfa;
+    animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+
+    0%,
+    100% {
+        opacity: 0.7;
+    }
+
+    50% {
+        opacity: 1;
+    }
+}
+
+/* Result badge */
+.resultBadge {
+    margin-top: 1.5rem;
+    padding: 14px;
+    border-radius: 12px;
+    text-align: center;
+    font-size: 0.9rem;
+    font-weight: 500;
+}
+
+.resultBadge.success {
+    background: rgba(74, 222, 128, 0.1);
+    border: 1px solid rgba(74, 222, 128, 0.2);
+    color: #4ade80;
+}
+
+.resultBadge.pending {
+    background: rgba(251, 191, 36, 0.1);
+    border: 1px solid rgba(251, 191, 36, 0.2);
+    color: #fbbf24;
+}
+
+.resultBadge.rejected {
+    background: rgba(248, 113, 113, 0.1);
+    border: 1px solid rgba(248, 113, 113, 0.2);
+    color: #f87171;
+}
+
+.closeButton {
+    margin-top: 1rem;
+    width: 100%;
+    padding: 12px;
+    border-radius: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: transparent;
+    color: rgba(255, 255, 255, 0.6);
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-family: inherit;
+}
+
+.closeButton:hover {
+    background: rgba(255, 255, 255, 0.05);
+    color: #fff;
+}
+
+.uploadArea {
+    position: relative;
+    border: 2px dashed rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    height: 120px;
+    background: rgba(0, 0, 0, 0.2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    transition: all 0.2s;
+    cursor: pointer;
+}
+
+.uploadArea:hover {
+    border-color: rgba(99, 102, 241, 0.5);
+    background: rgba(99, 102, 241, 0.05);
+}
+
+.fileInput {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    cursor: pointer;
+    z-index: 10;
+}
+
+.uploadPlaceholder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+    color: rgba(255, 255, 255, 0.6);
+    font-size: 0.8rem;
+    pointer-events: none;
+}
+
+.uploadInfo {
+    font-size: 0.7rem;
+    color: rgba(255, 255, 255, 0.4);
+}
+
+.previewMedia {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    pointer-events: none;
+}
+
+.fieldSubtitle {
+    font-size: 0.7rem;
+    color: rgba(255, 255, 255, 0.4);
+    margin-top: -0.5rem;
+    margin-bottom: 0.5rem;
+}

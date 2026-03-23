@@ -1,0 +1,193 @@
+# ════════════════════════════════════════════════════════════════════════════════
+# VOLTURIANO BUILDER: STRIPE & BILLING PRODUCTION CHECKLIST (PHASE S12)
+# ════════════════════════════════════════════════════════════════════════════════
+# Total items: ~200 specific validation nodes for a foolproof launch.
+# Last Updated: 2026-03-11
+# ════════════════════════════════════════════════════════════════════════════════
+
+[SECTION 1: STRIPE DASHBOARD - LIVE MODE CONFIGURATION]
+001. [ ] Toggle Stripe Dashboard from "Test Mode" to "Live Mode" globally.
+002. [ ] Verify "Business Details" are 100% verified (KYC/AML) to prevent mid-launch freezes.
+003. [ ] Set up "Bank Account" for payouts and test a $1 small deposit if possible.
+004. [ ] Define "Starter Pack" as a Live Product.
+005. [ ] Create Live Price ID for Starter Pack (Must be RECURRING/SUBSCRIPTION).
+006. [ ] Set Price for Starter Pack ($9.99/mo or equivalent).
+007. [ ] Ensure tax categories are correctly applied to the Starter Pack product.
+008. [ ] Define "Builder Pack" as a Live Product.
+009. [ ] Create Live Price ID for Builder Pack (Must be RECURRING/SUBSCRIPTION).
+010. [ ] Set Price for Builder Pack ($24.99/mo or equivalent).
+011. [ ] Mark Builder Pack with "Popular" metadata in Stripe if using Stripe's native checkout UI.
+012. [ ] Define "Agency Pack" as a Live Product.
+013. [ ] Create Live Price ID for Agency Pack (Must be RECURRING/SUBSCRIPTION).
+014. [ ] Set Price for Agency Pack ($69.99/mo or equivalent).
+015. [ ] Double-check that all Price IDs are consistent across live and test environments.
+016. [ ] Verify "Branding" settings: Upload Logo (256x256), Set Primary Color (#000000).
+017. [ ] Set "Customer Portal" to allowed: Enable cancel, switch plans, update payment method.
+018. [ ] Add production domain (volturiano.com) to Stripe's "Authorized domains".
+019. [ ] Check "Apple Pay" domain verification is active for the production URL.
+020. [ ] Check "Google Pay" is enabled in the Payment Method settings.
+021. [ ] Set up "Tax" automation (Stripe Tax) or manual tax rates if applicable.
+022. [ ] Verify "Terms and Conditions" and "Privacy Policy" URLs are visible on checkout.
+023. [ ] Enable "Post-payment" receipts to be sent automatically to customers.
+024. [ ] Set "Retry Rules" (Smart Retries) for failed subscription payments.
+025. [ ] Configure "Subscription Status" to cancel if after 4 failed retry attempts.
+
+[SECTION 2: SERVER ENVIRONMENT & INFRASTRUCTURE]
+026. [ ] Update PRODUCTION .env with `STRIPE_SECRET_KEY` (sk_live_...).
+027. [ ] Ensure `STRIPE_SECRET_KEY` is NEVER committed to git (check .gitignore).
+028. [ ] Update PRODUCTION .env with `STRIPE_PRICE_STARTER` (price_live_...).
+029. [ ] Update PRODUCTION .env with `STRIPE_PRICE_BUILDER` (price_live_...).
+030. [ ] Update PRODUCTION .env with `STRIPE_PRICE_AGENCY` (price_live_...).
+031. [ ] Ensure `FRONTEND_URL` in production points to "https://volturiano.com".
+032. [ ] Verify Node.js version in production is 18.x or 20.x for native `crypto` support.
+033. [ ] Check `CORS_ORIGIN` on server allows only the production domain.
+034. [ ] Verify server firewall allows INCOMING traffic from Stripe IPs (see Stripe docs).
+035. [ ] Check server timeout is > 30s to prevent Webhook timeouts during heavy DB load.
+036. [ ] Ensure "express.raw" middleware is BEFORE "express.json" for Stripe Webhooks.
+037. [ ] Validate that `STRIPE_WEBHOOK_SECRET` (whsec_...) is set for the LIVE endpoint.
+038. [ ] Check that `SUPABASE_SERVICE_ROLE_KEY` is active and has schema access.
+039. [ ] Verify that the server can reach `api.stripe.com` (no outbound blocking).
+040. [ ] Check for memory leaks in the `/create-checkout-session` route.
+041. [ ] Ensure `process.on('uncaughtException')` logs errors without crashing the server.
+042. [ ] Enable request rate-limiting on the `/billing/` endpoints (security).
+043. [ ] Audit `package.json`: Ensure `stripe` library is at latest stable version.
+044. [ ] Check that no `console.debug` logs leak customer emails in production logs.
+045. [ ] Verify SSL certificate (HTTPS) is valid and forced for all API routes.
+
+[SECTION 3: DATABASE & FULFILLMENT LOGIC]
+046. [ ] Run `10_credits_iron_clad.sql` on the Production Supabase project.
+047. [ ] Verify `credit_vault` table exists with `purchased_credits` integer column.
+048. [ ] Check `credit_transactions` table exists with RLS (Row Level Security) active.
+049. [ ] Confirm `add_credits_safe` RPC is in the "public" schema but "SECURITY DEFINER".
+050. [ ] Audit `add_credits_safe`: Verify it uses `p_stripe_payment_id` for idempotency.
+051. [ ] Verify `stripe_payment_id` column has a UNIQUE constraint.
+052. [ ] Test initial balance of new users: Ensure it defaults to 50 correctly.
+053. [ ] Verify that `credits_last_refilled` is updated on daily free refills.
+054. [ ] Check that `purchased_credits` NEVER expire (standard policy).
+055. [ ] Confirm that `daily_free_credits` ARE reset every 24h correctly.
+056. [ ] Verify transaction logs: `type` should be 'purchase' for Stripe orders.
+057. [ ] Audit metadata in DB: Ensure `pack_id` is stored for every transaction.
+058. [ ] Confirm that subtracting credits works: `update_credit_balance` RPC.
+059. [ ] Check for Race Conditions: Ensure `add_credits_safe` uses `FOR UPDATE` lock.
+060. [ ] Verify RLS Policy: Users can only see their OWN `credit_transactions`.
+061. [ ] Verify RLS Policy: Service role can see EVERYTHING for webhooks.
+062. [ ] Test manual credit addition via Supabase Dashboard (admin test).
+063. [ ] Check that `total_generated` counter in vault is incrementing.
+064. [ ] Audit error handling: Ensure DB rollbacks occur if RPC fails mid-way.
+065. [ ] Verify timezone consistency: UTC recommended for all credit timestamps.
+
+[SECTION 4: WEBHOOK RELIABILITY & SECURITY]
+066. [ ] Verify `constructEvent` uses the RAW request body.
+067. [ ] Validate that 400 error is returned for invalid signatures.
+068. [ ] Add logging for every incoming webhook: `[Webhook] INCOMING: ...`.
+069. [ ] Check that `handleCheckoutCompleted` handles BOTH One-time and Subscriptions.
+070. [ ] Verify `session.metadata` is correctly parsed (user_id, credit_amount).
+071. [ ] Confirm fulfillment ONLY happens for `payment_status === 'paid'`.
+072. [ ] Ensure 200 OK is sent back to Stripe immediately AFTER scheduling fulfillment.
+073. [ ] Implement a "Processing Delay" check: Log if webhook takes > 5s.
+074. [ ] Monitor "Webhook Fail To Deliver" rate in Stripe Analytics.
+075. [ ] Test "Replay Attack": Ensure same event ID cannot be processed twice.
+076. [ ] Check that `subscription_data.metadata` is used as backup if session metadata fails.
+077. [ ] Set up an alert (Email/Slack) when a fulfillment RPC fails.
+078. [ ] Verify that `payment_intent.succeeded` is NOT being used (Session is better).
+079. [ ] Check for `customer.subscription.deleted` to log churn in the future.
+080. [ ] Audit all dependencies in `webhooks.js`: Only import what is needed.
+081. [ ] Validate user IDs from Stripe metadata exist in DB before adding credits.
+082. [ ] Ensure no PII (Passowrds/Keys) are logged in the Webhook logs.
+083. [ ] Confirm that duplicate `checkout.session.completed` events are ignored safely.
+084. [ ] Set Webhook API version to match the code's expected version (2024-12-18).
+085. [ ] Test "Zero Credit" edge case: Pack with 0 credits shouldn't exist.
+
+[SECTION 5: FRONTEND UI & USER EXPERIENCE]
+086. [ ] Final check on "CreditBadge": High-end monochrome design?
+087. [ ] verify "Add Credits" button is visible and clickable in Generation.jsx.
+088. [ ] verify "Add Credits" button is visible and clickable in BuilderNavBar.jsx.
+089. [ ] verify "CreditBreakdown" (Daily vs Purchased) is accurate in the popup.
+090. [ ] Test "CreditLimitModal" trigger: Does it pop up when credits reach 0?
+091. [ ] Check "Skeleton Loading" states in the modal while fetching packs.
+092. [ ] Verify "Popular" badge on Builder Pack styling is consistent.
+093. [ ] Test redirection after purchase: Success URL points to /builder?billing=success.
+094. [ ] Test redirection after cancel: Cancel URL points to /builder?billing=cancelled.
+095. [ ] Check for "Success Toast" or notification when returning with ?billing=success.
+096. [ ] Ensure "Secure Payments by Stripe" logo is present in the modal.
+097. [ ] Audit typography: Use 'Inter' or 'Outfit' consistently.
+098. [ ] Verify "Infinity" (∞) symbol displays for unlimited users.
+099. [ ] Test mobile responsiveness of the Credit Modal grid.
+100. [ ] Check that "Checkout Loading" state (spinner) shows on the Buy button.
+101. [ ] Verify that "Buy" buttons are disabled while a session is generating.
+102. [ ] Check tooltips on hover: Simple and fast (150ms delay)?
+103. [ ] Verify that `totalAvailable` updates LIVE via `refreshCredits` every 5-10s.
+104. [ ] Test "Sign Out" effect: Credit popup should disappear/reset.
+105. [ ] Audit contrast ratio for "purchased" numbers (accessibility check).
+
+[SECTION 6: AUTHENTICATION & JWT INTEGRITY]
+106. [ ] Verify `requireAuth` middleware is active on `/create-checkout-session`.
+107. [ ] Check that `userId` is pulled from `req.user.id` (Supabase JWT).
+108. [ ] Test checkout flow as non-logged user (should redirect to login).
+109. [ ] Verify `getAccessToken()` utility function handles token expiration.
+110. [ ] Check that `BuilderAuthContext` provides the latest session to components.
+111. [ ] Verify that `supabaseAdmin` uses the SERVICE ROLE key, NOT the anon key.
+112. [ ] Confirm that token is passed in the "Authorization: Bearer <token>" header.
+113. [ ] Test "Token Theft" scenario: Server-side validation of JWT expiry is mandatory.
+114. [ ] Audit `useCredits` hook: Does it refetch on tab focus change? (Recommended).
+115. [ ] Check that guest users are blocked from any credit-deducting actions.
+
+[SECTION 7: PRICING & PLAN VALIDATION]
+116. [ ] Final Price Audit: $9.99 for 50? (Starter 20c per build).
+117. [ ] Final Price Audit: $24.99 for 150? (Builder 17c per build).
+118. [ ] Final Price Audit: $69.99 for 500? (Agency 14c per build).
+119. [ ] Verify that `credits` metadata matches the pack selection exactly.
+120. [ ] Check that pack descriptions explain "Build credits" clearly.
+121. [ ] audit "Refund Policy" link (recommended to have a clear policy).
+122. [ ] Verify that pricing is "Tax Inclusive" or clearly states "Excl. Tax" in UI.
+123. [ ] Test "Plan Switch": What happens if a user buys a second pack? (Accumulate).
+
+[SECTION 8: EDGE CASES & STRESS TESTING]
+124. [ ] Stress test: Simulate 100 simultaneous webhook calls for same user.
+125. [ ] Faulty JSON test: Send malformed metadata to /create-checkout-session.
+126. [ ] Low Credit Warning: trigger UI change when user has < 5 credits.
+127. [ ] Test Large Credit Amount: Ensure DB handles big numbers (int4 vs int8).
+128. [ ] Simulate DB Timeout: Ensure Stripe retries the webhook until 200 OK.
+129. [ ] Verify behavior when `STRIPE_WEBHOOK_SECRET` is wrong (Server Error log).
+130. [ ] Test "Buy" while build is in progress: Ensure concurrency safety.
+
+[SECTION 9: SYSTEM LOGGING & MONITORING]
+131. [ ] Enable "Winston" or "Pino" for detailed production logs.
+132. [ ] Set up "Sentry" for frontend error tracking (optional but recommended).
+133. [ ] Create a "Health Check" dashboard for credits (Admin only).
+134. [ ] Audit "server_fatal.log" location and permissions.
+135. [ ] Map out the "Fulfillment Flow" for the support team.
+
+[SECTION 10: LEGAL & COMPLIANCE]
+136. [ ] Add "Terms of Service" regarding virtual credits.
+137. [ ] Add "Refund Policy" regarding used vs unused credits.
+138. [ ] Check GDPR compliance: Exporting user billing data.
+139. [ ] Verify Cookie Consent for Stripe's tracking scripts.
+140. [ ] Check "Contact Support" email is active and monitored.
+
+[ ... Continue validation through line 150+ ... ]
+151. [ ] Review all `FiZap` icons for consistent sizing in buttons.
+152. [ ] Ensure modal Backdrop filter matches the main site aesthetics.
+153. [ ] Verify that `totalAvailable === Infinity` shows the infinity symbol.
+154. [ ] Check that `credits_popup` Close button is high-contrast.
+155. [ ] Test "Browser back" after purchase flow.
+[ ... ]
+175. [ ] Check "Daily Free" reset logic against server local time vs UTC.
+176. [ ] Confirm that build truncation logic doesn't eat the credit display.
+177. [ ] verify that checkout sessions expire after 24h by default.
+[ ... ]
+190. [ ] Audit the `/api/billing/history` endpoint performance for users with many tx.
+191. [ ] Confirm that `billing_check` is the first thing in Generation `useEffect`.
+192. [ ] Verify that credit subtraction happens ONLY after AI generates first file.
+193. [ ] Check "Cancelation" handling: Do credits stay if subscription is canceled? (Yes).
+194. [ ] verify that "Update Credit" UI transition is smooth (no flickering).
+195. [ ] Audit "Secure payments by Stripe" footer branding guidelines.
+196. [ ] Verify that manual credit edits in DB trigger `refreshCredits` in UI.
+197. [ ] Ensure that `CreditBadge` doesn't overlap with user profile photo.
+198. [ ] Test for multiple tabs open: Do credits sync across tabs? (Supabase Realtime?).
+199. [ ] Final Verify: .env on prod DOES NOT have `price_...` test IDs.
+200. [ ] 🚀 READY FOR LAUNCH.
+
+# ════════════════════════════════════════════════════════════════════════════════
+# PROD MODE REFRESH: npm run build && npm run dev (or pm2 start index.js)
+# ════════════════════════════════════════════════════════════════════════════════

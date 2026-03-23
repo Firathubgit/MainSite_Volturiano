@@ -11,7 +11,19 @@ export default defineConfig({
   server: {
     host: '0.0.0.0', // Allow access from network
     port: 5173, // Default Vite port
-    strictPort: false // Try next available port if 5173 is taken
+    strictPort: false, // Try next available port if 5173 is taken
+    proxy: {
+      '/api': {
+        target: 'http://127.0.0.1:3001',
+        changeOrigin: true,
+        timeout: 300000,
+        proxyTimeout: 300000,
+      },
+      '/sites': {
+        target: 'http://127.0.0.1:3001',
+        changeOrigin: true
+      }
+    }
   },
   build: {
     // Security: Production build optimizations

@@ -1,0 +1,1268 @@
+Vision is that the web builder get better than lovable, The current systems own ai component generation without the premium mode and choosing from the json catalog component library it has is not that good. The prompts its parsing through is not that refined and the generation does not follow any design guidelines the users prompt should follow. For example if the user wants a dog website, the ai components its generating design is purple and pink gradient which does not suit it at all. The ai components its generating should actually be good, high quality long time really refined parsing chatgpt prompt pipeline system so the actuall output is contextually accurate to the website the client wants to generate. Also the component selection the ai does of the premium pre components thats in the catalog alongside the ai component generation it combines, its good but could be alot better, make that part of the pipeline better. Beef up the context window, the components should have much more context like which colours they have, what the component looks like, which websites generally it suits so the ai llm has a good idea of what its working with. The point is to generate the best websites. Dont be cheap. The results needs to be as good as possible. Beef upp the design system soo the designs are super perfect for the coresponidng website. The llm that should be used is chatgpt 5.2 ofcourse. The header pages it desides it wants inside the header nav. That should actually take the client website into new pages and so on. Footer and nav and respective components should be place right place always.
+
+Publish publicly under the volturiano domain system, replit doe it like https://dog-website--firat05.replit.app/ and lovable does it like this, http://doggo-delight-net.lovable.app/ Base 44 does it like this, https://dramatic-pawfect-dog-match.base44.app  .
+
+
+
+Also publish to github. The user should be able to connected with github super easy, Create repo with all the code there with github integration. The github button should be beside the download button in the generation page.
+
+Restore checkpoints chats. The user is able to restore the preview website its creating to the previous chat checkpoint. Maybe it does not like the current chat it made or want to just restore and change the chat message to be more clear like lovable has. Cursor has it also in its ide. Restoring chats and the files return to that point of the state chat state.
+
+Account supabase but there is already the supabase integration from the car website plattform in the same codebase. Use the same supabase but separate the agency tables and so on. Credits system on the usage users have to create websites which is isolated and not vulnerable. Account should have upploadable feature logged in users, Non logged in users should be able to do everything like create websites and so on but restricted but cant download and publish. The profile page button in the top right of the builder page navbar, now it has a dropdown of garage and old supabase integration from the mentioned old car website supabase integration. Keep it but when the user is using /builder and /builder/agency pages thats correlated to the builder lovable web builder chat based functions, that should dropdown profile dashboard and the proper pages thats now newly created with all these web builder mission.
+
+Stripe integration of buying the credits to account. Free credits everyday which is enough for about 15 websites with each 2 chats.
+
+Upgrade the custom components part where the components are high quality, the pipeline has design system choices and upgrade where footer goes right, header goes right, more context oriented chat decisions, before shipping iterations with chat act as make it finer, colourtheme, design theme, upgrade the context of the components so it gets chosen right, add json thingies so each components gets like this suits webagencyis, dog stores, brainrot websites, ecomerce. Components texts should change before it gets initaly put into the preview sandbox written into files to get it right. Fix the recurring chat logic so its right.
+
+If the initial chat preview build first chat website preview version that goes into the somehow has some react error or some component did not link right or something, there should be a infinity fixing the issue loop till the website is redy to actually show the client, Should happen before every chat message review to the sandbox.
+
+Should have a overlay component volturiano stamp jsx that redirects to https://volturiano.com/builder 
+
+Goals that should be done by me end of the week personal non development to the platform builder pipeline engine is:
+Add 10 templates.
+
+Component pool 150.
+
+The templates and should be categoriezeed small hovering buttons to some top left or top right or top middle in the template selection which shows the templates it suits, now with the goal of 10 templates there is not alot of categories but add all, restaurant, plattform. But these buttons beside start with a template title component in the builder page. The buttons should be black with white texts, rounded of rectangles on the border radius. Gray borderlines 1px and white text inside and all around should be small.
+
+Look at what lovable, replit and base44 chat does ans says alongside its generation and compare it to the current pipeline description and code to get a strong idea of how to improve the current works of this code base.
+From website builder chats,
+
+Now let me set up the design system and build the components.
+defining purpose and design
+Finalizing the structure
+Expanding Functionality With Ai
+Defining the Structure
+Detailing the Service
+Refining the Model
+Outlineing UI Components
+Sketching
+Defining the project scope
+Refining Feture Integration
+
+
+To get a idea of how lovable and base 44 and website builder generally make their website builders, this is a chatgpt deep research, Keep to the original vision and this deep research should only give you a some guidance and idea and not really actually making what lovable and base44 does, we are making a system thats better with some more unique ideas, Take this as guidance and with a grain of salt, here is what question i asked chatgpt for the deep research, “How does lovables or google gemini ai studio web website builder or base 44 och replit or emergents website builders have a pipeline from input to llm thinking, parsing from one input to a output untill the code gets generated, i imageing they have a increadable difficult pipeline of 10 pre layed hardcoded strings and so on it passes. Do your research, come back with increadable detailed overview of how they do it.". And here is its answer,
+
+“Pipelineanalys av Lovable, Google AI Studio, Base44, Replit och Emergent
+Sammanfattning för beslutsfattare
+De fem plattformarna implementerar i praktiken samma övergripande “agentisk webbbyggar‑pipeline”: (1) användarinput normaliseras och kompletteras med projekt‑/kodbas‑kontext, (2) en LLM drivs i en iterativ loop som både planerar och exekverar via verktyg (filändringar, testkörningar, integreringar), (3) resultat parsas till patchar/filträd/konfigurationsändringar, (4) förändringar verifieras i runtime (preview, loggar, browser‑tester), och (5) artefakter publiceras eller exporteras (t.ex. GitHub/deploy). Det som skiljer leverantörerna är främst: hur explicit planeringsfasen är, hur verktygsanrop och verifiering exponeras i UI, hur kontext och kostnad kontrolleras i långa trajectories, samt hur multi‑tenant‑isolering/säkerhet implementeras. 
+Lovable, Base44 och Replit har tydliga “tänk‑först, bygg‑sen”‑mönster: Lovable har Plan‑läge och Agent‑läge med synliga tasks/verktyg och en prompt‑kö som möjliggör batchning och upprepning.  Base44 har ett separat Discuss‑läge där inga appändringar görs (lägre kreditkostnad), och Visual Edit‑läge som binder UI‑selektioner till kodändringar.  Replit har Plan vs Build och dessutom Fast vs Full build, med inbyggd autonom testning (”automated browser testing”) och checkpoints/rollback som spänner över kod, konfiguration och databaser. 
+Google AI Studio (Build/vibe coding) är bäst förstått som ett “prompt‑till‑webbapp”‑arbetsflöde ovanpå Gemini‑ekosystemet: användare genererar och itererar på kod i AI Studio, sätter långlivade System Instructions (“persona”), sparar till GitHub och kan deploya till Cloud Run via UI; centrala underliggande byggblock är Gemini API:s verktygs-/function calling, strukturerade outputs (JSON Schema), säkerhetsfilter, kvoter/rate limits samt kontext‑caching för kostnad/latens. 
+Emergent framstår – utifrån publika tutorials och app‑beskrivningar – som en multi‑agent‑orkestrering (planering, frontend, backend, test, deploy) med “Universal Key” som kan routa mellan flera LLM‑leverantörer och konsolidera billing. Emergent betonar en standardiserad fullstack‑runtime (FastAPI + React + MongoDB) med preview, “health check” inför deploy, och one‑click deployment med separata preview/production‑miljöer. 
+Metod, källor och osäkerheter
+Analysen bygger primärt på officiella produktdokument (Lovable Docs, Base44 Docs, Replit Docs), engineering‑bloggar (särskilt Replit), samt officiella Google‑resurser (Google AI Developers, Google Developers Blog, codelabs). Där Emergent‑hjälpcentret inte gick att läsa utan JavaScript användes istället Emergent‑tutorials och publika policysnuttar. 
+Viktigt bevisläge: de interna systemprompterna, exakta verktygs‑schema (function signatures), modellroutinglogik, cache‑nycklar, samt interna säkerhetsklassificerare är normalt inte offentliga. För dessa delar anges därför (a) explicita antaganden och (b) alternativa plausibla designval baserade på vad plattformarna exponerar (t.ex. Plan/Agent‑lägen, testverktyg, GitHub‑koppling, “decision‑time guidance”, checkpoints). 
+När “chain‑of‑thought” efterfrågas i en sådan jämförelse bör den tolkas som resoneringsstrategier på systemnivå (t.ex. plan→exekvera→verifiera, subagents, decision‑time prompt injection), inte som att leverantören publicerar privata mellanresonemang. Replit beskriver uttryckligen hur statiska prompts/few‑shot tappar styrka i långa trajectories och att de istället injicerar kort guidning vid beslutstillfällen. 
+Referensarkitektur för agentiska webbbyggare
+En “vibe coding”‑plattform som bygger och itererar på en riktig kodbas behöver fyra kärnprimitiver: (1) en kod-/projektrepresentation som kan läsas/patchas, (2) en isolerad runtime för preview/test (helst med browser‑automation), (3) en orkestrator som kör en agentloop och hanterar verktygsanrop, och (4) säkerhets- och kostnadskontroller (rate limits, krediter, secrets, policyfilter, rollback). Detta är direkt observerbart via Lovables Agent‑läge + testverktyg, Replits Agent + testning + checkpoints, och Base44:s chat‑lägen + Activity Monitor + secrets/integrations. 
+kodpatch
+tool call
+Användare: text/bilder/krav
+Frontend UI
+Chat + visual edit + code view
+Input-hantering
+validering, normalisering, policy-guards
+Kontextbyggare
+relevant kod, config, logs, kunskap, integration-data
+Orkestrator / Agent Manager
+plan->act->observe loop
+Model Router
+modellval + parametrar
+LLM
+Parser/Validator
+JSON-schema, diff/patch, verktygsanrop
+Repo/Workspace store
+Tool runner
+fil-IO, shell, browser test, API, deploy
+Observations
+testresultat, logs, screenshots, nätverk, errors
+Preview/Runtime
+Safety & Cost Control
+rate limit, caching, secrets, sandbox, rollback
+Slutleverans
+publicera, export, deploy, PR
+Visa kod
+Nyckelsteg i praktiken
+Input → kontext: Lovable har “Custom knowledge” som ska “kommas ihåg och tillämpas” över alla ändringar, och MCP‑anslutna verktyg (Notion/Linear/Jira m.fl.) kan ge strukturerat underlag som agenten läser och ibland skriver tillbaka till.  Base44 ger motsvarande via AI chat modes + AI Controls + möjlighet att koppla integrationer, samt en utvecklarstack där requests kan inspekteras (Activity Monitor).  Replit löser “working set”‑problemet genom att isolera testning i en subagent för att undvika kontextförorening. 
+LLM‑anrop → parse: I Gemini‑världen är “structured outputs” (JSON Schema) ett centralt verktyg för stabil parsing, och function calling används för att låta modellen emitera parametriserade verktygsanrop.  Emergent‑tutorials beskriver explicit ett schema‑drivet “vision‑modell → JSON → text‑modell”‑flöde med Universal Key som routar. 
+Iterativ loop: Lovable kör verktyg selektivt och kan använda browser testing när snabbare verifiering inte räcker; triggerfraser som “verify it works” nämns.  Replit driver loopar längre och lägger styrning “vid beslut” (decision-time guidance) för att hålla kostnad och kontext i schack. 
+Publicering/rollback: Replit checkpoints tar snapshots av hela miljön inkl. databas (valbart vid rollback) och stödjer till och med “roll forward”.  Lovable har Test/Live‑miljöer där agenten alltid bygger i Test och Live endast uppdateras vid explicit publish. 
+Leverantörspipelines och integrationer
+Lovable
+Lovable exponerar tre input‑vägar som är relevanta för pipelineanalys: vanlig chat‑prompt, Visual Edits (UI‑selektion), samt en “Build with URL”‑funktion där prompt och upp till 10 bild‑URL:er skickas via URL‑parametrar och kan autosubmittas; dokumentationen beskriver även inloggnings‑/workspace‑val‑flöde samt error handling som del av den publika API‑ytan. 
+Efter input hamnar användaren i ett tvåläges‑system: Plan mode (beslutsfattande) och Agent mode (exekvering). Agent mode beskrivs som autonomt och “end‑to‑end”: agenten tolkar intent, utforskar kodbasen för kontext, gör multi‑fil‑ändringar och hanterar problem som uppstår. Under arbetet visas tasks med vilka filer och verktyg som används, och Lovable har en synlig prompt‑kö med pause/reorder/edit och möjlighet att repetera prompts upp till 50 gånger (en konkret UI‑mekanism för orkestrering). 
+Verifikationsstegen är tydligt produktiserade: “Test and verify your app” beskriver browser testing, frontend tests och edge function verification; browser testing kör i en verklig browser i en virtuell miljö och kan ta screenshots, läsa console logs och nätverksrequests. Den körs selektivt och ofta först efter snabbare verifiering. 
+Lovable Cloud definierar backend‑/deployment‑sidan av pipelinen: fullstack hosting, databas, auth, storage, edge functions, secrets och logs. Cloud‑verktyg kan styras av permissions (Always allow / Ask each time / Never allow), vilket är en explicit “tool gating”‑mekanism. Lovable Cloud sägs bygga på en öppen källkods‑grund från Supabase, och har dessutom Test/Live‑miljöer som separerar dev‑data från prod‑data, där Live endast uppdateras när du publicerar och där data/kontent inte kopieras efter initial setup. 
+Integrationsytan är ovanligt bred för en “builder”: GitHub‑integration via OAuth + GitHub App, med tvåvägssync där repo blir “single source of truth” när kopplat; samt “personal connectors” via MCP (Model Context Protocol) som kan ansluta verktyg som Notion/Linear/Jira/Miro och även egna MCP‑servrar med OAuth/bearer/no‑auth. Detta är i praktiken RAG + tool‑use som kan mata agenten med icke‑kod‑kontext (PRDs, tickets, diagram). 
+För AI‑funktioner i de appar du bygger har Lovable en separat “Lovable AI”‑connector: defaultmodell anges som “Gemini 3 Flash”, men användaren kan instruera agenten att använda andra modeller/combos. Prismässigt hävdas att kostnaden matchar underliggande LLM‑leverantör utan påslag, och att workspace har en “Cloud & AI balance”. 
+Säkerhet och dataskydd är i Lovable en del av pipeline: “Security overview” beskriver fyra automatiserade scanners (RLS‑analys, DB security check, code security review, dependency audit) och en Security view där användaren kan lägga till säkerhetskontext för att minska false positives; samt en separat policy för träningsdata/PII (PII används inte “raw/identifiable” för träning; opt‑out på workspace‑nivå för Business/Enterprise). 
+Base44
+Base44 gör Plan/Execute‑separationen explicit i UI via tre chat‑lägen: Default (agerar direkt på prompts), Discuss (planera utan att ändra appen, “0.3 credits per message”), och Visual Edit där man antingen manuellt justerar design eller låter AI ändra det markerade elementet. Visual Edit skapar därmed en deterministisk “UI‑target selector” som kan minska prompt‑tvetydighet – ett praktiskt sätt att förbättra parsing av “vad menar du?”‑problemet. 
+Base44 har dessutom tydligt exponerad modellrouting: användaren kan på högre plan välja “Automatic” eller “Manual” och explicit välja modeller (t.ex. Claude Sonnet/Opus, Gemini 3 Pro, GPT‑5) där kreditförbrukning varierar per modell. Det innebär att “Model Router” i referensarkitekturen antingen är ett internt beslutssteg eller ett användarstyrt valpunkt. 
+På kod-/runtime‑sidan beskriver Base44 en klassisk webbstack: Base44‑appar är “standard React apps built with Vite” och har en Code Tab, en Activity Monitor som visar varje request under preview inklusive statuskoder och timing, och GitHub‑integration för tvåvägssync. Det ger tydliga observationskanaler (logs/requests) för agentloopens “observe”‑steg. 
+Integrationsarkitekturen är relativt väl dokumenterad och har tre lager med olika säkerhetsprofil. Först “Connectors” (OAuth‑setup utan API‑nycklar) och inbyggda integrationer via chat. Sedan “Custom integrations” där en workspace‑admin importerar en OpenAPI‑spec och konfigurerar credentials; anrop proxas via Base44‑backend, så att secrets aldrig når webbläsaren, och integrationen delas av alla appar i workspacet. Slutligen “Backend functions” för app‑specifik logik där hemligheter hålls i servermiljön. 
+Basen för dataflöden mellan frontend/backend är Base44 SDK: den är förinstallerad i genererade appar och kan även användas externt (npm‑paket @base44/sdk). Modulerna (“agents”, “app-logs”, “auth”, “connectors”, “entities”, “functions”, “integrations”) indikerar att Base44 har ett API‑lager där både agent‑samtal, loggfrågor, auth och integrationer är förstaklassobjekt. 
+Base44:s publikdokumenterade prompt‑engineering är mer användarorienterad än systemintern: en “prompt formula” ges som mall, vilket i praktiken fungerar som en enkel prompt‑template med parametrar (funktion, layout, stil).
+Replit
+Replit Agent‑pipen är dokumenterad som ett flerläges‑system där Agent först klassificerar app‑typ utifrån prompt (t.ex. Web App) och användaren kan välja Fast build (~3–5 min) eller Full build (10+ min, mer autonomi och självtstning), samt Plan (plan innan bygget) eller Build (bygg direkt). Detta är en explicit “plan gate” plus en “autonomy budget”‑toggle som påverkar både latency och kostnad. 
+Replit har en ovanligt utvecklad verifierings‑/observationsstack: “App Testing” beskrivs som automatiserad browser‑testning i “actual browser” som navigerar appen som en användare, identifierar problem och kan ge video‑replays; dessutom finns Workflows, Console/Logs, och Deployments som separerar dev och prod. 
+Den tydligaste publika beskrivningen av hur Replit hanterar långa trajectories (där kontextfönster, kostnad och fel ackumuleras) är “Decision‑Time Guidance”: Replit argumenterar att omfattande statiska prompts/few‑shot kan bli dyra och opålitliga när sessioner blir långa, och beskriver i stället “decision‑time injection” där kort guidning läggs nära den punkt där agenten ska fatta nästa beslut. De kopplar detta till primacy/recency‑bias och visar att vissa instruktioner fungerar bättre när de injiceras sent i spåret. 
+För testning i skala beskriver Replit en hybrid: de bryter ut testning i en separat subagent för att undvika “context pollution”, där huvudagenten ger en testplan, testsubagenten kör action/observe‑loop och sedan returnerar en sammanfattning och guidance. Man påstår att detta är en del av att nå “200 minutes of autonomous runtime” och anger en median‑kostnad per testsession på $0.20. 
+Säkerhets- och rollback‑egenskaperna är centrala i Replits pipeline och är mycket mer än vanlig git. Replit checkpoints beskrivs som snapshots av hela app‑konteksten: workspace, AI‑kontext, miljökonfiguration och kopplade databaser; rollbacks kan (valbart) återställa utvecklingsdatabasen, och systemet stödjer även att rulla fram igen.  Replit beskriver även prompt‑scanning som avleder användaren till Secrets om de försöker klistra in API‑nycklar i chatten, samt “App History” med runnable snapshots (inkl. kod + DB snapshot) i upp till 7 dagar. 
+Under huven beskriver Replit “Snapshot Engine” som en compute‑ och storage‑fabric där filsystem kan forkas snabbt och reversibelt. De nämner en blockdevice‑lösning via NBD mot Google Cloud Storage, chunking i 16 MiB immutabla chunks och manifest‑kopior för konstant‑tid‑kopiering. De beskriver guardrails såsom dev/prod‑split och att Agent begränsas till development database. 
+Kostnadsmodellen är “effort‑based”: priset beror på tid och computation per request; små ändringar blir ofta billigare än tidigare $0.25/checkpoint, och stora builds bundlas i en checkpoint. Replit exponerar dessutom “High power model” och “Extended thinking” som per‑request kontroller.  Detta är i praktiken en prissatt “reasoning budget” i agentloopen.
+Google AI Studio (Gemini‑driven webbbyggare)
+Google beskriver AI Studio som en plats där man snabbt går från prompt till fungerande AI‑app genom “vibe coding”. Man betonar att AI Studio kan ta dig från idé till fungerande app utan att du själv behöver “wire up” API keys och koppla ihop modeller.  I en senare produktuppdatering lyfter Google “Starter Apps” och “native code editing” i AI Studio för att bygga direkt i verktyget. 
+I praktisk pipelineform är den bäst dokumenterade representanten Google codelabben där man: genererar en webapp i AI Studios Build mode från en prompt, förbättrar med System Instructions (“Vibe Check” som långlivad persona), sparar till GitHub och deployar till Cloud Run via GUI. Det är en explicit “prompt → kod → repo → deploy”‑kedja. 
+Underliggande LLM‑byggblock i Gemini‑stacken är väldokumenterade och direkt relevanta för hur en builder implementerar parsing och tool‑use:
+Gemini API function calling låter modellen välja när den ska kalla funktioner och med vilka parametrar (dvs. tool calls som sedan exekveras av din app).  “Structured outputs” låter dig kräva JSON Schema‑kompatibla svar för mer robust parsing och agentiska workflows.  Kontext‑caching (explicit caching) gör det möjligt att cachea input tokens och referera dem i efterföljande anrop; detta är en viktig kostnads‑/latens‑optimering när buildern skickar samma kodbas/standardkontext om och om igen. 
+Gemini‑plattformen har också publika kontroller för säkerhet och throttling: safety settings per kategori, samt “rate limits” som appliceras per projekt och varierar per modell (RPM/TPM/RPD‑liknande dimensioner).  För kontextfönster och tokenstyrning finns officiella token‑räknarresurser (cookbook/colab), vilket är centralt för context/window‑management i en builder. 
+Emergent
+Emergents publika tutorials ger relativt konkreta datapunkter om runtime, deployment och multi‑LLM‑routing. En deploy‑guide beskriver att Emergent deployar fullstack FastAPI + React + MongoDB “utan att konfigurera servrar” och listar funktioner som automatic scaling, managed MongoDB, secure environment variables, Preview & Production environments, custom domains och one‑click deployments; deployment sägs typiskt ta ~15 minuter och UI nämner en pre‑deployment “health check”. 
+På LLM‑integrationssidan beskriver Emergent “Universal Key” som en förenkling: ett enda nyckel‑/billing‑lager som kan routa prompts till rätt LLM och konsolidera usage tracking. I tutorialn för multi‑LLM beskriver Emergent ett konkret bakom‑kulisserna‑flöde: bild laddas upp → skickas säkert till backend → routas till GPT‑visionmodell → modellen producerar strukturerad JSON → JSON skickas vidare till Claude för att generera recept‑JSON. Detta är ett uttalat “structured intermediate representation”‑mönster (IR) för robust pipeline‑parsing. 
+För agentiska “chips” (MoltBot/OpenClaw) beskriver Emergent att en enda åtgärd provisionerar agent runtime på en cloud VM, dependencies/tools, default LLM‑konfiguration och en “secure, isolated execution environment”; de säger också att Emergent tillhandahåller rekommenderade LLM‑keys by default och att användaren kan lägga in egna senare. 
+Ett intressant integrationsspår är MCP‑baserad koppling till ChatGPT: Emergent beskriver en “Bridge (MCP)” som översätter naturligt språk till funktionsanrop i användarens app (t.ex. create_note(...)). Det är i praktiken samma design som Gemini function calling – men där MCP är standardiseringslagret för verktyg. 
+En kompletterande (men mer marknadsföringsnära) primärkälla är Android‑appens beskrivning, där Emergent explicit kallar plattformen “a coordinated system of AI agents” med separata roller (Planning, Frontend, Backend, Testing, Deployment). Denna uppdelning matchar många moderna agent‑arkitekturer och är en rimlig modell för hur Emergent segmenterar pipeline‑stegen, även om exakta implementeringsdetaljer inte är publicerade. 
+På privacy/data retention‑sidan går det att hitta uppgifter om att “usage data” sparas upp till 24 månader i Emergent Labs privacy policy‑texten (åtminstone i det indexerade utdraget). Exakt policytext kunde inte analyseras fullt utan JS i detta körläge, varför detta bör behandlas som en “indikator” snarare än en fullständig juridisk tolkning. 
+Jämförelse: pipeline‑steg, komponenter och trade‑offs
+Funktionell jämförelse av pipeline‑steg
+Pipeline‑dimension
+Lovable
+Base44
+Replit
+Google AI Studio (Build)
+Emergent
+Planering vs exekvering
+Plan mode + Agent mode. 
+Discuss mode (ingen kodändring) + Default/Visual Edit (ändrar). 
+Plan vs Build; Fast vs Full. 
+Iterativ prompt+system instructions (“Vibe Check”). 
+Indikerad planning agent + andra agenter. 
+Verktygsanrop synliga
+Tasks visar verktyg, filer, steg. 
+UI‑lägen; (begränsad publikt verktygslogg men Activity Monitor för app‑requests). 
+Agent UI + testvideor; checkpoints; deploy separation. 
+Bygg/preview i UI; export/deploy UI‑knappar. 
+Tutorials beskriver health‑check + deploy‑knappar; agentdebug via error‑paste/screenshot. 
+Kodrepresentation (publikt)
+Fil‑diffar och sammanfattningar i Agent mode. 
+Standard React+Vite‑kod; direkt code tab. 
+Full workspace + checkpoints snapshot. 
+Kod i AI Studio editor (starter/build). 
+Fullstackprojekt (FastAPI/React/MongoDB) enligt tutorials. 
+Automatiserad verifiering
+Browser testing + frontend tests + edge checks. 
+Ej lika tydligt specificerat; har troubleshooting+preview. (Antagande: enklare smoke‑checks). 
+Automated browser testing + subagent self-testing. 
+(Antagande) främst preview + manuell iteration; underliggande Gemini kan tool‑calla om du bygger system. 
+Multi‑agent system inkluderar test agent (enligt appbeskrivning) och deploy health‑check. 
+Versionshantering/rollback
+Version history + revert; Test/Live isolering för data. 
+Revert history nämns i promptguide. 
+Checkpoints & rollbacks inkl DB, roll forward. 
+GitHub‑save i codelab, men inte samma miljösnapshot som Replit. 
+Ej tydligt dokumenterat; tutorials nämner versionering i GitHub‑case. 
+Modellval/routing
+Default i Lovable AI är Gemini 3 Flash; kan ange annat i prompt. 
+Automatic eller Manual modellval i chat settings. 
+High power + extended thinking kontroller; “industry-leading models” utan full transparens. 
+Gemini‑modeller; styrs av AI Studio + projektkvoter. 
+Universal Key routar till rätt LLM; multi‑LLM beskriven. 
+
+Komponent- och dataflödesjämförelse
+Komponent
+Lovable
+Base44
+Replit
+Google AI Studio
+Emergent
+Frontend
+Chat, Visual Edits, Design tools, prompt queue. 
+AI chat + Visual Edit + Code/Activity Monitor. 
+Cloud IDE + Agent tab + Console/Workflows. 
+AI Studio Build + code editor + system instructions. 
+Chat + Preview + Deploy UI; “chips”. 
+Orkestrering
+Agent mode med tasks, tool‑gating via permissions. 
+Chat modes + AI Controls (boundary setting). 
+Agent loop + decision‑time guidance + subagents. 
+“Vibe coding” flöde; i egen kod använder du Gemini tool calling. 
+Multi‑agent enligt appbeskrivning + integration playbooks enligt tutorial. 
+Runtime/isolering
+Test/Live DB‑isolering i Cloud. 
+Backend functions + secrets; requests kan inspekteras. 
+Isolerade VMs i Deployments + snapshot engine för reversibilitet. 
+Preview + deploy till Cloud Run (codelab). 
+Provisionering på cloud VM för chips; preview/production miljöer. 
+Integrations
+GitHub App/OAuth; MCP servers; Supabase/Stripe/Shopify m.fl. connectors. 
+OAuth connectors; OpenAPI‑import; backend proxy av anrop. 
+Deployments + Git + (AI integrations som managed providers). 
+Gemini API/SDK; function calling; structured output; caching. 
+MCP bridge till ChatGPT; LLM routing via Universal Key. 
+
+Två representativa sekvensdiagram
+Replit: Full build med subagent‑testning och checkpoints
+Checkpoint/Snapshot EngineTesting SubagentTool Runner (FS/Shell/Browser)LLMAgent OrchestratorReplit UI (Agent)UserCheckpoint/Snapshot EngineTesting SubagentTool Runner (FS/Shell/Browser)LLMAgent OrchestratorReplit UI (Agent)UserPrompt (Full build)Start trajectory + settings (thinking/power)Plan/act step + relevant contextTool calls (read/edit files, install deps)Observations (logs/errors)Next step (decision-time guidance injected)Run app / smoke checksDelegate test plan (minimal context)Browser-based verification loopScreenshots/video/logsSummary + failuresFix plan based on test summaryApply fixesCreate checkpoint (code + context + optional DB)Checkpoint metadata + rollback optionResult + next actions
+Visa kod
+Sekvensen ovan stöds av Replits dokumentation om Full build + app testing, Replits beskrivning av testsubagent för att undvika kontextförorening, samt checkpoints/snapshots som tar helhets‑state. 
+Google AI Studio: Build mode från prompt till deploy
+Cloud Run deploy flowGitHub repoGemini modelGoogle AI Studio (Build)UserCloud Run deploy flowGitHub repoGemini modelGoogle AI Studio (Build)UserPrompt (Build mode)Generate/modify app code + UICode output (iterable)System Instructions ("Vibe Check") + refinementsApply edits with persona constraintsUpdated codeSave to GitHubCreate/commit/pushDeploy to Cloud Run (one click)Build + deployPublic URL
+Visa kod
+Detta matchar Google codelabben som explicit beskriver Build mode, system instructions, GitHub‑bootstrap och deploy till Cloud Run. 
+Rekommenderade experiment för att inferera dolda pipelinebeteenden
+Följande experiment är utformade för empirisk inferens utan att kräva intern åtkomst. De bör göras inom respektive plattforms användarvillkor och med testdata (inte personlig information eller kunddata). Base44 rekommenderar explicit test-/dummydata vid AI‑integrationstestning, vilket är en bra generell princip. 
+Nätverks- och payload‑inspektion
+Ett lågfriktionssätt att förstå orchestrator‑design är att i webbläsarens DevTools logga nätverksanrop när du skickar en prompt och när agenten kör verktyg. Målet är att se (a) antal serverrundor per user‑turn, (b) om svar streamas token‑för‑token, (c) om tool calls representeras som separata event, och (d) om kod patchas som fullfil‑payload eller diff.
+I Lovable kan du även jämföra “normal prompt” med “Build with URL” och se vilka extra metadatafält som skickas (prompt, images) och hur auth/workspace‑val påverkar flödet. 
+Timing‑analys för modell- och cache‑inferenz
+Base44 låter dig välja modell manuellt (Claude/Gemini/GPT‑5) och Lovable låter dig styra modellval via prompt i Lovable AI. Genom att köra identiska prompts och mäta latency (och krediter) kan du empiriskt uppskatta om plattformen gör multi‑pass‑resonemang (plan→kod→verifiera) eller single‑pass. 
+För Gemini API‑baserade system kan du testa explicit context caching: skicka en stor, stabil kontext (t.ex. en större kodbastext) en gång, cachea tokens, och jämför kostnad/latens för efterföljande queries som refererar cache:n. Google dokumenterar explicit caching och att cached tokens kan vara billigare än att skicka samma tokens upprepade gånger. 
+Kontextfönster och truncation‑tester
+En klassisk black‑box‑probe är att gradvis öka kontextstorleken (t.ex. längre prompts, fler filer, större “custom knowledge”) och se när beteendet förändras: glömska, felaktiga referenser, eller “cannot comply”‑fel. Lovable säger att det “processar recent messages” för kontext och att du bör inkludera relevanta detaljer i varje prompt, vilket tyder på aktiv kontextprioritering/trunkering.  Replit beskriver kontextförorening explicit och löser det med subagents och decision‑time guidance; därför är Replit särskilt intressant att stress‑testa med långa trajectories. 
+Verktygsanrop och verifieringsstrategier
+Lovable dokumenterar att browser testing triggas av vissa fraser och körs selektivt efter snabbare metoder. Ett kontrollerat experiment är att be om samma featurefix två gånger: en gång utan “verify/test”‑fraser och en gång med explicit verifikationsinstruktion, och sedan jämföra om verktygsstegen förändras (t.ex. om screenshots/loggar/nätverksinspektion sker). 
+I Replit kan du testa skillnaden mellan Fast och Full build, och observera om Full build oftare kör “App Testing” och om checkpoints skapas vid andra milstolpar. 
+Säkerhets- och sekretessgating
+Replit beskriver att de blockerar klistrade API‑nycklar i prompts och styr dig mot Secrets, vilket kan testas med en dummy‑nyckel i korrekt format.  Base44 och Lovable har också secrets‑mekanismer där integrationer/credentials ska lagras säkert (Base44 secrets + backend proxy; Lovable Cloud tools/permissions).  Detta kan användas som probe för att se var i pipeline sekretessfilter ligger: i frontend (innan sändning), i backend (vid parsing), eller i tool runner (vid exekvering).
+Öppen källkod och patentspår som är relevanta för pipelines
+Direkta open‑source‑releaser av respektive leverantörs orkestrator är i stort sett frånvarande i publika källor, men det finns flera relevanta öppna byggblock runt ekosystemen:
+Base44 har en publik MCP‑endpoint för docs och det finns community‑verktyg som speglar docs lokalt för AI‑assistenter (GitHub‑repo).  På Google‑sidan finns officiella notebooks/repos som demonstrerar Gemini‑funktioner som context caching. 
+Patentlitteratur illustrerar återkommande “design patterns” i kodgenereringspipelines som också syns i praktiken hos builders: t.ex. iterativ kodgenerering över “multiple generations” med separata moduler för filtrering och klustring av kandidater (ett systematiskt sätt att parsa/välja mellan flera LLM‑förslag).  Ett annat patent beskriver att berika kodrepresentationer med AST‑data för träning/fine‑tuning och pekar på parsing/kompileringsverifiering som del av robust kodpipeline.  Dessa patentsignaler är inte bevis för att någon specifik av de fem produkterna implementerar exakt samma, men de är nyttiga som alternativa plausibla designer när intern implementation inte är publik.
+Forskningslitteratur som hjälper tolkning av agentrisk
+För builders som kör långa trajectories med verktygsåtkomst är det relevant att förstå riskytor för autonoma agenter. RepliBench är ett exempel på akademisk utvärdering av agenters autonomi/replication‑förmågor och kan användas som ramverk för vilka “capability leaks” man bör testa (inom policy och tillstånd). 
+”. Now you have the vision and know what to do. Create a UltimateWebsiteBuilderGuidence.txt file which has this the following structure template for future development “# VOLTURIANO Ultimate Development Roadmap
+## Comprehensive 2000+ Line Strategic Plan
+
+
+**Version:** 1.0  
+**Last Updated:** 2025-01-XX  
+**Status:** Active Planning Document  
+**Scope:** Complete project roadmap covering all features, phases, dependencies, and technical considerations
+
+
+---
+
+
+## Table of Contents
+
+
+1. [Executive Summary](#executive-summary)
+2. [Project Vision & Goals](#project-vision--goals)
+3. [Architecture Overview](#architecture-overview)
+4. [Phase 0: Foundation & Infrastructure](#phase-0-foundation--infrastructure)
+5. [Phase 1: Supabase Platform & Core Data Layer](#phase-1-supabase-platform--core-data-layer)
+6. [Phase 2: Account & My Garage Feature](#phase-2-account--my-garage-feature)
+7. [Phase 3: Configurator 2D Pipeline](#phase-3-configurator-2d-pipeline)
+8. [Phase 4: Configurator 3D Pipeline](#phase-4-configurator-3d-pipeline)
+9. [Phase 5: Account Settings & Profile Management](#phase-5-account-settings--profile-management)
+10. [Phase 6: AI Assistant & Support System](#phase-6-ai-assistant--support-system)
+11. [Phase 7: Operations & Observability](#phase-7-operations--observability)
+12. [Phase 8: Advanced Features & Integrations](#phase-8-advanced-features--integrations)
+13. [Phase 9: Product Launches & Marketing Communications](#phase-9-product-launches--marketing-communications)
+14. [Phase 10: Volturiano Agency Services Page](#phase-10-volturiano-agency-services-page)
+15. [Dependencies & Critical Path](#dependencies--critical-path)
+14. [Risk Assessment & Mitigation](#risk-assessment--mitigation)
+15. [Success Metrics & KPIs](#success-metrics--kpis)
+16. [Timeline Estimates](#timeline-estimates)
+17. [Resource Requirements](#resource-requirements)
+18. [Appendix: Technical Specifications](#appendix-technical-specifications)
+
+
+---
+
+
+## Executive Summary
+
+
+The VOLTURIANO Ultimate Roadmap provides a comprehensive, phase-by-phase plan for building a premium automotive configurator and ownership experience platform. This roadmap covers approximately 80+ major features across 8 distinct phases, with detailed implementation steps, technical considerations, dependencies, and success criteria for each.
+
+
+**Key Highlights:**
+- **Total Estimated Timeline:** 18-24 months for full feature completion
+- **Core MVP Timeline:** 4-6 months (Phases 0-2)
+- **Critical Path:** Foundation → Garage → Configurator 2D → Commerce
+- **Technology Stack:** React + Vite, Supabase, Zustand, React Three Fiber, Stripe
+- **Architecture:** Feature-sliced design, dual visualization engine (2D/3D), serverless backend
+
+
+**Current Status:**
+- ✅ Phase 0: Foundation (80% complete)
+- ✅ Phase 2: Garage Feature (Core UI complete, filtering/search implemented)
+  - ✅ Phase 2.1: Core Garage UI
+  - ✅ Phase 2.2: Save to Garage Integration
+  - ✅ Phase 2.4: Version History & Diff View
+  - ✅ Phase 2.5: Sharing & Deep Links
+  - ✅ Phase 2.7: Tags & Goal Configuration
+  - ✅ Phase 2.8: Open in Configurator Deep Link
+  - ✅ Phase 2.9: Timeline & Milestones View
+  - ✅ Phase 2.10: Advanced Filtering & Sorting
+  - ✅ Phase 2.11: PDF Export
+  - ✅ Phase 2.12: Test Drive Scheduling
+- 🔄 Phase 1: Supabase Platform (Schema designed, migrations pending)
+- ⏳ Phase 3-8: Planned
+
+
+---
+
+
+## Project Vision & Goals
+
+
+### Vision Statement
+Build a premium, investor-grade digital atelier for automotive configuration and ownership. The platform should feel like "commission, not purchase" - elevating the car buying experience through immersive visualization, personalized ownership journeys, and seamless integration between configuration, purchase, and post-purchase services.
+
+
+### Core Goals
+
+
+1. **User Experience Excellence**
+   - Instant visual feedback (<100ms option swaps)
+   - Seamless cross-device synchronization
+   - Offline-capable core features
+   - Accessible to all users (WCAG 2.1 AA)
+
+
+2. **Technical Excellence**
+   - 60fps animations on mid-tier devices
+   - <2.5s Largest Contentful Paint (LCP)
+   - 99.9% uptime SLA
+   - Zero-downtime deployments
+
+
+3. **Business Goals**
+   - Enable self-service configuration for 80% of use cases
+   - Reduce sales cycle time by 40%
+   - Increase conversion rate by 25%
+   - Support 10,000+ concurrent users
+
+
+4. **Scalability**
+   - Support unlimited vehicle models and options
+   - Handle 1M+ saved configurations
+   - Process 10,000+ orders/month
+   - Scale to multiple brands/regions
+
+
+---
+
+
+## Architecture Overview
+
+
+### Technology Stack
+
+
+**Frontend:**
+- React 18+ with Vite (JavaScript, no TypeScript initially)
+- React Router v6 for navigation
+- Zustand for state management
+- Framer Motion for animations
+- React Three Fiber + Drei for 3D visualization
+- i18next for internationalization
+- CSS Modules + PostCSS for styling
+
+
+**Backend:**
+- Supabase (PostgreSQL, Auth, Storage, Edge Functions)
+- Stripe for payments (via Edge Functions only)
+- Supabase Realtime for live updates
+
+
+**Infrastructure:**
+- Supabase Storage CDN for assets
+- Vercel/Netlify for frontend hosting
+- GitHub Actions for CI/CD
+- Sentry for error monitoring
+
+
+### Architecture Principles
+
+
+1. **Feature-Sliced Design:** Each feature is self-contained with its own components, API, store, and styles
+2. **Dual Visualization Engine:** 2D layered images (primary) + optional 3D (R3F) for immersion
+3. **Data-Driven Configuration:** Manifests, SQL rules, i18n JSON - minimal hardcoded logic
+4. **Performance First:** Code splitting, lazy loading, optimistic UI, prefetching
+5. **Security by Default:** RLS on all tables, service keys never exposed, input validation
+6. **Offline Support:** localStorage caching, service worker (future), graceful degradation
+
+
+### Key Architectural Decisions
+
+
+**Why Zustand over Redux?**
+- Minimal boilerplate, fine-grained subscriptions
+- Better TypeScript inference (when we add TS)
+- Smaller bundle size
+- Simpler mental model for team
+
+
+**Why Supabase over custom backend?**
+- Rapid development, built-in auth/RLS
+- Real-time subscriptions out of the box
+- Edge Functions for serverless logic
+- PostgreSQL for complex queries
+- Storage CDN included
+
+
+**Why 2D + 3D dual engine?**
+- 2D: Universal device support, photorealism, instant swaps
+- 3D: Immersive experiences, AR/VR readiness, cinematic moments
+- Users can choose based on device capability and preference
+
+
+**Why CSS Modules over Tailwind?**
+- Better component isolation
+- No build-time class generation overhead
+- Easier to maintain design tokens
+- Better for theme switching (base/sport/luxury)
+
+
+---
+
+
+## Phase 0: Foundation & Infrastructure
+
+
+**Status:** 80% Complete  
+**Timeline:** 2-3 months  
+**Priority:** Critical (blocks all other phases)
+
+
+### Overview
+Establish the foundational infrastructure, development environment, core architecture patterns, and essential tooling required for all subsequent development.
+
+
+### Completed Items ✅
+
+
+1. **Project Structure**
+   - ✅ React + Vite setup with proper folder structure
+   - ✅ Feature-sliced architecture (`features/` organization)
+   - ✅ CSS Modules configuration
+   - ✅ i18next integration with English/Swedish
+
+
+2. **Core Components**
+   - ✅ Navigation system (NavBar, NavDrawer)
+   - ✅ Page transitions (PageTransition component)
+   - ✅ Loading overlay with brand animation
+   - ✅ Start animation (intro sequence)
+
+
+3. **State Management**
+   - ✅ Zustand stores (userStore, uiStore, configStore, garageStore)
+   - ✅ Auth session management
+   - ✅ UI state (menu toggles, audio mute, viewer mode)
+
+
+4. **Routing & Navigation**
+   - ✅ React Router setup with protected routes
+   - ✅ IndexGate for intro animation
+   - ✅ Route-level code splitting
+
+
+5. **Styling System**
+   - ✅ CSS variables for design tokens
+   - ✅ Dark theme implementation
+   - ✅ Responsive breakpoints
+   - ✅ Brand color palette
+
+
+### Remaining Tasks
+
+
+#### 0.1 Development Environment Setup
+**Priority:** Critical  
+**Estimated Time:** 1 week
+
+
+**Tasks:**
+1. **Documentation Setup**
+   - Create comprehensive README.md with setup instructions
+   - Document environment variables (`.env.example`)
+   - Create troubleshooting guide
+   - Add contribution guidelines
+
+
+2. **CI/CD Pipeline**
+   - Set up GitHub Actions workflows
+   - Configure automated testing
+   - Set up deployment pipelines (staging/production)
+   - Add Lighthouse CI for performance budgets
+
+
+3. **Development Tools**
+   - Configure ESLint with project rules
+   - Set up Prettier with shared config
+   - Add pre-commit hooks (Husky)
+   - Configure VS Code workspace settings
+
+
+4. **Local Supabase Setup**
+   - Document Supabase CLI installation
+   - Create local development guide
+   - Set up database seeding scripts
+   - Configure local storage buckets
+
+
+**Deliverables:**
+- `README.md` with complete setup guide
+- `.github/workflows/ci.yml` and `deploy.yml`
+- `.vscode/settings.json` and `.prettierrc`
+- `docs/development/local-setup.md`
+
+
+**Success Criteria:**
+- New developer can set up environment in <30 minutes
+- All CI checks pass on PR
+- Local Supabase instance runs successfully
+
+
+#### 0.2 Error Handling & Logging Infrastructure
+**Priority:** High  
+**Estimated Time:** 1 week
+
+
+**Tasks:**
+1. **Error Boundary Implementation**
+   - Create global error boundary component
+   - Add route-level error boundaries
+   - Implement error reporting to Sentry
+   - Create user-friendly error pages
+
+
+2. **Logging System**
+   - Create `web/src/lib/logger.js` utility
+   - Implement log levels (debug, info, warn, error)
+   - Add request ID correlation
+   - Configure console vs. production logging
+
+
+3. **Monitoring Integration**
+   - Set up Sentry project
+   - Configure error tracking
+   - Add performance monitoring
+   - Set up alerting rules
+
+
+**Deliverables:**
+- `web/src/components/ErrorBoundary/ErrorBoundary.jsx`
+- `web/src/lib/logger.js`
+- `web/src/lib/monitoring.js`
+- Error tracking dashboard configured
+
+
+**Success Criteria:**
+- All errors are captured and reported
+- Error boundaries prevent full app crashes
+- Logs include request IDs for correlation
+
+
+#### 0.3 Testing Infrastructure
+**Priority:** High  
+**Estimated Time:** 2 weeks
+
+
+**Tasks:**
+1. **Unit Testing Setup**
+   - Configure Vitest for unit tests
+   - Set up testing utilities (React Testing Library)
+   - Create test helpers and mocks
+   - Write example tests for core utilities
+
+
+2. **Integration Testing**
+   - Set up Playwright for E2E tests
+   - Create test fixtures for Supabase
+   - Write critical path tests (auth, garage, configurator)
+   - Set up visual regression testing
+
+
+3. **Performance Testing**
+   - Configure Lighthouse CI
+   - Set performance budgets
+   - Create performance test suite
+   - Document performance benchmarks
+
+
+**Deliverables:**
+- `vitest.config.js` configuration
+- `playwright.config.js` setup
+- Example test files for each feature
+- Performance test suite
+
+
+**Success Criteria:**
+- Test coverage >70% for core utilities
+- E2E tests cover critical user flows
+- Performance budgets enforced in CI
+
+
+#### 0.4 Documentation Framework
+**Priority:** Medium  
+**Estimated Time:** 1 week
+
+
+**Tasks:**
+1. **Architecture Documentation**
+   - Complete architecture overview docs
+   - Document design patterns
+   - Create component API documentation
+   - Document state management patterns
+
+
+2. **Developer Guides**
+   - Create "Getting Started" guide
+   - Document coding conventions
+   - Create feature development checklist
+   - Document debugging procedures
+
+
+3. **API Documentation**
+   - Document Supabase schema
+   - Create API endpoint documentation
+   - Document Edge Functions
+   - Create integration guides
+
+
+**Deliverables:**
+- `docs/architecture/` complete
+- `docs/development/` guides
+- `docs/api/` documentation
+- Component storybook (future)
+
+
+**Success Criteria:**
+- All major systems documented
+- New developers can understand architecture
+- API contracts clearly defined
+
+
+---
+
+
+## Phase 1: Supabase Platform & Core Data Layer
+
+
+**Status:** Schema Designed, Implementation Pending  
+**Timeline:** 3-4 weeks  
+**Priority:** Critical (required for Configurator and Garage)
+
+
+### Overview
+Establish the core database schema, RLS policies, storage buckets, and foundational RPCs that power the configurator, garage, and order management systems.
+
+
+### 1.1 Core Schema Implementation
+**Priority:** Critical  
+**Estimated Time:** 1 week  
+**Dependencies:** None
+
+
+**Detailed Steps:**
+
+
+**Step 1.1.1: Vehicles & Options Schema**
+- Create `vehicles` table with columns:
+  - `id` (uuid, primary key)
+  - `name` (text, not null) - e.g., "Tornado GT"
+  - `trim` (text) - e.g., "Launch Edition"
+  - `base_price_cents` (bigint, not null)
+  - `currency` (char(3), default 'EUR')
+  - `description` (text)
+  - `performance_specs` (jsonb) - horsepower, torque, 0-60, etc.
+  - `segment` (text) - 'coupe', 'roadster', 'suv', 'concept'
+  - `drivetrain` (text) - 'ice', 'phev', 'bev'
+  - `subbrand` (text) - 'base', 'sport', 'luxury'
+  - `year` (integer)
+  - `generation` (integer)
+  - `media` (jsonb) - hero images, gallery URLs
+  - `created_at`, `updated_at` (timestamptz)
+
+
+- Create `option_groups` table:
+  - `id` (uuid, primary key)
+  - `name` (text, not null) - e.g., "Exterior", "Interior", "Performance"
+  - `display_order` (integer)
+  - `vehicle_id` (uuid, references vehicles) - null for universal options
+  - `created_at` (timestamptz)
+
+
+- Create `options` table:
+  - `id` (uuid, primary key)
+  - `group_id` (uuid, references option_groups)
+  - `name` (text, not null) - e.g., "Paint Color", "Wheel Style"
+  - `ui_control_type` (text) - 'select', 'radio', 'checkbox', 'slider'
+  - `is_required` (boolean, default false)
+  - `display_order` (integer)
+  - `created_at` (timestamptz)
+
+
+- Create `option_values` table:
+  - `id` (uuid, primary key)
+  - `option_id` (uuid, references options)
+  - `name` (text, not null) - e.g., "Nero Black", "Orange Fury"
+  - `price_delta_cents` (bigint, default 0)
+  - `image_url` (text) - preview/swatch image
+  - `material_id` (uuid, references materials) - for 3D materials
+  - `is_default` (boolean, default false)
+  - `display_order` (integer)
+  - `metadata` (jsonb) - additional properties
+  - `created_at` (timestamptz)
+
+
+- Create `materials` table:
+  - `id` (uuid, primary key)
+  - `name` (text, not null)
+  - `properties` (jsonb) - shader properties for 3D
+  - `created_at` (timestamptz)
+
+
+**Step 1.1.2: Compatibility Rules Schema**
+- Create `compatibility_rules` table:
+  - `id` (uuid, primary key)
+  - `rule_type` (enum: 'requires', 'incompatible')
+  - `primary_option_value_id` (uuid, references option_values)
+  - `secondary_option_value_id` (uuid, references option_values)
+  - `message_key` (text) - i18n key for user message
+  - `auto_resolve` (boolean) - whether to auto-select/enable
+  - `created_at` (timestamptz)
+
+
+**Step 1.1.3: Configurations & Orders Schema**
+- Create `user_configurations` table:
+  - `id` (uuid, primary key)
+  - `owner_id` (uuid, references profiles, not null)
+  - `vehicle_id` (uuid, references vehicles, not null)
+  - `name` (text)
+  - `selected_options` (jsonb, not null) - {option_id: option_value_id}
+  - `config_code` (text, unique) - shareable code
+  - `pricing_summary` (jsonb) - cached totals
+  - `garage_item_id` (uuid, references garage_items) - optional link
+  - `created_at`, `updated_at` (timestamptz)
+
+
+- Create `orders` table:
+  - `id` (uuid, primary key)
+  - `user_id` (uuid, references profiles, not null)
+  - `configuration_id` (uuid, references user_configurations)
+  - `status` (enum: 'pending', 'paid', 'processing', 'completed', 'cancelled', 'refunded')
+  - `stripe_session_id` (text)
+  - `stripe_payment_intent_id` (text)
+  - `total_cents` (bigint, not null)
+  - `currency` (char(3), default 'EUR')
+  - `metadata` (jsonb) - additional order data
+  - `created_at`, `updated_at` (timestamptz)
+
+
+- Create `order_items` table:
+  - `id` (uuid, primary key)
+  - `order_id` (uuid, references orders, not null)
+  - `option_value_id` (uuid, references option_values)
+  - `quantity` (integer, default 1)
+  - `unit_price_cents` (bigint)
+  - `total_cents` (bigint)
+  - `metadata` (jsonb)
+  - `created_at` (timestamptz)
+
+
+**Step 1.1.4: Indexes & Performance**
+- Create indexes:
+  - `vehicles(segment, subbrand)` - for filtering
+  - `options(group_id, display_order)` - for UI ordering
+  - `option_values(option_id, display_order)` - for UI ordering
+  - `compatibility_rules(primary_option_value_id)` - for rule lookup
+  - `user_configurations(owner_id, created_at DESC)` - for user's configs
+  - `user_configurations(config_code)` - for shareable links
+  - `orders(user_id, created_at DESC)` - for user's orders
+  - `orders(status, created_at)` - for admin queries
+
+
+**Deliverables:**
+- `supabase/sql/platform_schema.sql` - complete schema
+- Migration script with rollback capability
+- Index optimization documentation
+
+
+**Success Criteria:**
+- All tables created successfully
+- Indexes support fast queries (<50ms for common queries)
+- Foreign keys enforce referential integrity
+- Schema supports all planned features
+
+
+### 1.2 Row-Level Security (RLS) Policies
+**Priority:** Critical  
+**Estimated Time:** 3 days  
+**Dependencies:** 1.1
+
+
+**Detailed Steps:**
+
+
+**Step 1.2.1: User-Owned Tables RLS**
+- `user_configurations`: Users can only read/write their own configs
+  ```sql
+  CREATE POLICY "users_own_configurations" ON user_configurations
+    USING (owner_id = auth.uid())
+    WITH CHECK (owner_id = auth.uid());
+  ```
+
+
+- `orders`: Users can only read their own orders
+  ```sql
+  CREATE POLICY "users_own_orders" ON orders
+    USING (user_id = auth.uid())
+    WITH CHECK (user_id = auth.uid());
+  ```
+
+
+**Step 1.2.2: Public Read Tables**
+- `vehicles`: Public read, admin write
+- `options`, `option_values`: Public read, admin write
+- `option_groups`: Public read, admin write
+- `materials`: Public read, admin write
+- `compatibility_rules`: Public read, admin write
+
+
+**Step 1.2.3: Admin Bypass**
+- Create service role policies for admin operations
+- Use JWT claims: `request.jwt().claims.role = 'service_role'`
+- Document admin API usage
+
+
+**Deliverables:**
+- RLS policies for all tables
+- Admin bypass documentation
+- Security testing checklist
+
+
+**Success Criteria:**
+- Users cannot access other users' data
+- Public data is readable by all
+- Admin operations work correctly
+- Security audit passes
+
+
+### 1.3 Storage Buckets Configuration
+**Priority:** High  
+**Estimated Time:** 2 days  
+**Dependencies:** None
+
+
+**Detailed Steps:**
+
+
+**Step 1.3.1: Create Storage Buckets**
+- `renders` bucket (private):
+  - Purpose: High-res configurator renders
+  - Access: Signed URLs with expiry
+  - Size limit: 10MB per file
+  - MIME types: image/jpeg, image/png, image/webp
+
+
+- `models` bucket (private):
+  - Purpose: 3D GLB models, textures, HDRIs
+  - Access: Signed URLs
+  - Size limit: 100MB per file
+  - MIME types: model/gltf-binary, image/ktx2, image/hdr
+
+
+- `garage-thumbnails` bucket (private):
+  - Purpose: User-uploaded garage item thumbnails
+  - Access: Owner-only with RLS
+  - Size limit: 5MB per file
+  - MIME types: image/jpeg, image/png, image/webp
+
+
+- `documents` bucket (private):
+  - Purpose: User documents (NDAs, contracts, specs)
+  - Access: Owner-only with RLS
+  - Size limit: 10MB per file
+  - MIME types: application/pdf, image/*
+
+
+**Step 1.3.2: Storage Policies**
+- Create RLS policies for each bucket
+- Implement signed URL generation utility
+- Add client-side caching for signed URLs
+- Document storage usage patterns
+
+
+**Deliverables:**
+- All storage buckets created
+- Storage policies configured
+- `web/src/lib/storage.js` utility
+- Storage usage documentation
+
+
+**Success Criteria:**
+- Buckets are properly secured
+- Signed URLs work correctly
+- Client can upload/download files
+- Storage costs are reasonable
+
+
+### 1.4 RPC Functions
+**Priority:** High  
+**Estimated Time:** 3 days  
+**Dependencies:** 1.1
+
+
+**Detailed Steps:**
+
+
+**Step 1.4.1: Configuration Totals RPC**
+- Create `get_configuration_totals(config_id uuid)` function
+- Calculate:
+  - Base vehicle price
+  - Sum of selected option prices
+  - Taxes (based on region)
+  - Incentives/discounts
+  - Total
+- Return JSON with breakdown
+- Cache results in `user_configurations.pricing_summary`
+
+
+**Step 1.4.2: Compatibility Check RPC**
+- Create `check_compatibility(selected_options jsonb)` function
+- Evaluate all compatibility rules
+- Return violations with messages
+- Suggest auto-resolutions
+
+
+**Step 1.4.3: Config Code Generation**
+- Create `generate_config_code(config_id uuid)` function
+- Generate unique, shareable code
+- Store in `user_configurations.config_code`
+- Validate uniqueness
+
+
+**Deliverables:**
+- All RPC functions implemented
+- Client-side wrappers in `web/src/features/configurator/api.js`
+- Function documentation
+- Performance benchmarks
+
+
+**Success Criteria:**
+- RPCs return correct results
+- Performance <100ms for typical queries
+- Error handling is robust
+- Functions are well-documented
+
+
+### 1.5 Seed Data & Demo Content
+**Priority:** Medium  
+**Estimated Time:** 2 days  
+**Dependencies:** 1.1, 1.2
+
+
+**Detailed Steps:**
+
+
+**Step 1.5.1: Vehicle Seed Data**
+- Create 2-3 demo vehicles:
+  - Tornado GT (coupe, sport)
+  - SUV Prototype (suv, luxury)
+  - Concept Car (concept)
+- Include realistic pricing, specs, media
+
+
+**Step 1.5.2: Options Seed Data**
+- Create option groups for each vehicle:
+  - Exterior (paint, wheels, calipers, aero)
+  - Interior (seats, trim, stitching)
+  - Performance (brakes, suspension, exhaust)
+- Create 5-10 options per group
+- Create 3-5 values per option
+
+
+**Step 1.5.3: Compatibility Rules Seed**
+- Create 10-15 example rules:
+  - Paint + wheel combinations
+  - Performance package requirements
+  - Incompatible options
+
+
+**Step 1.5.4: Demo Configurations**
+- Create 3-5 sample saved configurations
+- Link to demo user accounts
+- Include realistic option selections
+
+
+**Deliverables:**
+- `supabase/seeds/platform_seed.sql`
+- Seed data documentation
+- Reset script for development
+
+
+**Success Criteria:**
+- Seed data loads successfully
+- Demo configurator works with seed data
+- Data is realistic and useful for testing
+- Seed script is idempotent
+
+
+### 1.6 Migration & Deployment Workflow
+**Priority:** High  
+**Estimated Time:** 2 days  
+**Dependencies:** 1.1-1.5
+”, The UltimateWebsiteBuilderGuidence.txt that you are going to create now should be atleast 2300 lines of detailed development timeline todo for the vision that is the vision for this website builder. The UltimateWebsiteBuilderGuidence.txt should have context of the current codebase which you are going to analize in great detail and use also the PipelineDocs.txt which is updated as some guidance and also look in great detail into the codebase. Here is some advice from chatgpt also which said the following, “Volturiano Builder — Vision Page (Think + Lock In)
+0) One-sentence North Star
+“I’m building ________ so that ________ becomes effortless for ________.”
+ (Example: “a premium Lovable-clone so founders can generate actually beautiful, production-ready landing pages in one shot.”)
+
+1) The Vibe Rules (non-negotiable)
+Pick 3–5 and commit:
+Premium (feels like a luxury brand)
+
+
+Bold (big type, confident layout)
+
+
+Cinematic (video, depth, atmosphere)
+
+
+Minimal but expensive (clean, not empty)
+
+
+Sporty tech (sharp lines, motion)
+
+
+Editorial (magazine spacing, hierarchy)
+
+
+Dark-lux (dark UI, subtle glow)
+
+
+Glass (glassmorphism, blur, highlights)
+
+
+My locked vibe keywords:
+ ________, ________, ________, ________, ________
+Forbidden vibe (never):
+ cheap gradients, generic Tailwind landing pages, cramped spacing, weak typography, stocky UI
+
+2) What “Better than Lovable” means (in measurable terms)
+Define it like a scoreboard:
+1-shot success rate: target __% pages run without missing imports
+
+
+Design quality: “looks premium” in __ seconds
+
+
+Component reuse: __% of pages use catalog components vs generated-from-scratch
+
+
+Editability: user can change key content in __ minutes
+
+
+Consistency: spacing/typography matches system in __% of sections
+
+
+
+3) The Product Truth (what the builder actually is)
+Choose the core identity:
+This is primarily a…
+( ) Landing page generator
+
+
+( ) Website builder (multi-page + routing)
+
+
+( ) Component composer + theme engine
+
+
+( ) Template marketplace engine
+
+
+( ) Agency production tool (fast client delivery)
+
+
+Default output format:
+( ) Next.js App Router
+
+
+( ) Vite React
+
+
+( ) HTML/CSS
+
+
+( ) Other: ________
+
+
+
+4) The “Component Catalog” promise
+Catalog goal: “Premium building blocks always come first.”
+4.1 Component selection logic (important)
+Rule: The model must select from catalog first, only generate new ones if missing.
+Max sections per page: __
+
+
+Must include: ( ) Header ( ) Hero ( ) CTA ( ) Footer
+
+
+Optional add-ons: ( ) Testimonials ( ) Pricing ( ) FAQ ( ) Logos ( ) Carousel
+
+
+Catalog priority tags:
+ premium, cinematic, glass, editorial, sporty, minimal
+4.2 Editing rules (how text/images change safely)
+Split components into two types:
+Immutable components (layout + style must not be rewritten)
+ Only allow props like: title, subtitle, ctaText, links[]
+
+
+Mutable components (safe to restyle + restructure a bit)
+ Allow: content + layout adjustments within constraints
+
+
+My default stance:
+Immutable: ________
+
+
+Mutable: ________
+
+
+
+5) The #1 pain you must kill (your current bug)
+Write it brutally:
+Current failure: App.jsx imports components that don’t exist / plan != file tree.
+ Root cause guess: planning step not enforcing file manifest + validations.
+Non-negotiable fix behavior:
+The assistant must output a File Manifest first
+
+
+Then generate only those files
+
+
+Then final pass: “verify imports exist, verify exports match, verify routes match”
+
+
+
+6) The Build Pipeline (the “no chaos” workflow)
+This is the core of quality.
+Pipeline stages (recommended):
+Intent extraction (what user wants, what vibe, what constraints)
+
+
+Catalog filtering (pick 6–20 best components by tags)
+
+
+Page plan (sections order + component IDs + editable props)
+
+
+File Manifest (exact files to create)
+
+
+Generate files (no extras)
+
+
+Validation pass (imports/exports/routes)
+
+
+Polish pass (spacing, typography, motion, accessibility)
+
+
+Hard rule: never generate code before the manifest.
+
+7) What “premium” means in code (your design laws)
+Lock these in:
+Typography: 2–3 font sizes per section max, strong hierarchy
+
+
+Spacing: consistent scale (e.g. 8/12/16/24/32/48/64)
+
+
+Motion: subtle (fade/slide), one hero “wow” effect max
+
+
+Contrast: readable always, no washed-out gray text
+
+
+Components: rounded corners, soft shadows, never random styling
+
+
+Images: always framed (mask, ratio, gradient overlay)
+
+
+Buttons: one primary style, one secondary style, consistent hover
+
+
+
+8) The “Demo Page” you want it to always be able to build
+This becomes your ultimate benchmark.
+Pick one default demo style:
+“Volturiano luxury automotive landing”
+
+
+“AI startup premium landing”
+
+
+“Agency portfolio cinematic landing”
+
+
+Demo must include:
+Hero with strong typographic statement
+
+
+One premium visual (video/spline/3D illusion)
+
+
+Features with iconography + spacing
+
+
+Social proof
+
+
+CTA with conversion focus
+
+
+Footer with polish
+”. But the main focus things i have in mind ofcourse is Vision is that the web builder get better than lovable, The current systems own ai component generation without the premium mode and choosing from the json catalog component library it has is not that good. The prompts its parsing through is not that refined and the generation does not follow any design guidelines the users prompt should follow. For example if the user wants a dog website, the ai components its generating design is purple and pink gradient which does not suit it at all. The ai components its generating should actually be good, high quality long time really refined parsing chatgpt prompt pipeline system so the actuall output is contextually accurate to the website the client wants to generate. Also the component selection the ai does of the premium pre components thats in the catalog alongside the ai component generation it combines, its good but could be alot better, make that part of the pipeline better. Beef up the context window, the components should have much more context like which colours they have, what the component looks like, which websites generally it suits so the ai llm has a good idea of what its working with. The point is to generate the best websites. Dont be cheap. The results needs to be as good as possible. Beef upp the design system soo the designs are super perfect for the coresponidng website. The llm that should be used is chatgpt 5.2 ofcourse. The header pages it desides it wants inside the header nav. That should actually take the client website into new pages and so on. Footer and nav and respective components should be place right place always.
+
+Publish publicly under the volturiano domain system, replit doe it like https://dog-website--firat05.replit.app/ and lovable does it like this, http://doggo-delight-net.lovable.app/ Base 44 does it like this, https://dramatic-pawfect-dog-match.base44.app  .
+
+
+
+Also publish to github. The user should be able to connected with github super easy, Create repo with all the code there with github integration. The github button should be beside the download button in the generation page.
+
+Restore checkpoints chats. The user is able to restore the preview website its creating to the previous chat checkpoint. Maybe it does not like the current chat it made or want to just restore and change the chat message to be more clear like lovable has. Cursor has it also in its ide. Restoring chats and the files return to that point of the state chat state.
+
+Account supabase but there is already the supabase integration from the car website plattform in the same codebase. Use the same supabase but separate the agency tables and so on. Credits system on the usage users have to create websites which is isolated and not vulnerable. Account should have upploadable feature logged in users, Non logged in users should be able to do everything like create websites and so on but restricted but cant download and publish. The profile page button in the top right of the builder page navbar, now it has a dropdown of garage and old supabase integration from the mentioned old car website supabase integration. Keep it but when the user is using /builder and /builder/agency pages thats correlated to the builder lovable web builder chat based functions, that should dropdown profile dashboard and the proper pages thats now newly created with all these web builder mission.
+
+Stripe integration of buying the credits to account. Free credits everyday which is enough for about 15 websites with each 2 chats.
+
+Upgrade the custom components part where the components are high quality, the pipeline has design system choices and upgrade where footer goes right, header goes right, more context oriented chat decisions, before shipping iterations with chat act as make it finer, colourtheme, design theme, upgrade the context of the components so it gets chosen right, add json thingies so each components gets like this suits webagencyis, dog stores, brainrot websites, ecomerce. Components texts should change before it gets initaly put into the preview sandbox written into files to get it right. Fix the recurring chat logic so its right.
+
+If the initial chat preview build first chat website preview version that goes into the somehow has some react error or some component did not link right or something, there should be a infinity fixing the issue loop till the website is redy to actually show the client, Should happen before every chat message review to the sandbox.
+
+Should have a overlay component volturiano stamp jsx that redirects to https://volturiano.com/builder 
+
+Goals that should be done by me end of the week personal non development to the platform builder pipeline engine is:
+Add 10 templates.
+
+Component pool 150.
+
+The templates and should be categoriezeed small hovering buttons to some top left or top right or top middle in the template selection which shows the templates it suits, now with the goal of 10 templates there is not alot of categories but add all, restaurant, plattform. But these buttons beside start with a template title component in the builder page. The buttons should be black with white texts, rounded of rectangles on the border radius. Gray borderlines 1px and white text inside and all around should be small.
+
+Look at what lovable, replit and base44 chat does ans says alongside its generation and compare it to the current pipeline description and code to get a strong idea of how to improve the current works of this code base.
+From website builder chats,
+
+Now let me set up the design system and build the components.
+defining purpose and design
+Finalizing the structure
+Expanding Functionality With Ai
+Defining the Structure
+Detailing the Service
+Refining the Model
+Outlineing UI Components
+Sketching
+Defining the project scope
+Refining Feture Integration
+. 
+
+

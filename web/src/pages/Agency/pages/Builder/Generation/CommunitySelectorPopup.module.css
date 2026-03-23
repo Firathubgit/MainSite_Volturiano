@@ -1,0 +1,436 @@
+/* =========================================================================
+   CommunitySelectorPopup.module.css — Refined popup for builder integration
+   ========================================================================= */
+
+.overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.85);
+    backdrop-filter: blur(12px);
+    z-index: 10000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 40px;
+}
+
+.popupContainer {
+    width: 100%;
+    max-width: 1400px;
+    height: 90vh;
+    background: #09090b;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 16px;
+    display: flex;
+    overflow: hidden;
+    position: relative;
+    box-shadow: 0 50px 100px -20px rgba(0, 0, 0, 0.5);
+}
+
+.topCloseBtn {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: #f4f4f5;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    z-index: 100;
+    transition: all 0.2s ease;
+}
+
+.topCloseBtn:hover {
+    background: rgba(255, 255, 255, 0.1);
+    transform: rotate(90deg);
+}
+
+.hubContainer {
+    display: flex;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+}
+
+/* ─── Sidebar Re-styled ─── */
+.sidebar {
+    width: 240px;
+    min-width: 240px;
+    height: 100%;
+    border-right: 1px solid rgba(255, 255, 255, 0.05);
+    background: #09090b;
+    display: flex;
+    flex-direction: column;
+}
+
+.sidebarHeader {
+    padding: 24px;
+}
+
+.sidebarBrandRow {
+    margin-bottom: 24px;
+}
+
+.searchBox {
+    position: relative;
+    display: flex;
+    align-items: center;
+    background: #18181b;
+    border-radius: 8px;
+    height: 36px;
+    padding: 0 12px;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.searchInput {
+    background: transparent;
+    border: none;
+    outline: none;
+    color: #f4f4f5;
+    font-size: 13px;
+    width: 100%;
+    margin-left: 8px;
+}
+
+.searchInput::placeholder {
+    color: rgba(135, 135, 135, 0.4);
+}
+
+.sidebarScrollArea {
+    flex: 1;
+    overflow-y: auto;
+    padding: 0 12px 24px 12px;
+}
+
+.sidebarScrollArea::-webkit-scrollbar {
+    width: 4px;
+}
+
+.sidebarScrollArea::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+}
+
+.sidebarSectionHeader {
+    font-size: 11px;
+    color: #71717a;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    padding: 40px 12px 8px 12px;
+}
+
+.categoryItem {
+    display: flex;
+    align-items: center;
+    padding: 8px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    color: #a1a1aa;
+    font-size: 13px;
+    transition: all 0.2s ease;
+}
+
+.categoryItem:hover {
+    background: rgba(255, 255, 255, 0.03);
+    color: #f4f4f5;
+}
+
+.categoryItemActive {
+    background: rgba(255, 255, 255, 0.05);
+    color: #f4f4f5;
+    font-weight: 500;
+}
+
+.categoryItemLeft {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.categoryCount {
+    margin-left: auto;
+    font-size: 11px;
+    color: #52525b;
+}
+
+/* ─── Main View Re-styled ─── */
+.mainGrid {
+    flex: 1;
+    overflow-y: auto;
+    padding: 32px;
+    background: #09090b;
+    display: flex;
+    flex-direction: column;
+}
+
+.mainGrid::-webkit-scrollbar {
+    width: 6px;
+}
+
+.mainGrid::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+}
+
+.gridHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 32px;
+}
+
+.gridHeaderRight {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.limitWarning {
+    font-size: 11px;
+    font-weight: 700;
+    color: rgba(255, 255, 255, 0.6);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    animation: fadeIn 0.3s ease-out;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateX(10px); }
+    to { opacity: 1; transform: translateX(0); }
+}
+
+.gridTitle {
+    font-size: 18px;
+    color: #f4f4f5;
+    font-weight: 600;
+}
+
+.trendingSection {
+    margin-bottom: 40px;
+}
+
+.trendingHeader {
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+}
+
+.trendingTitle {
+    font-size: 14px;
+    color: #71717a;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.itemGrid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 20px;
+}
+
+.loadingContainer {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 200px;
+}
+
+.loadingSpinner {
+    width: 24px;
+    height: 24px;
+    border: 2px solid rgba(255, 255, 255, 0.1);
+    border-top-color: #ffffff;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.emptyState {
+    text-align: center;
+    padding: 100px;
+    color: #71717a;
+    font-size: 14px;
+}
+
+.premiumEmptyState {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex: 1;
+    width: 100%;
+}
+
+.emptyContentWrapper {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+.largeHeartBg {
+    position: absolute;
+    z-index: 0;
+    opacity: 0.03;
+    transform: scale(4);
+    pointer-events: none;
+    color: #f4f4f5;
+}
+
+.emptyStateText {
+    position: relative;
+    z-index: 1;
+    color: rgba(135, 135, 135, 0.5);
+    font-size: 14px;
+    font-weight: 500;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    text-align: center;
+}
+
+/* ─── Sticky Bottom Bar ─── */
+.stickyCartBar {
+    position: absolute;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(24, 24, 27, 0.8);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    padding: 12px 24px;
+    border-radius: 20px;
+    display: flex;
+    align-items: center;
+    gap: 24px;
+    z-index: 50;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+    animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes slideUp {
+    from {
+        opacity: 0;
+        transform: translate(-50%, 20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translate(-50%, 0);
+    }
+}
+
+.stickyCartInfo {
+    color: #f4f4f5;
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.stickyCartButton {
+    background: #ffffff;
+    color: #000;
+    border: none;
+    padding: 10px 24px;
+    border-radius: 12px;
+    font-weight: 700;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    box-shadow: 0 4px 15px rgba(255, 255, 255, 0.2);
+}
+
+.stickyCartButton:hover {
+    transform: scale(1.02);
+    box-shadow: 0 6px 20px rgba(255, 255, 255, 0.25);
+    background: #f4f4f5;
+}
+
+.chooseComponentsHeaderBtn {
+    background: #000;
+    color: #ffffff;
+    border: 1px solid #ffffff;
+    border-radius: 9px;
+    padding: 0 12px;
+    font-size: 11px;
+    font-weight: 700;
+    font-family: 'Inter', sans-serif;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    transition: all 0.2s;
+    position: relative;
+    overflow: hidden;
+    height: 34px;
+    width: 140px;
+    box-sizing: border-box;
+    margin-right: 48px;
+}
+
+.btnGradientOverlay {
+    position: absolute;
+    right: 0;
+    top: 1px;
+    bottom: 1px;
+    height: calc(100% - 2px);
+    width: auto;
+    object-fit: contain;
+    pointer-events: none;
+    z-index: 0;
+}
+
+.chooseComponentsHeaderBtn span {
+    position: relative;
+    z-index: 1;
+}
+
+.chooseComponentsHeaderBtn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 20px rgba(255, 255, 255, 0.1);
+    background: #0a0a0a;
+    border-color: #ffffff;
+    color: #ffffff;
+}
+
+.exitSelectBtn {
+    background: rgba(239, 68, 68, 0.1);
+    color: #ffffff;
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    border-radius: 9px;
+    padding: 0 12px;
+    font-size: 11px;
+    font-weight: 700;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    transition: all 0.2s;
+    height: 34px;
+    width: 140px;
+    margin-right: 48px;
+}
+
+.exitSelectBtn:hover {
+    background: rgba(239, 68, 68, 0.2);
+    border-color: rgba(239, 68, 68, 0.5);
+    transform: translateY(-1px);
+}

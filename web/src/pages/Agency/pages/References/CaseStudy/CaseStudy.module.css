@@ -36,12 +36,10 @@
 .heroGradient {
   position: absolute;
   inset: 0;
-  background: linear-gradient(
-    0deg,
-    black 0%,
-    rgba(0, 0, 0, 0.50) 50%,
-    rgba(0, 0, 0, 0) 100%
-  );
+  background: linear-gradient(0deg,
+      black 0%,
+      rgba(0, 0, 0, 0.50) 50%,
+      rgba(0, 0, 0, 0) 100%);
   z-index: 1;
   pointer-events: none;
 }

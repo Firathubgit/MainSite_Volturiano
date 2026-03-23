@@ -12,7 +12,7 @@ export default function IndexGate() {
   useEffect(() => {
     // If pause mode is enabled and NOT in platform mode, redirect to agency page
     if (PAUSE_MODE_ENABLED && !platformMode) {
-      navigate('/agency', { replace: true });
+      navigate('/builder', { replace: true });
       return;
     }
 

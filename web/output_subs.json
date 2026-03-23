@@ -1,0 +1,16 @@
+[
+  {
+    "id": "2ee79545-4016-495a-89fe-e717a389f674",
+    "name": "Cardish",
+    "has_thumbnail_base64": false,
+    "has_video_base64": false,
+    "preview_video_url": null
+  },
+  {
+    "id": "cc041649-af74-41df-a5c6-9de94122d5fb",
+    "name": "Buttonish",
+    "has_thumbnail_base64": false,
+    "has_video_base64": false,
+    "preview_video_url": null
+  }
+]

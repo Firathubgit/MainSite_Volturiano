@@ -1,7 +1,15 @@
 {
   "rewrites": [
     {
-      "source": "/((?!assets|_vercel|.*\\.glb|favicon.ico).*)",
+      "source": "/sites/:slug/:path*",
+      "destination": "https://bfmqeuczlipocjqtzawj.supabase.co/storage/v1/object/public/published-sites/:slug/:path*"
+    },
+    {
+      "source": "/sites/:slug",
+      "destination": "https://bfmqeuczlipocjqtzawj.supabase.co/storage/v1/object/public/published-sites/:slug/index.html"
+    },
+    {
+      "source": "/((?!assets|_vercel|.*\\.glb|favicon.ico|sites/).*)",
       "destination": "/index.html"
     }
   ],

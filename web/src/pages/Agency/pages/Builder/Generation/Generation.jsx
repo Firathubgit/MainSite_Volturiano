@@ -221,7 +221,7 @@ export default function Generation() {
 
   // Auth Context & Credits
   const { session } = useBuilderAuth();
-  const { isOut: outOfCredits, refreshCredits, totalAvailable, dailyRemaining, purchasedRemaining, isUnlimited, plan } = useCredits();
+  const { isOut: outOfCredits, refreshCredits, totalAvailable, monthlyFreeRemaining, signupBonusRemaining, subscriptionRemaining, purchasedRemaining, isUnlimited, plan, subscriptionStatus, subscriptionPeriodEnd } = useCredits();
   const [showLimitModal, setShowLimitModal] = useState(false);
 
   // State
@@ -2301,7 +2301,7 @@ Just position the new components in a logical order (e.g. after the Hero or befo
                             letterSpacing: '0.08em',
                             marginBottom: '16px',
                           }}>
-                            {plan} plan
+                             {plan ? (plan.charAt(0).toUpperCase() + plan.slice(1)) : 'Free'} plan
                           </div>
 
                           {/* Breakdown */}
@@ -2315,23 +2315,18 @@ Just position the new components in a logical order (e.g. after the Hero or befo
                             </div>
                           ) : (
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '12px', color: '#rgba(255,255,255,0.45)' }}>
-                                <span>Daily Free</span>
-                                <span style={{ fontWeight: '600', color: '#e5e7eb', fontFamily: "'Inter', sans-serif" }}>{dailyRemaining}</span>
-                              </div>
-                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '12px', color: '#rgba(255,255,255,0.45)' }}>
-                                <span>Purchased</span>
-                                <span style={{ fontWeight: '600', color: '#e5e7eb', fontFamily: "'Inter', sans-serif" }}>{purchasedRemaining}</span>
-                              </div>
+                              <CreditRow label="Monthly Free" value={monthlyFreeRemaining} color="#e5e7eb" labelColor="#9ca3af" />
+                              <CreditRow label="Signup Bonus" value={signupBonusRemaining} color="#e5e7eb" labelColor="#9ca3af" />
+                              <CreditRow label="Subscription" value={subscriptionRemaining} color="#e5e7eb" labelColor="#9ca3af" />
+                              <CreditRow label="Purchased" value={purchasedRemaining} color="#e5e7eb" labelColor="#9ca3af" />
+                              
                               <div style={{
                                 height: '1px',
                                 background: 'rgba(255,255,255,0.1)',
                                 margin: '4px 0',
                               }} />
-                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '12px', color: '#rgba(255,255,255,0.45)' }}>
-                                <span>Total Available</span>
-                                <span style={{ fontWeight: '700', color: '#ffffff', fontFamily: "'Inter', sans-serif" }}>{totalAvailable}</span>
-                              </div>
+                              
+                              <CreditRow label="Total Available" value={totalAvailable} color="#ffffff" labelColor="#9ca3af" bold />
 
                               <button
                                 onClick={(e) => {
@@ -3185,6 +3180,33 @@ Just position the new components in a logical order (e.g. after the Hero or befo
         isOpen={showLimitModal}
         onClose={() => setShowLimitModal(false)}
       />
+    </div>
+  );
+}
+
+function CreditRow({ label, value, color, labelColor, bold = false }) {
+  return (
+    <div style={{
+      display: 'flex',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+    }}>
+      <span style={{
+        fontSize: '12px',
+        color: labelColor || 'rgba(255,255,255,0.45)',
+        fontWeight: bold ? '600' : '400',
+      }}>
+        {label}
+      </span>
+      <span style={{
+        fontSize: '13px',
+        fontWeight: bold ? '700' : '600',
+        fontFamily: "'Inter', sans-serif",
+        color: color,
+        letterSpacing: '0.02em',
+      }}>
+        {value}
+      </span>
     </div>
   );
 }

@@ -259,6 +259,7 @@ router.post('/subscribe', requireAuth, async (req, res) => {
     const session = await stripe.checkout.sessions.create({
       mode: 'subscription',
       customer: customerId,
+      allow_promotion_codes: true,
       line_items: [
         {
           price: plan.priceId,
@@ -336,6 +337,7 @@ router.post('/buy-credits', requireAuth, async (req, res) => {
     const session = await stripe.checkout.sessions.create({
       mode: 'payment',
       customer: customerId,
+      allow_promotion_codes: true,
       line_items: [
         {
           price: pack.priceId,

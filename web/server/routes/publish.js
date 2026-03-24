@@ -354,6 +354,7 @@ export default async function publishSite(req, res) {
                 .from('published-sites')
                 .upload(`${slug}/${relativePath}`, fileBuffer, {
                     contentType,
+                    cacheControl: '3600',
                     upsert: true
                 });
 
@@ -361,6 +362,19 @@ export default async function publishSite(req, res) {
                 console.error(`[Publish] Upload failed for ${relativePath}:`, uploadErr);
                 throw new Error(`Failed to upload ${relativePath}: ${uploadErr.message}`);
             }
+
+            // Force Metadata Update Fix! Supabase DOES NOT reliably update existing MIME types on `upsert: true`
+            // If the user replaces an old site that had `text/plain` locked into the DB, it causes browser rendering failures.
+            if (relativePath === 'index.html') {
+                await supabaseAdmin.storage
+                    .from('published-sites')
+                    .update(`${slug}/${relativePath}`, fileBuffer, {
+                        contentType: 'text/html',
+                        cacheControl: '3600',
+                        upsert: true
+                    }).catch(e => console.warn('[Publish] Metadata update warning:', e));
+            }
+
             log(`[Publish] Uploaded: ${relativePath} (${fileBuffer.length} bytes)`);
             uploadedCount++;
         }

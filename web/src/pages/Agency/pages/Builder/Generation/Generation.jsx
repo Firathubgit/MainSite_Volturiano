@@ -632,7 +632,13 @@ export default function Generation() {
 
     const promise = (async () => {
       try {
-        const res = await fetch('/api/create-ai-sandbox-v2', { method: 'POST', headers: { 'Content-Type': 'application/json' } });
+        const res = await fetch('/api/create-ai-sandbox-v2', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(session?.access_token ? { 'Authorization': `Bearer ${session.access_token}` } : {})
+          }
+        });
         const data = await safeParseJson(res, 'create-ai-sandbox');
         if (!data.success) throw new Error(data.error || 'Failed to create sandbox');
         setSandboxData({ sandboxId: data.sandboxId, url: data.url });
@@ -644,7 +650,7 @@ export default function Generation() {
 
     sandboxCreationRef.current = promise;
     return promise;
-  }, []);
+  }, [session]);
 
   // ─── Apply Generated Code ──────────────
   const applyGeneratedCode = useCallback(async (generatedCode, isEdit, buildId, explicitFiles = null, skipPolish = false, passedSandboxId = null, isResume = false, passedSandboxUrl = null) => {

@@ -5,12 +5,16 @@
       "destination": "https://mainsitevolturiano-production.up.railway.app/api/:path*"
     },
     {
-      "source": "/sites/:slug/:path*",
-      "destination": "https://bfmqeuczlipocjqtzawj.supabase.co/storage/v1/object/public/published-sites/:slug/:path*"
-    },
-    {
       "source": "/sites/:slug",
       "destination": "https://bfmqeuczlipocjqtzawj.supabase.co/storage/v1/object/public/published-sites/:slug/index.html"
+    },
+    {
+      "source": "/sites/:slug/",
+      "destination": "https://bfmqeuczlipocjqtzawj.supabase.co/storage/v1/object/public/published-sites/:slug/index.html"
+    },
+    {
+      "source": "/sites/:slug/:path+",
+      "destination": "https://bfmqeuczlipocjqtzawj.supabase.co/storage/v1/object/public/published-sites/:slug/:path+"
     },
     {
       "source": "/((?!assets|_vercel|.*\\.glb|favicon.ico|sites/|api/).*)",

@@ -224,6 +224,16 @@ export default function Generation() {
   const { isOut: outOfCredits, refreshCredits, totalAvailable, monthlyFreeRemaining, signupBonusRemaining, subscriptionRemaining, purchasedRemaining, isUnlimited, plan, subscriptionStatus, subscriptionPeriodEnd } = useCredits();
   const [showLimitModal, setShowLimitModal] = useState(false);
 
+  // ─── Auth-aware fetch wrapper ──────────────
+  // Automatically injects Authorization header for all API calls
+  const authFetch = useCallback((url, options = {}) => {
+    const headers = {
+      ...(options.headers || {}),
+      ...(session?.access_token ? { 'Authorization': `Bearer ${session.access_token}` } : {})
+    };
+    return fetch(url, { ...options, headers });
+  }, [session]);
+
   // State
   const queryParams = new URLSearchParams(location.search);
   const [sandboxData, setSandboxData] = useState(null);
@@ -327,7 +337,7 @@ export default function Generation() {
       // Small cleanup: exclude buildId from updates object itself
       const { buildId: _, ...cleanUpdates } = updates;
 
-      await fetch('/api/projects/update', {
+      await authFetch('/api/projects/update', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -413,7 +423,7 @@ export default function Generation() {
       const filesData = await filesRes.json();
       const currentFiles = filesData.success ? filesData.files : sandboxFiles;
 
-      const res = await fetch('/api/snapshots', {
+      const res = await authFetch('/api/snapshots', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -632,7 +642,7 @@ export default function Generation() {
 
     const promise = (async () => {
       try {
-        const res = await fetch('/api/create-ai-sandbox-v2', {
+        const res = await authFetch('/api/create-ai-sandbox-v2', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -683,7 +693,7 @@ export default function Generation() {
         }));
       }
 
-      const response = await fetch('/api/apply-ai-code-stream', {
+      const response = await authFetch('/api/apply-ai-code-stream', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -855,7 +865,7 @@ export default function Generation() {
                         if (sandboxFilesData.success) {
                           const fullFilesMap = sandboxFilesData.files || {};
 
-                          return fetch('/api/snapshots', {
+                          return authFetch('/api/snapshots', {
                             method: 'POST',
                             headers: {
                               'Content-Type': 'application/json',
@@ -930,7 +940,7 @@ export default function Generation() {
   // --- Helper for AI Edits (Shared between Chat and Community Integration) ---
   const handleAIGeneratedEdit = useCallback(async (promptText, buildId, sandbox) => {
     try {
-      const res = await fetch('/api/generate-ai-code-stream', {
+      const res = await authFetch('/api/generate-ai-code-stream', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -1023,7 +1033,7 @@ export default function Generation() {
       if (!providedBuildId) {
         // 1. Project Init & Rate Limiting Check (Phase S2)
         setGenerationProgress(prev => ({ ...prev, status: 'Initializing project...' }));
-        const initRes = await fetch('/api/projects/init', {
+        const initRes = await authFetch('/api/projects/init', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -1067,7 +1077,7 @@ export default function Generation() {
         setGenerationProgress(prev => ({ ...prev, status: `Building template...` }));
         addChatMessage("Alright, I will set up the template for you.", 'ai-narrator', { style: 'planning' });
 
-        const templateRes = await fetch('/api/build-template', {
+        const templateRes = await authFetch('/api/build-template', {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ templateId, images: initialImages, buildId })
         });
@@ -1092,7 +1102,7 @@ export default function Generation() {
       setGenerationProgress(prev => ({ ...prev, status: 'Enhancing prompt...' }));
       let finalPrompt = prompt;
       try {
-        const enhanceRes = await fetch('/api/enhance-prompt', {
+        const enhanceRes = await authFetch('/api/enhance-prompt', {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ prompt, images: initialImages, model: aiModel, mode: 'prompt-only', buildId })
         });
@@ -1108,7 +1118,7 @@ export default function Generation() {
       let designSystem = null;
       setGenerationProgress(prev => ({ ...prev, status: 'Deriving design system...' }));
       try {
-        const dsRes = await fetch('/api/derive-design-system', {
+        const dsRes = await authFetch('/api/derive-design-system', {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ enhancedPrompt: finalPrompt, images: initialImages, buildId })
         });
@@ -1136,7 +1146,7 @@ export default function Generation() {
           // --- INITIAL BUILD MODE ---
           setGenerationProgress(prev => ({ ...prev, status: `Building from selection (${manualSelectionIds.length})...` }));
 
-          const selectionRes = await fetch('/api/build-from-selection', {
+          const selectionRes = await authFetch('/api/build-from-selection', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ componentIds: manualSelectionIds, buildId })
@@ -1170,7 +1180,7 @@ export default function Generation() {
           // 1. Fetch Bundles
           const bundleResults = await Promise.all(
             manualSelectionIds.map(id =>
-              fetch('/api/component-bundle', {
+              authFetch('/api/component-bundle', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ id, format: 'fileblocks', buildId })
@@ -1225,7 +1235,7 @@ Just position the new components in a logical order (e.g. after the Hero or befo
       } else if (premiumMode !== 'off') {
         setGenerationProgress(prev => ({ ...prev, status: 'Selecting premium components...' }));
         try {
-          const selectRes = await fetch('/api/select-components', {
+          const selectRes = await authFetch('/api/select-components', {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ prompt: finalPrompt, images: initialImages, model: aiModel, designSystem, buildId, premiumMode })
           });
@@ -1245,7 +1255,7 @@ Just position the new components in a logical order (e.g. after the Hero or befo
       setGenerationProgress(prev => ({ ...prev, status: 'Planning components...' }));
       let planData;
       try {
-        const planRes = await fetch('/api/plan-website-components', {
+        const planRes = await authFetch('/api/plan-website-components', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -1308,7 +1318,7 @@ Just position the new components in a logical order (e.g. after the Hero or befo
         // addChatMessage(`Installing dependencies: ${planData.requiredPackages.join(', ')}`, 'system');
 
         try {
-          await fetch('/api/install-packages', {
+          await authFetch('/api/install-packages', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -1327,7 +1337,7 @@ Just position the new components in a logical order (e.g. after the Hero or befo
       // Stage A: Fetch Premium Bundles (with beefy props)
       const premiumResults = await Promise.all(
         premiumComponents.map(comp =>
-          fetch('/api/component-bundle', {
+          authFetch('/api/component-bundle', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -1403,7 +1413,7 @@ Just position the new components in a logical order (e.g. after the Hero or befo
               await new Promise(r => setTimeout(r, backoffTime));
             }
 
-            const r = await fetch('/api/generate-single-component', {
+            const r = await authFetch('/api/generate-single-component', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
@@ -1463,7 +1473,7 @@ Just position the new components in a logical order (e.g. after the Hero or befo
       let appJsxCode = '';
       try {
         console.log('[Generation] Rendering App.jsx with components:', validComponents.length);
-        const renderRes = await fetch('/api/render-app', {
+        const renderRes = await authFetch('/api/render-app', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ components: validComponents })
@@ -1527,7 +1537,7 @@ Just position the new components in a logical order (e.g. after the Hero or befo
 
       // 7a. Validate Imports (Prompt 7)
       try {
-        const validateRes = await fetch('/api/validate-imports', {
+        const validateRes = await authFetch('/api/validate-imports', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ files: allFiles, premiumComponents: loadedPremiumComponents })
@@ -1562,7 +1572,7 @@ Just position the new components in a logical order (e.g. after the Hero or befo
         addChatMessage(`Generation failed: ${error.message}. Switching to streaming fallback...`, 'system');
         try {
           setGenerationProgress(prev => ({ ...prev, status: 'Generating (streaming)...' }));
-          const res = await fetch('/api/generate-ai-code-stream', {
+          const res = await authFetch('/api/generate-ai-code-stream', {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ prompt, images: initialImages, model: aiModel, context: { sandboxId: sandboxData?.sandboxId }, isEdit: false, buildId })
           });
@@ -1597,7 +1607,7 @@ Just position the new components in a logical order (e.g. after the Hero or befo
         } catch (fallbackError) {
           addChatMessage(`Fallback failed: ${fallbackError.message}`, 'error');
           // Phase S2: Sync failure state
-          fetch('/api/projects/update', {
+          authFetch('/api/projects/update', {
             method: 'POST', headers: { 'Content-Type': 'application/json', ...(session?.access_token ? { 'Authorization': `Bearer ${session.access_token}` } : {}) },
             body: JSON.stringify({ buildId, updates: { build_status: 'failed' } })
           }).catch(e => { });
@@ -1605,7 +1615,7 @@ Just position the new components in a logical order (e.g. after the Hero or befo
       } else {
         addChatMessage(`Partial success: ${error.message}. Attempting to proceed with available code.`, 'warning');
         // Phase S2: Sync failure state
-        fetch('/api/projects/update', {
+        authFetch('/api/projects/update', {
           method: 'POST', headers: { 'Content-Type': 'application/json', ...(session?.access_token ? { 'Authorization': `Bearer ${session.access_token}` } : {}) },
           body: JSON.stringify({ buildId, updates: { build_status: 'failed' } })
         }).catch(e => { });
@@ -1663,7 +1673,7 @@ Just position the new components in a logical order (e.g. after the Hero or befo
 
           const bundleResults = await Promise.all(
             currentComponents.map(comp =>
-              fetch('/api/component-bundle', {
+              authFetch('/api/component-bundle', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ id: comp.id, format: 'fileblocks', buildId })
@@ -1758,7 +1768,7 @@ Just position the new components in a logical order (e.g. after the Hero or befo
       setCurrentProjectId(projectId);
 
       // Touch updated_at so dashboard sorts by most recently opened
-      fetch('/api/projects/update', {
+      authFetch('/api/projects/update', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...(session?.access_token ? { 'Authorization': `Bearer ${session.access_token}` } : {}) },
         body: JSON.stringify({ buildId: projectId, updates: { updated_at: new Date().toISOString() } })
@@ -1843,7 +1853,7 @@ Just position the new components in a logical order (e.g. after the Hero or befo
     const intervalId = setInterval(async () => {
       try {
         const token = session?.access_token;
-        const res = await fetch('/api/sandbox/keepalive', {
+        const res = await authFetch('/api/sandbox/keepalive', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -2014,7 +2024,7 @@ Just position the new components in a logical order (e.g. after the Hero or befo
     setIsDownloading(true);
     addChatMessage('Creating ZIP file of your project...', 'system');
     try {
-      const res = await fetch('/api/create-zip', {
+      const res = await authFetch('/api/create-zip', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ sandboxId: sandboxData.sandboxId })
@@ -2115,7 +2125,7 @@ Just position the new components in a logical order (e.g. after the Hero or befo
       };
       console.log('[Publish] 📤 Sending POST /api/publish-site');
 
-      const res = await fetch('/api/publish-site', {
+      const res = await authFetch('/api/publish-site', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

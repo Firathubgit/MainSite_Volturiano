@@ -1,13 +1,7 @@
-/**
- * Settings Routes — User preference updates via backend (service role).
- * 
- * Uses the service_role key (supabaseAdmin) which NEVER expires,
- * making this completely immune to the alt-tab stale-token bug
- * that affects direct frontend Supabase calls.
- */
 import express from 'express';
 import { requireAuth } from '../middleware/authMiddleware.js';
 import { supabaseAdmin } from '../lib/supabase-admin.js';
+import { logger } from '../lib/logger.js';
 
 const router = express.Router();
 
@@ -16,14 +10,15 @@ const router = express.Router();
  * Updates the user's preferred builder mode (hybrid / premium).
  */
 router.patch('/preferred-mode', requireAuth, async (req, res) => {
-    console.log('[Settings] PATCH /preferred-mode hit. userId:', req.userId, 'body:', req.body);
+    const userId = req.userId;
+    logger.info('Settings', 'PATCH /preferred-mode hit', { userId, mode: req.body?.preferred_mode });
+    
     try {
         const { preferred_mode } = req.body;
 
-        // Validate input
         const VALID_MODES = ['free', 'hybrid', 'premium'];
         if (!preferred_mode || !VALID_MODES.includes(preferred_mode)) {
-            console.log('[Settings] Invalid mode received:', preferred_mode);
+            logger.warn('Settings', 'Invalid mode received', { preferred_mode });
             return res.status(400).json({ 
                 success: false, 
                 error: `Invalid mode. Must be one of: ${VALID_MODES.join(', ')}` 
@@ -31,11 +26,9 @@ router.patch('/preferred-mode', requireAuth, async (req, res) => {
         }
 
         if (!supabaseAdmin) {
-            console.error('[Settings] supabaseAdmin is null! Check env vars.');
+            logger.error('Settings', 'supabaseAdmin is null! Check env vars.');
             return res.status(500).json({ success: false, error: 'Database not configured' });
         }
-
-        console.log('[Settings] Updating profiles for user:', req.userId, '→', preferred_mode);
 
         const { error } = await supabaseAdmin
             .from('profiles')
@@ -43,122 +36,153 @@ router.patch('/preferred-mode', requireAuth, async (req, res) => {
                 preferred_mode, 
                 updated_at: new Date().toISOString() 
             })
-            .eq('id', req.userId);
+            .eq('id', userId);
 
         if (error) {
-            console.error('[Settings] Supabase update error:', error);
+            logger.error('Settings', 'Supabase update error', { error });
             return res.status(500).json({ success: false, error: error.message });
         }
 
-        console.log('[Settings] ✅ preferred_mode updated successfully to:', preferred_mode);
+        logger.info('Settings', '✅ preferred_mode updated successfully', { userId, mode: preferred_mode });
         return res.json({ success: true, preferred_mode });
     } catch (err) {
-        console.error('[Settings] Unhandled error:', err);
+        logger.error('Settings', 'Unhandled error in preferred-mode', { error: err.message });
         return res.status(500).json({ success: false, error: 'Internal server error' });
     }
 });
 
 /**
  * GET /api/settings/export-data
- * Compiles all personal data into a JSON file for download. (GDPR Right to Access)
+ * Compiles ALL personal data into a JSON file for download. (GDPR Right to Access)
  */
 router.get('/export-data', requireAuth, async (req, res) => {
+    const userId = req.userId;
     try {
-        const userId = req.userId;
-        console.log('[GDPR] Data export requested for user:', userId);
+        logger.info('GDPR', 'Data export requested', { userId });
 
-        const tables = ['profiles', 'projects', 'published_sites', 'credit_transactions', 'snapshots', 'ai_selection_events'];
         const exportData = {
             exported_at: new Date().toISOString(),
+            data_controller: 'Volturiano',
+            contact: 'contact@volturiano.com',
             user_id: userId,
             data: {}
         };
 
-        for (const table of tables) {
+        const userIdTables = [
+            'projects', 'published_sites', 'credit_transactions', 'snapshots',
+            'community_submissions', 'component_likes', 'component_ratings',
+            'platform_feedback'
+        ];
+
+        const { data: profileData, error: profileErr } = await supabaseAdmin
+            .from('profiles').select('*').eq('id', userId).single();
+        
+        // --- Issue #7 Fix: Wrap in array for consistency with other tables ---
+        exportData.data.profiles = profileErr ? { error: 'Failed to fetch' } : [profileData];
+
+        for (const table of userIdTables) {
             const { data, error } = await supabaseAdmin
-                .from(table)
-                .select('*')
-                .eq(table === 'profiles' ? 'id' : 'user_id', userId);
-            
+                .from(table).select('*').eq('user_id', userId);
             if (error) {
-                console.error(`[GDPR] Error exporting table ${table}:`, error);
+                logger.error('GDPR', `Error exporting table ${table}`, { userId, error });
                 exportData.data[table] = { error: 'Failed to fetch' };
             } else {
                 exportData.data[table] = data;
             }
         }
 
+        const { data: authoredComponents, error: compErr } = await supabaseAdmin
+            .from('components').select('*').eq('author_id', userId);
+        exportData.data.authored_components = compErr ? { error: 'Failed to fetch' } : authoredComponents;
+
         res.setHeader('Content-Disposition', `attachment; filename="volturiano-data-${userId}.json"`);
         res.setHeader('Content-Type', 'application/json');
         return res.json(exportData);
     } catch (err) {
-        console.error('[GDPR] Export fatal error:', err);
+        logger.error('GDPR', 'Export fatal error', { userId, error: err.message });
         return res.status(500).json({ success: false, error: 'Failed to generate data export' });
     }
 });
 
 /**
  * DELETE /api/settings/delete-account
- * Permanent deletion of account and associated data. (GDPR Right to Erasure)
  */
 router.delete('/delete-account', requireAuth, async (req, res) => {
+    const userId = req.userId;
     try {
-        const userId = req.userId;
-        console.log('[GDPR] 🚨 ACCOUNT DELETION INITIATED for user:', userId);
+        logger.warn('GDPR', '🚨 ACCOUNT DELETION INITIATED', { userId });
 
-        // 1. Get projects to clean up storage
-        const { data: projects } = await supabaseAdmin
-            .from('projects')
-            .select('id')
-            .eq('user_id', userId);
+        const { data: profile } = await supabaseAdmin
+            .from('profiles').select('stripe_customer_id, stripe_subscription_id').eq('id', userId).single();
 
-        // 2. Clean up Storage (Thumbnails, Sites)
-        if (projects && projects.length > 0) {
-            for (const project of projects) {
-                try {
-                    // Delete project thumbnail (ignoring errors if not exists)
-                    const { data: files } = await supabaseAdmin.storage.from('project-thumbnails').list(project.id);
-                    if (files?.length) {
-                        await supabaseAdmin.storage.from('project-thumbnails').remove(files.map(f => `${project.id}/${f.name}`));
-                    }
-                    
-                    // Published site files cleanup would go here if using Storage for sites
-                    // ...
-                } catch (stEr) { console.warn(`[GDPR] Storage cleanup err for ${project.id}:`, stEr); }
+        if (profile?.stripe_subscription_id) {
+            try {
+                const Stripe = (await import('stripe')).default;
+                const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+                await stripe.subscriptions.cancel(profile.stripe_subscription_id);
+                logger.info('GDPR', '✅ Stripe subscription cancelled', { subscriptionId: profile.stripe_subscription_id });
+            } catch (stripeErr) {
+                logger.warn('GDPR', 'Stripe cancellation failed (may already be cancelled)', { userId, error: stripeErr.message });
             }
         }
 
-        // 3. Delete DB Records related to user (Project-linked data first)
-        // Note: Supabase FK cascades handle most of this if configured, but we do it explicitly for safety.
-        await supabaseAdmin.from('snapshots').delete().eq('user_id', userId);
-        await supabaseAdmin.from('published_sites').delete().eq('user_id', userId);
-        await supabaseAdmin.from('projects').delete().eq('user_id', userId);
+        const { data: projects } = await supabaseAdmin
+            .from('projects').select('id').eq('user_id', userId);
 
-        // 4. Anonymize Financial Records (Bokföringslagen compliance)
-        await supabaseAdmin
-            .from('credit_transactions')
-            .update({ 
-                user_id: null, 
-                description: 'ANONYMIZED (Account Deleted)',
-                // Keeping amount and type for accounting
-            })
-            .eq('user_id', userId);
-
-        // 5. Delete Profile
-        await supabaseAdmin.from('profiles').delete().eq('id', userId);
-
-        // 6. Delete Auth User (Requires Admin API)
-        const { error: authErr } = await supabaseAdmin.auth.admin.deleteUser(userId);
-        if (authErr) {
-            console.error('[GDPR] Failed to delete auth user:', authErr);
-            // We proceed anyway as DB data is gone
+        if (projects?.length) {
+            for (const project of projects) {
+                try {
+                    const { data: thumbFiles } = await supabaseAdmin.storage.from('project-thumbnails').list(project.id);
+                    if (thumbFiles?.length) {
+                        await supabaseAdmin.storage.from('project-thumbnails').remove(thumbFiles.map(f => `${project.id}/${f.name}`));
+                    }
+                } catch (stEr) { logger.warn('GDPR', `Storage cleanup error for project ${project.id}`, { error: stEr.message }); }
+            }
         }
 
-        console.log('[GDPR] ✅ Account and data deleted for:', userId);
+        const { data: publishedSites } = await supabaseAdmin
+            .from('published_sites').select('storage_path').eq('user_id', userId);
+
+        if (publishedSites?.length) {
+            for (const site of publishedSites) {
+                try {
+                    if (site.storage_path) {
+                        const { data: siteFiles } = await supabaseAdmin.storage.from('published-sites').list(site.storage_path);
+                        if (siteFiles?.length) {
+                            await supabaseAdmin.storage.from('published-sites').remove(siteFiles.map(f => `${site.storage_path}/${f.name}`));
+                        }
+                    }
+                } catch (stEr) { logger.warn('GDPR', 'Published site storage cleanup error', { error: stEr.message }); }
+            }
+        }
+
+        await supabaseAdmin.from('snapshots').delete().eq('user_id', userId);
+        await supabaseAdmin.from('published_sites').delete().eq('user_id', userId);
+
+        await supabaseAdmin
+            .from('credit_transactions')
+            .update({ user_id: null, project_id: null, description: 'ANONYMIZED (Account Deleted)' })
+            .eq('user_id', userId);
+
+        await supabaseAdmin.from('projects').delete().eq('user_id', userId);
+        await supabaseAdmin.from('component_likes').delete().eq('user_id', userId);
+        await supabaseAdmin.from('component_ratings').delete().eq('user_id', userId);
+
+        await supabaseAdmin.from('components').update({ author_id: null }).eq('author_id', userId);
+        await supabaseAdmin.from('community_submissions').delete().eq('user_id', userId);
+        await supabaseAdmin.from('platform_feedback').delete().eq('user_id', userId);
+        await supabaseAdmin.from('profiles').delete().eq('id', userId);
+
+        const { error: authErr } = await supabaseAdmin.auth.admin.deleteUser(userId);
+        if (authErr) {
+            logger.error('GDPR', 'Failed to delete auth user', { userId, error: authErr });
+        }
+
+        logger.info('GDPR', '✅ Account and ALL data deleted', { userId });
         return res.json({ success: true, message: 'Account permanently deleted.' });
 
     } catch (err) {
-        console.error('[GDPR] Delete account fatal error:', err);
+        logger.error('GDPR', 'Delete account fatal error', { userId, error: err.message });
         return res.status(500).json({ success: false, error: 'Failed to delete account' });
     }
 });

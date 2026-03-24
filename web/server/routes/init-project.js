@@ -1,13 +1,13 @@
 import { checkAndDeductUserCredit, createProject } from '../lib/db/projects.js';
 import crypto from 'crypto';
+import { logger } from '../lib/logger.js';
 
 export default async function initProject(req, res) {
-    console.log('[API] /projects/init called');
+    const userId = req.user?.id;
+    logger.info('API', '/projects/init called', { userId });
+    
     try {
         const { prompt, buildId } = req.body;
-        const userId = req.user?.id;
-        const ip = req.headers['x-forwarded-for'] || req.socket?.remoteAddress || '127.0.0.1';
-
         const projectId = buildId || crypto.randomUUID();
 
         // 1. Credit Check (Now mandatory as route is requireAuth)
@@ -34,7 +34,7 @@ export default async function initProject(req, res) {
         });
 
     } catch (err) {
-        console.error('[API] /projects/init error:', err);
+        logger.error('API', '/projects/init error', { error: err.message, userId });
         res.status(500).json({ success: false, error: 'Internal server error initializing project.' });
     }
 }

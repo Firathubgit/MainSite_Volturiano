@@ -9,11 +9,17 @@ export default function AccountSettings() {
     const [displayName, setDisplayName] = useState(profile?.display_name || "");
     const [username, setUsername] = useState(profile?.username || "");
     const [bio, setBio] = useState(profile?.bio || "");
+    
     const [location, setLocation] = useState(profile?.location || "");
+    const [processingRestricted, setProcessingRestricted] = useState(profile?.processing_restricted || false);
     
     const [loading, setLoading] = useState(false);
+    const [actionLoading, setActionLoading] = useState(false);
+    const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
     const [success, setSuccess] = useState(false);
     const [error, setError] = useState("");
+    
+    const { getAccessToken } = useBuilderAuth();
     
     const handleSave = async () => {
         setLoading(true);
@@ -28,6 +34,7 @@ export default function AccountSettings() {
                     username,
                     bio,
                     location,
+                    processing_restricted: processingRestricted,
                     updated_at: new Date().toISOString(),
                 })
                 .eq('id', user.id);
@@ -67,6 +74,54 @@ export default function AccountSettings() {
         letterSpacing: '0.08em',
         marginBottom: '10px',
         display: 'block'
+    };
+
+    const handleDownloadData = async () => {
+        setActionLoading(true);
+        try {
+            const token = await getAccessToken();
+            const res = await fetch('/api/settings/export-data', {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (!res.ok) throw new Error('Failed to export data');
+            const blob = await res.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `volturiano-data-${user.id}.json`;
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            document.body.removeChild(a);
+        } catch (err) {
+            console.error('Export error:', err);
+            setError(err.message);
+        } finally {
+            setActionLoading(false);
+        }
+    };
+
+    const handleDeleteAccount = async () => {
+        if (!window.confirm("FINAL WARNING: This will permanently delete your account, credits, and websites. Type OK to proceed.")) return;
+        
+        setActionLoading(true);
+        try {
+            const token = await getAccessToken();
+            const res = await fetch('/api/settings/delete-account', {
+                method: 'DELETE',
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            const data = await res.json();
+            if (data.success) {
+                window.location.href = '/'; // Auth state will naturally clear
+            } else {
+                throw new Error(data.error);
+            }
+        } catch (err) {
+            console.error('Delete error:', err);
+            setError(err.message);
+            setActionLoading(false);
+        }
     };
 
     return (
@@ -176,7 +231,7 @@ export default function AccountSettings() {
                     <div style={{ display: 'flex', alignItems: 'center', gap: '24px', marginTop: '12px' }}>
                         <button 
                             onClick={handleSave}
-                            disabled={loading}
+                            disabled={loading || actionLoading}
                             style={{ 
                                 padding: '16px 48px', 
                                 background: success ? '#4ade80' : '#fff', 
@@ -195,6 +250,94 @@ export default function AccountSettings() {
                             {loading ? 'Saving Changes...' : (success ? 'Changes Saved' : 'Save Changes')}
                         </button>
                         {error && <span style={{ color: '#f87171', fontSize: '14px', fontWeight: '500' }}>{error}</span>}
+                    </div>
+
+                    {/* GDPR / Privacy Section */}
+                    <div style={{ 
+                        marginTop: '40px', 
+                        padding: '32px 0', 
+                        borderTop: '1px solid rgba(255,255,255,0.05)',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '24px'
+                    }}>
+                        <h3 style={{ color: '#fff', fontSize: '20px', fontWeight: '600', margin: '0', fontFamily: 'Outfit, sans-serif' }}>
+                            Data Subject Rights (GDPR)
+                        </h3>
+                        
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                            <label style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer' }}>
+                                <input 
+                                    type="checkbox" 
+                                    checked={processingRestricted}
+                                    onChange={(e) => setProcessingRestricted(e.target.checked)}
+                                    style={{ width: '18px', height: '18px', accentColor: '#8b5cf6' }}
+                                />
+                                <span style={{ color: '#cbd5e1', fontSize: '14px' }}>
+                                    Restrict Processing of my data (You will not be able to generate new websites)
+                                </span>
+                            </label>
+                        </div>
+
+                        <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
+                            <button 
+                                onClick={handleDownloadData}
+                                disabled={actionLoading}
+                                style={{
+                                    padding: '12px 24px',
+                                    background: 'rgba(255,255,255,0.05)',
+                                    color: '#fff',
+                                    border: '1px solid rgba(255,255,255,0.1)',
+                                    borderRadius: '8px',
+                                    cursor: 'pointer',
+                                    fontSize: '14px',
+                                    fontWeight: '500',
+                                    transition: 'background 0.2s'
+                                }}
+                                onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.1)'}
+                                onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,255,255,0.05)'}
+                            >
+                                Download My Data
+                            </button>
+                            
+                            {!showDeleteConfirm ? (
+                                <button 
+                                    onClick={() => setShowDeleteConfirm(true)}
+                                    style={{
+                                        padding: '12px 24px',
+                                        background: 'transparent',
+                                        color: '#ef4444',
+                                        border: '1px solid rgba(239, 68, 68, 0.3)',
+                                        borderRadius: '8px',
+                                        cursor: 'pointer',
+                                        fontSize: '14px',
+                                        fontWeight: '500',
+                                        transition: 'all 0.2s'
+                                    }}
+                                    onMouseEnter={e => { e.currentTarget.style.background = 'rgba(239, 68, 68, 0.1)'; e.currentTarget.style.borderColor = 'rgba(239, 68, 68, 0.5)'; }}
+                                    onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.borderColor = 'rgba(239, 68, 68, 0.3)'; }}
+                                >
+                                    Delete Account
+                                </button>
+                            ) : (
+                                <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                                    <span style={{ color: '#ef4444', fontSize: '14px', fontWeight: '500' }}>Are you absolutely sure?</span>
+                                    <button 
+                                        onClick={handleDeleteAccount}
+                                        disabled={actionLoading}
+                                        style={{ padding: '8px 16px', background: '#ef4444', color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' }}
+                                    >
+                                        {actionLoading ? 'Deleting...' : 'Yes, Delete Everything'}
+                                    </button>
+                                    <button 
+                                        onClick={() => setShowDeleteConfirm(false)}
+                                        style={{ padding: '8px 16px', background: 'transparent', color: '#fff', border: '1px solid rgba(255,255,255,0.2)', borderRadius: '6px', cursor: 'pointer' }}
+                                    >
+                                        Cancel
+                                    </button>
+                                </div>
+                            )}
+                        </div>
                     </div>
                 </div>
 

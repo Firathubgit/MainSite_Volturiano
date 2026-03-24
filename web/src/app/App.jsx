@@ -123,6 +123,8 @@ const RoleManagement = lazy(
   () => import("../pages/Admin/Settings/RoleManagement"),
 );
 const Infotainment = lazy(() => import("../pages/Infotainment/Infotainment"));
+const PrivacyPolicy = lazy(() => import("../pages/Legal/PrivacyPolicy"));
+const TermsOfService = lazy(() => import("../pages/Legal/TermsOfService"));
 const LoadingOverlayTest = import.meta.env.DEV
   ? lazy(() => import("../pages/Debug/LoadingOverlayTest"))
   : null;
@@ -369,9 +371,7 @@ export default function App() {
     <BuilderAuthProvider>
       <RouteTransitionProvider>
         <div>
-          {location.pathname.startsWith("/agency") || location.pathname === "/" ? null : (
-            <CookieConsent />
-          )}
+          <CookieConsent />
           {!location.pathname.startsWith("/builder") && !location.pathname.startsWith("/community") && !location.pathname.startsWith("/guidelines") && <CustomCursor />}
           {gdprConsent.analytics && <Analytics />}
           {gdprConsent.performance && <SpeedInsights />}
@@ -381,7 +381,7 @@ export default function App() {
               (!session && (status === "loading" || status === "idle"))
             }
           />
-          {location.pathname !== "/builder/generation" && location.pathname !== "/builder/login" && location.pathname !== "/builder/profile" && !location.pathname.startsWith("/community") && !location.pathname.startsWith("/guidelines") && (
+          {location.pathname !== "/builder/generation" && location.pathname !== "/builder/login" && location.pathname !== "/builder/profile" && location.pathname !== "/builder/privacy" && location.pathname !== "/builder/terms" && !location.pathname.startsWith("/community") && !location.pathname.startsWith("/guidelines") && (
             <>
               {(location.pathname.startsWith("/builder")) ? (
                 <Suspense fallback={null}>
@@ -442,6 +442,8 @@ export default function App() {
                 )}
                 <Route path="/account/login" element={<Login />} />
                 <Route path="/account/signup" element={<Signup />} />
+                <Route path="/builder/privacy" element={<PrivacyPolicy />} />
+                <Route path="/builder/terms" element={<TermsOfService />} />
                 <Route
                   path="/account/forgot-password"
                   element={<ForgotPassword />}

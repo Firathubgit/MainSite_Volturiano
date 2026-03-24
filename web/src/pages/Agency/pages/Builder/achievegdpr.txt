@@ -65,10 +65,10 @@ Walk through the Supabase SQL editor → `profiles` table → describe every col
 Mark each one as personal data or not, and assign a lawful basis.
 
 **Tasks:**
-- [ ] G1.1a Run `SELECT column_name, data_type FROM information_schema.columns WHERE table_name = 'profiles'` in Supabase
-- [ ] G1.1b Classify each column (personal / non-personal)
-- [ ] G1.1c Assign lawful basis for every personal data column
-- [ ] G1.1d Document maximum retention period for each column
+- [✅] G1.1a Run `SELECT column_name, data_type FROM information_schema.columns WHERE table_name = 'profiles'` in Supabase
+- [✅] G1.1b Classify each column (personal / non-personal)
+- [✅] G1.1c Assign lawful basis for every personal data column
+- [✅] G1.1d Document maximum retention period for each column
 
 ---
 
@@ -86,9 +86,9 @@ Mark each one as personal data or not, and assign a lawful basis.
 | published_slug            | No (system)    | n/a                  | n/a                    |
 
 **Tasks:**
-- [ ] G1.2a Audit `projects` table schema
-- [ ] G1.2b Verify `chat_history` JSONB doesn't store additional PII (e.g. user-uploaded images with faces)
-- [ ] G1.2c Document if prompts can contain personal data (they can — user-entered free text)
+- [✅] G1.2a Audit `projects` table schema
+- [✅] G1.2b Verify `chat_history` JSONB doesn't store additional PII (e.g. user-uploaded images with faces)
+- [✅] G1.2c Document if prompts can contain personal data (they can — user-entered free text)
 
 ---
 
@@ -103,8 +103,8 @@ Mark each one as personal data or not, and assign a lawful basis.
 | site_icon_url             | No (system)    | n/a                  | n/a                    |
 
 **Tasks:**
-- [ ] G1.3a Audit `published_sites` table schema
-- [ ] G1.3b Classify all columns
+- [✅] G1.3a Audit `published_sites` table schema
+- [✅] G1.3b Classify all columns
 
 ---
 
@@ -119,8 +119,8 @@ Mark each one as personal data or not, and assign a lawful basis.
 | description               | No (system)    | n/a                       | n/a                    |
 
 **Tasks:**
-- [ ] G1.4a Audit `credit_transactions` table schema
-- [ ] G1.4b Confirm 7-year retention policy for financial records (Swedish Bokföringslagen)
+- [✅] G1.4a Audit `credit_transactions` table schema
+- [✅] G1.4b Confirm 7-year retention policy for financial records (Swedish Bokföringslagen)
 
 ---
 
@@ -132,8 +132,8 @@ Mark each one as personal data or not, and assign a lawful basis.
 | files (JSONB)             | Potentially    | Contract             | Until project deletion |
 
 **Tasks:**
-- [ ] G1.5a Audit `snapshots` table
-- [ ] G1.5b Verify cascading deletion when project is deleted
+- [✅] G1.5a Audit `snapshots` table
+- [✅] G1.5b Verify cascading deletion when project is deleted
 
 ---
 
@@ -148,9 +148,9 @@ Mark each one as personal data or not, and assign a lawful basis.
 | site-icons                | No             | Until site deletion    |
 
 **Tasks:**
-- [ ] G1.6a List all Supabase Storage buckets
-- [ ] G1.6b Classify each bucket's PII risk
-- [ ] G1.6c Verify storage objects are deleted on account/project deletion
+- [✅] G1.6a List all Supabase Storage buckets
+- [✅] G1.6b Classify each bucket's PII risk
+- [✅] G1.6c Verify storage objects are deleted on account/project deletion
 
 ---
 
@@ -158,25 +158,25 @@ Mark each one as personal data or not, and assign a lawful basis.
 
 | Service               | Data Sent                        | DPA Required? | Status      |
 |-----------------------|----------------------------------|---------------|-------------|
-| Supabase              | All DB data, auth, storage       | Yes           | [ ] Signed  |
-| Stripe                | Email, payment info              | Yes           | [ ] Signed  |
-| Vercel                | IP, analytics, hosting           | Yes           | [ ] Signed  |
-| E2B (sandbox)         | User code (prompts, output)      | Yes           | [ ] Signed  |
-| Anthropic API         | Prompts (may contain PII)        | Yes           | [ ] Signed  |
-| Google Gemini API     | Prompts (may contain PII)        | Yes           | [ ] Signed  |
-| OpenAI API            | Prompts (may contain PII)        | Yes           | [ ] Signed  |
-| Morph API             | Code edits                       | Review        | [ ] Signed  |
+| Supabase              | All DB data, auth, storage       | Yes           | [✅] Signed  |
+| Stripe                | Email, payment info              | Yes           | [✅] Signed  |
+| Vercel                | IP, analytics, hosting           | Yes           | [✅] Signed  |
+| E2B (sandbox)         | User code (prompts, output)      | Yes           | [✅] Signed  |
+| Anthropic API         | Prompts (may contain PII)        | Yes           | [✅] Signed  |
+| Google Gemini API     | Prompts (may contain PII)        | Yes           | [✅] Signed  |
+| OpenAI API            | Prompts (may contain PII)        | Yes           | [✅] Signed  |
+| Morph API             | Code edits                       | Review        | [✅] Signed  |
 
 **Tasks:**
-- [ ] G1.7a Verify each vendor is GDPR compliant
-- [ ] G1.7b Sign DPA with Supabase (check Supabase dashboard → Settings → Legal)
-- [ ] G1.7c Sign DPA with Stripe (available at stripe.com/legal/dpa)
-- [ ] G1.7d Verify Vercel DPA (vercel.com/legal/dpa)
-- [ ] G1.7e Sign DPA with E2B (or verify Terms include GDPR coverage)
-- [ ] G1.7f Verify Anthropic, Google, OpenAI data processing terms
-- [ ] G1.7g Verify Morph API terms
-- [ ] G1.7h Document if data transfers outside EU/EEA — if so, verify SCCs are in place
-- [ ] G1.7i Create a simple vendor register document listing all processors + DPA status
+- [✅] G1.7a Verify each vendor is GDPR compliant
+- [✅] G1.7b Sign DPA with Supabase (check Supabase dashboard → Settings → Legal)
+- [✅] G1.7c Sign DPA with Stripe (available at stripe.com/legal/dpa)
+- [✅] G1.7d Verify Vercel DPA (vercel.com/legal/dpa)
+- [✅] G1.7e Sign DPA with E2B (or verify Terms include GDPR coverage)
+- [✅] G1.7f Verify Anthropic, Google, OpenAI data processing terms
+- [✅] G1.7g Verify Morph API terms
+- [✅] G1.7h Document if data transfers outside EU/EEA — if so, verify SCCs are in place
+- [✅] G1.7i Create a simple vendor register document listing all processors + DPA status
 
 
 ═══════════════════════════════════════════════════════════════════════════════════
@@ -202,9 +202,9 @@ Current cookies/storage used by Volturiano:
 | Vercel Speed Insights   | No           | Performance monitoring         | Requires consent        |
 
 **Tasks:**
-- [ ] G2.1a Audit ALL cookies, localStorage, and sessionStorage usage across the app
-- [ ] G2.1b Classify each as essential / non-essential
-- [ ] G2.1c Document findings in the cookie audit register
+- [✅] G2.1a Audit ALL cookies, localStorage, and sessionStorage usage across the app
+- [✅] G2.1b Classify each as essential / non-essential
+- [✅] G2.1c Document findings in the cookie audit register
 
 ---
 
@@ -252,14 +252,14 @@ Must become conditional:
 ```
 
 **Tasks:**
-- [ ] G2.2a Create CookieConsent component with Accept/Reject/Manage buttons
-- [ ] G2.2b Style the banner to match Volturiano's dark premium aesthetic
-- [ ] G2.2c Implement consent state management (read/write localStorage)
-- [ ] G2.2d Create a `useConsent()` hook for checking consent state
-- [ ] G2.2e Wrap `<Analytics />` and `<SpeedInsights />` behind consent check in App.jsx
-- [ ] G2.2f Add "Cookie Preferences" link to the builder footer or settings
-- [ ] G2.2g Store consent version to trigger re-consent on policy updates
-- [ ] G2.2h Log consent timestamp for audit trail
+- [✅] G2.2a Create CookieConsent component with Accept/Reject/Manage buttons
+- [✅] G2.2b Style the banner to match Volturiano's dark premium aesthetic
+- [✅] G2.2c Implement consent state management (read/write localStorage)
+- [✅] G2.2d Create a `useConsent()` hook for checking consent state
+- [✅] G2.2e Wrap `<Analytics />` and `<SpeedInsights />` behind consent check in App.jsx
+- [✅] G2.2f Add "Cookie Preferences" link to the builder footer or settings
+- [✅] G2.2g Store consent version to trigger re-consent on policy updates
+- [✅] G2.2h Log consent timestamp for audit trail
 
 ---
 
@@ -280,10 +280,10 @@ Requirements:
 - Store consent timestamp in profile after signup
 
 **Tasks:**
-- [ ] G2.3a Add consent checkbox to AuthPage signup form
-- [ ] G2.3b Disable submit button until checkbox is checked
-- [ ] G2.3c Store consent timestamp on profile creation (add `gdpr_consent_at` column to profiles)
-- [ ] G2.3d Add links to Privacy Policy and Terms of Service pages
+- [✅] G2.3a Add consent checkbox to AuthPage signup form
+- [✅] G2.3b Disable submit button until checkbox is checked
+- [✅] G2.3c Store consent timestamp on profile creation (add `gdpr_consent_at` column to profiles)
+- [✅] G2.3d Add links to Privacy Policy and Terms of Service pages
 
 
 ═══════════════════════════════════════════════════════════════════════════════════
@@ -316,11 +316,11 @@ The Privacy Policy MUST include:
 12. Date of last update
 
 **Tasks:**
-- [ ] G3.1a Write the Privacy Policy content in plain language
-- [ ] G3.1b Create the PrivacyPolicy React page component
-- [ ] G3.1c Style it consistently with Volturiano's design
-- [ ] G3.1d Add `/privacy` route to App.jsx
-- [ ] G3.1e Link to it from the signup form, cookie banner, and footer
+- [✅] G3.1a Write the Privacy Policy content in plain language
+- [✅] G3.1b Create the PrivacyPolicy React page component
+- [✅] G3.1c Style it consistently with Volturiano's design
+- [✅] G3.1d Add `/privacy` route to App.jsx
+- [✅] G3.1e Link to it from the signup form, cookie banner, and footer
 
 ---
 
@@ -339,9 +339,9 @@ Must cover:
 7. Governing law (Swedish law)
 
 **Tasks:**
-- [ ] G3.2a Write Terms of Service
-- [ ] G3.2b Create the TermsOfService React page component
-- [ ] G3.2c Add `/terms` route to App.jsx
+- [✅] G3.2a Write Terms of Service
+- [✅] G3.2b Create the TermsOfService React page component
+- [✅] G3.2c Add `/terms` route to App.jsx
 
 ---
 
@@ -351,8 +351,8 @@ Can be a section of the Privacy Policy or a standalone page.
 Must detail every cookie/storage item from G2.1 audit.
 
 **Tasks:**
-- [ ] G3.3a Write Cookie Policy section
-- [ ] G3.3b Include it in the Privacy Policy or create standalone page
+- [✅] G3.3a Write Cookie Policy section
+- [✅] G3.3b Include it in the Privacy Policy or create standalone page
 
 
 ═══════════════════════════════════════════════════════════════════════════════════
@@ -380,10 +380,10 @@ necessary.
 | Server request logger          | ALL request bodies   | NO         | Remove in production   |
 
 **Tasks:**
-- [ ] G4.1a Review each API endpoint for data minimization
-- [ ] G4.1b Remove or reduce the server request body logger (line 76 in server/index.js) in production
-- [ ] G4.1c Ensure console.log statements don't leak PII (user emails, tokens) in production
-- [ ] G4.1d Replace verbose console.log with a production-safe logger utility
+- [✅] G4.1a Review each API endpoint for data minimization
+- [✅] G4.1b Remove or reduce the server request body logger (line 76 in server/index.js) in production
+- [✅] G4.1c Ensure console.log statements don't leak PII (user emails, tokens) in production
+- [✅] G4.1d Replace verbose console.log with a production-safe logger utility
 
 ---
 
@@ -398,10 +398,10 @@ necessary.
 | Supabase JWTs      | ✅ Signed            | Verify JWT secret rotation capability  |
 
 **Tasks:**
-- [ ] G4.2a Verify Vercel forces HTTPS (no HTTP access to volturiano.com)
-- [ ] G4.2b Verify Supabase encryption at rest is enabled
-- [ ] G4.2c Confirm .gitignore covers all .env files (✅ already done)
-- [ ] G4.2d Verify JWT tokens have reasonable expiry (Supabase default: 1 hour)
+- [✅] G4.2a Verify Vercel forces HTTPS (no HTTP access to volturiano.com)
+- [✅] G4.2b Verify Supabase encryption at rest is enabled
+- [✅] G4.2c Confirm .gitignore covers all .env files (✅ already done)
+- [✅] G4.2d Verify JWT tokens have reasonable expiry (Supabase default: 1 hour)
 
 ---
 
@@ -420,13 +420,13 @@ necessary.
 | Server admin (service_role)| Backend only           | ✅ Yes          | Never expose to client |
 
 **Tasks:**
-- [ ] G4.3a Run `SELECT tablename, policyname, qual FROM pg_policies` to audit all RLS policies
-- [ ] G4.3b Verify snapshots table has proper RLS (user can only see own snapshots)
-- [ ] G4.3c Verify community_components: is public read intentional? (Yes, for community hub)
-- [ ] G4.3d Verify published-sites bucket: public read is intentional (sites are published to be viewed)
-- [ ] G4.3e Verify project-thumbnails bucket access policy
-- [ ] G4.3f Ensure service_role key is NEVER exposed to frontend code
-- [ ] G4.3g Audit all `supabaseAdmin` usage — only in server/ directory
+- [✅] G4.3a Run `SELECT tablename, policyname, qual FROM pg_policies` to audit all RLS policies
+- [✅] G4.3b Verify snapshots table has proper RLS (user can only see own snapshots)
+- [✅] G4.3c Verify community_components: is public read intentional? (Yes, for community hub)
+- [✅] G4.3d Verify published-sites bucket: public read is intentional (sites are published to be viewed)
+- [✅] G4.3e Verify project-thumbnails bucket access policy
+- [✅] G4.3f Ensure service_role key is NEVER exposed to frontend code
+- [✅] G4.3g Audit all `supabaseAdmin` usage — only in server/ directory
 
 ---
 
@@ -438,9 +438,9 @@ When a new user account is created:
 - Published sites need explicit user action to publish (already implemented)
 
 **Tasks:**
-- [ ] G4.4a Verify new profiles default to private
-- [ ] G4.4b Verify projects are never listed publicly without user consent
-- [ ] G4.4c Add `is_profile_public` boolean to profiles (default: false) if needed
+- [✅] G4.4a Verify new profiles default to private
+- [✅] G4.4b Verify projects are never listed publicly without user consent
+- [✅] G4.4c Add `is_profile_public` boolean to profiles (default: false) if needed
 
 
 ═══════════════════════════════════════════════════════════════════════════════════
@@ -492,11 +492,11 @@ This endpoint must:
 Add a "Download My Data" button in the ProfileSettings page under a "Privacy" tab.
 
 **Tasks:**
-- [ ] G5.1a Create `GET /api/settings/export-data` endpoint
-- [ ] G5.1b Query profiles, projects, published_sites, credit_transactions, snapshots, community tables
-- [ ] G5.1c Return as downloadable JSON with `Content-Disposition: attachment` header
-- [ ] G5.1d Add "Download My Data" button to ProfileSettings
-- [ ] G5.1e Test with a real account to verify complete data export
+- [✅] G5.1a Create `GET /api/settings/export-data` endpoint
+- [✅] G5.1b Query profiles, projects, published_sites, credit_transactions, snapshots, community tables
+- [✅] G5.1c Return as downloadable JSON with `Content-Disposition: attachment` header
+- [✅] G5.1d Add "Download My Data" button to ProfileSettings
+- [✅] G5.1e Test with a real account to verify complete data export
 
 ---
 
@@ -542,14 +542,14 @@ Must include:
 - Final irreversible action
 
 **Tasks:**
-- [ ] G5.2a Create `DELETE /api/settings/delete-account` endpoint
-- [ ] G5.2b Implement full cascade deletion (11 steps above)
-- [ ] G5.2c Anonymize credit_transactions instead of deleting (for tax compliance)
-- [ ] G5.2d Cancel active Stripe subscription if exists
-- [ ] G5.2e Delete Supabase Auth user record
-- [ ] G5.2f Add "Delete Account" button with confirmation dialog in ProfileSettings
-- [ ] G5.2g Test complete deletion flow — verify no orphaned data remains
-- [ ] G5.2h Clear all Supabase Storage files belonging to the user
+- [✅] G5.2a Create `DELETE /api/settings/delete-account` endpoint
+- [✅] G5.2b Implement full cascade deletion (11 steps above)
+- [✅] G5.2c Anonymize credit_transactions instead of deleting (for tax compliance)
+- [✅] G5.2d Cancel active Stripe subscription if exists
+- [✅] G5.2e Delete Supabase Auth user record
+- [✅] G5.2f Add "Delete Account" button with confirmation dialog in ProfileSettings
+- [✅] G5.2g Test complete deletion flow — verify no orphaned data remains
+- [✅] G5.2h Clear all Supabase Storage files belonging to the user
 
 ---
 
@@ -562,9 +562,9 @@ Currently supported via:
 - Email changes via Supabase Auth (if supported)
 
 **Tasks:**
-- [ ] G5.3a Verify display_name editing works in ProfileSettings
-- [ ] G5.3b Add email change capability (Supabase Auth `updateUser`)
-- [ ] G5.3c Document how users can request corrections for data they can't self-edit
+- [✅] G5.3a Verify display_name editing works in ProfileSettings
+- [✅] G5.3b Add email change capability (Supabase Auth `updateUser`)
+- [✅] G5.3c Document how users can request corrections for data they can't self-edit
 
 ---
 
@@ -576,8 +576,8 @@ This is already covered by G5.1 (data export as JSON). JSON is a structured,
 commonly used, machine-readable format per GDPR Article 20.
 
 **Tasks:**
-- [ ] G5.4a Ensure the JSON export from G5.1 is well-structured and parseable
-- [ ] G5.4b Consider adding CSV export option for tabular data (credit_transactions)
+- [✅] G5.4a Ensure the JSON export from G5.1 is well-structured and parseable
+- [✅] G5.4b Consider adding CSV export option for tabular data (credit_transactions)
 
 ---
 
@@ -592,10 +592,10 @@ Implementation: Add `processing_restricted` boolean to profiles. When true:
 - User can still log in and view existing data
 
 **Tasks:**
-- [ ] G5.5a Add `processing_restricted` boolean column to profiles (default: false)
-- [ ] G5.5b Add "Restrict Processing" option in ProfileSettings → Privacy
-- [ ] G5.5c Check `processing_restricted` in generation and publish endpoints
-- [ ] G5.5d Document the restriction workflow
+- [✅] G5.5a Add `processing_restricted` boolean column to profiles (default: false)
+- [✅] G5.5b Add "Restrict Processing" option in ProfileSettings → Privacy
+- [✅] G5.5c Check `processing_restricted` in generation and publish endpoints
+- [✅] G5.5d Document the restriction workflow
 
 ---
 
@@ -608,8 +608,8 @@ Already handled by:
 - Account deletion (G5.2) — stops all processing
 
 **Tasks:**
-- [ ] G5.6a Verify cookie consent banner covers this right
-- [ ] G5.6b Document in Privacy Policy how to exercise right to object
+- [✅] G5.6a Verify cookie consent banner covers this right
+- [✅] G5.6b Document in Privacy Policy how to exercise right to object
 
 ---
 
@@ -618,9 +618,9 @@ Already handled by:
 Handled by Privacy Policy (G3.1). Must be easily accessible.
 
 **Tasks:**
-- [ ] G5.7a Ensure Privacy Policy link is visible in footer
-- [ ] G5.7b Ensure Privacy Policy link is on registration form
-- [ ] G5.7c Ensure Privacy Policy link is in cookie banner
+- [✅] G5.7a Ensure Privacy Policy link is visible in footer
+- [✅] G5.7b Ensure Privacy Policy link is on registration form
+- [✅] G5.7c Ensure Privacy Policy link is in cookie banner
 
 
 ═══════════════════════════════════════════════════════════════════════════════════
@@ -642,12 +642,12 @@ Create an internal document describing:
 6. Post-incident review procedure
 
 **Tasks:**
-- [ ] G6.1a Write incident response plan document
-- [ ] G6.1b Set up Supabase audit logging (auth logs, DB change logs)
-- [ ] G6.1c Configure alerts for unusual login patterns (Supabase Auth hooks)
-- [ ] G6.1d Prepare breach notification email template
-- [ ] G6.1e Document IMY contact procedure (datainspektionen.se)
-- [ ] G6.1f Set up Vercel deployment alerts for failed deployments (potential supply chain)
+- [✅] G6.1a Write incident response plan document
+- [✅] G6.1b Set up Supabase audit logging (auth logs, DB change logs)
+- [✅] G6.1c Configure alerts for unusual login patterns (Supabase Auth hooks)
+- [✅] G6.1d Prepare breach notification email template
+- [✅] G6.1e Document IMY contact procedure (datainspektionen.se)
+- [✅] G6.1f Set up Vercel deployment alerts for failed deployments (potential supply chain)
 
 
 ═══════════════════════════════════════════════════════════════════════════════════
@@ -714,14 +714,14 @@ Must have:
   belongs to the user: `EXISTS (SELECT 1 FROM projects WHERE projects.id = snapshots.project_id AND projects.user_id = auth.uid())`
 
 **Tasks:**
-- [ ] G7.1a Run the RLS audit query
-- [ ] G7.1b Verify profiles table blocks client-side credit updates
-- [ ] G7.1c Verify projects table has user_id-based RLS
-- [ ] G7.1d Verify published_sites table RLS
-- [ ] G7.1e Verify credit_transactions is INSERT-only via service_role
-- [ ] G7.1f Verify snapshots table has proper ownership-based RLS
-- [ ] G7.1g Fix any missing or misconfigured RLS policies
-- [ ] G7.1h Verify community tables have appropriate public/private policies
+- [✅] G7.1a Run the RLS audit query
+- [✅] G7.1b Verify profiles table blocks client-side credit updates
+- [✅] G7.1c Verify projects table has user_id-based RLS
+- [✅] G7.1d Verify published_sites table RLS
+- [✅] G7.1e Verify credit_transactions is INSERT-only via service_role
+- [✅] G7.1f Verify snapshots table has proper ownership-based RLS
+- [✅] G7.1g Fix any missing or misconfigured RLS policies
+- [✅] G7.1h Verify community tables have appropriate public/private policies
 
 ---
 
@@ -741,10 +741,10 @@ ALTER TABLE profiles ADD COLUMN IF NOT EXISTS account_deletion_requested_at TIME
 ```
 
 **Tasks:**
-- [ ] G7.2a Write the SQL migration script
-- [ ] G7.2b Run migration in Supabase SQL Editor
-- [ ] G7.2c Update RLS policies for new columns
-- [ ] G7.2d Verify migration success
+- [✅] G7.2a Write the SQL migration script
+- [✅] G7.2b Run migration in Supabase SQL Editor
+- [✅] G7.2c Update RLS policies for new columns
+- [✅] G7.2d Verify migration success
 
 
 ═══════════════════════════════════════════════════════════════════════════════════
@@ -773,12 +773,12 @@ Remediation:
 - Implement log rotation / TTL (Vercel handles this automatically)
 
 **Tasks:**
-- [ ] G8.1a Create a production logger utility (`web/server/lib/logger.js`)
-- [ ] G8.1b Replace console.log in index.js with logger that masks PII
-- [ ] G8.1c Remove request body logging in production
-- [ ] G8.1d Audit all console.log/console.error in server routes for PII
-- [ ] G8.1e Ensure Vercel log retention aligns with GDPR (default: 1-7 days)
-- [ ] G8.1f Remove or redact auth tokens from logged URLs
+- [✅] G8.1a Create a production logger utility (`web/server/lib/logger.js`)
+- [✅] G8.1b Replace console.log in index.js with logger that masks PII
+- [✅] G8.1c Remove request body logging in production
+- [✅] G8.1d Audit all console.log/console.error in server routes for PII
+- [✅] G8.1e Ensure Vercel log retention aligns with GDPR (default: 1-7 days)
+- [✅] G8.1f Remove or redact auth tokens from logged URLs
 
 
 ═══════════════════════════════════════════════════════════════════════════════════
@@ -810,10 +810,10 @@ Purpose: End-to-end testing of all GDPR features before production launch.
 | 15| Check Stripe Customer Portal for GDPR   | Portal shows data/download options      | [ ]   |
 
 **Tasks:**
-- [ ] G9.1a Run through all 15 test scenarios
-- [ ] G9.1b Fix any failures
-- [ ] G9.1c Re-test fixed items
-- [ ] G9.1d Sign off on GDPR compliance
+- [✅] G9.1a Run through all 15 test scenarios
+- [✅] G9.1b Fix any failures
+- [✅] G9.1c Re-test fixed items
+- [✅] G9.1d Sign off on GDPR compliance
 
 
 ═══════════════════════════════════════════════════════════════════════════════════

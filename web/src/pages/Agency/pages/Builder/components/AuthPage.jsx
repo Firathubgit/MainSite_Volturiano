@@ -277,7 +277,7 @@ export function AuthPage() {
                     required
                   />
                   <span>
-                    I agree to the <a href="/terms" target="_blank" className={s.termsLink}>Terms</a> and <a href="/privacy" target="_blank" className={s.termsLink}>Privacy Policy</a>
+                    I agree to the <a href="/builder/terms" target="_blank" className={s.termsLink}>Terms</a> and <a href="/builder/privacy" target="_blank" className={s.termsLink}>Privacy Policy</a>
                   </span>
                 </label>
               </div>
@@ -316,11 +316,11 @@ export function AuthPage() {
 
           <p className={s.terms}>
             By clicking continue, you agree to our{" "}
-            <a className={s.termsLink} href="/terms">
+            <a className={s.termsLink} href="/builder/terms">
               Terms of Service
             </a>{" "}
             and{" "}
-            <a className={s.termsLink} href="/privacy">
+            <a className={s.termsLink} href="/builder/privacy">
               Privacy Policy
             </a>
             .

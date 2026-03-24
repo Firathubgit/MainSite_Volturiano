@@ -668,7 +668,7 @@ Summary of GDPR phases:
   G9: Final GDPR Validation (~4 tasks)
 
 **Tasks:**
-- [ ] P6.0 Complete ALL tasks in achievegdpr.txt (phases G1-G9, ~100 tasks)
+- [✅] P6.0 Complete ALL tasks in achievegdpr.txt (phases G1-G9, ~100 tasks)
 
 
 ═══════════════════════════════════════════════════════════════════════════════════
@@ -704,11 +704,11 @@ When user clicks "Generate" or selects components to submit:
 ```
 
 **Tasks:**
-- [ ] P7.1a Create AuthGateModal component
-- [ ] P7.1b In Builder.jsx, check auth before submitting prompt/template
-- [ ] P7.1c Show AuthGateModal when unauthenticated user tries to generate
-- [ ] P7.1d Allow unauthenticated users to still browse, type, and explore
-- [ ] P7.1e After login, redirect back to /builder with their prompt preserved
+- [✅] P7.1a Create AuthGateModal component
+- [✅] P7.1b In Builder.jsx, check auth before submitting prompt/template
+- [✅] P7.1c Show AuthGateModal when unauthenticated user tries to generate
+- [✅] P7.1d Allow unauthenticated users to still browse, type, and explore
+- [✅] P7.1e After login, redirect back to /builder with their prompt preserved
 
 ---
 
@@ -722,8 +722,8 @@ When component selection is submitted:
 3. If logged in → proceed
 
 **Tasks:**
-- [ ] P7.2a Add auth check before component selection submission
-- [ ] P7.2b Show AuthGateModal for unauthenticated users
+- [✅] P7.2a Add auth check before component selection submission
+- [✅] P7.2b Show AuthGateModal for unauthenticated users
 
 ---
 
@@ -743,14 +743,14 @@ Switch from `optionalAuth` to `requireAuth` on routes that create/modify data:
 | POST /api/track-retention       | optionalAuth | optionalAuth  | Keep optional (analytics) |
 
 **Tasks:**
-- [ ] P7.3a Change optionalAuth to requireAuth on projects/init
-- [ ] P7.3b Change optionalAuth to requireAuth on projects/update
-- [ ] P7.3c Change optionalAuth to requireAuth on projects/get
-- [ ] P7.3d Change optionalAuth to requireAuth on snapshots (both GET/POST)
-- [ ] P7.3e Change optionalAuth to requireAuth on publish-site
-- [ ] P7.3f Change optionalAuth to requireAuth on sandbox/keepalive
-- [ ] P7.3g Test that unauthenticated requests to these routes return 401
-- [ ] P7.3h Test that authenticated requests still work correctly
+- [✅] P7.3a Change optionalAuth to requireAuth on projects/init
+- [✅] P7.3b Change optionalAuth to requireAuth on projects/update
+- [✅] P7.3c Change optionalAuth to requireAuth on projects/get
+- [✅] P7.3d Change optionalAuth to requireAuth on snapshots (both GET/POST)
+- [✅] P7.3e Change optionalAuth to requireAuth on publish-site
+- [✅] P7.3f Change optionalAuth to requireAuth on sandbox/keepalive
+- [✅] P7.3g Test that unauthenticated requests to these routes return 401
+- [✅] P7.3h Test that authenticated requests still work correctly
 
 ---
 
@@ -770,11 +770,11 @@ ALTER TABLE published_sites ALTER COLUMN user_id SET NOT NULL;
 ```
 
 **Tasks:**
-- [ ] P7.4a Check if any existing rows have NULL user_id (clean up first)
-- [ ] P7.4b Add NOT NULL constraint to projects.user_id
-- [ ] P7.4c Add NOT NULL constraint to published_sites.user_id
-- [ ] P7.4d Remove guest project creation logic from init-project.js
-- [ ] P7.4e Remove guest snapshot logic from save-snapshot.js
+- [✅] P7.4a Check if any existing rows have NULL user_id (clean up first)
+- [✅] P7.4b Add NOT NULL constraint to projects.user_id
+- [✅] P7.4c Add NOT NULL constraint to published_sites.user_id
+- [✅] P7.4d Remove guest project creation logic from init-project.js
+- [✅] P7.4e Remove guest snapshot logic from save-snapshot.js
 
 
 ═══════════════════════════════════════════════════════════════════════════════════
@@ -924,7 +924,7 @@ Goal: Deploy to production and validate everything works end-to-end.
 ### P10.1 Pre-Deployment Checklist
 
 - [ ] P10.1a All phases P1-P9 completed
-- [ ] P10.1b All GDPR tasks (achievegdpr.txt G1-G9) completed
+- [✅] P10.1b All GDPR tasks (achievegdpr.txt G1-G9) completed
 - [ ] P10.1c `npm run build` succeeds locally with zero errors
 - [ ] P10.1d All environment variables set on hosting platforms
 - [ ] P10.1e Backend server deployed and health check passes

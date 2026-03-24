@@ -36,7 +36,7 @@ import renderApp from './routes/render-app.js';
 import validateImportsRoute from './routes/validate-imports.js';
 import verifyBuildRoute from './routes/verify-build.js';
 import finalizeCodebase from './routes/finalize-codebase.js';
-import { optionalAuth, requireAuth } from './middleware/authMiddleware.js';
+import { optionalAuth, requireAuth, requireUnrestricted } from './middleware/authMiddleware.js';
 import initProject from './routes/init-project.js';
 import updateProjectRoute from './routes/update-project.js';
 import getProject from './routes/get-project.js';
@@ -125,7 +125,7 @@ const promptTruncationMiddleware = (req, res, next) => {
   next();
 };
 
-const aiProtections = [aiLimiter, requireAuth, promptTruncationMiddleware];
+const aiProtections = [aiLimiter, requireAuth, requireUnrestricted, promptTruncationMiddleware];
 
 // Routes
 app.post('/api/enhance-prompt', aiProtections, enhancePrompt);
@@ -166,14 +166,14 @@ app.post('/api/verify-build', standardLimiter, optionalAuth, verifyBuildRoute);
 app.post('/api/finalize-codebase', aiProtections, finalizeCodebase);
 
 // Project & Database Routes
-app.post('/api/projects/init', requireAuth, initProject);
-app.post('/api/projects/update', requireAuth, updateProjectRoute);
+app.post('/api/projects/init', requireAuth, requireUnrestricted, initProject);
+app.post('/api/projects/update', requireAuth, requireUnrestricted, updateProjectRoute);
 app.get('/api/projects/get', requireAuth, getProject);
-app.post('/api/snapshots', requireAuth, saveSnapshot);
+app.post('/api/snapshots', requireAuth, requireUnrestricted, saveSnapshot);
 app.get('/api/snapshots', requireAuth, getSnapshots);
 
 // Publish Site (Phase 5)
-app.post('/api/publish-site', requireAuth, publishSite);
+app.post('/api/publish-site', requireAuth, requireUnrestricted, publishSite);
 
 // Phase S7: Taxonomy & Blueprint System
 app.use('/api/taxonomy', relaxedLimiter, taxonomyApi);

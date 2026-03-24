@@ -4,6 +4,7 @@ import { supabaseAdmin } from '../lib/supabase-admin.js';
 import fs from 'fs/promises';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { logger } from '../lib/logger.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -30,14 +31,14 @@ export default async function publishSite(req, res) {
 
     const log = (msg) => {
         const time = new Date().toISOString();
-        console.log(`[Publish][${time}] ${msg}`);
+        logger.info('Publish', msg);
         if (isDev) {
             fs.appendFile(logPath, `[${time}] ${msg}\n`).catch(() => { });
         }
     };
 
     try {
-        log('[Publish] Request received');
+        log('Request received');
         const { buildId, sandboxId, slug: rawSlug, siteTitle, siteDescription, siteIconUrl, iconBase64, iconFileName } = req.body;
         const userId = req.user?.id;
 

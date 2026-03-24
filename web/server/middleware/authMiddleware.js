@@ -83,4 +83,41 @@ async function handleAuth(req, res, next, { required }) {
     }
 }
 
-export default { requireAuth, optionalAuth };
+/**
+ * Middleware to enforce GDPR processing restrictions.
+ * Returns 403 if the user has active processing restrictions.
+ */
+export async function requireUnrestricted(req, res, next) {
+    if (!req.userId) {
+        // Fallback for optionalAuth if not logged in
+        return next();
+    }
+
+    try {
+        const { data: profile, error } = await supabaseAdmin
+            .from('profiles')
+            .select('processing_restricted')
+            .eq('id', req.userId)
+            .single();
+
+        if (error) {
+            console.warn('[AuthMiddleware] Profile check failed during restrict check:', error.message);
+            return next(); // Proceed if we can't verify (availability over restriction)
+        }
+
+        if (profile?.processing_restricted) {
+            return res.status(403).json({
+                success: false,
+                error: 'Processing is restricted on your account. Please remove the restriction in Settings to continue.',
+                code: 'PROCESSING_RESTRICTED'
+            });
+        }
+
+        next();
+    } catch (err) {
+        console.error('[AuthMiddleware] Fatal error in restriction check:', err);
+        next();
+    }
+}
+
+export default { requireAuth, optionalAuth, requireUnrestricted };

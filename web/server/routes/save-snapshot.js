@@ -5,7 +5,7 @@ import { updateProject } from '../lib/db/projects.js';
 export default async function saveSnapshot(req, res) {
     try {
         const { projectId, chatIndex, text, files, packages, designSystem, componentPlan, sandboxUrl, sandboxId } = req.body;
-        const userId = req.user?.id; // from optionalAuth
+        const userId = req.user.id; // guaranteed by requireAuth
 
         if (!projectId) {
             return res.status(400).json({ success: false, error: 'projectId is required' });

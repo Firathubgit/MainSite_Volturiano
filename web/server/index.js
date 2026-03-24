@@ -126,10 +126,11 @@ const promptTruncationMiddleware = (req, res, next) => {
 };
 
 const aiProtections = [aiLimiter, requireAuth, requireUnrestricted, promptTruncationMiddleware];
+const safeAiProtections = [aiLimiter, optionalAuth, requireUnrestricted, promptTruncationMiddleware];
 
 // Routes
 app.post('/api/enhance-prompt', aiProtections, enhancePrompt);
-app.post('/api/cinematic-response', aiProtections, cinematicResponse);
+app.post('/api/cinematic-response', safeAiProtections, cinematicResponse);
 app.post('/api/derive-design-system', aiProtections, deriveDesignSystem);
 app.post('/api/plan-website-components', aiProtections, planWebsiteComponents);
 app.post('/api/generate-single-component', aiProtections, generateSingleComponent);

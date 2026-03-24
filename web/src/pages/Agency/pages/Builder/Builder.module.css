@@ -94,7 +94,6 @@
     font-size: 9vw;
     color: transparent;
     -webkit-text-stroke: 1.35px rgba(255, 255, 255, 0.9);
-    text-stroke: 1.35px rgba(255, 255, 255, 0.9);
 }
 
 @media (min-width: 768px) {

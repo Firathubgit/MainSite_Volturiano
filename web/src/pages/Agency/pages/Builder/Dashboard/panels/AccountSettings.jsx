@@ -15,6 +15,7 @@ export default function AccountSettings() {
     
     const [loading, setLoading] = useState(false);
     const [actionLoading, setActionLoading] = useState(false);
+    const [isExporting, setIsExporting] = useState(false);
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
     const [success, setSuccess] = useState(false);
     const [error, setError] = useState("");
@@ -77,7 +78,7 @@ export default function AccountSettings() {
     };
 
     const handleDownloadData = async () => {
-        setActionLoading(true);
+        setIsExporting(true);
         try {
             const token = await getAccessToken();
             const res = await fetch('/api/settings/export-data', {
@@ -97,7 +98,7 @@ export default function AccountSettings() {
             console.error('Export error:', err);
             setError(err.message);
         } finally {
-            setActionLoading(false);
+            setIsExporting(false);
         }
     };
 
@@ -282,22 +283,33 @@ export default function AccountSettings() {
                         <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
                             <button 
                                 onClick={handleDownloadData}
-                                disabled={actionLoading}
+                                disabled={isExporting || actionLoading}
                                 style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    gap: '8px',
                                     padding: '12px 24px',
                                     background: 'rgba(255,255,255,0.05)',
                                     color: '#fff',
                                     border: '1px solid rgba(255,255,255,0.1)',
                                     borderRadius: '8px',
-                                    cursor: 'pointer',
+                                    cursor: isExporting ? 'wait' : 'pointer',
                                     fontSize: '14px',
                                     fontWeight: '500',
-                                    transition: 'background 0.2s'
+                                    transition: 'background 0.2s',
+                                    opacity: isExporting ? 0.7 : 1
                                 }}
-                                onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.1)'}
-                                onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,255,255,0.05)'}
+                                onMouseEnter={e => { if (!isExporting) e.currentTarget.style.background = 'rgba(255,255,255,0.1)' }}
+                                onMouseLeave={e => { if (!isExporting) e.currentTarget.style.background = 'rgba(255,255,255,0.05)' }}
                             >
-                                Download My Data
+                                {isExporting && (
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ animation: 'spin 1s linear infinite' }}>
+                                        <style>{'@keyframes spin { 100% { transform: rotate(360deg); } }'}</style>
+                                        <path d="M21 12a9 9 0 1 1-6.219-8.56"></path>
+                                    </svg>
+                                )}
+                                {isExporting ? 'Packaging Data...' : 'Download My Data'}
                             </button>
                             
                             {!showDeleteConfirm ? (

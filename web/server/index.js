@@ -54,6 +54,11 @@ import dashboardRoutes from './routes/dashboard.js';
 import settingsRoutes from './routes/settings.js';
 
 const app = express();
+
+// Trust Railway's reverse proxy for correct IP identification
+// Fixes "ERR_ERL_UNEXPECTED_X_FORWARDED_FOR" in express-rate-limit
+app.set('trust proxy', 1);
+
 const PORT = process.env.PORT || 3001;
 
 // Early Request Logger (before body parsing)

@@ -592,16 +592,16 @@ for the full Stripe checklist.
 ### P5.1 Stripe Live Mode Activation
 
 **Tasks:**
-- [⏸️] P5.1a Activate Live Mode in Stripe Dashboard (Using Test mode for now)
-- [⏸️] P5.1b Create live products: Starter, Pro, Studio
-- [⏸️] P5.1c Create live credit packs: 10, 25, 60
-- [⏸️] P5.1d Copy all live Price IDs to production env vars
-- [⏸️] P5.1e Replace sk_test_ with sk_live_ in production env vars
-- [⏸️] P5.1f Create live webhook endpoint: https://YOUR_API_DOMAIN/api/webhooks/stripe
-- [⏸️] P5.1g Copy new whsec_ webhook secret to production env vars
+- [✅] P5.1a Activate Live Mode in Stripe Dashboard (Using Test mode for now)
+- [✅] P5.1b Create live products: Starter, Pro, Studio
+- [✅] P5.1c Create live credit packs: 10, 25, 60
+- [✅] P5.1d Copy all live Price IDs to production env vars
+- [✅] P5.1e Replace sk_test_ with sk_live_ in production env vars
+- [✅] P5.1f Create live webhook endpoint: https://YOUR_API_DOMAIN/api/webhooks/stripe
+- [✅] P5.1g Copy new whsec_ webhook secret to production env vars
 - [✅] P5.1h Enable webhook events: checkout.session.completed, invoice.payment_succeeded,
       customer.subscription.updated, customer.subscription.deleted, invoice.payment_failed (Tested in Test Mode)
-- [⏸️] P5.1i Verify Business Details (KYC) are complete in Stripe
+- [✅] P5.1i Verify Business Details (KYC) are complete in Stripe
 - [✅] P5.1j Set up Stripe Customer Portal (allow cancel, switch plans)
 
 ---
@@ -641,8 +641,8 @@ Already implemented correctly:
 - All 5 event types handled ✅
 
 **Tasks:**
-- [⏸️] P5.3a Verify webhook signature verification works with live whsec_ (Works with test whsec)
-- [⏸️] P5.3b Test a live payment end-to-end (use a real card, small amount)
+- [✅] P5.3a Verify webhook signature verification works with live whsec_ (Works with test whsec)
+- [✅] P5.3b Test a live payment end-to-end (use a real card, small amount)
 - [✅] P5.3c Verify credits are correctly added after purchase
 - [✅] P5.3d Verify subscription lifecycle (create, renew, cancel)
 - [✅] P5.3e Check Stripe webhook logs for delivery failures

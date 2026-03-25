@@ -11,9 +11,13 @@ function extractExplicitComponentNames(rawPrompt) {
   const names = [];
 
   // Pattern 1: "Use the XYZ component" / "use XYZ from the community"
+  // FIX: ReDoS removed! Replaced catastrophic nested quantifiers `(...*)*` that crashed Node.js.
+  // Component names must be PascalCase or strictly capitalized words, maximum 4 words to prevent runaway scanning.
   const usePatterns = [
-    /use\s+(?:the\s+)?["']?([A-Z][A-Za-z0-9]+(?:\s*[A-Z][A-Za-z0-9]*)*)["']?\s+(?:component|from|for|in)/gi,
-    /(?:include|add|incorporate)\s+(?:the\s+)?["']?([A-Z][A-Za-z0-9]+(?:\s*[A-Z][A-Za-z0-9]*)*)["']?\s+(?:component|from|for|in|section)/gi,
+    /use\s+(?:the\s+)?["']?([A-Z][a-zA-Z0-9]+(?:\s+[A-Z][a-zA-Z0-9]+){0,3})["']?\s+(?:component|from|for|in)/g,
+    /(?:include|add|incorporate)\s+(?:the\s+)?["']?([A-Z][a-zA-Z0-9]+(?:\s+[A-Z][a-zA-Z0-9]+){0,3})["']?\s+(?:component|from|for|in|section)/g,
+    // Add case-insensitive fallbacks for generic mentions, but strictly bounded
+    /use\s+(?:the\s+)?["']?([a-zA-Z0-9-]{3,30})["']?\s+component/gi
   ];
 
   for (const pattern of usePatterns) {
@@ -21,7 +25,7 @@ function extractExplicitComponentNames(rawPrompt) {
     while ((match = pattern.exec(rawPrompt)) !== null) {
       const name = match[1].trim();
       // Filter out generic words that aren't component names
-      if (name.length > 3 && !['The', 'This', 'That', 'React', 'Tailwind', 'Vite'].includes(name)) {
+      if (name.length > 3 && !['The', 'This', 'That', 'React', 'Tailwind', 'Vite', 'Some', 'Any', 'Your'].includes(name)) {
         names.push(name);
       }
     }

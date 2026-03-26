@@ -489,6 +489,7 @@ const BuilderContent = () => {
                     premiumMode: backendMode,
                     model: selectedModel,
                     manualSelectionIds: selectedComponents.map(c => c.id),
+                    initialComponents: selectedComponents,
                     strictMode: strictMode
                 });
             }, 1200);

@@ -137,13 +137,14 @@ STEP 3 — PRESERVATION CHECK:
   After planning, verify:
   ✓ Does every existing component still appear in App.jsx? (unless explicitly removed)
   ✓ For theme changes: did I update ALL component files, not just 2-3?
-  ✓ Am I accidentally dropping components by outputting a new App.jsx that forgets them?
+  ✓ Am I accidentally dropping components?
 
 CRITICAL RULES:
-- Output ONLY the files that actually need to change.
-- If you output App.jsx, it MUST keep ALL existing imports unless user explicitly asked to remove one.
-- For theme changes ("make it X themed"), you MUST output ALL component files with updated content — updating only 2-3 out of 10 is WRONG.
-- Preserve all existing functionality unless the user explicitly asks to remove something.`;
+1. SURGICAL OUTPUT: Output ONLY the files that actually need to change (to save tokens).
+2. FORCE CODE OUTPUT: You MUST output at least one <file> block for every request. DO NOT just explain or say it's ready. If you changed something, output the code.
+3. THEME CHANGES (EXCEPTION): If the user asks for a theme/vibe change ("make it futuristic", "nature themed"), you MUST output ALL component files with updated content.
+4. NO COMPONENT DROPPING: If you output src/App.jsx, it MUST keep ALL existing imports and renders unless the user explicitly asked to remove one.
+5. PRESERVE INTENT: Always find a way to improve the styling or content to match the user's intent. Never say "no changes needed."`;
 
       // ═══════════════════════════════════════════════════════════
       // LIVE SANDBOX FILE FETCH — get the REAL file list from the sandbox

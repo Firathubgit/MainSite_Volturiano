@@ -893,14 +893,11 @@ export default function Generation() {
                       })
                       .catch(e => console.warn('Snapshot save failed:', e));
 
-                    // Phase S3: Add AI response to chat with metadata for restoration
-                    const msgText = isEdit ? 'Update complete: ' + lastPrompt : 'Initial build complete: ' + lastPrompt;
-                    const snapshotId = `${buildId}-${chatMessages.length}`;
-                    addChatMessage(msgText, 'ai', {
-                      style: 'premium-success',
-                      isEdit,
-                      chatIndex: chatMessages.length,
-                      snapshotId: snapshotId // Helpful for matching
+                    // Phase S3: Technical build summary (subtle system message)
+                    const technicalSummary = isEdit ? `Iteration applied: ${lastPrompt}` : `Initial build ready: ${lastPrompt}`;
+                    addChatMessage(technicalSummary, 'system', {
+                      isTechnical: true,
+                      chatIndex: chatMessages.length
                     });
 
                   } catch (e) {
@@ -998,7 +995,7 @@ export default function Generation() {
   }, [aiModel, conversationContext, chatMessages, generationProgress.files, applyGeneratedCode]);
 
   // ─── Start Generation (Prompt-only) ──────────────
-  const startGeneration = useCallback(async (prompt, templateId = null, initialImages = [], manualSelectionIds = null, providedBuildId = null, strictMode = false) => {
+  const startGeneration = useCallback(async (prompt, templateId = null, initialImages = [], manualSelectionIds = null, providedBuildId = null, strictMode = false, initialComponentsFull = null) => {
     // 🚧 FINAL CREDIT CHECK: Gatekeeper
     if (outOfCredits) {
       setShowLimitModal(true);
@@ -1014,7 +1011,7 @@ export default function Generation() {
     setGenerationProgress(prev => ({ ...prev, isGenerating: true, status: 'Starting... (Deducting 1 Credit)', files: [], streamedCode: '' }));
     
     const displayPrompt = templateId ? "I want to use this template" : prompt;
-    addChatMessage(displayPrompt, 'user', { images: initialImages });
+    addChatMessage(displayPrompt, 'user', { images: initialImages, stagedComponents: initialComponentsFull });
 
     // Robust UUID generator
     const generateUUID = () => {
@@ -1885,6 +1882,7 @@ Just position the new components in a logical order (e.g. after the Hero or befo
     const initialImages = location.state?.images || [];
 
     const manualSelectionIds = location.state?.manualSelectionIds;
+    const initialComponents = location.state?.initialComponents;
     const strictModeValue = location.state?.strictMode || (params.get('strictMode') === 'true');
 
     if (projectId) {
@@ -1904,7 +1902,15 @@ Just position the new components in a logical order (e.g. after the Hero or befo
       setPendingImages([]);
     } else if (prompt?.trim() || initialImages.length > 0 || manualSelectionIds) {
       initStartedRef.current = true;
-      startGeneration(prompt?.trim() || (manualSelectionIds ? "Build from community components" : "Analyze design and build"), null, initialImages, manualSelectionIds, null, strictModeValue);
+      startGeneration(
+        prompt?.trim() || (manualSelectionIds ? "Build from community components" : "Analyze design and build"), 
+        null, 
+        initialImages, 
+        manualSelectionIds, 
+        null, 
+        strictModeValue,
+        initialComponents
+      );
       setAiChatInput('');
       setPendingImages([]);
     }

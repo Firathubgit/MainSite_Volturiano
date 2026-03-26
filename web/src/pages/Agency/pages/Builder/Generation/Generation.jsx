@@ -266,6 +266,7 @@ export default function Generation() {
 
   const [codeApplicationState, setCodeApplicationState] = useState({ stage: null, packages: [], installedPackages: [], filesGenerated: [] });
   const [conversationContext, setConversationContext] = useState({ appliedCode: [], generatedComponents: [], currentProject: '', lastGeneratedCode: '' });
+  const [isTextStreaming, setIsTextStreaming] = useState(false);
   const [pendingComponents, setPendingComponents] = useState([]);
   const [optimisticDeduction, setOptimisticDeduction] = useState(0);
   const [isDeducting, setIsDeducting] = useState(false);

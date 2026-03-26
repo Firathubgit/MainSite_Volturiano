@@ -110,8 +110,91 @@ export const AIThinkingIndicator = ({ stage }) => {
  * AI Message Bubble Component (Lovable Style)
  */
 /**
- * AI Message Bubble Component (Minimal Text Only)
+ * Premium Streamed Text Reveal (Solar Scroll Math)
  */
+const PremiumStreamedText = ({ text }) => {
+    const [progress, setProgress] = React.useState(0);
+
+    React.useEffect(() => {
+        let start;
+        let animationFrame;
+        // 12ms per char, bounded between 800ms and 3500ms
+        const duration = Math.min(Math.max(text.length * 12, 800), 3500);
+
+        const step = (timestamp) => {
+            if (!start) start = timestamp;
+            const elapsed = timestamp - start;
+            const currentProgress = elapsed / duration;
+
+            if (currentProgress < 1) {
+                setProgress(currentProgress);
+                animationFrame = requestAnimationFrame(step);
+            } else {
+                setProgress(1);
+            }
+        };
+        animationFrame = requestAnimationFrame(step);
+
+        return () => cancelAnimationFrame(animationFrame);
+    }, [text]);
+
+    const tokens = text.split(/(\s+)/); // Splitting by space but keeping the space token
+    let charCount = 0;
+    const totalChars = text.replace(/\s/g, "").length || 1;
+
+    return (
+        <span style={{ display: 'inline', whiteSpace: 'pre-wrap' }}>
+            {tokens.map((token, wordIndex) => {
+                if (/^\s+$/.test(token)) {
+                    return <span key={wordIndex}>{token}</span>;
+                }
+                
+                return (
+                    <span key={wordIndex} style={{ display: 'inline-flex' }}>
+                        {token.split("").map((char, charIndex) => {
+                            const currentGlobalCharIndex = charCount;
+                            charCount++;
+                            
+                            const revealStart = (currentGlobalCharIndex / totalChars) * 0.8;
+                            const revealEnd = revealStart + 0.1; 
+
+                            let opacity = 0; 
+                            let blur = 10;
+                            let y = 14; 
+
+                            if (progress > revealEnd) {
+                                opacity = 1;
+                                blur = 0;
+                                y = 0;
+                            } else if (progress > revealStart) {
+                                const localProgress = (progress - revealStart) / (revealEnd - revealStart);
+                                opacity = localProgress;
+                                blur = 10 * (1 - localProgress);
+                                y = 14 * (1 - localProgress);
+                            }
+
+                            return (
+                                <span
+                                    key={charIndex}
+                                    style={{ 
+                                        opacity: opacity,
+                                        filter: `blur(${blur}px)`,
+                                        transform: `translateY(${y}px)`,
+                                        transition: 'all 0.1s ease-out',
+                                        display: 'inline-block'
+                                    }}
+                                >
+                                    {char}
+                                </span>
+                            );
+                        })}
+                    </span>
+                );
+            })}
+        </span>
+    );
+};
+
 export const AIMessage = ({ message, style = 'casual', context, onRestore }) => {
     const isPremium = style === 'premium-success';
 
@@ -143,7 +226,9 @@ export const AIMessage = ({ message, style = 'casual', context, onRestore }) => 
                     </motion.div>
                 )}
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <p className="ai-text">{message}</p>
+                    <div className="ai-text" style={{ flex: 1, margin: 0 }}>
+                        <PremiumStreamedText text={message} />
+                    </div>
                     {context?.isEdit && (
                         <FiEdit2 size={12} style={{ color: '#a1a1aa', opacity: 0.6 }} title="Modified version" />
                     )}

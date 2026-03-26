@@ -361,6 +361,26 @@ export default function Generation() {
     setTimeout(() => chatEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 50);
   }, [saveProjectUpdates]);
 
+  // Keep user pinned to bottom while text is streaming dynamically
+  useEffect(() => {
+    if (!isTextStreaming || !chatEndRef.current) return;
+    const chatContainer = chatEndRef.current.parentElement;
+    if (!chatContainer) return;
+
+    // Use MutationObserver to catch every tiny DOM text/span addition during stream
+    const observer = new MutationObserver(() => {
+      // Direct scroll assignment is jank-free and doesn't affect outer window
+      chatContainer.scrollTop = chatContainer.scrollHeight;
+    });
+    
+    observer.observe(chatContainer, { childList: true, subtree: true, characterData: true });
+    
+    // Snap immediately when streaming begins
+    chatContainer.scrollTop = chatContainer.scrollHeight;
+
+    return () => observer.disconnect();
+  }, [isTextStreaming]);
+
   const getThumbnailUrl = useCallback((path) => {
     if (!path) return null;
     if (path.startsWith('http') || path.startsWith('data:')) return path;

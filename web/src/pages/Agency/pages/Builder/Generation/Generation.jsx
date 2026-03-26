@@ -321,7 +321,7 @@ export default function Generation() {
   const componentPlanRef = useRef(null);
   const [snapshots, setSnapshots] = useState([]);
   const [strictMode, setStrictMode] = useState(queryParams.get('strictMode') === 'true' || location.state?.strictMode || false);
-  const [revertModalData, setRevertModalData] = useState(null); // { snapshot, targetIndex, promptText }
+  const [revertModalData, setRevertModalData] = useState(null); // { snapshot, targetIndex, promptText, components }
 
   const showNotification = useCallback((msg) => {
     setNotification(msg);
@@ -1712,7 +1712,7 @@ Just position the new components in a logical order (e.g. after the Hero or befo
   }, [aiChatInput, pendingImages, pendingComponents, loading, conversationContext, sandboxData, currentProjectId, handleAIGeneratedEdit, createSandbox, addChatMessage, startGeneration, applyGeneratedCode, strictMode]);
 
   // ─── Restore Snapshot (Silent Time-Travel) ──────────────
-  const restoreSnapshot = useCallback(async (snapshot, revertTargetIndex, revertedPromptText) => {
+  const restoreSnapshot = useCallback(async (snapshot, revertTargetIndex, revertedPromptText, revertedComponents = []) => {
     if (!sandboxData || loading) return;
     setRevertModalData(null); // Close modal
 
@@ -1729,6 +1729,9 @@ Just position the new components in a logical order (e.g. after the Hero or befo
       }
       if (revertedPromptText) {
         setAiChatInput(revertedPromptText);
+      }
+      if (revertedComponents && Array.isArray(revertedComponents)) {
+        setPendingComponents(revertedComponents);
       }
 
       // Phase 2: Silent background — apply files without any chat messages
@@ -2483,7 +2486,12 @@ Just position the new components in a logical order (e.g. after the Hero or befo
                           {snapshot && (
                             <button
                               className={styles.restoreBtn_underUser}
-                              onClick={() => setRevertModalData({ snapshot, targetIndex: i, promptText: msg.content })}
+                              onClick={() => setRevertModalData({ 
+                                snapshot, 
+                                targetIndex: i, 
+                                promptText: msg.content,
+                                components: msg.metadata?.stagedComponents || []
+                              })}
                               title={`Undo to ${new Date(snapshot.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`}
                             >
                               <svg xmlns="http://www.w3.org/2000/svg" height="18" viewBox="0 -960 960 960" width="18" fill="currentColor">
@@ -3188,7 +3196,7 @@ Just position the new components in a logical order (e.g. after the Hero or befo
                 </button>
                 <button
                   className={`${styles.revertModalBtn} ${styles.revertModalBtnConfirm}`}
-                  onClick={() => restoreSnapshot(revertModalData.snapshot, revertModalData.targetIndex, revertModalData.promptText)}
+                  onClick={() => restoreSnapshot(revertModalData.snapshot, revertModalData.targetIndex, revertModalData.promptText, revertModalData.components)}
                 >
                   Confirm
                 </button>

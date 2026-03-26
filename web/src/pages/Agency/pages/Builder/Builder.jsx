@@ -490,7 +490,7 @@ const BuilderContent = () => {
             if (builderRoot) {
                 builderRoot.style.transition = 'all 0.8s cubic-bezier(0.16, 1, 0.3, 1)';
                 builderRoot.style.opacity = '0';
-                builderRoot.style.transform = 'translateY(40px) scale(0.98)';
+                builderRoot.style.transform = 'translateY(40px) scale(0.88)'; // Scale down from 0.9 base
                 builderRoot.style.filter = 'blur(20px)';
             }
 
@@ -540,7 +540,7 @@ const BuilderContent = () => {
         if (builderRoot) {
             builderRoot.style.transition = 'all 0.8s cubic-bezier(0.16, 1, 0.3, 1)';
             builderRoot.style.opacity = '0';
-            builderRoot.style.transform = 'translateY(40px) scale(0.98)';
+            builderRoot.style.transform = 'translateY(40px) scale(0.88)'; // Scale down from 0.9 base
             builderRoot.style.filter = 'blur(20px)';
         }
 

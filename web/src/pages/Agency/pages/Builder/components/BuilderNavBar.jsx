@@ -70,59 +70,7 @@ export function BuilderNavBar() {
             <img src={hamburgerIcon} alt="" className={navStyles.menuIcon} />
           </button>
 
-          {isLandingPage && (
-            <motion.div 
-              className="builder-sign-container"
-              initial={{ opacity: 0, y: -18, rotate: -2 }}
-              animate={{ opacity: 1, y: 0, rotate: 0 }}
-              whileHover={{ 
-                y: 4, 
-                rotate: -1.5, 
-                scale: 1.02,
-              }}
-              transition={{
-                type: "spring",
-                stiffness: 200,
-                damping: 20,
-                opacity: { duration: 1.2, ease: "easeOut" }
-              }}
-            >
-              <style>
-                {`
-                  .builder-sign-container {
-                    position: absolute;
-                    top: -10px;
-                    left: 85px;
-                    z-index: 100;
-                    pointer-events: auto;
-                    filter: drop-shadow(0 15px 25px rgba(0,0,0,0.5));
-                    cursor: pointer;
-                  }
-                  .builder-sign-img {
-                    width: 180px;
-                    height: auto;
-                    display: block;
-                  }
-                  @media (max-width: 768px) {
-                    .builder-sign-container {
-                      display: none;
-                    }
-                  }
-                `}
-              </style>
-              <motion.div
-                animate={{ y: [0, 5, 0] }}
-                transition={{
-                  repeat: Infinity,
-                  repeatType: "reverse",
-                  duration: 3,
-                  ease: "easeInOut"
-                }}
-              >
-                <img src={signAsset} alt="Unlimited Credits" className="builder-sign-img" />
-              </motion.div>
-            </motion.div>
-          )}
+          {/* Logo sign removed per user request */}
         </div>
 
         {/* Center logo */}

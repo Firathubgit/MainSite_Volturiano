@@ -2780,19 +2780,26 @@ Just position the new components in a logical order (e.g. after the Hero or befo
                             <span>{label}</span>
                           </button>
                         ))}
+                        
+                        {previewMode !== 'desktop' && (
+                          <>
+                            <div className={styles.viewportMenuSeparator} />
+                            <button
+                              className={`${styles.viewportOption} ${viewportRotated ? styles.viewportOptionActive : ''}`}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setViewportRotated(prev => !prev);
+                              }}
+                              title="Rotate viewport orientation"
+                            >
+                              <FiRotateCw size={14} />
+                              <span>Rotate</span>
+                            </button>
+                          </>
+                        )}
                       </div>
                     )}
                   </div>
-
-                  {/* Rotate viewport */}
-                  <button
-                    className={`${styles.rotateBtn} ${viewportRotated ? styles.rotateBtnActive : ''}`}
-                    onClick={() => setViewportRotated(prev => !prev)}
-                    disabled={activeTab !== 'preview' || previewMode === 'desktop'}
-                    title="Rotate viewport"
-                  >
-                    <FiRotateCw size={14} />
-                  </button>
 
                   {/* Refresh preview */}
                   <button
@@ -2806,15 +2813,6 @@ Just position the new components in a logical order (e.g. after the Hero or befo
                     title="Refresh preview"
                   >
                     <FiRefreshCw size={14} />
-                  </button>
-
-                  {/* Console Toggle */}
-                  <button
-                    className={`${styles.openTabBtn} ${showConsole ? styles.btnActive : ''}`}
-                    onClick={() => setShowConsole(!showConsole)}
-                    title="Toggle Console"
-                  >
-                    <BsTerminal size={14} />
                   </button>
 
                   {/* Open in new tab */}

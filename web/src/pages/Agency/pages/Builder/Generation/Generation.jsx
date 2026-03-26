@@ -2512,19 +2512,23 @@ Just position the new components in a logical order (e.g. after the Hero or befo
                       style = 'premium-success';
                     }
 
+                    const isNewlyAdded = msg.timestamp && (Date.now() - new Date(msg.timestamp).getTime() < 10000);
+
                     return (
                       <AIMessage
                         key={i}
                         message={msg.content}
                         style={style}
                         context={metadata}
+                        isStreamingEligible={isLast && isNewlyAdded}
+                        onStreamStateChange={setIsTextStreaming}
                       />
                     );
                   }
                 })}
 
                 {/* Active Status Indicator */}
-                {(aiThinking || generationProgress.isGenerating) && (
+                {(aiThinking || generationProgress.isGenerating) && !isTextStreaming && (
                   <div className={`${styles.chatMsg} ${styles.chatMsg_system}`}>
                     <div className={styles.chatBubble}>
                       <span className={`${styles.typingDots} ${styles.shimmerText}`}>

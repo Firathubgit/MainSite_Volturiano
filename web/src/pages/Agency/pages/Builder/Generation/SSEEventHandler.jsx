@@ -112,14 +112,19 @@ export const AIThinkingIndicator = ({ stage }) => {
 /**
  * Premium Streamed Text Reveal (Solar Scroll Math)
  */
-const PremiumStreamedText = ({ text }) => {
-    const [progress, setProgress] = React.useState(0);
+const PremiumStreamedText = ({ text, onStreamEnd, instant = false }) => {
+    const [progress, setProgress] = React.useState(instant ? 1 : 0);
 
     React.useEffect(() => {
+        if (instant) {
+            setProgress(1);
+            return;
+        }
+        
         let start;
         let animationFrame;
-        // 12ms per char, bounded between 800ms and 3500ms
-        const duration = Math.min(Math.max(text.length * 12, 800), 3500);
+        // Slower streaming speed: 24ms per char, bounded 1500 to 7000ms
+        const duration = Math.min(Math.max(text.length * 24, 1500), 7000);
 
         const step = (timestamp) => {
             if (!start) start = timestamp;
@@ -131,21 +136,32 @@ const PremiumStreamedText = ({ text }) => {
                 animationFrame = requestAnimationFrame(step);
             } else {
                 setProgress(1);
+                if (onStreamEnd) onStreamEnd();
             }
         };
         animationFrame = requestAnimationFrame(step);
 
         return () => cancelAnimationFrame(animationFrame);
-    }, [text]);
+    }, [text, instant, onStreamEnd]);
 
-    const tokens = text.split(/(\s+)/); // Splitting by space but keeping the space token
+    const tokens = text.split(/(\s+)/);
     let charCount = 0;
-    const totalChars = text.replace(/\s/g, "").length || 1;
+    const totalChars = text.length || 1; // Include spaces in total calculation for proper pacing
 
     return (
         <span style={{ display: 'inline', whiteSpace: 'pre-wrap' }}>
             {tokens.map((token, wordIndex) => {
+                const tokenRevealStart = (charCount / totalChars) * 0.8;
+                
+                // If progress hasn't reached this word/space AT ALL, do not mount it yet.
+                // This prevents prematurely pushing the height of the container downward.
+                if (progress < tokenRevealStart && !instant) {
+                    charCount += token.length;
+                    return null;
+                }
+
                 if (/^\s+$/.test(token)) {
+                    charCount += token.length;
                     return <span key={wordIndex}>{token}</span>;
                 }
                 
@@ -158,11 +174,14 @@ const PremiumStreamedText = ({ text }) => {
                             const revealStart = (currentGlobalCharIndex / totalChars) * 0.8;
                             const revealEnd = revealStart + 0.1; 
 
+                            // PREVENT RENDER: This forces the container to expand row-by-row naturally
+                            if (progress < revealStart && !instant) return null;
+
                             let opacity = 0; 
                             let blur = 10;
                             let y = 14; 
 
-                            if (progress > revealEnd) {
+                            if (progress > revealEnd || instant) {
                                 opacity = 1;
                                 blur = 0;
                                 y = 0;
@@ -180,7 +199,7 @@ const PremiumStreamedText = ({ text }) => {
                                         opacity: opacity,
                                         filter: `blur(${blur}px)`,
                                         transform: `translateY(${y}px)`,
-                                        transition: 'all 0.1s ease-out',
+                                        // Removed animation easing because CSS conflicts with RequestAnimationFrame stepping
                                         display: 'inline-block'
                                     }}
                                 >
@@ -195,8 +214,20 @@ const PremiumStreamedText = ({ text }) => {
     );
 };
 
-export const AIMessage = ({ message, style = 'casual', context, onRestore }) => {
+export const AIMessage = ({ message, style = 'casual', context, onRestore, isStreamingEligible, onStreamStateChange }) => {
     const isPremium = style === 'premium-success';
+
+    React.useEffect(() => {
+        if (isStreamingEligible && onStreamStateChange) {
+            onStreamStateChange(true);
+        }
+    }, [isStreamingEligible, onStreamStateChange]);
+
+    const handleStreamEnd = React.useCallback(() => {
+        if (onStreamStateChange) {
+            onStreamStateChange(false);
+        }
+    }, [onStreamStateChange]);
 
     return (
         <div className={`ai-message-bubble ${style}`} style={{ position: 'relative' }}>
@@ -227,7 +258,11 @@ export const AIMessage = ({ message, style = 'casual', context, onRestore }) => 
                 )}
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <div className="ai-text" style={{ flex: 1, margin: 0 }}>
-                        <PremiumStreamedText text={message} />
+                        {isStreamingEligible ? (
+                            <PremiumStreamedText text={message} onStreamEnd={handleStreamEnd} />
+                        ) : (
+                            <PremiumStreamedText text={message} instant={true} />
+                        )}
                     </div>
                     {context?.isEdit && (
                         <FiEdit2 size={12} style={{ color: '#a1a1aa', opacity: 0.6 }} title="Modified version" />

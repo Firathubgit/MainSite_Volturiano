@@ -361,9 +361,11 @@ export default function Generation() {
     setTimeout(() => chatEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 50);
   }, [saveProjectUpdates]);
 
-  // Keep user pinned to bottom while text is streaming dynamically
+  // Keep user pinned to bottom while text is streaming or thinking
+  const isAutoScrollActive = isTextStreaming || aiThinking || generationProgress.isGenerating;
+
   useEffect(() => {
-    if (!isTextStreaming || !chatEndRef.current) return;
+    if (!isAutoScrollActive || !chatEndRef.current) return;
     const chatContainer = chatEndRef.current.parentElement;
     if (!chatContainer) return;
 
@@ -375,11 +377,11 @@ export default function Generation() {
     
     observer.observe(chatContainer, { childList: true, subtree: true, characterData: true });
     
-    // Snap immediately when streaming begins
+    // Snap immediately when streaming/thinking begins
     chatContainer.scrollTop = chatContainer.scrollHeight;
 
     return () => observer.disconnect();
-  }, [isTextStreaming]);
+  }, [isAutoScrollActive]);
 
   const getThumbnailUrl = useCallback((path) => {
     if (!path) return null;

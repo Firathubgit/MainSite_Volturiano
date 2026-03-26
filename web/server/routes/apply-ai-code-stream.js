@@ -366,12 +366,6 @@ export default async function applyAiCodeStream(req, res) {
 
       if (buildPassed) {
         sse.send(SSE_EVENTS.VERIFY_PASSED, { durationMs });
-
-        const verifyMessage = await narrator.narrate('verifying', {
-          passed: true,
-          durationMs
-        });
-        sse.aiMessage(verifyMessage, {}, 'excited');
       } else {
         // ═══════════════════════════════════════════════════════════
         // STAGE 5: Auto-Repair

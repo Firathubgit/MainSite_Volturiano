@@ -123,7 +123,7 @@ STEP 1 — INTENT ANALYSIS (What is the user actually asking?):
   • THEME CHANGE: "Make it X themed" or "change the vibe to Y" → Update text, colors, imagery in MOST/ALL component files. Do NOT remove or restructure components. Do NOT drop any components from App.jsx.
   • CONTENT EDIT: "Change the hero title" or "update the pricing" → Edit ONLY the specific text/data in 1-2 files. Do NOT touch other files.
   • ADD FEATURE: "Add a gallery section" or "add testimonials" → Create ONE new component file, update App.jsx to include it, keep everything else unchanged.
-  • REMOVE FEATURE: "Remove the pricing section" → Only remove that component's import and render from App.jsx. Keep all other components.
+  • REPLACE/SWAP: "Change the hero to X" or "Replace the background with Y" → Output the NEW component file, update App.jsx to IMPORT the new one AND REMOVE the old one. This is a surgical swap.
   • STRUCTURAL CHANGE: "Completely redo/rewrite the website" → Full regeneration of all files (this is RARE — only if user says "rewrite" or "redo entirely").
 
 STEP 2 — PER-FILE EDIT PLAN:
@@ -131,6 +131,7 @@ STEP 2 — PER-FILE EDIT PLAN:
   - For THEME CHANGE: output EVERY component file with updated text/colors/images + index.css for palette + App.jsx only if imports change
   - For CONTENT EDIT: output ONLY the 1-2 files that contain the text being changed
   - For ADD FEATURE: output the new component file + App.jsx (with all existing imports PLUS the new one)
+  - For REPLACE/SWAP: output the NEW component file + App.jsx (with the swap: new import in, old import out)
   - For REMOVE FEATURE: output ONLY App.jsx (with the removed import/render, keeping all others)
 
 STEP 3 — PRESERVATION CHECK:
@@ -143,7 +144,7 @@ CRITICAL RULES:
 1. SURGICAL OUTPUT: Output ONLY the files that actually need to change (to save tokens).
 2. FORCE CODE OUTPUT: You MUST output at least one <file> block for every request. DO NOT just explain or say it's ready. If you changed something, output the code.
 3. THEME CHANGES (EXCEPTION): If the user asks for a theme/vibe change ("make it futuristic", "nature themed"), you MUST output ALL component files with updated content.
-4. NO COMPONENT DROPPING: If you output src/App.jsx, it MUST keep ALL existing imports and renders unless the user explicitly asked to remove one.
+4. NO COMPONENT DROPPING: If you output src/App.jsx, it MUST keep ALL existing imports and renders UNLESS (a) the user explicitly asked to remove one, or (b) you are SWAPPING/REPLACING a component (e.g. swapping one Hero for a different Hero). 
 5. PRESERVE INTENT: Always find a way to improve the styling or content to match the user's intent. Never say "no changes needed."`;
 
       // ═══════════════════════════════════════════════════════════
@@ -216,10 +217,11 @@ ${manifestLines.join('\n')}
 
 APP.JSX PRESERVATION (CRITICAL):
 1. If you output App.jsx, you MUST keep ALL the component imports listed above.
-2. You may ADD new components. You may only REMOVE a component if the user EXPLICITLY asks to remove it by name.
-3. The new App.jsx must render ALL components — existing ones AND any new ones — in a logical vertical stack.
-4. If you DON'T need to change App.jsx, then DON'T output it. Only output files you actually changed.
-5. NEVER drop components just because you didn't edit them. They must stay in App.jsx.`;
+2. You may ADD new components. You may only REMOVE a component if (a) the user explicitly asks to remove it by name, or (b) you are REPLACING it with a similar functional component (e.g. swapping one "Background" for a new "Background").
+3. "CHANGE X TO Y" implies a SWAP. In this case, always remove X and add Y.
+4. The new App.jsx must render ALL active components in a logical vertical stack.
+5. If you DON'T need to change App.jsx, then DON'T output it. Only output files you actually changed.
+6. NEVER drop components just because you didn't edit them. They must stay in App.jsx unless they were swapped out.`;
       }
 
       // Inject current App.jsx content so AI can make surgical edits

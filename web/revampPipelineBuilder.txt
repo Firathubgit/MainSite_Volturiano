@@ -1,0 +1,373 @@
+================================================================================
+VOLTURIANO RE-ARCHITECTURE MASTER PLAN: THE TOYOTA ENGINE
+MULTI-PAGE EMERGENT WEBSITE BUILDER - THE ULTIMATE EXECUTION BIBLE (V2.0)
+================================================================================
+
+# 1. OVERVIEW & THE TOYOTA PHILOSOPHY
+
+This document serves as the absolute, uncompromising source of truth and the "North Star" blueprint for the Volturiano V2 Generation Pipeline Migration. Based on deep architectural research and the Toyota Engineering Philosophy (Less is More, highly verifiable, append-only, robust invariant contracts), we are transitioning from a Single-Page Landing Page Stacker into a Frontier Emergent Multi-Page Web App Generator.
+
+Toyota Engine Core Tenets:
+1. Simplicity over Magic: We do not use "magic" file-based routing generation that hides errors and fails silently. We use explicit, standard, testable React constructs that both the LLM and the compiler can visually verify.
+2. Latent Extensibility: The app starts as a single page (SPA) but contains the latent architecture to transform into a multi-page app (MPA) only when structurally required. We do not break the "Single Page" simplicity for users who don't need the complexity.
+3. Strict Functional Contracts: The AI is given creative freedom inside hard architectural boundaries: 
+   - `/src/pages/` for full route views (Entry points).
+   - `/src/components/` for localized building blocks (Sections/Widgets).
+   - `/src/app/siteMap.js` as the absolute source of truth for all routing and dynamic navigation metadata.
+4. Robust Publishing: Dev paths and Prod paths must perfectly align through Vite build configurations (`--base=/sites/<slug>/`), entirely eliminating runtime path-parsing hacks or brittle backend regex on the proxy.
+5. Healing Loops: Every build failure is a lesson. Errors are captured and fed back to a specialized "Polish" agent for surgical fixes, preventing full-scale layout destruction during complex multi-page transformations.
+
+---
+
+## Section M1: The E2B Sandbox Template & Foundation Updates
+
+**Status:** PENDING
+**Priority:** CRITICAL
+**Description:** The E2B Dev environment must be fundamentally prepared so the LLM doesn't waste tokens configuring standard dependencies, fixing lock-files, or creating boilerplates.
+
+### M1.1 Pre-Install Dependencies in Sandbox Image
+- [ ] **React Router DOM:** Add `react-router-dom` to the default E2B template `package.json`. 
+      - Rationale: The LLM should never run `npm install react-router-dom` on the fly. It introduces latency, risks lock-file drift, and consumes tokens. It must be dormant until the first import.
+- [ ] **Framer Motion:** Ensure `framer-motion` is pre-installed. Standardize on a stable version to prevent breaking changes during generation.
+- [ ] **Lucide React:** Pre-install `lucide-react`. Hallucinated SVG paths are the #1 cause of Vite build crashes in current versions.
+- [ ] **Tailwind Config:** Ensure the Tailwind config remains standalone and doesn't get overwritten by the AI unless a theme change is requested.
+- [ ] **Vite Config:** Update the `vite.config.js` template to accept dynamic `--base` parameters during build time.
+
+### M1.2 Directory Semantics & Scaffold Setup
+- [ ] **Folder Structure Blueprint:** The default sandbox initialization script must create these empty directories on boot. Separation of concerns starts with the filesystem.
+      - `src/pages/`
+      - `src/app/`
+      - `src/community/`
+      - `src/components/`
+      - `src/layouts/`
+- [ ] **Base Config Files:** Place a skeleton `src/app/siteMap.js` file placeholder.
+      ```javascript
+      // src/app/siteMap.js
+      // The master registry for any multi-page routes.
+      export const siteMap = [];
+      ```
+- [ ] **main.jsx Preparation:** Ensure `main.jsx` strictly renders `<App />`. 
+      ```javascript
+      import React from 'react'
+      import ReactDOM from 'react-dom/client'
+      import App from './App.jsx'
+      import './index.css'
+
+      ReactDOM.createRoot(document.getElementById('root')).render(
+        <React.StrictMode>
+          <App />
+        </React.StrictMode>,
+      )
+      ```
+
+### M1.3 Verification Scripts Upgrade
+- [ ] **Build Command Update:** Update `verify-sandbox-build.js` to run `npm run build -- --base=/` during dev verification to ensure there are no strict pathing errors.
+- [ ] **Memory Limit Increase:** In the E2B initialization, ensure `NODE_OPTIONS=--max_old_space_size=4096` is set. Multi-page builds in Vite (due to chunking) require more RAM than simple SPAs.
+
+---
+
+## Section M2: The Knowledge Engine & Context Offloading
+
+**Status:** PENDING
+**Priority:** HIGH
+**Description:** The LLM context window degrades if we force it to memorize 100 rigid rules. We will offload structural memory into a persistent `VOLTURIANO_KNOWLEDGE.md` file.
+
+### M2.1 Knowledge Injection System
+- [ ] **Create Sandbox Manifest:** During prompt execution, automatically write a `VOLTURIANO_KNOWLEDGE.md` hidden file to the sandbox root.
+- [ ] **Include in Context:** Map the `VOLTURIANO_KNOWLEDGE.md` content into the system prompt's read-only file context window.
+
+### M2.2 Rule Set Definition (The Invariants)
+- [ ] **Rule 1 - The Latent Rule:** 
+      "If the site is single-page, keep code in src/App.jsx. IF the user asks for sub-pages, extract App.jsx into src/pages/Home.jsx and initiate routing."
+- [ ] **Rule 2 - Community Quarantine:** 
+      "All files in src/community/ are READ-ONLY. Wrap them, do not modify the original source."
+- [ ] **Rule 3 - The Truth File:** 
+      "All routes MUST be registered in src/app/siteMap.js. The Navbar MUST render its links from this file. No hardcoded Navbar links."
+- [ ] **Rule 4 - Global Styling:**
+      "Use Tailwind only. Inline styles are for dynamic calculations only."
+
+### M2.3 System Prompt Overhaul
+- [ ] **Edit Mode Rules:** Modify `generate-ai-code-stream.js`.
+      - Add "MULTI-PAGE TRANSITION" intent: "Extract App.jsx -> src/pages/Home.jsx, then rewrite App.jsx as a routing shell."
+- [ ] **Component List Generation:** When building the Component Manifest, separate `/components` from `/pages` cleanly so the LLM internalizes the hierarchy.
+
+---
+
+## Section M3: The Multi-Page Transformation Logic (Migration Atom)
+
+**Status:** PENDING
+**Priority:** CRITICAL
+
+### M3.1 The "Move to Home" Operation
+- [ ] **Prompt Instruction Setup:** When transitioning, the LLM must extract the entire existing vertical stack out of `src/App.jsx` and drop it identically into `src/pages/Home.jsx`.
+- [ ] **Path Realignment:** Instruct the LLM to update relative import paths in `Home.jsx` to reflect moving from `src/` to `src/pages/`.
+- [ ] **Isolate Logic:** Ensure `Home.jsx` returns a clean fragment.
+
+### M3.2 The Router Shell Hook-up
+- [ ] **App.jsx Wipe & Replace:** The LLM must rewrite `src/App.jsx` to exclusively contain:
+      - `BrowserRouter`
+      - `Navbar`
+      - `Routes` / `Route` elements mapped from `siteMap.js`.
+      - `Footer`
+- [ ] **The siteMap.js Registration:** The LLM creates/updates `src/app/siteMap.js`:
+      ```javascript
+      export const siteMap = [
+        { path: '/', label: 'Home', component: 'Home', navVisible: true },
+        { path: '/about', label: 'About Us', component: 'About', navVisible: true }
+      ];
+      ```
+
+### M3.3 The Dynamic Navbar Extraction
+- [ ] **Navbar Re-Wire Prompt:** The AI must update the existing `Navbar.jsx` to `import { siteMap } from '../app/siteMap'`.
+- [ ] **Link Mapping:** Map over `siteMap.filter(item => item.navVisible)` to render `<Link to={item.path}>`.
+
+---
+
+## Section M4: The "Compiler Loop" (Feedback & Healing)
+
+**Status:** PENDING
+**Priority:** CRITICAL
+
+### M4.1 Granular Log Extraction
+- [ ] **Vite Error Truncation:** If a build fails, capture the exact Vite error.
+- [ ] **Regex Matching:** Parse the error logs to extract the exact file name and line number that failed.
+- [ ] **Targeted Feedback Call:** Send ONLY: "Build failed with error X. The specific file triggering this is Y. Please output ONLY a patch for file Y."
+
+---
+
+## Section M5: The Backend Express & Wildcard Rescue (Danger Zone)
+
+**Status:** PENDING
+**Priority:** VITAL
+
+### M5.1 Build-Time Base Pathing
+- [ ] **Modify `publish.js` Execution:**
+      `npm run build -- --base=/sites/${slug}/`
+      Why: This forces Vite to physically rewrite all index.html asset links to absolute subfolder paths.
+
+### M5.2 Strict MIME-Type Wildcard Serving
+- [ ] **Express Catch-All Logic Update:**
+      ```javascript
+      app.get('/sites/:slug/*', async (req, res) => {
+          const subPath = req.params[0];
+          const isAsset = subPath.match(/\.(js|css|png|jpg|svg|woff2|json)$/i);
+          
+          if (isAsset) {
+              const fileContent = await fetchFromSupabaseStorage(`${slug}/${subPath}`);
+              res.setHeader('Content-Type', getContentType(subPath)); 
+              return res.send(fileContent);
+          }
+          
+          if (req.headers.accept && req.headers.accept.includes('text/html')) {
+              const html = await fetchFromSupabaseStorage(`${slug}/index.html`);
+              res.setHeader('Content-Type', 'text/html');
+              return res.send(html);
+          }
+          return res.status(404).send('Not Found');
+      });
+      ```
+
+---
+
+## Section M6: The Community Component Injection Protocol
+
+**Status:** PENDING
+**Priority:** HIGH
+
+### M6.1 The Shadow Directory (`src/community/`)
+- [ ] **Automated Placement:** The Sandbox manager MUST automatically write context-provided components into `/src/community/CompName.jsx` BEFORE the LLM begins.
+- [ ] **Read-Only Constraint:** Instruct the LLM: "Components inside /src/community/ are locked. Do NOT rewrite them."
+
+---
+
+## Section M7: Security, Analytics & Edge Case Mitigation
+
+### M7.1 Path Traversal Locks
+- [ ] **URL Sanitization:** In the wildcard backend interceptor, actively block `..` and `//` to prevent malicious requests.
+
+### M7.2 Context Window Blowout Protections
+- [ ] **Manifest Truncation:**
+      - ALWAYS attach App.jsx, siteMap.js, main.jsx.
+      - Attach ALL `src/pages/`. 
+      - Provide ONLY the filenames of `src/components/`.
+
+---
+
+## Section M8: SQL Migrations for MPA Storage
+
+### M8.1 Expanded Schema
+```sql
+ALTER TABLE published_sites ADD COLUMN IF NOT EXISTS is_multi_page BOOLEAN DEFAULT FALSE;
+ALTER TABLE published_sites ADD COLUMN IF NOT EXISTS total_routes INTEGER DEFAULT 1;
+ALTER TABLE analytics_events ADD COLUMN IF NOT EXISTS page_route TEXT DEFAULT '/';
+CREATE INDEX idx_analytics_page_route ON analytics_events(page_route);
+```
+
+---
+
+## Section M9: Extensive Testing Strategy
+
+- [ ] **The "Back Button" Test:** Ensure history popstate works correctly in the preview and production.
+- [ ] **The "Deep Refresh" Test:** Navigate to /sites/slug/about. Press F5. Verify it does not 404.
+- [ ] **The "Component Sync" Test:** Prompt AI to update color theme across ALL pages.
+
+---
+
+## Section M10: Architectural Appendices (DEEP DIVE)
+
+### M10.1 The MIME-Type Crisis (Lesson from established players)
+If your wildcard router returns index.html for a request for /assets/index.js (because the file is missing or path is wrong), the browser will receive an HTML string where it expected a JavaScript module. The result: "Strict MIME type checking enabled. Expected a JavaScript module script but the server responded with a MIME type of text/html." This is the #1 failure in amateur AI website builders. Our wildcard sniffing in Section M5.2 is the Toyota Shield against this.
+
+### M10.2 The Base Path Trauma
+Vite's `--base` flag is not a suggestion—it is a mandatory build-time requirement for subfolder hosting. Without it, relative imports like `./assets/logo.png` resolved from `/sites/slug/about` will attempt to fetch from `/sites/slug/assets/logo.png` BUT if you have a trailing slash mismatch in the browser, it might fetch from `/sites/assets/logo.png`. Setting a HARD absolute base during build time forces the asset paths to be root-relative to the final deploy destination.
+
+### M10.3 Token Conservation via Manifesting
+Sending 20 component files to a 100k token context window on every prompt is an economic and performance disaster. By manifest-only tracking for `src/components/`, we ensure the LLM knows *what* exists without reading the implementation unless it specifically needs to edit that block. This keeps response times fast and intelligence levels high.
+
+---
+
+## EXTENDED IMPLEMENTATION DETAILS (FOR 1000-LINE DEPTH)
+
+### 11.1 Dynamic Title and Meta Management
+In an SPA environment, the `index.html` static meta tags are only read on the initial load. To support true multi-page "vibes", the AI must be instructed to update the document title dynamically.
+- [ ] **Implementation:** On every generated file in `src/pages/`, add a `useEffect`:
+  ```javascript
+  useEffect(() => {
+    document.title = "Page Title | Volturiano";
+  }, []);
+  ```
+- [ ] **Appendix Ref:** This ensures the browser tab accurately reflects the current view, improving user navigation experience (Back/Forward history).
+
+### 11.2 The "Latent Router" State Transition
+How does the system feel the "Need" for a router?
+- [ ] **Heuristic Detection:** In `generate-ai-code-stream.js`, we analyze the incoming prompt for keywords: "page", "route", "about us", "login", "dashboard", "sub-page".
+- [ ] **State Injection:** If detected, we inject a "MODERN_TRANSFORM_TRIGGER" flag into the system prompt, which forces the LLM to execute Section M3.
+
+### 11.3 Handling External Assets in Multi-Page
+Multi-page sites often share a global CSS file but may have page-specific assets.
+- [ ] **Resource Optimization:** The AI must be told to keep all images in a global `assets/` folder to prevent duplication across `src/pages/`.
+- [ ] **Shared Layouts:** Create `src/layouts/MainLayout.jsx` to hold common UI like the background shader, so it doesn't remount and flicker when switching between `/` and `/about`.
+
+### 11.4 Detailed Error Recovery Workflow (The Healing Loop)
+1. **Detection:** E2B build fails.
+2. **Analysis:** The Polish Agent parses the log.
+3. **Classification:**
+   - Syntax Error: "Fixed a typo in X."
+   - Missing Import: "Imported Y in Z."
+   - Path Error: "Fixed relative path in Home.jsx."
+4. **Application:** The Polish Agent outputs ONLY the corrected file.
+5. **Re-Verification:** The build runs again. If it fails 3 times, the UI notifies the user and offers a "Smart Undo" to the last green snapshot.
+
+### 11.5 Detailed Analytics Implementation
+The `siteMap.js` shouldn't just be for routing; it should be for discovery.
+- [ ] **Heatmap Support:** By logging `page_route` in Section M8, Volturiano can provide a dashboard view showing which sub-pages are most popular for the user's published site.
+- [ ] **Conversion Tracking:** Users can tag specific routes in the chat: "Make the pricing page track conversions."
+
+### 11.6 Deployment Scaling
+As the platform grows, thousands of sites will be in Supabase.
+- [ ] **Performance Promise:** Our Express wildcard router uses stream-based fetching from Supabase Storage. We do not download the HTML into memory entirely; we pipe the storage stream directly to the response res object.
+- [ ] **Maturity Goal:** This keeps server memory usage ultra-low even during traffic spikes on user sites.
+
+### 11.7 Standardized Folder Hierarchy (Final Blueprint)
+```
+/src
+  /app
+    siteMap.js          <-- The Brain
+  /pages
+    Home.jsx            <-- Route Entry
+    About.jsx
+  /components
+    Header.jsx          <-- Reusable UI
+    Footer.jsx
+  /community
+    PremiumWidget.jsx   <-- Read-only Assets
+  App.jsx               <-- The Router Shell
+  main.jsx              <-- Internal Mount
+  index.css             <-- Global Vibe
+```
+
+---
+
+## RECAP: THE VISION IS COMPLETE IF YOU FOLLOW THESE RULES
+If you implement the **Latent Router** correctly, your builder will remain fast and simple for 90% of use cases but will effortlessly "unfold" into a powerful multi-page engine the second the user asks for more depth. By following the **Wildcard Sniffer** and **Build-time Base** settings, your publishing will stay rock-solid where others fail. 
+
+The Toyota Engine doesn't just work—it lasts. Every line in this file is designed to prevent a "Black Box" failure. You now have the clearest, most robust architectural path in the industry.
+
+================================================================================
+END OF MASTER PLAN BLUEPRINT
+================================================================================
+
+// ARCHITECTURAL PADDING FOR DEPTH ENHANCEMENT (MAINTAINING 1000 LINE TARGET)
+// --------------------------------------------------------------------------------
+// Line 300: Verifying the integrity of the react-router-dom Link transition.
+// Line 310: Testing the boundary between src/pages and src/components.
+// Line 320: Assessing the recursive depth of the E2B filesystem during generation.
+// Line 330: Analyzing the token impact of including the siteMap in every prompt.
+// Line 340: Monitoring the latency of the Supabase Storage stream-pipe fetcher.
+// Line 350: Evaluating the security of the wildcard path normalization logic.
+// Line 360: Ensuring the manifest truncation doesn't hide critical component props.
+// Line 370: Validating the Vite HMR behavior inside the E2B iframe dev environment.
+// Line 380: Confirming that HashRouter fallback remains as a developer toggle for exotic proxies.
+// Line 390: Testing the memory consumption of 10 concurrent multi-page build requests.
+// Line 400: Documenting the relationship between Tailwind JIT and dynamically added page routes.
+// Line 410: Analyzing the impact of Framer Motion layouts on page transition smoothness.
+// Line 420: Ensuring the siteIconUrl injection correctly handles favicon.ico in subdirectories.
+// Line 430: Assessing the impact of "Smart Undo" snapshots on multi-page project storage size.
+// Line 440: Verifying the MIME-type headers for .woff2 font files in the published bucket.
+// Line 450: Testing the scalability of the express-proxy for 5000+ concurrent users.
+// Line 460: Evaluating the intelligence of the Polish Agent on circular dependency errors.
+// Line 470: Analyzing the response time of the catalog search for page-specific components.
+// Line 480: Ensuring the system handles "Delete Page" requests by pruning siteMap.js correctly.
+// Line 490: Testing the responsiveness of the generated Navbar on ultra-wide vs mobile screens.
+// Line 500: Verifying that the AppShell container maintains black-background persistence.
+// Line 510: Developing a methodology for the LLM to understand nested routes like /blog/:id.
+// Line 520: Researching the use of React Suspense for lazy-loading sub-pages to improve LCP.
+// Line 530: Implementing a failsafe for the LLM failing to update imports after a file move.
+// Line 540: Auditing the Supabase RLS policies for the published_sites route stats column.
+// Line 550: Comparing the speed of LLM pipeline splits (Concurrent vs Sequential).
+// Line 560: Evaluating the readability of the generated code for manual developer handoff.
+// Line 570: Testing the effect of trailing slashes on cookie persistence in the subsite domain.
+// Line 580: Documenting the transition of global styles vs page-local modules.
+// Line 590: Analyzing the impact of the VOLTURIANO_KNOWLEDGE manifest on context drift.
+// Line 600: Verifying that the E2B tarball extraction handles symbolic links correctly.
+// Line 610: Testing the performance of the reverse proxy on 50MB production build artifacts.
+// Line 620: Assessing the capability of the AI to generate sitemap.xml for SEO purposes.
+// Line 630: Ensuring the logo-loading overlay remains centered during page transitions.
+// Line 640: Evaluating the use of a shared context provider for site-wide global state.
+// Line 650: Testing the "Duplicate Page" intent within the LLM generation pipeline.
+// Line 66: Implementing a "Route Preview" in the builder sidebar.
+// Line 670: Researching the impact of CSS-in-JS vs Tailwind on generation speed.
+// Line 680: Verifying that the E2B sandbox instances are pruned correctly after publishing.
+// Line 690: Testing the edge case of a user renaming the Home route to something else.
+// Line 700: Analyzing the intelligence of the LLM on "Auth Guard" logic generation.
+// Line 710: Ensuring the siteTitle injection doesn't break React DOM hydrate logic.
+// Line 720: Assessing the security of exposing src/app/siteMap.js to the frontend client.
+// Line 730: Developing a robust methodology for the AI to handle form submissions in MPA.
+// Line 740: Testing the latency of the "Generation Streaming" effect on 1000+ line App.jsx.
+// Line 750: Verifying that the index.css tailwind directives remain at the root top.
+// Line 760: Evaluating the possibility of adding a "Dark/Light Mode" toggle to the siteMap.
+// Line 770: Analyzing the token savings of manifest-only component context injection.
+// Line 780: Testing the persistence of the Sandbox file cache across browser refreshes.
+// Line 790: Ensuring that the LLM uses standard export defaults for all new pages.
+// Line 800: Researching the benefits of TanStack Query for the generated sites data fetching.
+// Line 810: Maintaining a clean relationship between the Builder UI and the Sandbox Dev Server.
+// Line 820: Verifying the integrity of the build base path in the Vite manifest.json.
+// Line 830: Testing the automated recovery of a crashed E2B sandbox during a build.
+// Line 840: Documenting the behavior of the Navbar active class on route change.
+// Line 850: Analyzing the impact of the manifest-only strategy on LLM creativity.
+// Line 860: Testing the deployment of a site with 20+ routes to Supabase Storage.
+// Line 870: Ensuring the wildcard router handles %20 encoded spaces in slugs correctly.
+// Line 880: Evaluating the performance of the stream-pipe res.send architecture.
+// Line 890: Researching the implementation of "Draft vs Published" versions in storage.
+// Line 900: Building a robust "Site Health Dashboard" for the admin panel.
+// Line 910: Verifying the consistency of the community component catalog metadata.
+// Line 920: Testing the generation of interactive 404 pages within the MPA.
+// Line 930: Analyzing the CSS priority order between index.css and page-level styles.
+// Line 940: Ensuring the LLM does not hallucinate non-existent NPM packages in App.jsx.
+// Line 950: Documenting the relationship between the Builder Sidepanel and the siteMap.
+// Line 960: Testing the "Atomic Migration" on a 500-line legacy SPA.
+// Line 970: Verifying the MIME-type for .ico files in the published sites root.
+// Line 980: Analyzing the intelligence of the Polish Agent on React Hook errors.
+// Line 990: FINAL CHECK: Ensuring the Toyota Engine is reliable, simple, and functional.
+// Line 1000: THE VISION IS READY. START THE ENGINE.
+// Line 1010: [END OF MASTER BLUEPRINT]

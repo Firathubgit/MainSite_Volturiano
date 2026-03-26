@@ -10,16 +10,13 @@ import i18n from './providers/i18n';
 
 const App = lazy(() => import('./app/App'));
 
-function LoadingFallback() {
-  const { t } = useTranslation('common');
-  return <div className="center">{t('loading')}</div>;
-}
+import LoadingOverlay from './components/LoadingOverlay/LoadingOverlay';
 
 const router = createBrowserRouter([
   {
     path: '/*',
     element: (
-      <Suspense fallback={<LoadingFallback />}>
+      <Suspense fallback={<LoadingOverlay />}>
         <App />
       </Suspense>
     ),

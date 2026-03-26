@@ -23,6 +23,7 @@ import {
 import { useBuilderAuth } from '../../../../../contexts/BuilderAuthContext';
 import { builderSupabase } from '../../../../../lib/builderSupabaseClient';
 import ProjectGrid from './components/ProjectGrid';
+import CongratsModal from './components/CongratsModal';
 import styles from './BuilderDashboard.module.css';
 
 // ─── TABS ───────────────────────────────────
@@ -43,6 +44,7 @@ export default function BuilderDashboard() {
   const [publishedSites, setPublishedSites] = useState([]);
   const [stats, setStats] = useState({ totalProjects: 0, totalPublished: 0, credits: 0 });
   const [loading, setLoading] = useState(true);
+  const [showCongrats, setShowCongrats] = useState(false);
 
   // Auth Redirect if not logged in
   useEffect(() => {
@@ -88,9 +90,18 @@ export default function BuilderDashboard() {
       setLoading(true);
       await Promise.all([fetchStats(), fetchProjects(), fetchPublishedSites()]);
       setLoading(false);
+
+      // Trigger Congrats Modal if new user flag exists AND they haven't seen it yet
+      if (searchParams.get('new') === 'true' && !profile?.has_received_bonus_popup) {
+        setShowCongrats(true);
+        // Clean up URL
+        const newParams = new URLSearchParams(searchParams);
+        newParams.delete('new');
+        setSearchParams(newParams, { replace: true });
+      }
     };
     init();
-  }, [user, fetchStats, fetchProjects, fetchPublishedSites]);
+  }, [user, profile, fetchStats, fetchProjects, fetchPublishedSites, searchParams, setSearchParams]);
 
   const handleDeleteProject = async (id) => {
     if (!window.confirm('Are you sure you want to delete this project permanently? This cannot be undone.')) return;
@@ -109,6 +120,17 @@ export default function BuilderDashboard() {
   };
 
   const handleCreateNew = () => navigate('/builder');
+
+  const handleCloseCongrats = async () => {
+    setShowCongrats(false);
+    // Mark as received in DB so it never shows again
+    if (user?.id) {
+      await builderSupabase
+        .from('profiles')
+        .update({ has_received_bonus_popup: true })
+        .eq('id', user.id);
+    }
+  };
 
   if (!user || !profile) {
     return (
@@ -225,6 +247,11 @@ export default function BuilderDashboard() {
           </div>
         )}
       </main>
+
+      <CongratsModal 
+        isOpen={showCongrats} 
+        onClose={handleCloseCongrats} 
+      />
     </div>
   );
 }

@@ -12,14 +12,16 @@
 
 .modal {
   background: #000000;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 24px;
+  border: 1.5px solid #ffffff;
+  border-radius: 28px;
   width: 100%;
   max-width: 440px;
-  padding: 48px 32px;
+  padding: 56px 40px;
   position: relative;
   overflow: hidden;
-  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.6), 0 0 40px rgba(255, 255, 255, 0.05);
+  box-shadow: 
+    0 40px 100px rgba(0, 0, 0, 0.8),
+    0 0 60px rgba(255, 255, 255, 0.08);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -30,24 +32,26 @@
   position: absolute;
   inset: 0;
   background-image: 
-    linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
-  background-size: 32px 32px;
+    linear-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+  background-size: 24px 24px;
   pointer-events: none;
-  opacity: 0.5;
+  opacity: 0.4;
 }
 
 .iconWrapper {
-  width: 64px;
-  height: 64px;
-  background: rgba(255, 255, 255, 0.05);
-  border-radius: 16px;
+  width: 72px;
+  height: 72px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 20px;
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-bottom: 24px;
+  margin-bottom: 32px;
   position: relative;
   z-index: 1;
+  box-shadow: 0 0 30px rgba(255, 255, 255, 0.05);
 }
 
 .title {
@@ -82,25 +86,25 @@
 
 .primaryButton {
   width: 100%;
-  padding: 16px;
+  padding: 18px;
   background: #ffffff;
   color: #000000;
   border: none;
-  border-radius: 12px;
+  border-radius: 14px;
   font-size: 16px;
-  font-weight: 600;
+  font-weight: 700;
   cursor: pointer;
-  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
+  gap: 10px;
 }
 
 .primaryButton:hover {
   transform: translateY(-2px);
-  filter: brightness(0.9);
-  box-shadow: 0 8px 24px rgba(255, 255, 255, 0.15);
+  background: #f0f0f0;
+  box-shadow: 0 12px 32px rgba(255, 255, 255, 0.25);
 }
 
 .secondaryButton {

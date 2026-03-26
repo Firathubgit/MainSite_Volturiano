@@ -40,15 +40,19 @@ export function AuthPage() {
     setIsSubmitting(true);
     clearError();
     setSuccessMessage("");
-    await signInWithGoogle();
-    // OAuth will redirect, so no need to setIsSubmitting(false)
+    // We add a 'session_type=signup' hint in localStorage if we want to detect it after OAuth, 
+    // but the simplest way is to handle the redirect in Supabase settings or just check if it's a first-time login on the dashboard.
+    // For now, I'll pass the redirectTo with the new=true flag.
+    const redirectTo = `${window.location.origin}/builder/profile?tab=Websites&new=true`;
+    await signInWithGoogle(redirectTo);
   };
 
   const handleGithubLogin = async () => {
     setIsSubmitting(true);
     clearError();
     setSuccessMessage("");
-    await signInWithGithub();
+    const redirectTo = `${window.location.origin}/builder/profile?tab=Websites&new=true`;
+    await signInWithGithub(redirectTo);
   };
 
   const handleEmailSubmit = async (e) => {
@@ -73,12 +77,15 @@ export function AuthPage() {
         }
         const { error } = await signUpWithPassword(email, password, fullName);
         if (!error) {
-          setSuccessMessage("Account created! Check your email to confirm.");
+          setSuccessMessage("Account created! Redirecting to setup your bonus...");
+          setTimeout(() => {
+            navigate("/builder/profile?tab=Websites&new=true", { replace: true });
+          }, 1500);
         }
       } else {
         const { error } = await signInWithPassword(email, password);
         if (!error) {
-          navigate("/builder", { replace: true });
+          navigate("/builder/profile?tab=Websites", { replace: true });
         }
       }
     } finally {

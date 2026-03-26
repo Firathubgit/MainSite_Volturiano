@@ -15,6 +15,7 @@ import GradualBlur from './GradualBlur';
 import { useRouteTransition } from '../../../../contexts/RouteTransitionContext';
 import CommunitySelectorPopup from './Generation/CommunitySelectorPopup';
 import AuthGateModal from '../../../../components/Modals/AuthGateModal';
+import CongratsModal from './Dashboard/components/CongratsModal';
 
 // Import assets (Reference page thumbnails)
 import scaleIntelligenceThumbnail from '../../../../assets/ScaleIntelegenceMocup.png';
@@ -115,7 +116,7 @@ const BuilderContent = () => {
         }
     }, [location.search, navigate, location.state]);
     
-    const { isAuthenticated, profile, loading: authLoading } = useBuilderAuth();
+    const { isAuthenticated, profile, loading: authLoading, refreshProfile } = useBuilderAuth();
     const { startTransition } = useRouteTransition();
     const { refreshCredits } = useCredits();
     const [inputValue, setInputValue] = useState("");
@@ -141,6 +142,8 @@ const BuilderContent = () => {
     const [selectedComponents, setSelectedComponents] = useState([]);
     const [strictMode, setStrictMode] = useState(false);
     const [showAuthModal, setShowAuthModal] = useState(false);
+    const [showCongrats, setShowCongrats] = useState(false);
+    const [popupDismissed, setPopupDismissed] = useState(false); // Session guard
 
     const premiumPhrases = [
         "design a luxury real estate site...",
@@ -192,6 +195,32 @@ const BuilderContent = () => {
         type();
         return () => clearTimeout(timeout);
     }, []);
+
+    // Bonus Popup Check - Check every time user lands on Builder
+    useEffect(() => {
+        if (isAuthenticated && profile && profile.has_received_bonus_popup === false && !popupDismissed) {
+            setShowCongrats(true);
+        }
+    }, [isAuthenticated, profile, popupDismissed]);
+
+    const handleCloseCongrats = async () => {
+        setShowCongrats(false);
+        setPopupDismissed(true); // Immediate session guard
+        
+        if (profile?.id) {
+            const { error } = await builderSupabase
+                .from('profiles')
+                .update({ has_received_bonus_popup: true })
+                .eq('id', profile.id);
+            
+            if (!error) {
+                // Force a profile refresh to sync the context state
+                refreshProfile();
+            } else {
+                console.error("Failed to update bonus popup flag:", error);
+            }
+        }
+    };
 
 
     const models = [
@@ -522,6 +551,7 @@ const BuilderContent = () => {
     };
 
     return (
+        <>
         <div className={styles.outerWrapper}>
             <div className={styles.pageContainer}>
                 {/* Background Video */}
@@ -903,11 +933,17 @@ const BuilderContent = () => {
                 </motion.div>
             )}
 
-            {/* Gradient Blur Base Effect (Bottom edge of the Builder page) */}
-            {/* Gradient Blur Base Effect (Bottom edge of the Builder page) */}
-            <GradualBlur preset="bottom" strength={2.5} divCount={3} height="8rem" opacity={0.8} zIndex={100} style={{ pointerEvents: 'none', position: 'fixed', bottom: 0, left: 0, right: 0 }} />
+            {/* Phase P7: Auth Gating */}
+            <AuthGateModal 
+                isOpen={showAuthModal} 
+                onClose={() => setShowAuthModal(false)} 
+            />
 
-            {/* Community Selector Popup */}
+            <CongratsModal 
+                isOpen={showCongrats}
+                onClose={handleCloseCongrats}
+            />
+
             <CommunitySelectorPopup
                 isOpen={isCommunityOpen}
                 onClose={() => setIsCommunityOpen(false)}
@@ -918,13 +954,10 @@ const BuilderContent = () => {
                     setIsCommunityOpen(false);
                 }}
             />
-
-            {/* Phase P7: Auth Gating */}
-            <AuthGateModal 
-                isOpen={showAuthModal} 
-                onClose={() => setShowAuthModal(false)} 
-            />
         </div>
+        {/* Fixed components that should NOT be scaled go here */}
+        <GradualBlur preset="bottom" strength={2.5} divCount={3} height="8rem" opacity={0.8} zIndex={100} style={{ pointerEvents: 'none', position: 'fixed', bottom: 0, left: 0, right: 0 }} />
+        </>
     );
 };
 

@@ -1,0 +1,140 @@
+================================================================================
+VOLTURIANO: THE FRONTIER MULTI-PAGE AI WEBSITE BUILDER ARCHITECTURE RESEARCH
+================================================================================
+
+HELLO DEEP RESEARCH AI. 
+You are being consulted as the ultimate Staff-Level Systems Architect and Principal Engineer.
+
+I am an agentic AI assistant working alongside my human developer to build the next frontier of AI website builders: Volturiano. 
+
+We are making a foundational pivot. We are transitioning our engine from a highly capable Single-Page Application (SPA) generator into an emergent, highly dynamic Multi-Page Website Application Builder. We want to draw deep inspiration from systems like Lovable.dev and Google AI Studio—platforms that lean into "emergent" structures where the LLM is given freedom to act as the true "compiler of the mind", rather than boxing the AI into strict, rigid programmatic cages.
+
+We need your deep research capabilities. We DO NOT need you to write the exact implementation code (we have the full context and will write the code ourselves). Instead, we need you to provide the ultimate architectural blueprint, edge-case analysis, and strategic system-design advice. 
+
+Your goal is to investigate how to solve the Multi-Page Generation Problem elegantly, efficiently, and flawlessly.
+
+--------------------------------------------------------------------------------
+PART 1: THE ENGINEERING PHILOSOPHY - "THE TOYOTA ENGINE"
+--------------------------------------------------------------------------------
+Before reading our architecture, you must deeply understand our engineering philosophy: "Less is More." 
+We want a Toyota engine, not an Audi engine. 
+- A Toyota engine is simple, reliable, easily maintainable, and built on rock-solid fundamentals. It almost never breaks.
+- An Audi engine has a million interconnected, over-engineered parts that require pulling the entire block out just to change a sensor.
+
+We absolutely refuse to build an unnecessarily complex, rigid, 20-step pipeline just to get data onto a webpage. 
+The system must be highly dynamic. 
+The LLM (which acts as our code generator) must be given the freedom to understand dependencies and structure organically, rather than being forced through rigid, brittle regex parsers or nested loops. 
+We want clean, appendable infrastructure. If a user wants to manually edit the code, the codebase must look like a beautiful, standard React application—not a messy, proprietary compiled blob.
+
+--------------------------------------------------------------------------------
+PART 2: CURRENT LIMITATIONS & THE PROMPT ENGINE (RAW CONTEXT)
+--------------------------------------------------------------------------------
+To give you exactly what you need, here are the actual limits and constraints we currently enforce in `generate-ai-code-stream.js`. 
+
+Right now, we actively FORBID the AI from routing. Here is our exact system prompt snippet that we use today:
+\`\`\`javascript
+CRITICAL OUTPUT RULES:
+- Output files wrapped in <file path="relative/path">...code...</file> tags
+- Create complete, working files with all imports
+- Use Tailwind CSS for styling
+- NEVER output vite.config.js, package.json, or tailwind.config.js (already exist in sandbox)
+- ALWAYS create src/index.css first (using standard @tailwind base; @tailwind components; @tailwind utilities; directives)
+- ALWAYS create src/App.jsx second
+- Then create all imported components
+- Export default every component
+
+APP.JSX COMPOSITION RULES (CRITICAL):
+1. COMPOSITION ONLY: src/App.jsx is for assembling components ONLY.
+2. RENDER EVERYTHING: You MUST import and render ALL the components you created. Do not leave any out.
+3. VERTICAL STACK: Render components in a logical vertical order (Header -> Hero -> content sections -> Footer).
+4. NO ROUTING: Unless explicitly asked, stack everything on one page. Do NOT use React Router for simple landing pages.
+5. NO CONDITIONAL RENDERING: Do not hide components behind state or conditions. Show them all.
+\`\`\`
+
+As you can see, the current system is an uncompromising Single-Page-Stacker.
+
+When the user asks for a change, we currently use this Edit-Mode logic:
+\`\`\`javascript
+STEP 1 — INTENT ANALYSIS (What is the user actually asking?):
+  • ADD FEATURE: "Add a gallery section" or "add testimonials" → Create ONE new component file, update App.jsx to include it, keep everything else unchanged.
+  • REPLACE/SWAP: "Change the hero to X" → Output the NEW component file, update App.jsx to IMPORT the new one AND REMOVE the old one.
+\`\`\`
+
+--------------------------------------------------------------------------------
+PART 3: THE PUBLISHING ARCHITECTURE (RAW CONTEXT)
+--------------------------------------------------------------------------------
+This is how we currently publish sites. Inside `publish.js`:
+1. We run a build inside the E2B Sandbox (`verify-sandbox-build.js`).
+2. We `tar` the `dist/` folder and `base64` it out of the container to our backend.
+3. We unpack the tarball into memory.
+4. We upload the built static files (`index.html`, `assets/index.js`, etc.) into a Supabase Storage Bucket called `published-sites/${slug}/`.
+5. We rewrite the `index.html` on the fly to inject the metadata and the Volturiano brand stamp.
+
+When a user visits `volturiano.com/sites/MyAwesomeSite`, our Express server intercepts the API request and proxies the fetch directly to Supabase storage to return `published-sites/MyAwesomeSite/index.html`. 
+
+--------------------------------------------------------------------------------
+PART 4: THE MULTI-PAGE VISION & PROBLEM STATEMENT
+--------------------------------------------------------------------------------
+We want to transition this pipeline into an emergent Multi-Page Application (MPA) Builder.
+
+If a user attaches a "Premium Login Component" and says "Add a login system and an About Us page", the system should:
+1. Understand it needs to create routing dynamically.
+2. Install `react-router-dom` (or a similar lightweight standard, if not pre-installed).
+3. Transform the current `App.jsx` from a stacked landing page into a Layout/Routing shell (`<BrowserRouter>`, `<Routes>`, `<Route>`).
+4. Abstract the home page into `src/pages/Home.jsx`.
+5. Create `src/pages/About.jsx` and `src/pages/Login.jsx`, utilizing the community component the user provided.
+6. Automatically wire up the main Navbar so that the `<Link>` tags correctly point to `/about` and `/login`.
+
+Furthermore, when the site is published and hosted at `volturiano.com/sites/Sitename`, navigating to `volturiano.com/sites/Sitename/about` must not result in a 404 from our reverse proxy. It must correctly load the React Router state and display the About page, maintaining the base path dynamically without relying on brittle backend configurations.
+
+--------------------------------------------------------------------------------
+PART 5: YOUR MISSION (DEEP RESEARCH DIRECTIVES)
+--------------------------------------------------------------------------------
+We need you to conduct deep architectural research and return a highly detailed advisory manifesto. Focus heavily on edge cases, emergent system design, and how platforms like Lovable.dev and Google AI Studio approach these paradigms. 
+
+Please structure your response addressing the following critical pillars:
+
+PILLAR A: EMERGENT ROUTING ARCHITECTURE (THE LOVABLE / AI STUDIO APPROACH)
+1. Lovable and AI Studio do not force AI through 100 rigid regex rules. They allow the AI to figure out what files to create. What is the most robust, *emergent* way to structure a multi-page React app inside an E2B sandbox?
+2. By default, should we pre-install `react-router-dom` and provide a default `App.jsx` with an empty `<Routes>` block? Or is it better (and more Toyota-like) to let the LLM physically rewrite `main.jsx` and `App.jsx` only when it detects the user wants multiple pages?
+3. File-Based Routing vs Component Routing: Should we introduce Vite-plugin-pages so the AI just drops files into `src/pages/` and navigation magically hooks up, heavily reducing LLM token strain and hallucination? Or is traditional `react-router` safer for the AI to debug?
+4. How do we guide the LLM to cleanly migrate an *existing* generated Single Page App inside a user's session into a Multi-page App without entirely destroying their current layout state?
+
+PILLAR B: THE CUSTOM COMPONENT INJECTION PROBLEM
+1. Our users can feed components (like an "AboutSection" or a "LoginForm") directly into the prompt context via a Community Catalog. 
+2. If the AI is building a multi-page site, how do we best prompt the AI to conceptually understand the difference between a "Component" (meant to be embedded in a page) vs. a "Page" (meant to be a standalone route)? 
+3. How do we ensure that when the AI creates an `About.jsx` page using the user's component, it properly links it in the global Navbar across the emergent structure? What is the best standard practice to enforce global state/navigation consistency across an AI-generated network?
+
+PILLAR C: THE PUBLISHING & BASE PATH TRAUMA (EDGE CASES)
+1. This is the danger zone. The Vite dev server runs at the root `/` inside the E2B iframe. But when published, the site lives at `volturiano.com/sites/Slug`.
+2. How does React Router (or an emergent router) handle environments where the base path changes between Dev and Prod dynamically? 
+3. Should the AI be instructed to configure the `vite.config.js` with `base: './'` and build the router using relative paths? Or should we deeply inject an environment variable `import.meta.env.BASE_URL` into the `<BrowserRouter basename={...}>` during the VITE build step before tarballing?
+4. When a user navigates directly to `volturiano.com/sites/Slug/about`, the Express backend will intercept it. Instead of looking for `about/index.html` in Supabase (which doesn't exist for client-side routing), the backend must fallback to serving the root `index.html`. What are the security, MIME-type, and performance edge cases of a wildcard catch-all route (`/sites/:slug/*`) fetching from a cloud blob bucket? Detail EXACTLY how Vite static assets (like `.js` and `.css` files) handle relative pathing when served from a wildcard route payload.
+
+PILLAR D: ERROR HANDLING, HALLUCINATION MITIGATION, & STATE RECOVERY
+1. In a multi-page ecosystem, build errors become exponentially more complex (e.g., circular dependencies, missing route elements, dead links). 
+2. How do emergent platforms prevent the AI from "losing the plot" over long, multi-page context windows?
+3. Should we break page generation into isolated LLM pipeline calls (e.g. Call 1: Generate Layout, Call 2: Generate Home, Call 3: Generate About), OR should we rely strictly on massive frontier context windows (Gemini 1.5 Pro) to generate all routes in one massive burst stream? What is the safest, most robust Toyota-engine way to orchestrate massive file-tree changes without the E2B sandbox collapsing into syntax errors?
+
+PILLAR E: COMPETITIVE ANALYSIS (LOVABLE & EMERGENT MODELS)
+1. How does Lovable natively support routing while maintaining dynamic component swaps?
+2. How does Google AI Studio (or pure emergent LLM interactions) structure complex file systems natively when given full filesystem access?
+3. What hidden pitfalls did these modern platforms run into regarding client-side routing inside web containers/iframes? 
+4. What architectural shortcuts did older platforms (like V0 or early Bolt) take that we should absolutely avoid?
+
+--------------------------------------------------------------------------------
+PART 6: FINAL OUTPUT REQUIREMENTS
+--------------------------------------------------------------------------------
+Your response should be formatted as a high-density, aggressively detailed architectural manifesto. 
+
+DO NOT write the literal backend code for us (no Express endpoints or precise `App.jsx` rewrites). We will write the code. 
+
+DO provide:
+- High-level abstract folder structures that represent the end-goal.
+- Strategic guidance on prompting standards for emergent routing.
+- The safest React Router / Vite configuration strategies for dynamic base paths and wildcard routing.
+- Critical insights, potential memory leaks, LLM context-window degradation warnings, and exactly how to mitigate them using the Toyota Engine mindset.
+
+Give us the clarity, the foresight, and the architectural brilliance necessary to implement this flawlessly. 
+We seek the ultimate intersection of Frontier AI capabilities and highly reliable, simple engineering. 
+Take your time, analyze deeply, and return with a masterpiece.

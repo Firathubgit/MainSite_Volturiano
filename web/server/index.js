@@ -350,7 +350,7 @@ process.on('uncaughtException', (error) => {
 
 import { runWorker } from './workers/submission-analyzer.js';
 
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
   console.log(`[Volturiano Builder Server] Running on port ${PORT}`);
   console.log(`[Volturiano Builder Server] E2B API Key: ${process.env.E2B_API_KEY ? 'Set' : 'MISSING'}`);
   console.log(`[Volturiano Builder Server] OpenAI API Key: ${process.env.OPENAI_API_KEY ? 'Set' : 'MISSING'}`);
@@ -360,3 +360,11 @@ app.listen(PORT, () => {
   // Start background worker to process Community submissions in same thread
   runWorker().catch(err => console.error('[Analyzer] Background Worker fatally crashed:', err));
 });
+
+// ═══ CRITICAL: Prevent Railway 502 on long-running LLM requests ═══
+// Gemini 3.1 Pro structured output can take 60-120s for complex plans.
+// Node.js defaults to 120s, but Railway's proxy can cut sooner.
+// Setting 5 minutes gives ample headroom.
+server.timeout = 300000;           // 5 min — max time for a request to complete
+server.keepAliveTimeout = 120000;  // 2 min — keep TCP connections alive between requests
+server.headersTimeout = 305000;    // 5 min + 5s — must be > timeout per Node.js docs

@@ -198,7 +198,8 @@ const BuilderContent = () => {
 
     // Bonus Popup Check - Check every time user lands on Builder
     useEffect(() => {
-        if (isAuthenticated && profile && profile.has_received_bonus_popup === false && !popupDismissed) {
+        // Sequence: Only show Congrats Bonus popup AFTER onboarding is completed
+        if (isAuthenticated && profile && profile.onboarding_completed === true && profile.has_received_bonus_popup === false && !popupDismissed) {
             setShowCongrats(true);
         }
     }, [isAuthenticated, profile, popupDismissed]);
@@ -909,52 +910,61 @@ const BuilderContent = () => {
                     </div>
                 </motion.div>
             </div>
-
-            {/* Onboarding Popup for First-Time Users */}
-            {isAuthenticated && profile && profile.onboarding_completed === false && (
-                <OnboardingPopup />
-            )}
-
-            {notification && (
-                <motion.div
-                    initial={{ opacity: 0, y: 20, scale: 0.95 }}
-                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                    exit={{ opacity: 0, scale: 0.95 }}
-                    className={styles.notificationPopup}
-                >
-                    {!notification.includes('✅') && (
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                            <circle cx="12" cy="12" r="10" />
-                            <line x1="12" y1="8" x2="12" y2="12" />
-                            <line x1="12" y1="16" x2="12.01" y2="16" />
-                        </svg>
-                    )}
-                    {notification}
-                </motion.div>
-            )}
-
-            {/* Phase P7: Auth Gating */}
-            <AuthGateModal 
-                isOpen={showAuthModal} 
-                onClose={() => setShowAuthModal(false)} 
-            />
-
-            <CongratsModal 
-                isOpen={showCongrats}
-                onClose={handleCloseCongrats}
-            />
-
-            <CommunitySelectorPopup
-                isOpen={isCommunityOpen}
-                onClose={() => setIsCommunityOpen(false)}
-                maxItems={10}
-                initialSelectedItems={selectedComponents}
-                onConfirm={(items) => {
-                    setSelectedComponents(items);
-                    setIsCommunityOpen(false);
-                }}
-            />
         </div>
+
+        {/* ─── Fixed Overlays (Outside scaled wrapper for perfect centering) ─── */}
+        {((isAuthenticated && profile && profile.onboarding_completed === false) || showCongrats) && (
+            <div style={{ position: 'fixed', inset: 0, background: 'rgba(0, 0, 0, 0.5)', backdropFilter: 'blur(8px)', zIndex: 999999 }}>
+                <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <div style={{ transform: 'scale(0.95)', transformOrigin: 'center center', width: '100%', display: 'flex', justifyContent: 'center' }}>
+                        {/* Onboarding Popup for First-Time Users */}
+                        {isAuthenticated && profile && profile.onboarding_completed === false && (
+                            <OnboardingPopup />
+                        )}
+
+                        <CongratsModal 
+                            isOpen={showCongrats}
+                            onClose={handleCloseCongrats}
+                        />
+                    </div>
+                </div>
+            </div>
+        )}
+
+        {/* Phase P7: Auth Gating */}
+        <AuthGateModal 
+            isOpen={showAuthModal} 
+            onClose={() => setShowAuthModal(false)} 
+        />
+
+        {notification && (
+            <motion.div
+                initial={{ opacity: 0, y: 20, scale: 0.95 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                className={styles.notificationPopup}
+            >
+                {!notification.includes('✅') && (
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                        <circle cx="12" cy="12" r="10" />
+                        <line x1="12" y1="8" x2="12" y2="12" />
+                        <line x1="12" y1="16" x2="12.01" y2="16" />
+                    </svg>
+                )}
+                {notification}
+            </motion.div>
+        )}
+
+        <CommunitySelectorPopup
+            isOpen={isCommunityOpen}
+            onClose={() => setIsCommunityOpen(false)}
+            maxItems={10}
+            initialSelectedItems={selectedComponents}
+            onConfirm={(items) => {
+                setSelectedComponents(items);
+                setIsCommunityOpen(false);
+            }}
+        />
         {/* Fixed components that should NOT be scaled go here */}
         <GradualBlur preset="bottom" strength={2.5} divCount={3} height="8rem" opacity={0.8} zIndex={100} style={{ pointerEvents: 'none', position: 'fixed', bottom: 0, left: 0, right: 0 }} />
         </>

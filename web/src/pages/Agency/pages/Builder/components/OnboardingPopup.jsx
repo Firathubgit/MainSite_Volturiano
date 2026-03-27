@@ -46,18 +46,13 @@ export function OnboardingPopup({ onClose }) {
 
     return (
         <div
+            className="onboarding-overlay"
             style={{
-                position: "fixed",
-                top: 0,
-                left: 0,
-                width: "100vw",
-                height: "100vh",
-                background: "rgba(0, 0, 0, 0.4)", // 0.4 opacity black as requested
+                width: "100%",
+                height: "100%",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
-                zIndex: 999999, // Ensure it sits above absolutely everything
-                backdropFilter: "blur(8px)",
                 padding: "20px",
             }}
         >

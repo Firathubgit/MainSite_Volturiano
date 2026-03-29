@@ -1,0 +1,83 @@
+================================================================================
+PHASE 5 — COMPONENT GENERATION (MPA AWARENESS)
+MEGAPROMPTS FILE
+================================================================================
+
+Total megaprompts: 1
+Target file: server/routes/generate-single-component.js
+
+Scope: Add situational awareness to the component generator so it understands if 
+it is building a page (src/pages/) versus a section (src/components/), adjusting 
+its structure and import paths accordingly.
+
+================================================================================
+
+--- MEGAPROMPT 1 OF 1 ---
+--- TITLE: Add MPA Awareness to generate-single-component.js ---
+--- TARGET: server/routes/generate-single-component.js ---
+
+Open `web/server/routes/generate-single-component.js`.
+
+═══════════════════════════════════════════════════════════
+EDIT 1: Add Page Awareness to the System Prompt
+═══════════════════════════════════════════════════════════
+Find the schema definition around line 19-25:
+
+```javascript
+    const schema = z.object({
+      path: z.string().describe('The file path, exactly as provided in the prompt.'),
+      content: z.string().describe('The complete code for the file.'),
+      exportName: z.string().describe('The name of the exported component (e.g. HeroSection).'),
+      imports: z.array(z.string()).describe('List of imports used in the file.')
+    });
+```
+
+Right below that, insert the conditional page instructions:
+
+```javascript
+    const schema = z.object({
+      path: z.string().describe('The file path, exactly as provided in the prompt.'),
+      content: z.string().describe('The complete code for the file.'),
+      exportName: z.string().describe('The name of the exported component (e.g. HeroSection).'),
+      imports: z.array(z.string()).describe('List of imports used in the file.')
+    });
+
+    const isPage = filePath && filePath.startsWith('src/pages/');
+    const pageInstructions = isPage 
+      ? `\nMPA PAGE AWARENESS (CRITICAL): You are generating a FULL PAGE component located at ${filePath}. 
+- Do NOT render a Header, Navbar, or Footer. Those are handled by the shared layout in App.jsx.
+- If you import other custom sections, your import path must be relative to src/components/ (e.g., '../components/Hero' or '../components/premium/Contact').` 
+      : `\nMPA SECTION AWARENESS: You are generating a reusable UI section located at ${filePath}.`;
+```
+
+Next, find the `SYSTEM_PROMPT` definition starting at line 26:
+
+```javascript
+    const SYSTEM_PROMPT = `You are a senior React developer who builds award-winning, visually stunning components.
+You are an API. You MUST output ONLY raw JSON that matches the provided schema perfectly. NO conversation. NO preamble. NO markdown fences.
+
+CURRENT VISION (STAY FOCUSED): "${prompt}"
+You are building the component "${name}" for the website about: "${prompt}".
+```
+
+Inject the `${pageInstructions}` variable right before the `CRITICAL RULES`:
+
+```javascript
+    const SYSTEM_PROMPT = `You are a senior React developer who builds award-winning, visually stunning components.
+You are an API. You MUST output ONLY raw JSON that matches the provided schema perfectly. NO conversation. NO preamble. NO markdown fences.
+
+CURRENT VISION (STAY FOCUSED): "${prompt}"
+You are building the component "${name}" for the website about: "${prompt}".
+${pageInstructions}
+
+CRITICAL RULES:
+```
+
+IMPORTANT CONTEXT:
+This fulfills the Phase 5 requirement. When the LLM builds a page, it now knows to skip headers/footers and adjust its relative import paths for components dynamically.
+
+--- END OF MEGAPROMPT 1 ---
+
+================================================================================
+END OF PHASE 5 MEGAPROMPTS
+================================================================================

@@ -1,0 +1,167 @@
+================================================================================
+PHASE 17 — FRONTEND ORCHESTRATION 
+MEGAPROMPTS FILE
+================================================================================
+
+Total megaprompts: 3
+Target file: src/pages/Agency/pages/Builder/Generation/Generation.jsx (3,268 lines)
+
+Scope: The frontend needs to act as the conduit for the new MPA variables (isMultiPage, pages, sharedComponentRefIds).
+- Megaprompt 1: State management, default file tree, and planning extraction.
+- Megaprompt 2: Passing state to the renderer and edit pipelines.
+- Megaprompt 3: Handling Community Components dropped as full pages.
+
+Dependencies: Phases 6-15 must be complete.
+Risk: MEDIUM — modifying a massive central orchestrator.
+
+================================================================================
+
+--- MEGAPROMPT 1 OF 3 ---
+--- TITLE: Define MPA State and Extract Plan Data ---
+--- TARGET: src/pages/Agency/pages/Builder/Generation/Generation.jsx ---
+
+Open the file `src/pages/Agency/pages/Builder/Generation/Generation.jsx`.
+
+═══════════════════════════════════════════════════════════
+EDIT 1: Add State Variables and File Tree Defaults (near L287)
+═══════════════════════════════════════════════════════════
+Find the state definitions section around line 287 where `expandedFolders` are defined.
+
+```javascript
+  const [expandedFolders, setExpandedFolders] = useState(new Set(['src', 'src/components']));
+```
+
+Replace it with:
+
+```javascript
+  // MPA State Tracking
+  const [expandedFolders, setExpandedFolders] = useState(new Set(['src', 'src/components', 'src/pages', 'src/app']));
+  const [isMultiPageProject, setIsMultiPageProject] = useState(false);
+  const [projectPages, setProjectPages] = useState([]);
+  const [projectSharedComponents, setProjectSharedComponents] = useState([]);
+```
+
+═══════════════════════════════════════════════════════════
+EDIT 2: Extract MPA Data from Planner (near L1317)
+═══════════════════════════════════════════════════════════
+Find where `planData` is destructured (around line 1317):
+
+```javascript
+      const { components: rawComponents, globalStyle } = planData;
+```
+
+Replace it with:
+
+```javascript
+      const { components: rawComponents, globalStyle, isMultiPage, pages, sharedComponentRefIds } = planData;
+      
+      // Save MPA state for the renderer and future edit cycles
+      if (isMultiPage) {
+        setIsMultiPageProject(true);
+        setProjectPages(pages || []);
+        
+        // Convert shared refIds to actual component objects
+        const sharedComps = rawComponents.filter(c => (sharedComponentRefIds || []).includes(c.refId || c.name));
+        setProjectSharedComponents(sharedComps);
+      }
+```
+
+IMPORTANT CONTEXT:
+This allows Generation.jsx to "wake up" to the fact that a project is multi-page as soon as the planner decides it is.
+
+--- END OF MEGAPROMPT 1 ---
+
+
+--- MEGAPROMPT 2 OF 3 ---
+--- TITLE: Pass MPA State to Render and Edit Endpoints ---
+--- TARGET: src/pages/Agency/pages/Builder/Generation/Generation.jsx ---
+
+Open the file `src/pages/Agency/pages/Builder/Generation/Generation.jsx`.
+
+═══════════════════════════════════════════════════════════
+EDIT 1: Pass data to render-app (near L1496)
+═══════════════════════════════════════════════════════════
+Find the `render-app` fetch call blocks. Look for the `JSON.stringify` body that sends `components: validComponents, ...`:
+
+```javascript
+          body: JSON.stringify({
+            components: validComponents,
+            buildId
+          })
+```
+(Note: the exact structure may have slight variations, just ensure you add the parameters alongside `components`)
+
+Replace the body payload logic with:
+
+```javascript
+          body: JSON.stringify({
+            components: validComponents,
+            buildId,
+            isMultiPage: isMultiPageProject,
+            pages: projectPages,
+            sharedComponents: projectSharedComponents
+          })
+```
+(Apply this change to ANY `fetch('/api/render-app')` calls found in the file, usually inside `executeGenerationStep` or the main build loop).
+
+═══════════════════════════════════════════════════════════
+EDIT 2: Pass data to generate-ai-code-stream for edits (near L1000)
+═══════════════════════════════════════════════════════════
+Find the `handleChatSubmit` or Edit Flow block that calls `/api/generate-ai-code-stream`.
+Look for the `body: JSON.stringify({...})`:
+
+```javascript
+          body: JSON.stringify({
+            prompt: promptText,
+            currentFiles,
+            premiumComponents: conversationContext.generatedComponents.filter(c => c.source === 'premium'),
+            // ... other existing props
+```
+
+Add these 3 new properties to that object:
+```javascript
+            isMultiPage: isMultiPageProject,
+            currentPages: projectPages,
+            siteMap: currentFiles.find(f => f.path === 'src/app/siteMap.js')?.content || '',
+```
+
+IMPORTANT CONTEXT:
+By passing these correctly, the backend dual-mode renderer activates and the Edit Flow LLM gains full multi-page structural awareness.
+
+--- END OF MEGAPROMPT 2 ---
+
+
+--- MEGAPROMPT 3 OF 3 ---
+--- TITLE: Handle Community Components as Pages ---
+--- TARGET: src/pages/Agency/pages/Builder/Generation/Generation.jsx ---
+
+Open the file `src/pages/Agency/pages/Builder/Generation/Generation.jsx`.
+
+═══════════════════════════════════════════════════════════
+EDIT 1: Update handleCommunityComponentDropped (near L1200)
+═══════════════════════════════════════════════════════════
+Find the function that handles when a user drops a community component. Looking for how it defines the file path (often defaulting to `src/components/premium/`):
+
+Look for logic similar to:
+```javascript
+      const componentPath = `src/components/premium/${bundleData.id}.jsx`;
+```
+
+Update it to detect if the component is a page and change the path:
+```javascript
+      // V4.0 logic: If component is labeled as a page in metadata (or fallback inference)
+      const isPage = bundleData.component_type === 'page' || bundleData.name.toLowerCase().includes('page');
+      const basePath = isPage ? 'src/pages' : 'src/components/premium';
+      const cleanName = bundleData.name.replace(/\s+/g, '');
+      const componentPath = `${basePath}/${cleanName}.jsx`;
+```
+(If `handleCommunityComponentDropped` isn't named exactly that, look for `handleComponentDrop` or the function managing the `DropZone`).
+
+IMPORTANT CONTEXT:
+This completes Phase 13's killer feature. When a component is imported, the path correctly determines if it becomes a route.
+
+--- END OF MEGAPROMPT 3 ---
+
+================================================================================
+END OF PHASE 17 MEGAPROMPTS
+================================================================================

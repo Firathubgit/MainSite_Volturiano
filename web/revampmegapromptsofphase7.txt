@@ -1,0 +1,135 @@
+================================================================================
+PHASE 7 — INTELLIGENT COMPONENT SELECTION FOR EDITS
+MEGAPROMPTS FILE
+================================================================================
+
+Total megaprompts: 1
+Target file: server/routes/generate-ai-code-stream.js
+Scope: Update the edit-mode system prompt (lines 113-145) to add:
+       1. ADD_PAGE intent to the intent classification
+       2. REMOVE_COMPONENT as an explicit intent type
+       3. Catalog awareness guidance (prefer premium when adding/swapping)
+       4. Clear instructions about when to use vs skip catalog
+       
+       The catalog data is ALREADY fetched at line 32 for every call and
+       ALREADY visible in the base prompt via ${catalogString} at line 43.
+       No infrastructure changes needed — only prompt guidance.
+
+Dependencies: Phase 6 (base prompt rewrite) must be complete first.
+Risk: LOW — this only changes the edit-mode prompt text. The catalog
+      fetch infrastructure is untouched.
+
+================================================================================
+
+--- MEGAPROMPT 1 OF 1 ---
+--- TITLE: Update Edit-Mode Prompt with Catalog Awareness and Intent Classification ---
+--- TARGET: server/routes/generate-ai-code-stream.js ---
+
+Open the file `web/server/routes/generate-ai-code-stream.js`.
+
+Find the edit-mode system prompt block that starts at line 113:
+
+```javascript
+      systemPrompt += `\n\n═══════════════════════════════════════════
+EDIT MODE — THINK BEFORE YOU CODE
+═══════════════════════════════════════════
+```
+
+And ends at line 145:
+
+```javascript
+5. PRESERVE INTENT: Always find a way to improve the styling or content to match the user's intent. Never say "no changes needed."`;
+```
+
+Replace the ENTIRE edit-mode prompt content (lines 113-145) with the following.
+Keep the `systemPrompt += \`...\`;` wrapper and the `if (isEdit && ...)` guard intact.
+
+IMPORTANT CONTEXT FOR THE IDE LLM:
+- This is the edit-mode section of the AI code generation endpoint.
+- It gets appended to the base system prompt when `isEdit` is true.
+- The COMPONENT CATALOG is already visible to the LLM via the base prompt
+  (it's injected at line 43 via ${catalogString}). We don't need to inject 
+  it again — we just need to TELL the LLM to use it.
+- The existing edit prompt has a good structure (STEP 1 intent analysis,
+  STEP 2 per-file plan, STEP 3 preservation check) but is missing:
+  1. The ADD_PAGE intent (for multi-page support)
+  2. The REMOVE_COMPONENT as a distinct intent
+  3. Guidance to CHECK THE CATALOG when adding or swapping components
+  4. Instructions to prefer premium components over generating from scratch
+
+HERE IS THE EXACT REPLACEMENT. Replace lines 113-145 with:
+
+```javascript
+      systemPrompt += `\n\n═══════════════════════════════════════════
+EDIT MODE — THINK BEFORE YOU CODE
+═══════════════════════════════════════════
+
+You are modifying an EXISTING application. Before generating ANY code, follow this workflow:
+
+STEP 1 — INTENT ANALYSIS (What is the user actually asking?):
+  • CONTENT EDIT: "Change the hero title" or "update the pricing" → Edit ONLY the specific text/data in 1-2 files. Do NOT touch other files.
+  • THEME CHANGE: "Make it X themed" or "change the vibe to Y" → Update text, colors, imagery in MOST/ALL component files. Do NOT remove or restructure components. Do NOT drop any components from App.jsx.
+  • ADD COMPONENT: "Add a gallery section" or "add testimonials" → Check the COMPONENT CATALOG above for a premium match FIRST. If a premium component fits, use it. Otherwise generate from scratch. Create the component file, update App.jsx to include it, keep everything else unchanged.
+  • REPLACE/SWAP: "Change the hero to X" or "Replace the background with Y" → Check the COMPONENT CATALOG above for a premium replacement FIRST. Output the NEW component file, update App.jsx to IMPORT the new one AND REMOVE the old one.
+  • REMOVE COMPONENT: "Delete the testimonials" or "remove the pricing" → Output ONLY App.jsx with the removed import/render, keeping all other components.
+  • ADD PAGE: "Add an About page" or "Create a contact page" → Create the page file in src/pages/, update src/app/siteMap.js with the new route, update App.jsx with a new Route element. If this is the FIRST page being added, extract current content into src/pages/Home.jsx and rewrite App.jsx as a HashRouter shell.
+  • STRUCTURAL CHANGE: "Completely redo/rewrite the website" → Full regeneration of all files (this is RARE — only if user says "rewrite" or "redo entirely").
+
+STEP 2 — CATALOG CHECK (for ADD COMPONENT and REPLACE/SWAP only):
+  Look at the COMPONENT CATALOG listed earlier in this prompt. These are premium, community-curated components available in the Volturiano registry.
+  - If a catalog component matches what the user wants, PREFER it over generating from scratch.
+  - To use a catalog component, write it to src/components/premium/<id>.jsx
+  - If NO catalog component is a good fit, generate the component from scratch in src/components/
+  - NEVER generate a worse version of something that already exists in the catalog.
+  - For CONTENT EDIT, THEME CHANGE, REMOVE, or STRUCTURAL CHANGE: SKIP this step entirely.
+
+STEP 3 — PER-FILE EDIT PLAN:
+  Before writing code, mentally list which files you will output and what changes each gets:
+  - For CONTENT EDIT: output ONLY the 1-2 files that contain the text being changed
+  - For THEME CHANGE: output EVERY component file with updated text/colors/images + index.css for palette + App.jsx only if imports change
+  - For ADD COMPONENT: output the new component file + App.jsx (with all existing imports PLUS the new one)
+  - For REPLACE/SWAP: output the NEW component file + App.jsx (with the swap: new import in, old import out)
+  - For REMOVE COMPONENT: output ONLY App.jsx (with the removed import/render, keeping all others)
+  - For ADD PAGE: output the new page file + siteMap.js + App.jsx (with route added). If first page, also output src/pages/Home.jsx.
+
+STEP 4 — PRESERVATION CHECK:
+  After planning, verify:
+  ✓ Does every existing component still appear in App.jsx? (unless explicitly removed)
+  ✓ For theme changes: did I update ALL component files, not just 2-3?
+  ✓ Am I accidentally dropping components?
+
+CRITICAL RULES:
+1. SURGICAL OUTPUT: Output ONLY the files that actually need to change (to save tokens).
+2. FORCE CODE OUTPUT: You MUST output at least one <file> block for every request. DO NOT just explain or say it's ready. If you changed something, output the code.
+3. THEME CHANGES (EXCEPTION): If the user asks for a theme/vibe change ("make it futuristic", "nature themed"), you MUST output ALL component files with updated content.
+4. NO COMPONENT DROPPING: If you output src/App.jsx, it MUST keep ALL existing imports and renders UNLESS (a) the user explicitly asked to remove one, or (b) you are SWAPPING/REPLACING a component (e.g. swapping one Hero for a different Hero). 
+5. PRESERVE INTENT: Always find a way to improve the styling or content to match the user's intent. Never say "no changes needed."
+6. CATALOG FIRST: When adding or replacing components, ALWAYS check the COMPONENT CATALOG before generating from scratch. Premium components are higher quality.`;
+```
+
+WHAT CHANGED (summary for verification):
+1. ADDED: "ADD COMPONENT" intent with explicit instruction to check catalog FIRST
+2. ADDED: "REMOVE COMPONENT" as a distinct intent (was previously only in STEP 2)
+3. ADDED: "ADD PAGE" intent for multi-page support (creates page in src/pages/,
+   updates siteMap.js, adds route to App.jsx, handles first-page transition)
+4. ADDED: "STEP 2 — CATALOG CHECK" as a new step between intent analysis and
+   per-file plan. This tells the LLM to look at the COMPONENT CATALOG (already
+   in the base prompt) and prefer premium components over generating from scratch.
+5. CHANGED: "REPLACE/SWAP" intent now also references the catalog
+6. ADDED: Critical Rule #6 "CATALOG FIRST" reinforcing premium preference
+7. RENUMBERED: Old "STEP 2" → "STEP 3", Old "STEP 3" → "STEP 4"
+8. ADDED: Per-file plan entries for REMOVE COMPONENT and ADD PAGE
+
+WHAT WAS NOT TOUCHED:
+- The base system prompt (lines 41-109) — already updated in Phase 6
+- The catalog fetch logic (lines 28-38) — already works, no change needed
+- The sandbox file fetch logic (lines 147+) — NOT changed
+- The component manifest logic (lines 196+) — NOT changed
+- The streaming logic (lines 300+) — NOT changed
+- No other files are affected by this megaprompt
+
+--- END OF MEGAPROMPT 1 ---
+
+================================================================================
+END OF PHASE 7 MEGAPROMPTS
+================================================================================

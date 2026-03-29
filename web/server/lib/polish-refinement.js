@@ -85,6 +85,14 @@ CONSTRAINTS:
 - Wrap each updated file in <file path="path/to/file">...code...</file> tags.
 - NO explanation text. NO markdown fences.
 
+MULTI-PAGE POLISH RULES (if the project uses HashRouter/Routes):
+- Each page should have distinct, page-specific content — do NOT duplicate the hero across pages.
+- The Home page hero should be the strongest selling point for "${prompt}".
+- Secondary pages (About, Pricing, Contact) should have focused, purposeful content.
+- Navigation labels must be concise and clear (Home, About, Pricing — not "Our Amazing Homepage").
+- Consistent color palette across ALL pages — no page should feel like a different site.
+- Do NOT modify App.jsx routing structure, siteMap.js, or Route paths. Only polish visual content.
+
 FINAL REMINDER: The user's goal is "${prompt}". Do not overwrite it with component brand names.
 BUILD ERRORS/LOGS (If any):
 ${buildErrors || 'None - perform aesthetic optimizations and copy specialization only.'}

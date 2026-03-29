@@ -55,7 +55,14 @@ CRITICAL RULES:
 4. REACT HOOKS: If it's a "Hooks can only be called inside the body of a function component" error, ensure you are not calling hooks conditionally or outside a component.
 5. TAILWIND/CSS: If it's a CSS module or PostCSS error, simplify the CSS or remove invalid Tailwind classes.
 6. EXPORTS: If it's "does not provide an export named X", verify the export exists or change the import to default/named as appropriate.
-7. Output ONLY valid JSON, no markdown blocks.`;
+7. Output ONLY valid JSON, no markdown blocks.
+
+MULTI-PAGE SPECIFIC FIXES (if the project uses HashRouter/Routes):
+8. "Cannot find module './pages/X'": Create the missing page file with a minimal functional component that exports default.
+9. "No routes matched location": Check that siteMap.js route paths match the Route path props in App.jsx.
+10. "You cannot render a <Router> inside another <Router>": Ensure only ONE HashRouter exists in App.jsx. Remove any Router from main.jsx or page components.
+11. Page component imports Header/Footer directly: Remove those imports — Header and Footer render in App.jsx outside the Routes block as shared layout.
+12. "useLocation/useNavigate outside Router": Ensure all router hooks are used inside components rendered within the HashRouter tree.`;
 
     try {
         const model = getModel('google/gemini-2.5-flash');

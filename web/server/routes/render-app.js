@@ -2,13 +2,18 @@ import { renderAppTemplate } from '../lib/render-app-template.js';
 
 export default async function renderApp(req, res) {
     try {
-        const { components } = req.body;
+        const { components, isMultiPage, pages, sharedComponents } = req.body;
 
         if (!components || !Array.isArray(components)) {
             return res.status(400).json({ error: 'Invalid components array' });
         }
 
-        const appJsx = renderAppTemplate({ components });
+        const appJsx = renderAppTemplate({
+            components,
+            isMultiPage: isMultiPage || false,
+            pages: pages || [],
+            sharedComponents: sharedComponents || [],
+        });
 
         res.json({ success: true, appJsx });
     } catch (error) {

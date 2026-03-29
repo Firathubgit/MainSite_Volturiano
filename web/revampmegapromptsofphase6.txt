@@ -1,0 +1,164 @@
+================================================================================
+PHASE 6 — THE NEW ARCHITECTURE: Infrastructure Over Restriction
+MEGAPROMPTS FILE
+================================================================================
+
+Total megaprompts: 1
+Target file: server/routes/generate-ai-code-stream.js
+Scope: Rewrite the initial-build system prompt (lines 41-112) to remove 6
+       artificial restrictions and replace with the simplified prompt philosophy.
+       Keep all existing good rules (design standards, content fidelity, images).
+       DO NOT touch anything outside the system prompt string (lines 41-112).
+
+Dependencies: None — this phase is self-contained.
+Risk: MEDIUM — existing builds should still pass because the removed restrictions
+      were prompt-level rules, not infrastructure. The auto-repair loop,
+      sanitizeImports(), and ALLOWED_PACKAGES whitelist remain as guardrails.
+
+================================================================================
+
+--- MEGAPROMPT 1 OF 1 ---
+--- TITLE: Rewrite generate-ai-code-stream.js Initial Build System Prompt ---
+--- TARGET: server/routes/generate-ai-code-stream.js ---
+
+Open the file `web/server/routes/generate-ai-code-stream.js`.
+
+Find the initial-build system prompt string that starts at line 41:
+
+```javascript
+    let systemPrompt = `You are an expert Full-Stack React Developer working in the Volturiano Builder environment.
+```
+
+And ends at line 112 with the closing backtick:
+
+```javascript
+`;
+```
+
+Replace the ENTIRE system prompt content (lines 41-112) with the following. 
+This is a FULL REPLACEMENT of the template literal content between the backticks.
+Keep the `let systemPrompt = \`...\`;` wrapper intact.
+
+IMPORTANT CONTEXT FOR THE IDE LLM:
+- This file is the core AI code generation endpoint for the Volturiano website builder.
+- The current system prompt has 6 artificial restrictions that limit the LLM's output quality:
+  1. "NO ROUTING" (line 69) — prevents multi-page sites
+  2. "SANDBOX REALITY" (line 62) — prevents creative architecture
+  3. "ATOMIC SECTION RULES" (lines 57-61) — prevents component composition
+  4. "APP.JSX COMPOSITION RULES" (lines 64-70) — prevents layout flexibility
+  5. Implicit "flat paths only" convention — prevents organized directories
+  6. Blanket UI lib bans — unnecessarily limits component quality
+- These restrictions exist because previous devs wanted to prevent build errors.
+- But we have INFRASTRUCTURE that catches these errors:
+  - ALLOWED_PACKAGES whitelist in apply-ai-code-stream.js strips illegal imports
+  - sanitizeImports() validates all import statements
+  - auto-repair.js fixes build failures (5 attempts)
+  - polish-refinement.js catches aesthetic issues
+  - Import graph validation catches missing files
+- Therefore the restrictions are redundant and can be safely removed.
+- The replacement prompt keeps all GOOD rules (design quality, content fidelity, 
+  image guidance, Tailwind enforcement) while removing the restrictive rules.
+
+HERE IS THE EXACT REPLACEMENT. Replace lines 41-112 with:
+
+```javascript
+    let systemPrompt = `You are an expert Full-Stack React Developer working in the Volturiano Builder environment.
+Generate complete, production-ready React code.
+${catalogString ? `\nCOMPONENT CATALOG (Available Premium Components in our registry):\n${catalogString}\n` : ''}
+
+CRITICAL OUTPUT RULES:
+- Output files wrapped in <file path="relative/path">...code...</file> tags
+- Create complete, working files with all imports
+- Use Tailwind CSS for styling
+- NEVER output vite.config.js, package.json, or tailwind.config.js (already exist in sandbox)
+- ALWAYS create src/index.css first (using standard @tailwind base; @tailwind components; @tailwind utilities; directives)
+- ALWAYS create src/App.jsx second
+- Then create all imported components
+- Export default every component
+- NO markdown code fences, NO explanation text between file blocks
+- COMPLETE code only - no ellipsis, no "// rest of code"
+
+DIRECTORY CONVENTION:
+- src/components/ — reusable sections and widgets
+- src/pages/ — full page components (only when building multi-page sites)
+- src/app/ — config files like siteMap.js (only when building multi-page sites)
+- For simple single-page sites, use src/components/ for everything
+
+APP.JSX RULES:
+1. RENDER EVERYTHING: You MUST import and render ALL the components you created. Do not leave any out.
+2. VERTICAL STACK (DEFAULT): For single-page sites, render components in a logical vertical order (Header -> Hero -> content sections -> Footer).
+3. ROUTING (WHEN NEEDED): If the user requests multiple pages, you may use HashRouter from react-router-dom. Header and Footer go OUTSIDE the <Routes> block.
+4. NO CONDITIONAL RENDERING: Do not hide components behind state or conditions. Show them all.
+
+DESIGN STANDARDS (CRITICAL — components that violate these have FAILED):
+- TAILWIND ONLY: Use Tailwind CSS for ALL styling. NEVER use inline style={{}} attributes except for truly dynamic values (calculated transforms, dynamic percentages)
+- VISUAL HIERARCHY: Every section needs a bold heading (text-3xl md:text-5xl font-bold tracking-tight), muted subtext, and proper spacing (py-16 md:py-24)
+- LAYOUT: Use grid/flexbox (grid grid-cols-1 md:grid-cols-3 gap-8). NEVER use bare <div> stacks with no layout classes
+- DEPTH: rounded-2xl, shadow-xl, border border-white/10, backdrop-blur-xl, bg-gradient-to-br
+- RESPONSIVE: mobile-first with sm: md: lg: breakpoints
+- POLISH: transition-all duration-300, hover:scale-105, hover:shadow-lg on interactive elements
+- ANIMATIONS: Use framer-motion for entrance animations (whileInView) and staggered children
+- CONTAINERS: max-w-6xl mx-auto px-6 on every section
+
+CONTENT FIDELITY (CRITICAL):
+- ALL text, headings, data arrays MUST be about the user's ACTUAL TOPIC
+- If the user wants a "brainrot" site, content must be about screen time, dopamine, social media — NOT "AI Revolution", "Cybersecurity", or "Green Energy"
+- Do NOT pad sections with generic buzzword content from unrelated industries
+- Every piece of content must feel written by someone passionate about THIS topic
+
+DESIGN COHERENCE — "LESS IS MORE":
+- Use a tight, consistent color palette throughout ALL components (3-4 colors max)
+- Do NOT invent new random colors per component
+- Prefer clean, minimal layouts. One visual motif per section.
+- White space is a design tool, not wasted space
+
+ANTI-PATTERNS — generating these means FAILURE:
+- Bare <section><h2>Title</h2><p>Text</p></section> with no styling
+- style={{ padding: '40px', textAlign: 'center' }} instead of Tailwind classes
+- Content about unrelated industries (AI on a restaurant site, Cybersecurity on a brainrot site)
+- Using random colors not consistent with the rest of the site
+- Buttons with no visual styling
+- Mixing inline styles and Tailwind in the same file
+
+IMAGES & MEDIA:
+- NEVER use placeholder paths like "path-to-image.jpg" or "your-image.jpg"
+- ALWAYS use real working URLs from https://images.unsplash.com or https://picsum.photos for images
+- For icons/logos, use inline SVGs or emoji
+- For videos, use real working URLs from Unsplash, Pexels, or free stock video sites. Do NOT invent URLs.
+
+LIBRARY COMPATIBILITY:
+- Do NOT use react-leaflet or leaflet (React 18 context bugs)
+- For premium WebGL components, use three.js, @react-three/fiber, and @react-three/drei.
+- For maps, use: <iframe src="https://www.openstreetmap.org/export/embed.html?bbox=..." width="100%" height="400" />
+`;
+```
+
+WHAT CHANGED (summary for verification):
+1. REMOVED: "ATOMIC SECTION RULES" block (old lines 57-62) — components CAN now 
+   compose each other and import shared elements.
+2. REMOVED: "SANDBOX REALITY: Do NOT invent sub-pages" (old line 62) — the LLM CAN 
+   now create sub-pages and routes when the user's request calls for it.
+3. REMOVED: "COMPOSITION ONLY / NO INLINE UI" (old lines 65-66) — the LLM CAN now 
+   write layout code in App.jsx where it naturally belongs.
+4. REMOVED: "NO ROUTING" (old line 69) — the LLM CAN now use React Router when 
+   the user requests multiple pages.
+5. ADDED: "DIRECTORY CONVENTION" section — gives the LLM clear guidance on WHERE 
+   to put files (src/components/, src/pages/, src/app/) without restricting what 
+   it can create.
+6. CHANGED: "APP.JSX RULES" section — kept the useful rules (render everything, 
+   vertical stack, no conditional rendering) and added routing permission when needed.
+7. KEPT UNCHANGED: All design standards, content fidelity, anti-patterns, image guidance, 
+   and library compatibility rules (these are quality rules, not restrictions).
+
+WHAT WAS NOT TOUCHED:
+- The edit-mode prompt (lines 114-298) — NOT changed in this megaprompt
+- The streaming logic (lines 300-397) — NOT changed
+- The catalog fetch (lines 29-38) — NOT changed
+- The file extraction/context logic (lines 154-297) — NOT changed
+- No other files are affected by this megaprompt
+
+--- END OF MEGAPROMPT 1 ---
+
+================================================================================
+END OF PHASE 6 MEGAPROMPTS
+================================================================================

@@ -117,8 +117,8 @@ ${list}`;
             ? `\n\n🎯 MANDATORY SELECTION:\nThe user has EXPLICITLY requested these components. You MUST include them in your selected_component_ids array if they appear in the candidate list below:\n${explicitComponents.join(', ')}`
             : '';
 
-        const systemPrompt = `You are a Master Website Designer. Pick the absolute best 6-10 components to fulfill the user's vision.
-You have been provided with up to 30 highly-scored candidates that have already been vetted for quality and industry fit.${explicitInprompt}
+        const systemPrompt = `You are a Master Website Architect. Pick the absolute best 8-14 components to construct a cohesive, multi-page website experience.
+You have been provided with up to 50 highly-scored candidates that have already been vetted for quality and industry fit.${explicitInprompt}
 
 CANDIDATES:
 ${list}
@@ -126,7 +126,7 @@ ${list}
 RULES:
 1. Select exactly one component per requested category type whenever possible.
 2. Ensure visual consistency (try to pick components with matching color_mode and warmth if indicated).
-3. Do not select two "hero" components or two "footer" components. Pick the single best one.
+3. Do not select two "hero" components or two "footer" components unless they serve different pages (e.g. A massive homepage hero, and a smaller secondary hero).
 4. Return only the EXACT component_ids from the list above.`;
 
         try {
@@ -134,7 +134,7 @@ RULES:
                 model: getModel('google/gemini-3.1-pro-preview'),
                 schema,
                 system: systemPrompt,
-                prompt: `User Request: "${prompt}"\nDesign Context: ${JSON.stringify(designSystem)}\n\nSelect the best 6-10 components.`,
+                prompt: `User Request: "${prompt}"\nDesign Context: ${JSON.stringify(designSystem)}\n\nSelect the best 8-14 components to build out all requested pages.`,
                 temperature: 0
             });
             return object.selected_component_ids;
@@ -445,23 +445,34 @@ async function scoreAndSelect(candidates, designSystem, prompt, explicitComponen
         // EXTRA BOOST for explicit components to ensure they stay in top 30
         const isExplicit = explicitComponents.some(name =>
             c.name?.toLowerCase() === name.toLowerCase() ||
-            c.component_id?.toLowerCase() === name.toLowerCase()
+            c.component_id?.toLowerCase() === name.toLowerCase() ||
+            c.id?.toLowerCase() === name.toLowerCase()
         );
         if (isExplicit) score += 100; // Force to the top
 
         return { ...c, computed_score: score };
     });
 
-    // Sort by computed score, take top 30
+    // Sort by computed score, take top 50
     scored.sort((a, b) => b.computed_score - a.computed_score);
-    const top30 = scored.slice(0, 30);
+    const top50 = scored.slice(0, 50);
 
-    // LLM picks final 6-10 from top 30
-    const selectedIds = await llm.selectFinalComponents(prompt, designSystem, top30, explicitComponents);
+    // Map explicit components to their component_id so the LLM prompt recognizes UUIDs
+    const mappedExplicit = explicitComponents.map(reqId => {
+        const match = top50.find(c => 
+            c.name?.toLowerCase() === reqId.toLowerCase() || 
+            c.component_id?.toLowerCase() === reqId.toLowerCase() || 
+            c.id?.toLowerCase() === reqId.toLowerCase()
+        );
+        return match ? match.component_id : reqId;
+    });
+
+    // LLM picks final 8-14 from top 50
+    const selectedIds = await llm.selectFinalComponents(prompt, designSystem, top50, mappedExplicit);
 
     // Map IDs back to full component objects
     return selectedIds
-        .map(id => top30.find(c => c.component_id === id))
+        .map(id => top50.find(c => c.component_id === id))
         .filter(Boolean); // remove any LLM hallucinations
 }
 
@@ -906,10 +917,29 @@ export async function selectComponentsV2(prompt, designSystem = {}, explicitName
         // Ensure explicit components are in the candidate pool even if they failed industry filtering
         if (explicitNamesForQuery.length > 0) {
             console.log(`[Pipeline] 🔍 Fetching explicit components from DB to ensure presence...`);
+
+            const validUUIDs = explicitNamesForQuery.filter(id => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-5][0-9a-f]{3}-[089ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id));
+            const nonUUIDs = explicitNamesForQuery.filter(id => !validUUIDs.includes(id));
+
+            let orFields = [];
+            if (nonUUIDs.length > 0) {
+                const formattedStrs = nonUUIDs.map(n => `"${n.replace(/"/g, '')}"`).join(',');
+                orFields.push(`name.in.(${formattedStrs})`);
+                orFields.push(`component_id.in.(${formattedStrs})`);
+            }
+            if (validUUIDs.length > 0) {
+                const formattedUUIDs = validUUIDs.map(n => `"${n}"`).join(',');
+                orFields.push(`id.in.(${formattedUUIDs})`);
+                // Sometimes component_id matches a UUID for community components
+                orFields.push(`component_id.in.(${formattedUUIDs})`);
+            }
+            
+            const orQuery = orFields.join(',');
+
             const { data: explicitComps } = await sb
                 .from('components')
-                .select('component_id, name, description, visual_description, mood_tone, color_mode, color_warmth, suitable_for, quality_score, usage_count, variant_of, variant_label, category')
-                .or(`name.in.(${explicitNamesForQuery.map(n => `"${n.replace(/"/g, '')}"`).join(',')}),component_id.in.(${explicitNamesForQuery.map(n => `"${n.replace(/"/g, '')}"`).join(',')})`)
+                .select('component_id, id, name, description, visual_description, mood_tone, color_mode, color_warmth, suitable_for, quality_score, usage_count, variant_of, variant_label, category')
+                .or(orQuery)
                 .eq('status', 'active');
 
             if (explicitComps && explicitComps.length > 0) {
@@ -924,30 +954,57 @@ export async function selectComponentsV2(prompt, designSystem = {}, explicitName
             }
         }
 
-        if (!candidates || candidates.length === 0) {
-            console.warn(`\n[Step 4] ⚠️ Zero candidates found for categories. Falling back to universal fetch.`);
+        if (!candidates || candidates.length < 15) {
+            console.warn(`\n[Step 4] ⚠️ Only ${candidates?.length || 0} candidates available. Backfilling with universal components to expand options...`);
             const fallbackQuery = await sb.from('components')
-                .select('component_id, name, description, visual_description, mood_tone, color_mode, color_warmth, suitable_for, quality_score, usage_count, variant_of, variant_label, category')
+                .select('component_id, id, name, description, visual_description, mood_tone, color_mode, color_warmth, suitable_for, quality_score, usage_count, variant_of, variant_label, category')
                 .eq('status', 'active')
                 .is('variant_of', null)
                 .order('quality_score', { ascending: false })
-                .limit(100);
-            candidates = fallbackQuery.data || [];
+                .limit(50);
+            
+            const fallbackComps = fallbackQuery.data || [];
+            const existingIds = new Set((candidates || []).map(c => c.component_id));
+            
+            candidates = candidates || [];
+            fallbackComps.forEach(fc => {
+                if (!existingIds.has(fc.component_id)) {
+                    candidates.push(fc);
+                }
+            });
         }
 
         // LAST RESORT: If explicit components still not in candidates, fetch them by any means
         if (currentExplicit.length > 0) {
             const missing = currentExplicit.filter(name => !candidates.some(c =>
                 c.name?.toLowerCase().includes(name.toLowerCase()) ||
-                c.component_id?.toLowerCase().includes(name.toLowerCase())
+                c.component_id?.toLowerCase().includes(name.toLowerCase()) ||
+                c.id?.toLowerCase() === name.toLowerCase()
             ));
 
             if (missing.length > 0) {
                 console.log(`[Pipeline] 🚨 ${missing.length} explicit components still missing from candidates. Broadening search...`);
+                
+                // Construct broad query handling UUIDs safely to avoid Postgres type errors
+                const missingUUIDs = missing.filter(id => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-5][0-9a-f]{3}-[089ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id));
+                const missingStrs = missing.filter(id => !missingUUIDs.includes(id));
+                
+                let broadOrs = [];
+                if (missingStrs.length > 0) {
+                    broadOrs.push(`name.ilike.%${missingStrs[0]}%`);
+                    broadOrs.push(`component_id.ilike.%${missingStrs[0]}%`);
+                    broadOrs.push(`description.ilike.%${missingStrs[0]}%`);
+                }
+                if (missingUUIDs.length > 0) {
+                    broadOrs.push(`id.eq.${missingUUIDs[0]}`);
+                    broadOrs.push(`component_id.eq.${missingUUIDs[0]}`);
+                }
+                const broadQuery = broadOrs.join(',');
+
                 const { data: broadMatches } = await sb
                     .from('components')
-                    .select('component_id, name, description, visual_description, mood_tone, color_mode, color_warmth, suitable_for, quality_score, usage_count, variant_of, variant_label, category')
-                    .or(`name.ilike.%${missing[0]}%,component_id.ilike.%${missing[0]}%,description.ilike.%${missing[0]}%`)
+                    .select('component_id, id, name, description, visual_description, mood_tone, color_mode, color_warmth, suitable_for, quality_score, usage_count, variant_of, variant_label, category')
+                    .or(broadQuery)
                     .eq('status', 'active')
                     .limit(20);
 

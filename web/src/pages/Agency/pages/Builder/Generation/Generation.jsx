@@ -284,7 +284,11 @@ export default function Generation() {
   useEffect(() => {
       setOptimisticDeduction(0);
   }, [totalAvailable]);
-  const [expandedFolders, setExpandedFolders] = useState(new Set(['src', 'src/components']));
+  // MPA State Tracking
+  const [expandedFolders, setExpandedFolders] = useState(new Set(['src', 'src/components', 'src/pages', 'src/app']));
+  const [isMultiPageProject, setIsMultiPageProject] = useState(false);
+  const [projectPages, setProjectPages] = useState([]);
+  const [projectSharedComponents, setProjectSharedComponents] = useState([]);
   const [selectedFile, setSelectedFile] = useState(null);
   const [isViewportDragging, setIsViewportDragging] = useState(false);
   const [showCreditsPopup, setShowCreditsPopup] = useState(false);
@@ -358,30 +362,33 @@ export default function Generation() {
       saveProjectUpdates({ chat_history: newMessages });
       return newMessages;
     });
-    setTimeout(() => chatEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 50);
   }, [saveProjectUpdates]);
 
-  // Keep user pinned to bottom while text is streaming or thinking
-  const isAutoScrollActive = isTextStreaming || aiThinking || generationProgress.isGenerating;
-
+  // Robust Auto-scroll logic: ALWAYS go down when messages or status changes
   useEffect(() => {
-    if (!isAutoScrollActive || !chatEndRef.current) return;
+    if (!chatEndRef.current) return;
+    
+    // We use a minor delay to let React DOM render the new elements first
+    const timer = setTimeout(() => {
+      chatEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
+    }, 50);
+
+    return () => clearTimeout(timer);
+  }, [chatMessages, generationProgress.status, generationProgress.isGenerating, isTextStreaming, aiThinking]);
+
+  // Aggressive fallback to keep it pinned during fast text streams
+  useEffect(() => {
+    if (!chatEndRef.current) return;
     const chatContainer = chatEndRef.current.parentElement;
     if (!chatContainer) return;
 
-    // Use MutationObserver to catch every tiny DOM text/span addition during stream
     const observer = new MutationObserver(() => {
-      // Direct scroll assignment is jank-free and doesn't affect outer window
       chatContainer.scrollTop = chatContainer.scrollHeight;
     });
     
     observer.observe(chatContainer, { childList: true, subtree: true, characterData: true });
-    
-    // Snap immediately when streaming/thinking begins
-    chatContainer.scrollTop = chatContainer.scrollHeight;
-
     return () => observer.disconnect();
-  }, [isAutoScrollActive]);
+  }, []);
 
   const getThumbnailUrl = useCallback((path) => {
     if (!path) return null;
@@ -966,6 +973,9 @@ export default function Generation() {
         body: JSON.stringify({
           prompt: promptText,
           model: aiModel,
+          isMultiPage: isMultiPageProject,
+          currentPages: projectPages,
+          siteMap: generationProgress.files.find(f => f.path === 'src/app/siteMap.js')?.content || '',
           context: {
             sandboxId: sandbox.sandboxId,
             conversationContext,
@@ -1218,11 +1228,26 @@ export default function Generation() {
           const componentNames = [];
           successfulBundles.forEach(data => {
             const files = parseFilesFromCode(data.fileBlocks);
-            newFiles.push(...files);
 
             // Extract Name for the prompt
             const exportMatch = data.fileBlocks.match(/export default (?:function |class |const )?(\w+)/);
-            if (exportMatch) componentNames.push(exportMatch[1]);
+            const compName = exportMatch ? exportMatch[1] : 'Unknown';
+            if (exportMatch) componentNames.push(compName);
+            
+            // V4.0 logic: If component is labeled as a page in metadata (or fallback inference)
+            const isPage = data.component_type === 'page' || compName.toLowerCase().includes('page');
+            const basePath = isPage ? 'src/pages' : 'src/components/premium';
+
+            const updatedFiles = files.map(f => {
+               // Route the file to src/pages if it represents a page component
+               if (isPage && f.path.includes('src/components/premium/')) {
+                  const fileName = f.path.split('/').pop();
+                  return { ...f, path: `${basePath}/${fileName}` };
+               }
+               return f;
+            });
+
+            newFiles.push(...updatedFiles);
           });
 
           // 3. Apply files to sandbox (Write them silently)
@@ -1232,8 +1257,9 @@ export default function Generation() {
           // 4. Trigger Composition Revision (AI Edit)
           setGenerationProgress(prev => ({ ...prev, status: 'Integrating with existing components...' }));
 
+          const hasPages = componentNames.some(n => n.toLowerCase().includes('page'));
           const integrationPrompt = `I have added the following components to the project: ${componentNames.join(', ')}. 
-Please UPDATE src/App.jsx to integrate them professionally into the website layout. 
+Please UPDATE src/App.jsx to integrate them professionally into the website layout. ${hasPages ? 'As this includes a full page component, please add a new Route in App.jsx and update src/app/siteMap.js.' : ''}
 Keep ALL existing components and sections exactly as they are—do NOT remove anything. 
 Just position the new components in a logical order (e.g. after the Hero or before the Footer) and ensure all imports are correct.`;
 
@@ -1314,7 +1340,17 @@ Just position the new components in a logical order (e.g. after the Hero or befo
 
       if (!planData.success) throw new Error(planData.error || 'Planning failed');
 
-      const { components: rawComponents, globalStyle } = planData;
+      const { components: rawComponents, globalStyle, isMultiPage, pages, sharedComponentRefIds } = planData;
+      
+      // Save MPA state for the renderer and future edit cycles
+      if (isMultiPage) {
+        setIsMultiPageProject(true);
+        setProjectPages(pages || []);
+        
+        // Convert shared refIds to actual component objects
+        const sharedComps = rawComponents.filter(c => (sharedComponentRefIds || []).includes(c.refId || c.name));
+        setProjectSharedComponents(sharedComps);
+      }
       // Deduplicate components by name to prevent multi-file generation errors
       const components = [...new Map(rawComponents.map(item => [item.name, item])).values()];
       const premiumComponents = components.filter(c => c.source === 'premium' && c.bundleId);
@@ -1392,7 +1428,8 @@ Just position the new components in a logical order (e.g. after the Hero or befo
                 name: realName, // Use the REAL export name
                 path: realPath,
                 source: 'premium',
-                description: comp.description
+                description: comp.description,
+                originalRef: comp
               };
             })
             .catch(e => ({ success: false, error: e.message, path: comp.path }))
@@ -1464,7 +1501,7 @@ Just position the new components in a logical order (e.g. after the Hero or befo
               status: `Finished ${data.name || comp.name}`
             }));
 
-            return { ...data, source: 'generated' };
+            return { ...data, source: 'generated', originalRef: comp };
           } catch (e) {
             if (retryCount < MAX_RETRIES) {
               console.warn(`[Generation] Retrying ${comp.name} (${retryCount + 1}/${MAX_RETRIES}) due to error:`, e.message);
@@ -1486,8 +1523,8 @@ Just position the new components in a logical order (e.g. after the Hero or befo
 
       // Prepare list of ALL valid components for App.jsx
       const validComponents = [
-        ...loadedPremiumComponents.map(c => ({ exportName: c.name, path: c.path })),
-        ...standardResults.filter(r => r.success).map(r => ({ exportName: r.name, path: r.path }))
+        ...loadedPremiumComponents.map(c => ({ exportName: c.name, path: c.path, refId: c.originalRef?.refId || c.originalRef?.name })),
+        ...standardResults.filter(r => r.success).map(r => ({ exportName: r.name, path: r.path, refId: r.originalRef?.refId || r.originalRef?.name }))
       ];
 
       let appJsxCode = '';
@@ -1496,7 +1533,13 @@ Just position the new components in a logical order (e.g. after the Hero or befo
         const renderRes = await authFetch('/api/render-app', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ components: validComponents })
+          body: JSON.stringify({ 
+            components: validComponents,
+            buildId,
+            isMultiPage: planData?.isMultiPage || isMultiPageProject,
+            pages: planData?.pages?.length > 0 ? planData.pages : projectPages,
+            sharedComponents: planData?.isMultiPage ? planData.components.filter(c => (planData.sharedComponentRefIds || []).includes(c.refId || c.name)) : projectSharedComponents
+          })
         });
 
         const renderData = await renderRes.json();
@@ -1709,16 +1752,31 @@ Just position the new components in a logical order (e.g. after the Hero or befo
             const componentNames = [];
             successfulBundles.forEach(data => {
               const files = parseFilesFromCode(data.fileBlocks);
-              newFiles.push(...files);
+
               const exportMatch = data.fileBlocks.match(/export default (?:function |class |const )?(\w+)/);
-              if (exportMatch) componentNames.push(exportMatch[1]);
+              const compName = exportMatch ? exportMatch[1] : 'Unknown';
+              if (exportMatch) componentNames.push(compName);
+
+              const isPage = data.component_type === 'page' || compName.toLowerCase().includes('page');
+              const basePath = isPage ? 'src/pages' : 'src/components/premium';
+
+              const updatedFiles = files.map(f => {
+                 if (isPage && f.path.includes('src/components/premium/')) {
+                    const fileName = f.path.split('/').pop();
+                    return { ...f, path: `${basePath}/${fileName}` };
+                 }
+                 return f;
+              });
+
+              newFiles.push(...updatedFiles);
             });
 
             // Write files to sandbox
             await applyGeneratedCode(null, false, buildId, newFiles, true, sandbox.sandboxId, false, sandbox.url);
 
             // Build integration hint
-            const integrationHint = `[SYSTEM: I have added ${componentNames.join(', ')} to the project. Please integrate them into App.jsx. Keep existing components. ${msg ? `User Request: ${msg}` : ''}]`;
+            const hasPages = componentNames.some(n => n.toLowerCase().includes('page'));
+            const integrationHint = `[SYSTEM: I have added ${componentNames.join(', ')} to the project. Please integrate them into App.jsx. ${hasPages ? 'As this includes a page component, add a Route in App.jsx and update src/app/siteMap.js.' : ''} Keep existing components. ${msg ? `User Request: ${msg}` : ''}]`;
             finalInstruction = msg ? `${msg}\n\n${integrationHint}` : integrationHint;
           }
         }

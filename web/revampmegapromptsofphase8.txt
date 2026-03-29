@@ -1,0 +1,101 @@
+================================================================================
+PHASE 8 — MULTI-PAGE SUPPORT: The Latent Router Pattern
+MEGAPROMPTS FILE
+================================================================================
+
+Total megaprompts: 1
+Target file: server/lib/sandbox/providers/e2b-provider.js
+Scope: Remove <BrowserRouter> from the main.jsx template in the E2B sandbox
+       scaffold. This is the CRITICAL Phase 0 prerequisite that must be done
+       before MPA sites can work. Without this fix, any App.jsx that uses
+       <HashRouter> will cause a "Router inside Router" React crash.
+
+Context on other sub-sections of Phase 8:
+- Section 8.1 (Core Principle): Architecture description, no code.
+- Section 8.2 (Trigger Conditions): LLM behavior, already guided by Phase 7 prompt.
+- Section 8.3 ("Move to Home"): LLM operation during ADD_PAGE, already guided by
+  the Phase 7 edit prompt. The LLM handles this autonomously.
+- Section 8.4 (BrowserRouter Conflict): THIS IS THE MEGAPROMPT — infrastructure fix.
+- Section 8.5 (siteMap.js Contract): Convention the LLM follows. Already communicated
+  in Phase 6 (DIRECTORY CONVENTION) and Phase 7 (ADD PAGE intent).
+
+Dependencies: None — this can be done independently. Should be done BEFORE Phases 9-10.
+Risk: LOW — existing SPA sites never use routing features in App.jsx. Removing 
+      BrowserRouter from main.jsx has zero impact on SPA builds. MPA builds gain
+      the ability to own their own router in App.jsx.
+
+================================================================================
+
+--- MEGAPROMPT 1 OF 1 ---
+--- TITLE: Remove BrowserRouter from E2B Sandbox main.jsx Template ---
+--- TARGET: server/lib/sandbox/providers/e2b-provider.js ---
+
+Open the file `web/server/lib/sandbox/providers/e2b-provider.js`.
+
+Find the main.jsx template at lines 374-382. This is a Python string embedded in a 
+JavaScript file (the E2B sandbox scaffold runs Python commands to write files):
+
+```python
+main_jsx = """import React from 'react'
+import ReactDOM from 'react-dom/client'
+import { BrowserRouter } from 'react-router-dom'
+import App from './App.jsx'
+import './index.css'
+ReactDOM.createRoot(document.getElementById('root')).render(<React.StrictMode><BrowserRouter><App /></BrowserRouter></React.StrictMode>)"""
+with open('/home/user/app/src/main.jsx', 'w') as f:
+    f.write(main_jsx)
+print('OK: main.jsx')
+```
+
+Replace lines 374-382 with the following. Remove the BrowserRouter import and 
+unwrap <App /> from <BrowserRouter>:
+
+```python
+main_jsx = """import React from 'react'
+import ReactDOM from 'react-dom/client'
+import App from './App.jsx'
+import './index.css'
+ReactDOM.createRoot(document.getElementById('root')).render(<React.StrictMode><App /></React.StrictMode>)"""
+with open('/home/user/app/src/main.jsx', 'w') as f:
+    f.write(main_jsx)
+print('OK: main.jsx')
+```
+
+IMPORTANT CONTEXT FOR THE IDE LLM:
+- This file is the E2B sandbox provider that creates the initial project scaffold
+  when a new website build starts.
+- The main.jsx template currently wraps <App /> inside <BrowserRouter> from 
+  react-router-dom. This was fine when all sites were single-page (the router 
+  was harmless but unused).
+- With multi-page support, App.jsx may now contain its own <HashRouter>. Having
+  BrowserRouter in main.jsx would cause DOUBLE ROUTER NESTING, which React 
+  Router rejects with: "You cannot render a Router inside another Router."
+- The fix: make main.jsx a BARE renderer. App.jsx becomes the sole authority on 
+  whether routing exists.
+- SAFE FOR EXISTING SPA SITES: Current SPA App.jsx files never use any routing 
+  features — they're just vertical component stacks. Removing BrowserRouter from
+  main.jsx has zero impact on them.
+
+WHAT CHANGED:
+1. REMOVED: `import { BrowserRouter } from 'react-router-dom'` (line 376)
+2. REMOVED: `<BrowserRouter>...</BrowserRouter>` wrapping around `<App />` (line 379)
+3. RESULT: main.jsx now renders: `<React.StrictMode><App /></React.StrictMode>`
+4. CONSEQUENCE: App.jsx is now the SOLE router authority:
+   - SPA sites: App.jsx has no router (works exactly as before)
+   - MPA sites: App.jsx has <HashRouter> (new capability, no conflict)
+
+WHAT WAS NOT TOUCHED:
+- The package.json template (react-router-dom stays as dependency — it's needed when
+  App.jsx uses HashRouter for MPA sites)
+- The vite.config.js template — NOT changed
+- The tailwind.config.js template — NOT changed  
+- The index.html template — NOT changed
+- The App.jsx template — NOT changed (it gets overwritten by render-app-template.js anyway)
+- The UserComponent.jsx template — NOT changed
+- No other files are affected by this megaprompt
+
+--- END OF MEGAPROMPT 1 ---
+
+================================================================================
+END OF PHASE 8 MEGAPROMPTS
+================================================================================

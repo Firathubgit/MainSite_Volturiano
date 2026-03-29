@@ -23,11 +23,19 @@ export default async function generateSingleComponent(req, res) {
       imports: z.array(z.string()).describe('List of imports used in the file.')
     });
 
+    const isPage = filePath && filePath.startsWith('src/pages/');
+    const pageInstructions = isPage 
+      ? `\nMPA PAGE AWARENESS (CRITICAL): You are generating a FULL PAGE component located at ${filePath}. 
+- Do NOT render a Header, Navbar, or Footer. Those are handled by the shared layout in App.jsx.
+- If you import other custom sections, your import path must be relative to src/components/ (e.g., '../components/Hero' or '../components/premium/Contact').` 
+      : `\nMPA SECTION AWARENESS: You are generating a reusable UI section located at ${filePath}.`;
+
     const SYSTEM_PROMPT = `You are a senior React developer who builds award-winning, visually stunning components.
 You are an API. You MUST output ONLY raw JSON that matches the provided schema perfectly. NO conversation. NO preamble. NO markdown fences.
 
 CURRENT VISION (STAY FOCUSED): "${prompt}"
 You are building the component "${name}" for the website about: "${prompt}".
+${pageInstructions}
 
 CRITICAL RULES:
 1. EXPORT DEFAULT (MANDATORY): You MUST include \`export default function ${finalExportName}() { ... }\` at the end of the file. NEVER skip the export statement.

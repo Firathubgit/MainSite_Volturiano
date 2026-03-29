@@ -24,6 +24,14 @@ const componentSchema = z.object({
   role: z.enum(['header', 'hero', 'feature', 'footer']).describe('Strict functional role of this component'),
 });
 
+const pageAssignment = z.object({
+  pagePath: z.string().describe('URL path like "/" or "/about"'),
+  pageLabel: z.string().describe('Navigation label like "Home" or "About Us"'),
+  pageComponent: z.string().describe('PascalCase component name like "Home" or "About"'),
+  navVisible: z.boolean().describe('Whether this page appears in the main navigation'),
+  componentRefIds: z.array(z.string()).describe('Ordered list of component refIds assigned to this page'),
+});
+
 const planSchema = z.object({
   complexity: z.enum(['simple', 'medium', 'complex']).describe('Complexity level of the request'),
   components: z.array(componentSchema).min(1).max(30),
@@ -35,6 +43,9 @@ const planSchema = z.object({
       refId: z.string(),
     })),
   }),
+  isMultiPage: z.boolean().default(false).describe('Whether this site needs multi-page routing. Only true if user explicitly requests multiple pages.'),
+  pages: z.array(pageAssignment).optional().describe('Page definitions with routes. Only present when isMultiPage is true.'),
+  sharedComponentRefIds: z.array(z.string()).optional().describe('RefIds of components shared across ALL pages (e.g. header, footer). Only present when isMultiPage is true.'),
 });
 
 export default async function planWebsiteComponents(req, res) {
@@ -166,6 +177,20 @@ DESIGN SYSTEM (USE THESE EXACT COLORS AND FONTS):
 - Border Radius: ${designSystem.layoutPreferences?.borderRadius || '0.75rem'}
 - Section Padding: ${designSystem.layoutPreferences?.sectionPadding || 'py-20'}` : ''
       }
+
+MULTI-PAGE PLANNING RULES:
+1. Default to Multi-Page Application (set isMultiPage: true). Generate a "Home" page ("/") and at least one other page (e.g., "/about" or "/contact").
+2. "Single Page Override": If the user explicitly asks for a "single page website", "landing page", or specifically mentions "one-page website", you MUST set isMultiPage: false.
+3. When isMultiPage is true:
+   - Header and Footer components are ALWAYS shared (add their refIds to sharedComponentRefIds)
+   - Each page gets its OWN set of content components via the pages array
+   - The Home page ("/") gets the primary hero and main content sections
+   - Secondary pages get focused content appropriate to their purpose
+   - Every page referenced in the header nav MUST have a matching page entry
+4. When isMultiPage is false (single page mode):
+   - Do NOT include pages or sharedComponentRefIds fields
+   - Plan components as a flat vertical stack (e.g. Hero, Features, Pricing, Footer) in the root components array
+
 ${premiumMode === 'off' ? '<!-- Premium selection disabled -->' : `SELECTION CONTEXT: ${JSON.stringify(selectionContext)}`} `;
 
     // =========================================================================
@@ -201,13 +226,14 @@ ${premiumMode === 'off' ? '<!-- Premium selection disabled -->' : `SELECTION CON
         console.log(`[plan-website-components] 🎯 V1 selected ${v1ComponentIds.length} components to propagate: ${v1ComponentIds.join(', ')}`);
       }
 
-      // Merge: explicit user requests + V1 AI selections + Manual selections = mandatory for V2
+      // Merge: explicit user requests + Manual selections = true mandatory for V2
+      // (V1 selections are deliberately excluded from mandatory so they don't overpower the user's 6-10 cap)
       let allMandatory;
       if (strictMode && manualSelectionIds.length > 0) {
         console.log(`[plan-website-components] 🔒 STRICT MODE + MANUAL SELECTION: Only using ${manualSelectionIds.length} user-selected components.`);
         allMandatory = manualSelectionIds;
       } else {
-        allMandatory = [...new Set([...explicitNames, ...v1ComponentIds, ...manualSelectionIds])];
+        allMandatory = [...new Set([...explicitNames, ...manualSelectionIds])];
       }
 
       const v2Result = await selectComponentsV2(prompt, v2Context, allMandatory, strictMode);
@@ -307,26 +333,28 @@ ${premiumMode === 'off' ? '<!-- Premium selection disabled -->' : `SELECTION CON
         const roleOrder = { 'header': 0, 'hero': 1, 'feature': 2, 'footer': 3 };
         return (roleOrder[a.role] ?? 2) - (roleOrder[b.role] ?? 2);
       });
-      console.log(`[plan-website-components] ✍️ Starting Master Copywriter for ${mappedComponents.length} components...`);
+      console.log(`[plan-website-components] ✍️ Starting Master Copywriter & MPA Architect for ${mappedComponents.length} components...`);
 
-      let copyResult = { components: [] };
+      let copyResult = { components: [], isMultiPage: true, pages: [], sharedComponentRefIds: [] };
       try {
-        const copyPrompt = `You are a world-class conversion copywriter. 
+        const copyPrompt = `You are a world-class web architect and conversion copywriter. 
         The user wants a website for: "${prompt}"
         The design system is: ${JSON.stringify(designSystem)}
         
         I have selected ${mappedComponents.length} components for this site. 
-        Your job is to generate high-converting, professional, and contextually perfect copy (TEXT) for each component.
+        Your job is TWO-FOLD:
+        PART A - ARCHITECTURE: The user STRONGLY PREFERS MULTI-PAGE WEBSITES (isMultiPage: true). You must distribute the components below across multiple logical pages (e.g., Home, About, Pricing, etc). Share the header/navbar and footer via 'sharedComponentRefIds'.
+        PART B - COPYWRITING: Generate high-converting, contextually perfect copy (TEXT) for each component.
         
-        COMPONENTS TO FILL:
-        ${mappedComponents.map(c => `- ${c.name} (${c.role}): ${c.description}`).join('\n')}
+        COMPONENTS REQUIRING ATTENTION:
+        ${mappedComponents.map(c => `- NAME: ${c.name} | REF_ID: ${c.refId} | ROLE: ${c.role} | DESC: ${c.description}`).join('\n')}
         
         RULES:
-        1. For each component, generate a 'keyContent' description of the section's text.
-        2. Generate 'props' (key-value pairs of strings) that will be injected into the component.
-        3. Common prop keys: 'title', 'subtitle', 'description', 'primaryBtnText', 'secondaryBtnText', 'badge', 'features' (json string if needed).
-        4. Match the tone: ${designSystem?.mood || 'professional and modern'}.
-        5. Output ONLY the components array with props and keyContent filled.`;
+        1. Default to isMultiPage: true. Group components into 'pages'. 
+        2. Keep 'header' and 'footer' role components in 'sharedComponentRefIds' so they render on all pages.
+        3. Assign EVERY single one of the remaining refIds to at least one page.
+        4. For each component, generate 'keyContent' and 'props' (key-value strings) matching the tone: ${designSystem?.mood || 'professional'}.
+        5. Common props: 'title', 'subtitle', 'description', 'primaryBtnText', 'features'.`;
 
         const { object } = await generateObject({
           model: getModel(model),
@@ -335,13 +363,23 @@ ${premiumMode === 'off' ? '<!-- Premium selection disabled -->' : `SELECTION CON
               name: z.string(),
               keyContent: z.string(),
               props: z.record(z.string())
-            }))
+            })),
+            isMultiPage: z.boolean().describe("Default to true. Only false if user explicitly demands a single scrolling page."),
+            pages: z.array(z.object({
+              pagePath: z.string(),
+              pageLabel: z.string(),
+              pageComponent: z.string(),
+              navVisible: z.boolean(),
+              componentRefIds: z.array(z.string())
+            })).optional(),
+            sharedComponentRefIds: z.array(z.string()).optional()
           }),
-          prompt: copyPrompt
+          prompt: copyPrompt,
+          temperature: 0.2
         });
         copyResult = object;
       } catch (copyErr) {
-        console.warn('[plan-website-components] Copywriter failed, using defaults:', copyErr);
+        console.warn('[plan-website-components] Copywriter/Architect failed, using single-page default:', copyErr);
       }
 
       // Merge copy back into mapped components
@@ -363,7 +401,15 @@ ${premiumMode === 'off' ? '<!-- Premium selection disabled -->' : `SELECTION CON
           --accent: ${designSystem?.colorPalette?.accent || '#6366f1'};
         }`,
         appImports: [],
-        requiredPackages: []
+        requiredPackages: [],
+        appComposition: {
+          order: finalComponents.map(c => ({ refId: c.refId }))
+        },
+        isMultiPage: copyResult.isMultiPage ?? true,
+        pages: copyResult.pages || [
+          { pagePath: '/', pageLabel: 'Home', pageComponent: 'Home', navVisible: true, componentRefIds: finalComponents.map(c => c.refId) }
+        ],
+        sharedComponentRefIds: copyResult.sharedComponentRefIds || []
       };
 
       // V2 Narration
@@ -534,14 +580,18 @@ ${premiumMode === 'off' ? '<!-- Premium selection disabled -->' : `SELECTION CON
     // =========================================================================
 
 
-    // HARDENING: Force-flatten all paths locally before returning
+    // HARDENING: Force-correct all paths locally before returning
     // This stops AI "sub-folder hallucinations" from reaching the client
+    // V4.0: Also allows src/pages/ paths for multi-page sites
     const flattenedComponents = planData.components.map(c => {
       const baseName = path.basename(c.path).trim();
       let flatPath = `src/components/${baseName}`;
 
       // Preserve specialized premium subfolder paths if coming from V2 pipeline
       if (c.path.includes('src/components/premium/')) {
+        flatPath = c.path;
+      } else if (c.path.includes('src/pages/')) {
+        // V4.0: Allow page-level paths for MPA sites
         flatPath = c.path;
       } else {
         // Clean up potential double extensions or spaces
@@ -616,7 +666,11 @@ ${premiumMode === 'off' ? '<!-- Premium selection disabled -->' : `SELECTION CON
       appImports: planData.appImports,
       appComposition: validAppComposition,
       requiredPackages: Array.from(requiredPackages),
-      aiNarration // Include AI plan explanation
+      aiNarration, // Include AI plan explanation
+      // V4.0: Multi-page support fields
+      isMultiPage: planData.isMultiPage || false,
+      pages: planData.pages || [],
+      sharedComponentRefIds: planData.sharedComponentRefIds || [],
     });
 
   } catch (error) {

@@ -1,0 +1,238 @@
+================================================================================
+PHASE 10 — THE PLAN-WEBSITE-COMPONENTS SCHEMA EXTENSION
+MEGAPROMPTS FILE
+================================================================================
+
+Total megaprompts: 1
+Target file: server/routes/plan-website-components.js (637 lines)
+Scope: 4 surgical edits in the same file:
+  1. Extend Zod schema with isMultiPage, pages, sharedComponentRefIds (lines 13-38)
+  2. Add MPA planning rules to system prompt (after line 167)
+  3. Update path hardening to allow src/pages/ paths (lines 537-556)
+  4. Forward MPA fields in the response JSON (lines 611-619)
+
+Dependencies: Phase 9 (render-app-template dual-mode) must be complete first.
+Risk: MEDIUM — The Zod schema change affects the generateObject() call in 
+      the V1 fallback path (line 490-504). The new fields are all optional 
+      with defaults, so the LLM can omit them for SPA builds.
+
+================================================================================
+
+--- MEGAPROMPT 1 OF 1 ---
+--- TITLE: Extend plan-website-components.js with Multi-Page Schema + Prompt + Path + Response ---
+--- TARGET: server/routes/plan-website-components.js ---
+
+Open the file `web/server/routes/plan-website-components.js` (637 lines).
+
+This file is the Master Architect of the generation pipeline. It plans which 
+components a website needs, assigns them roles, and returns the build plan.
+We need to extend it with multi-page awareness through 4 surgical edits.
+
+IMPORTANT CONTEXT FOR THE IDE LLM:
+- This is a complex 637-line planning endpoint with two code paths:
+  - V2 ULTRA Pipeline (lines 178-530): Used for 'hybrid' and 'strict' modes
+  - V1 Legacy Pipeline (lines 483-530): Used for 'off' mode, calls generateObject()
+- The Zod schema at lines 13-38 defines the shape of the plan output.
+- The system prompt at lines 84-169 guides the LLM in the V1 path.
+- Path hardening at lines 537-556 force-flattens all paths to src/components/.
+- The response at lines 611-619 returns the plan to the frontend.
+- All 4 edits are ADDITIVE — existing behavior is preserved for SPA builds.
+
+═══════════════════════════════════════════════════════════
+EDIT 1 OF 4: Extend Zod Schema (lines 27-38)
+═══════════════════════════════════════════════════════════
+
+Find the planSchema definition starting at line 27:
+
+```javascript
+const planSchema = z.object({
+  complexity: z.enum(['simple', 'medium', 'complex']).describe('Complexity level of the request'),
+  components: z.array(componentSchema).min(1).max(30),
+  globalStyle: z.string(),
+  appImports: z.array(z.string()),
+  requiredPackages: z.array(z.string()).describe('List of NPM packages needed for these components (e.g. ["react-router-dom", "framer-motion"])'),
+  appComposition: z.object({
+    order: z.array(z.object({
+      refId: z.string(),
+    })),
+  }),
+});
+```
+
+Replace it with:
+
+```javascript
+const pageAssignment = z.object({
+  pagePath: z.string().describe('URL path like "/" or "/about"'),
+  pageLabel: z.string().describe('Navigation label like "Home" or "About Us"'),
+  pageComponent: z.string().describe('PascalCase component name like "Home" or "About"'),
+  navVisible: z.boolean().describe('Whether this page appears in the main navigation'),
+  componentRefIds: z.array(z.string()).describe('Ordered list of component refIds assigned to this page'),
+});
+
+const planSchema = z.object({
+  complexity: z.enum(['simple', 'medium', 'complex']).describe('Complexity level of the request'),
+  components: z.array(componentSchema).min(1).max(30),
+  globalStyle: z.string(),
+  appImports: z.array(z.string()),
+  requiredPackages: z.array(z.string()).describe('List of NPM packages needed for these components (e.g. ["react-router-dom", "framer-motion"])'),
+  appComposition: z.object({
+    order: z.array(z.object({
+      refId: z.string(),
+    })),
+  }),
+  isMultiPage: z.boolean().default(false).describe('Whether this site needs multi-page routing. Only true if user explicitly requests multiple pages.'),
+  pages: z.array(pageAssignment).optional().describe('Page definitions with routes. Only present when isMultiPage is true.'),
+  sharedComponentRefIds: z.array(z.string()).optional().describe('RefIds of components shared across ALL pages (e.g. header, footer). Only present when isMultiPage is true.'),
+});
+```
+
+═══════════════════════════════════════════════════════════
+EDIT 2 OF 4: Add MPA Planning Rules to System Prompt (after line 167)
+═══════════════════════════════════════════════════════════
+
+Find the end of the system prompt construction. Line 167 ends with:
+
+```javascript
+- Section Padding: ${designSystem.layoutPreferences?.sectionPadding || 'py-20'}` : ''
+      }
+```
+
+Right AFTER line 168 (the closing `}` of the template conditional), and BEFORE line 169 
+which starts with `${premiumMode === 'off' ? ...`, INSERT the following block:
+
+```javascript
+
+MULTI-PAGE PLANNING RULES (ONLY WHEN USER EXPLICITLY REQUESTS MULTIPLE PAGES):
+1. If the user requests specific pages (e.g. "with an About page and Contact page"), set isMultiPage: true
+2. If the user requests a simple landing page or does NOT mention separate pages, set isMultiPage: false (DEFAULT)
+3. When isMultiPage is true:
+   - Header and Footer components are ALWAYS shared (add their refIds to sharedComponentRefIds)
+   - Each page gets its OWN set of content components via the pages array
+   - The Home page ("/") gets the primary hero and main content sections
+   - Secondary pages get focused content appropriate to their purpose
+   - Every page referenced in the header nav MUST have a matching page entry
+4. When isMultiPage is false (default):
+   - Do NOT include pages or sharedComponentRefIds fields
+   - Plan components as a flat vertical stack (exactly as before)
+
+```
+
+This should be inserted between the `}` on line 168 and the premiumMode check on line 169.
+
+═══════════════════════════════════════════════════════════
+EDIT 3 OF 4: Update Path Hardening to Allow src/pages/ (lines 537-556)
+═══════════════════════════════════════════════════════════
+
+Find the path hardening block at line 537:
+
+```javascript
+    // HARDENING: Force-flatten all paths locally before returning
+    // This stops AI "sub-folder hallucinations" from reaching the client
+    const flattenedComponents = planData.components.map(c => {
+      const baseName = path.basename(c.path).trim();
+      let flatPath = `src/components/${baseName}`;
+
+      // Preserve specialized premium subfolder paths if coming from V2 pipeline
+      if (c.path.includes('src/components/premium/')) {
+        flatPath = c.path;
+      } else {
+        // Clean up potential double extensions or spaces
+        flatPath = flatPath.replace(/\.jsx\s*\.jsx$/, '.jsx');
+        if (flatPath.endsWith('.js') || flatPath.endsWith('.tsx')) {
+          flatPath = flatPath.replace(/\.(js|tsx)$/, '.jsx');
+        } else if (!flatPath.endsWith('.jsx')) {
+          flatPath += '.jsx';
+        }
+      }
+      return { ...c, path: flatPath };
+    });
+```
+
+Replace it with:
+
+```javascript
+    // HARDENING: Force-correct all paths locally before returning
+    // This stops AI "sub-folder hallucinations" from reaching the client
+    // V4.0: Also allows src/pages/ paths for multi-page sites
+    const flattenedComponents = planData.components.map(c => {
+      const baseName = path.basename(c.path).trim();
+      let flatPath = `src/components/${baseName}`;
+
+      // Preserve specialized premium subfolder paths if coming from V2 pipeline
+      if (c.path.includes('src/components/premium/')) {
+        flatPath = c.path;
+      } else if (c.path.includes('src/pages/')) {
+        // V4.0: Allow page-level paths for MPA sites
+        flatPath = c.path;
+      } else {
+        // Clean up potential double extensions or spaces
+        flatPath = flatPath.replace(/\.jsx\s*\.jsx$/, '.jsx');
+        if (flatPath.endsWith('.js') || flatPath.endsWith('.tsx')) {
+          flatPath = flatPath.replace(/\.(js|tsx)$/, '.jsx');
+        } else if (!flatPath.endsWith('.jsx')) {
+          flatPath += '.jsx';
+        }
+      }
+      return { ...c, path: flatPath };
+    });
+```
+
+═══════════════════════════════════════════════════════════
+EDIT 4 OF 4: Forward MPA Fields in Response JSON (lines 611-619)
+═══════════════════════════════════════════════════════════
+
+Find the response JSON at line 611:
+
+```javascript
+    res.json({
+      success: true,
+      plan: { ...planData, components: flattenedComponents, appComposition: validAppComposition },
+      components: flattenedComponents, // legacy support
+      globalStyle: planData.globalStyle,
+      appImports: planData.appImports,
+      appComposition: validAppComposition,
+      requiredPackages: Array.from(requiredPackages),
+      aiNarration // Include AI plan explanation
+    });
+```
+
+Replace it with:
+
+```javascript
+    res.json({
+      success: true,
+      plan: { ...planData, components: flattenedComponents, appComposition: validAppComposition },
+      components: flattenedComponents, // legacy support
+      globalStyle: planData.globalStyle,
+      appImports: planData.appImports,
+      appComposition: validAppComposition,
+      requiredPackages: Array.from(requiredPackages),
+      aiNarration, // Include AI plan explanation
+      // V4.0: Multi-page support fields
+      isMultiPage: planData.isMultiPage || false,
+      pages: planData.pages || [],
+      sharedComponentRefIds: planData.sharedComponentRefIds || [],
+    });
+```
+
+WHAT CHANGED (summary for all 4 edits):
+1. ADDED: `pageAssignment` Zod schema for page-level routing metadata
+2. ADDED: `isMultiPage`, `pages`, `sharedComponentRefIds` to planSchema (all optional with defaults)
+3. ADDED: MPA planning rules to system prompt guiding when to use multi-page
+4. UPDATED: Path hardening now allows `src/pages/` paths (alongside existing `src/components/` and `src/components/premium/`)
+5. UPDATED: Response JSON now includes `isMultiPage`, `pages`, `sharedComponentRefIds`
+
+BACKWARD COMPATIBILITY:
+- All new fields are optional with defaults (false, [], [])
+- SPA builds: LLM sets isMultiPage: false (or omits it), no pages array generated
+- V2 Pipeline path: planData is constructed at line 357 — the new fields won't exist 
+  unless the V2 pipeline is also updated. They'll default to false/[] in the response.
+- V1 Pipeline path: The Zod schema guides generateObject() — the LLM CAN produce 
+  the new fields if prompted, but won't unless the user requests multi-page.
+
+--- END OF MEGAPROMPT 1 ---
+
+================================================================================
+END OF PHASE 10 MEGAPROMPTS
+================================================================================

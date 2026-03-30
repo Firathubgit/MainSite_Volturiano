@@ -9,7 +9,7 @@
  *   import { useBuilderAuth } from '../../contexts/BuilderAuthContext';
  *   const { user, session, profile, loading, signInWithGoogle, signOut } = useBuilderAuth();
  */
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { builderSupabase } from '../lib/builderSupabaseClient';
 import { withRetry } from '../lib/supabaseUtils';
 
@@ -42,21 +42,26 @@ export function BuilderAuthProvider({ children }) {
         return result.data;
     }, []);
 
+    const prevUserIdRef = useRef(null);
+
     // Handle session changes
     const handleSession = useCallback(async (newSession) => {
         setSession(newSession);
         if (newSession?.user) {
             setUser(newSession.user);
-            // Set loading false early so the UI can show the logged-in state 
-            // even while the profile is still being fetched.
             setLoading(false);
 
-            const profileData = await fetchProfile(newSession.user.id);
-            setProfile(profileData);
+            // Prevent double-fetching the profile if the session is identical between getSession and INITIAL_SESSION
+            if (prevUserIdRef.current !== newSession.user.id) {
+                prevUserIdRef.current = newSession.user.id;
+                const profileData = await fetchProfile(newSession.user.id);
+                setProfile(profileData);
+            }
         } else {
             setUser(null);
             setProfile(null);
             setLoading(false);
+            prevUserIdRef.current = null;
         }
     }, [fetchProfile]);
 
@@ -75,9 +80,41 @@ export function BuilderAuthProvider({ children }) {
 
         let active = true;
 
+        // Implementation of the "5 scans" robust hydration logic
+        const checkInitialSession = async () => {
+            let retryCount = 0;
+            const MAX_RETRIES = 5;
+
+            while (retryCount < MAX_RETRIES && active) {
+                try {
+                    const { data: { session: currentSession } } = await builderSupabase.auth.getSession();
+                    
+                    if (currentSession) {
+                        console.log(`[BuilderAuth] Session found on scan #${retryCount + 1}`);
+                        await handleSession(currentSession);
+                        return; // Found it! Exit early.
+                    }
+                } catch (err) {
+                    console.error('[BuilderAuth] Initial session scan failed:', err);
+                }
+
+                retryCount++;
+                // If this was the last attempt and we still have nothing, stop the loading spinner
+                if (retryCount === MAX_RETRIES && active) {
+                    console.log('[BuilderAuth] No session found after 5 scans. Rendering guest state.');
+                    setLoading(false);
+                } else if (active) {
+                    // Wait 1 second before the next scan
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+                }
+            }
+        };
+
+        checkInitialSession();
+
         const { data: subscription } = builderSupabase.auth.onAuthStateChange(
             async (event, newSession) => {
-                console.log('[BuilderAuth] Auth state change:', event, !!newSession);
+                console.log('[BuilderAuth] Auth state change event:', event, !!newSession);
                 if (active) {
                     try {
                         await handleSession(newSession);

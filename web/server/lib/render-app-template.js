@@ -110,13 +110,15 @@ function renderMPATemplate(components, pages, sharedComponents) {
             components.find(c => c.refId === refId || c.exportName === refId)
         ).filter(Boolean);
         
+        const routePath = p.pagePath || p.path || '/'; // Use pagePath from schema, fallback to '/'
+        
         // Fallback: If no components matched via refId (maybe legacy string match), just dump everything non-shared into the first page
-        if (pageComps.length === 0 && p.path === '/') {
+        if (pageComps.length === 0 && routePath === '/') {
             pageComps = components.filter(c => !sharedRefIds.has(c.refId) && !sharedRefIds.has(c.exportName));
         }
 
         const inlineElements = pageComps.map(c => `            <${c.exportName} />`).join('\n');
-        return `          <Route path="${p.path}" element={<main>\n${inlineElements}\n          </main>} />`;
+        return `          <Route path="${routePath}" element={<main>\n${inlineElements}\n          </main>} />`;
     }).join('\n');
 
     // 4. Determine shared layout

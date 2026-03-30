@@ -2296,3 +2296,178 @@ svg.shimmerText {
   color: #71717a;
   font-size: 11px;
 }
+
+/* ─── LOADING UI ─── */
+.loadingContainer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+}
+
+.tornadoLogoShimmer {
+  background: linear-gradient(
+    0deg,
+    rgba(45, 45, 45, 0.7) 0%,
+    rgba(220, 220, 220, 0.95) 50%,
+    rgba(45, 45, 45, 0.7) 100%
+  );
+  background-size: 140% 220%;
+  animation: logoWave 3.8s ease-in-out infinite;
+  mask-image: var(--logo-url);
+  mask-repeat: no-repeat;
+  mask-position: center;
+  mask-size: contain;
+  -webkit-mask-image: var(--logo-url);
+  -webkit-mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  -webkit-mask-size: contain;
+}
+
+@keyframes logoWave {
+  0% {
+    background-position: 50% 0%;
+  }
+  50% {
+    background-position: 50% 100%;
+  }
+  100% {
+    background-position: 50% 0%;
+  }
+}
+
+.tornadoLogoPulse {
+  background: linear-gradient(
+    0deg,
+    rgba(45, 45, 45, 0.7) 0%,
+    rgba(220, 220, 220, 0.95) 50%,
+    rgba(45, 45, 45, 0.7) 100%
+  );
+  background-size: 140% 220%;
+  animation: uniformPulse 0.9s ease-out infinite;
+  mask-image: var(--logo-url);
+  mask-repeat: no-repeat;
+  mask-position: center;
+  mask-size: contain;
+  -webkit-mask-image: var(--logo-url);
+  -webkit-mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  -webkit-mask-size: contain;
+  transition: opacity 0.3s ease;
+  transform-origin: center center;
+}
+
+@keyframes uniformPulse {
+  0% { opacity: 0.85; filter: brightness(1.2); }
+  10% { opacity: 1; filter: brightness(1.9); }
+  30% { opacity: 1; filter: brightness(1.9); }
+  60% { opacity: 0.85; filter: brightness(1.2); }
+  100% { opacity: 0.85; filter: brightness(1.2); }
+}
+
+.tornadoLogoTikiTaka {
+  background: 
+    radial-gradient(circle at center, rgba(255, 255, 255, 0.9) 0%, rgba(255,255,255,0) 20%),
+    radial-gradient(circle at center, rgba(255, 255, 255, 1) 0%, rgba(255,255,255,0) 25%),
+    radial-gradient(circle at center, rgba(255, 255, 255, 0.9) 0%, rgba(255,255,255,0) 15%),
+    linear-gradient(0deg, #1a1a1a 0%, #3a3a3a 100%);
+  background-size: 150% 150%, 120% 120%, 180% 180%, 100% 100%;
+  animation: tikiTakaBombs 1.2s cubic-bezier(0.95, 0, 0.05, 1) infinite;
+  mask-image: var(--logo-url);
+  mask-repeat: no-repeat;
+  mask-position: center;
+  mask-size: contain;
+  -webkit-mask-image: var(--logo-url);
+  -webkit-mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  -webkit-mask-size: contain;
+}
+
+@keyframes tikiTakaBombs {
+  0%   { background-position: 10% 20%, 80% 90%, 50% 10%, 0 0; filter: brightness(1); }
+  16%  { background-position: 30% 80%, 20% 10%, 80% 20%, 0 0; filter: brightness(1.5); }
+  33%  { background-position: 80% 40%, 70% 80%, 20% 60%, 0 0; filter: brightness(1); }
+  50%  { background-position: 40% 20%, 10% 50%, 90% 80%, 0 0; filter: brightness(1.4); }
+  66%  { background-position: 60% 90%, 50% 20%, 10% 30%, 0 0; filter: brightness(1); }
+  83%  { background-position: 20% 40%, 80% 60%, 40% 90%, 0 0; filter: brightness(1.5); }
+  100% { background-position: 10% 20%, 80% 90%, 50% 10%, 0 0; filter: brightness(1); }
+}
+
+.tornadoLogoScanner {
+  background: linear-gradient(
+    180deg,
+    rgba(20, 20, 20, 1) 0px,
+    rgba(20, 20, 20, 1) 40px,      
+    rgba(100, 100, 100, 0.8) 70px,      
+    rgba(255, 255, 255, 1) 90px,     
+    rgba(100, 100, 100, 0.8) 110px,      
+    rgba(20, 20, 20, 1) 140px,
+    rgba(20, 20, 20, 1) 180px
+  );
+  background-repeat: repeat-y;
+  background-size: 100% 180px;
+  animation: logoScannerLaserDown 2.8s linear infinite;
+  mask-image: var(--logo-url);
+  mask-repeat: no-repeat;
+  mask-position: center;
+  mask-size: contain;
+  -webkit-mask-image: var(--logo-url);
+  -webkit-mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  -webkit-mask-size: contain;
+}
+
+@keyframes logoScannerLaserDown {
+  0%   { background-position: 50% -180px; }
+  100% { background-position: 50% 0px; }
+}
+
+.rectangleLoadingBar {
+  background: transparent;
+  border: 1.5px solid rgba(255, 255, 255, 0.6);
+  border-radius: 9px;
+  overflow: hidden;
+  position: relative;
+  box-shadow: 0 0 10px rgba(255, 255, 255, 0.05);
+}
+
+.loadingFill {
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    #062329 0%,
+    #0f6d7d 50%,
+    #c4f0f6 85%,
+    #ffffff 100%
+  );
+  position: relative;
+  overflow: hidden;
+  transition: width 0.1s linear;
+}
+
+.loadingFill::after {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; bottom: 0; width: 100%;
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0) 0%,
+    rgba(255, 255, 255, 1) 50%,
+    rgba(255, 255, 255, 0) 100%
+  );
+  animation: barShimmerRight 1.5s infinite ease-in-out;
+}
+
+@keyframes barShimmerRight {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+.tinyTextShimmer {
+  background: linear-gradient(90deg, #ffffff 0%, #707070 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  color: transparent;
+}

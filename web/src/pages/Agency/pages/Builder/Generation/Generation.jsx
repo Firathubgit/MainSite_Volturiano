@@ -120,83 +120,303 @@ const CornerWave = () => (
   </div>
 );
 
-// ─── Showcase Carousel (Continuous Leftward Stream) ─────────────
-function ShowcaseCarousel({ isActive }) {
+// ─── Number interpolation utility ───────────
+function AnimatedNumber({ value }) {
+  const [displayValue, setDisplayValue] = useState(value);
+  
+  useEffect(() => {
+    let start = displayValue;
+    let end = value;
+    if (start === end) return;
+    
+    let startTime = Date.now();
+    let duration = 800; // ms spring duration
+    
+    let timer = setInterval(() => {
+      let now = Date.now();
+      let progress = Math.min((now - startTime) / duration, 1);
+      let easeProgress = 1 - Math.pow(1 - progress, 4);
+      setDisplayValue(start + (end - start) * easeProgress);
+      if (progress === 1) clearInterval(timer);
+    }, 16);
+    return () => clearInterval(timer);
+  }, [value, displayValue]);
+
+  return <>{Math.round(displayValue)}%</>;
+}
+
+const NARRATIVE_QUOTES = {
+  booting: [
+    "Setting up the project environment...",
+    "Initializing the core architecture...",
+    "Preparing the workspace for your build...",
+    "Allocating resources for the site..."
+  ],
+  enhancing: [
+    "Mapping out the best approach...",
+    "Structuring the site requirements...",
+    "Fleshing out the details of your vision...",
+    "Translating ideas into a blueprint..."
+  ],
+  planning: [
+    "Drafting the component hierarchy...",
+    "Selecting the best layout structure...",
+    "Planning the design system & styles...",
+    "Organizing the page flow..."
+  ],
+  installing: [
+    "Sourcing the required dependencies...",
+    "Setting up the necessary packages...",
+    "Configuring the required libraries...",
+    "Installing foundational tools..."
+  ],
+  generating: [
+    "Writing the complex code now...",
+    "Building out the React components...",
+    "Implementing the main logic...",
+    "Structuring the user interfaces..."
+  ],
+  synthesizing: [
+    "Connecting the components together...",
+    "Integrating the system components...",
+    "Ensuring smooth data flow...",
+    "Assembling the final page layout..."
+  ],
+  verify: [
+    "Running final system checks...",
+    "Reviewing the code structure...",
+    "Validating component functions...",
+    "Ensuring responsive layout..."
+  ],
+  applying: [
+    "Deploying code to the sandbox...",
+    "Applying generated components...",
+    "Injecting the final styling rules...",
+    "Setting up the live preview..."
+  ],
+  polish: [
+    "Polishing the final layout details...",
+    "Refining the premium design feel...",
+    "Adjusting the spacing and typography...",
+    "Ensuring smooth UI animations...",
+    "Applying final visual touches..."
+  ],
+  finishing_up: [
+    "Hang on, almost finished!",
+    "Finalizing the deployment...",
+    "Wrapping up the final tasks...",
+    "Just a few more seconds..."
+  ],
+  complete: [
+    "Everything looks solid. Done.",
+    "Build complete. Ready to preview.",
+    "All set! Project is up and running.",
+    "Finished! Let's preview the site."
+  ],
+  fallback: [
+    "Working on the next step...",
+    "Processing the current task...",
+    "Handling tasks in the background..."
+  ]
+};
+
+function getStageCategory(status) {
+  if (!status) return 'fallback';
+  const s = status.toLowerCase();
+  
+  if (s.includes('starting') || s.includes('booting') || s.includes('deducting')) return 'booting';
+  if (s.includes('enhancing') || s.includes('deriving')) return 'enhancing';
+  if (s.includes('planning') || s.includes('designing')) return 'planning';
+  if (s.includes('dependencies') || s.includes('installing') || s.includes('fetching')) return 'installing';
+  if (s.includes('generating') || s.includes('writing') || s.includes('building')) return 'generating';
+  if (s.includes('synthesizing')) return 'synthesizing';
+  if (s.includes('verify') || s.includes('validating')) return 'verify';
+  if (s.includes('applying') || s.includes('injecting')) return 'applying';
+  if (s.includes('polish') || s.includes('finalizing')) return 'polish';
+  if (s.includes('finishing')) return 'finishing_up';
+  if (s.includes('complete') || s.includes('done')) return 'complete';
+  
+  return 'fallback';
+}
+
+// ─── Loading View (Figma Based) ─────────────
+function ShowcaseCarousel({ isActive, generationProgress, logoState }) {
   const [current, setCurrent] = useState(0);
 
   useEffect(() => {
+    // Sync the quotes with the current generation stage
     const interval = setInterval(() => {
-      setCurrent(prev => (prev + 1) % SHOWCASE_SLIDES.length);
-    }, 3500);
+      setCurrent(prev => prev + 1);
+    }, 4500);
     return () => clearInterval(interval);
-  }, []);
+  }, [generationProgress?.status]);
 
-  const getSlide = (offset) => {
-    const idx = (current + offset + SHOWCASE_SLIDES.length) % SHOWCASE_SLIDES.length;
-    return SHOWCASE_SLIDES[idx];
-  };
+  const currentStage = getStageCategory(generationProgress?.status);
+  const activeQuotes = NARRATIVE_QUOTES[currentStage] || NARRATIVE_QUOTES.fallback;
+  const currentTitle = activeQuotes[current % activeQuotes.length];
 
-  const currentSlide = SHOWCASE_SLIDES[current];
+  const [randomBoost, setRandomBoost] = useState(0);
+  const [monotonicFill, setMonotonicFill] = useState(0);
+
+  // Add a bit of randomized values each step the status changes
+  useEffect(() => {
+    if (!generationProgress?.isGenerating) {
+      setRandomBoost(0);
+      setMonotonicFill(0);
+      return;
+    }
+    setRandomBoost(prev => prev + (Math.random() * 2 + 1));
+  }, [generationProgress?.status, generationProgress?.isGenerating]);
+
+  // Randomly timed cutoff jumps - more distributed for longer LLM wait times
+  useEffect(() => {
+    if (!generationProgress?.isGenerating) return;
+
+    const createTimer = (seconds, minInc, range) => setTimeout(() => {
+      setRandomBoost(prev => prev + (Math.random() * range + minInc));
+    }, seconds * 1000);
+
+    const timers = [
+      createTimer(5, 4, 4),    // 5s
+      createTimer(12, 5, 5),   // 12s
+      createTimer(25, 5, 5),   // 25s
+      createTimer(40, 5, 5),   // 40s
+      createTimer(60, 4, 4),   // 60s
+      createTimer(80, 4, 4),   // 80s
+      createTimer(105, 4, 4),  // 105s
+      createTimer(130, 4, 4),  // 130s
+      createTimer(160, 4, 4),  // 160s
+      createTimer(190, 4, 4),  // 190s
+      createTimer(220, 3, 3),  // 220s
+    ];
+
+    return () => timers.forEach(t => clearTimeout(t));
+  }, [generationProgress?.isGenerating]);
+
+  // Ensure logical monotonic growth (NO GOING DOWN)
+  useEffect(() => {
+    if (!generationProgress?.isGenerating) return;
+    
+    let baseFill = 0;
+    const status = (generationProgress?.status || '').toLowerCase();
+    
+    if (status.includes('complete') || status.includes('done')) baseFill = 100;
+    else if (status.includes('finishing')) baseFill = 95;
+    else if (status.includes('polish') || status.includes('finalizing')) baseFill = 80;
+    else if (status.includes('verify') || status.includes('validating')) baseFill = 65;
+    else if (status.includes('applying') || status.includes('injecting')) baseFill = 55;
+    else if (status.includes('synthesizing')) baseFill = 45;
+    else if (status.includes('generating') || status.includes('writing') || status.includes('building')) {
+      if (generationProgress?.components?.length > 0) {
+        const total = generationProgress.components.length;
+        const completed = generationProgress.components.filter(c => c.completed).length;
+        baseFill = 25 + (35 * (completed / Math.max(1, total))); // 25-60% based on components
+      } else {
+        baseFill = 25; // 25% baseline if just generating text stream
+      }
+    }
+    else if (status.includes('dependencies') || status.includes('installing') || status.includes('fetching')) baseFill = 15;
+    else if (status.includes('planning') || status.includes('designing')) baseFill = 8;
+    else if (status.includes('enhancing') || status.includes('deriving')) baseFill = 4;
+    else if (status.includes('starting') || status.includes('booting') || status.includes('deducting')) baseFill = 1;
+    else if (status) baseFill = 3; // E.g. "Working..." or "Thinking..."
+
+    // Add logarithmic decay to randomBoost so it doesn't instantly hit 99% in late stages
+    // We also dampen the total effect of randomBoost as baseFill increases
+    const boostDamping = (100 - baseFill) / 100;
+    let targetFill = baseFill + (randomBoost * boostDamping * 0.8); 
+    targetFill = Math.min(99, targetFill);
+    if (baseFill >= 100) targetFill = 100;
+    
+    // Strict monotonic enforcement + floor to avoid decimal jumping
+    setMonotonicFill(prev => {
+      const isStarting = status.includes('starting...');
+      const actualPrev = isStarting ? 0 : prev; // HARD RESET ON EDIT/START
+      const finalFill = Math.floor(Math.max(actualPrev, targetFill));
+      console.log(`[LoadingBar] Time: ${new Date().toLocaleTimeString()} | Status: "${status}" | BaseFill: ${baseFill} | RandomBoost: ${Math.floor(randomBoost)} | TargetFill: ${Math.floor(targetFill)} | Monotonic: ${finalFill}`);
+      return finalFill;
+    });
+  }, [generationProgress, randomBoost]);
+
+  let fillPercentage = 0;
+  if (generationProgress?.isGenerating) {
+    fillPercentage = monotonicFill;
+  } else if (monotonicFill >= 90) {
+    fillPercentage = 100;
+  }
+
+
+  // Use the live generation progress for the fill!
+  const displayFill = fillPercentage;
 
   return (
-    <div className={styles.showcase}>
+    <div className={styles.loadingContainer} style={{ position: 'relative', overflow: 'hidden' }}>
       <CornerWave />
-      {/* Cinematic Gradient Masks */}
-      <div className={styles.maskLeft} />
-      <div className={styles.maskRight} />
 
-      <div className={styles.showcaseInner}>
-        {/* Horizontal Track - Continuous Leftward Flow */}
-        <div className={styles.singleTrack}>
-          <AnimatePresence initial={false}>
-            {/* Render 4 items: Previous(-1), Current(0), Next(1), Incoming(2) */}
-            {[-1, 0, 1, 2].map((offset) => {
-              const slide = getSlide(offset);
-              const isCenter = offset === 0;
 
-              return (
-                <motion.div
-                  key={`${slide.title}-${current + offset}`}
-                  initial={{ x: (offset + 1) * 380, opacity: 0, scale: 0.85, zIndex: 1 }}
-                  animate={{
-                    x: offset * 380, // Move to target position
-                    opacity: isCenter ? 1 : 0.5,
-                    scale: isCenter ? 1 : 0.85,
-                    filter: isCenter ? 'grayscale(0%) brightness(1.1)' : 'grayscale(100%) brightness(0.6)',
-                    zIndex: isCenter ? 10 : 1
-                  }}
-                  exit={{ x: -380, opacity: 0, scale: 0.85, zIndex: 0 }} // Exit to the left
-                  transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
-                  className={styles.cardWrapper}
-                >
-                  <div className={styles.cardFrame}>
-                    <img src={slide.image} alt="" className={styles.cardImage} />
-                    {isCenter && <div className={styles.cardShine} />}
-                  </div>
-                </motion.div>
-              );
-            })}
-          </AnimatePresence>
-        </div>
-
-        {/* Minimalist Info - Only for Center Card */}
-        <div className={styles.infoContainer}>
+      <div data-layer="LoadingPart" style={{width: 312, height: 184, position: 'relative'}}>
+        <div 
+          data-layer="TornadoLogo" 
+          className={
+            logoState === 1 ? styles.tornadoLogoPulse : 
+            logoState === 2 ? styles.tornadoLogoTikiTaka : 
+            logoState === 3 ? styles.tornadoLogoScanner :
+            styles.tornadoLogoShimmer
+          } 
+          style={{
+            width: 110, height: 110, left: 101, top: 0, position: 'absolute',
+            '--logo-url': `url(${volturianoLogo})`
+          }} 
+        />
+        
+        <div style={{ position: 'absolute', top: 136, left: 10, width: 292, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
           <AnimatePresence mode="wait">
-            <motion.div
+            <motion.div 
               key={current}
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -20 }}
-              transition={{ duration: 0.5, ease: "easeOut" }}
-              className={styles.infoContent}
+              initial={{ opacity: 0, y: 5 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -5 }}
+              transition={{ duration: 0.3 }}
+              style={{ 
+                background: 'linear-gradient(90deg, #ffffff 0%, #b0b0b0 100%)', 
+                WebkitBackgroundClip: 'text', 
+                WebkitTextFillColor: 'transparent', 
+                backgroundClip: 'text', 
+                color: 'transparent', 
+                fontSize: 15, 
+                fontFamily: '"Inter", sans-serif', 
+                fontWeight: '500', 
+                whiteSpace: 'nowrap', 
+                letterSpacing: '-0.01em' 
+              }}
             >
-              <h3 className={styles.infoTitle}>{currentSlide.title}</h3>
-              <p className={styles.infoDesc}>{currentSlide.desc}</p>
+              {currentTitle}
             </motion.div>
           </AnimatePresence>
+          <div 
+            className={styles.tinyTextShimmer}
+            style={{ 
+              fontSize: 18, 
+              fontFamily: '"Inter", sans-serif', 
+              fontWeight: '600', 
+              letterSpacing: '-0.02em' 
+            }}
+          >
+            <AnimatedNumber value={displayFill} />
+          </div>
         </div>
-
-        {/* Removed status badge */}
+        
+        <div 
+          data-layer="RectangleLoadingbarThingy." 
+          className={styles.rectangleLoadingBar} 
+          style={{ width: 292, height: 14, left: 10, top: 165, position: 'absolute', borderRadius: 7, border: '2px white solid', overflow: 'hidden' }} 
+        >
+          {/* Elegant Mature Fill Material with Shimmer */}
+          <div 
+            className={styles.loadingFill} 
+            style={{ width: `${displayFill}%` }} 
+          />
+        </div>
       </div>
     </div>
   );
@@ -327,6 +547,9 @@ export default function Generation() {
   const [snapshots, setSnapshots] = useState([]);
   const [strictMode, setStrictMode] = useState(queryParams.get('strictMode') === 'true' || location.state?.strictMode || false);
   const [revertModalData, setRevertModalData] = useState(null); // { snapshot, targetIndex, promptText, components }
+  const [logoState, setLogoState] = useState(0); // Shared logo state (0=Resting, 1=Pulse, 2=TikiTaka, 3=Scanner)
+  const [hasPlayedCinematic, setHasPlayedCinematic] = useState(false);
+
 
   const showNotification = useCallback((msg) => {
     setNotification(msg);
@@ -571,6 +794,41 @@ export default function Generation() {
     return (generationProgress.status || 'Working').replace(/\.\.\.*$/, '');
   }, [codeApplicationState.stage, codeApplicationState.packages, aiThinking, generationProgress.status]);
 
+  // Map AI pipeline steps to logo personality traits
+  useEffect(() => {
+    if (!generationProgress?.isGenerating && !aiThinking && !codeApplicationState?.stage) {
+      setLogoState(0); // Resting (easywork)
+      return;
+    }
+
+    const stage = aiThinking?.stage || codeApplicationState?.stage;
+    const unified = getUnifiedStatus().toLowerCase();
+
+    // 0 = Resting (shimmer)
+    // 1 = Pulse (evaluating what to do from here)
+    // 2 = TikiTaka (doing stuff)
+    // 3 = Scanner (doingstuff/thinking to execute goodly)
+    if (stage === 'analyzing' || unified.includes('analyzing') || unified.includes('requirements')) {
+      setLogoState(1); // Pulse
+    } else if (stage === 'planning' || unified.includes('designing') || unified.includes('plan')) {
+      setLogoState(1); // Pulse
+    } else if (stage === 'booting' || unified.includes('environment')) {
+      setLogoState(0); // Resting
+    } else if (stage === 'installing' || unified.includes('dependencies')) {
+      setLogoState(2); // TikiTaka
+    } else if (stage === 'building' || unified.includes('writing') || unified.includes('synthesizing') || unified.includes('applying') || unified.includes('finalizing')) {
+      setLogoState(3); // Scanner
+    } else if (stage === 'verifying' || unified.includes('verify')) {
+      setLogoState(3); // Scanner
+    } else if (stage === 'repairing' || unified.includes('fix')) {
+      setLogoState(1); // Pulse
+    } else if (generationProgress?.isGenerating) {
+      setLogoState(2); // TikiTaka as default for active generation
+    } else {
+      setLogoState(0); // Resting
+    }
+  }, [generationProgress?.isGenerating, generationProgress?.status, aiThinking?.stage, codeApplicationState?.stage, getUnifiedStatus]);
+
   // Sidebar Resizing Logic
   const startResizing = useCallback((e) => {
     e.preventDefault();
@@ -775,6 +1033,9 @@ export default function Generation() {
                 setAiThinking(null); // Stop thinking
                 if (!isResume) {
                   setDeliveryQueue(prev => [...prev, { type: 'message', content: data.message, chatType: 'ai-narrator', metadata: { style: data.style, context: data.context } }]);
+                  if (data.message.toLowerCase().includes('polish')) {
+                    setGenerationProgress(prev => ({ ...prev, status: 'Polishing...' }));
+                  }
                 }
                 break;
 
@@ -803,6 +1064,7 @@ export default function Generation() {
               case 'verify-start':
                 setCodeApplicationState(prev => ({ ...prev, stage: 'verifying' }));
                 setAiThinking({ stage: 'verifying' });
+                setGenerationProgress(prev => ({ ...prev, status: 'Verifying...' }));
                 break;
 
               case 'verify_passed':
@@ -868,7 +1130,7 @@ export default function Generation() {
                       updatedFiles.push(newFile);
                     }
                   });
-                  return { ...prev, files: updatedFiles };
+                  return { ...prev, status: 'finishing', files: updatedFiles };
                 });
                 setConversationContext(prev => ({
                   ...prev,
@@ -2273,8 +2535,18 @@ Just position the new components in a logical order (e.g. after the Hero or befo
   };
 
   // ─── Render ──────────────────────────────
-  const { phase } = useRouteTransition();
+  const { phase, transitionData } = useRouteTransition();
   const isRevealing = phase === 'revealing' || phase === 'idle';
+  const cinematicText = transitionData?.cinematicResponse;
+
+  useEffect(() => {
+    if (isRevealing && cinematicText && !hasPlayedCinematic && chatMessages.length > 0) {
+      setHasPlayedCinematic(true);
+      setTimeout(() => {
+        addChatMessage(cinematicText, 'ai-narrator', { style: 'planning' });
+      }, 300);
+    }
+  }, [isRevealing, cinematicText, hasPlayedCinematic, chatMessages.length, addChatMessage]);
 
   return (
     <div className={styles.page} style={{ cursor: isResizing ? 'col-resize' : 'default', userSelect: isResizing ? 'none' : 'auto', background: 'black' }}>
@@ -2609,10 +2881,28 @@ Just position the new components in a logical order (e.g. after the Hero or befo
                 })}
 
                 {/* Active Status Indicator */}
-                {(aiThinking || generationProgress.isGenerating) && !isTextStreaming && (
+                {(aiThinking || generationProgress.isGenerating || codeApplicationState.stage === 'complete') && (
                   <div className={`${styles.chatMsg} ${styles.chatMsg_system}`}>
                     <div className={styles.chatBubble}>
-                      <span className={`${styles.typingDots} ${styles.shimmerText}`}>
+                      <span className={`${styles.typingDots} ${styles.shimmerText}`} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <div 
+                          className={
+                            logoState === 1 ? styles.tornadoLogoPulse : 
+                            logoState === 2 ? styles.tornadoLogoTikiTaka : 
+                            logoState === 3 ? styles.tornadoLogoScanner :
+                            styles.tornadoLogoShimmer
+                          } 
+                          style={{
+                            width: 18, 
+                            height: 18, 
+                            flexShrink: 0,
+                            '--logo-url': `url(${volturianoLogo})`,
+                            backgroundClip: 'initial',
+                            WebkitBackgroundClip: 'initial',
+                            WebkitTextFillColor: 'initial',
+                            color: 'initial'
+                          }} 
+                        />
                         {showThinking ? `Thinking${statusDots}` : `${getUnifiedStatus().replace(/\.\.\.$/, '')}${statusDots}`}
                       </span>
                     </div>
@@ -2714,21 +3004,21 @@ Just position the new components in a logical order (e.g. after the Hero or befo
                             transition={{ duration: 0.2, ease: "easeOut" }}
                           >
                             <button
-                              className={`${styles.modelOption} ${aiModel.includes('gemini-3.1-pro') ? styles.modelOptionActive : ''}`}
+                              className={`${styles.modelOption} ${aiModel.includes('google/gemini-3.1-pro-preview') ? styles.modelOptionActive : ''}`}
                               onClick={() => { setAiModel('google/gemini-3.1-pro-preview'); setModelDropdownOpen(false); }}
                             >
                               <GeminiIcon width="20" height="20" />
                               <span>Gemini 3.1 Pro</span>
                             </button>
                             <button
-                              className={`${styles.modelOption} ${aiModel.includes('gpt-5.2') ? styles.modelOptionActive : ''}`}
+                              className={`${styles.modelOption} ${aiModel.includes('openai/gpt-5.2') ? styles.modelOptionActive : ''}`}
                               onClick={() => { setAiModel('openai/gpt-5.2'); setModelDropdownOpen(false); }}
                             >
                               <OpenAIIcon width="20" height="20" style={{ color: 'white' }} />
                               <span>GPT-5.2</span>
                             </button>
                             <button
-                              className={`${styles.modelOption} ${aiModel.includes('claude-sonnet-4-6') ? styles.modelOptionActive : ''}`}
+                              className={`${styles.modelOption} ${aiModel.includes('anthropic/claude-sonnet-4-6') ? styles.modelOptionActive : ''}`}
                               onClick={() => { setAiModel('anthropic/claude-sonnet-4-6'); setModelDropdownOpen(false); }}
                             >
                               <AnthropicIcon width="20" height="20" />
@@ -3034,7 +3324,11 @@ Just position the new components in a logical order (e.g. after the Hero or befo
                           </AnimatePresence>
 
                           {generationProgress.isGenerating || !sandboxData?.url ? (
-                            <ShowcaseCarousel isActive={true} />
+                            <ShowcaseCarousel 
+                              isActive={true} 
+                              generationProgress={generationProgress} 
+                              logoState={logoState}
+                            />
                           ) : (
                             <iframe
                               ref={iframeRef}

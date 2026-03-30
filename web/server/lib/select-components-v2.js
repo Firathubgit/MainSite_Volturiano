@@ -117,7 +117,7 @@ ${list}`;
             ? `\n\n🎯 MANDATORY SELECTION:\nThe user has EXPLICITLY requested these components. You MUST include them in your selected_component_ids array if they appear in the candidate list below:\n${explicitComponents.join(', ')}`
             : '';
 
-        const systemPrompt = `You are a Master Website Architect. Pick the absolute best 8-14 components to construct a cohesive, multi-page website experience.
+        const systemPrompt = `You are a Master Website Architect. Pick the absolute best 5-11 components to construct a cohesive, multi-page website experience.
 You have been provided with up to 50 highly-scored candidates that have already been vetted for quality and industry fit.${explicitInprompt}
 
 CANDIDATES:
@@ -134,7 +134,7 @@ RULES:
                 model: getModel('google/gemini-3.1-pro-preview'),
                 schema,
                 system: systemPrompt,
-                prompt: `User Request: "${prompt}"\nDesign Context: ${JSON.stringify(designSystem)}\n\nSelect the best 8-14 components to build out all requested pages.`,
+                prompt: `User Request: "${prompt}"\nDesign Context: ${JSON.stringify(designSystem)}\n\nSelect the best 5-11 components to build out all requested pages.`,
                 temperature: 0
             });
             return object.selected_component_ids;
@@ -459,9 +459,9 @@ async function scoreAndSelect(candidates, designSystem, prompt, explicitComponen
 
     // Map explicit components to their component_id so the LLM prompt recognizes UUIDs
     const mappedExplicit = explicitComponents.map(reqId => {
-        const match = top50.find(c => 
-            c.name?.toLowerCase() === reqId.toLowerCase() || 
-            c.component_id?.toLowerCase() === reqId.toLowerCase() || 
+        const match = top50.find(c =>
+            c.name?.toLowerCase() === reqId.toLowerCase() ||
+            c.component_id?.toLowerCase() === reqId.toLowerCase() ||
             c.id?.toLowerCase() === reqId.toLowerCase()
         );
         return match ? match.component_id : reqId;
@@ -933,7 +933,7 @@ export async function selectComponentsV2(prompt, designSystem = {}, explicitName
                 // Sometimes component_id matches a UUID for community components
                 orFields.push(`component_id.in.(${formattedUUIDs})`);
             }
-            
+
             const orQuery = orFields.join(',');
 
             const { data: explicitComps } = await sb
@@ -962,10 +962,10 @@ export async function selectComponentsV2(prompt, designSystem = {}, explicitName
                 .is('variant_of', null)
                 .order('quality_score', { ascending: false })
                 .limit(50);
-            
+
             const fallbackComps = fallbackQuery.data || [];
             const existingIds = new Set((candidates || []).map(c => c.component_id));
-            
+
             candidates = candidates || [];
             fallbackComps.forEach(fc => {
                 if (!existingIds.has(fc.component_id)) {
@@ -984,11 +984,11 @@ export async function selectComponentsV2(prompt, designSystem = {}, explicitName
 
             if (missing.length > 0) {
                 console.log(`[Pipeline] 🚨 ${missing.length} explicit components still missing from candidates. Broadening search...`);
-                
+
                 // Construct broad query handling UUIDs safely to avoid Postgres type errors
                 const missingUUIDs = missing.filter(id => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-5][0-9a-f]{3}-[089ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id));
                 const missingStrs = missing.filter(id => !missingUUIDs.includes(id));
-                
+
                 let broadOrs = [];
                 if (missingStrs.length > 0) {
                     broadOrs.push(`name.ilike.%${missingStrs[0]}%`);

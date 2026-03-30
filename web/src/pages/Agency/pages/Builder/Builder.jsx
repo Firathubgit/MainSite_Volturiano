@@ -236,11 +236,6 @@ const BuilderContent = () => {
             icon: <OpenAIIcon />
         },
         {
-            id: 'openai/gpt-4o',
-            label: 'GPT-4o',
-            icon: <OpenAIIcon />
-        },
-        {
             id: 'anthropic/claude-sonnet-4-6',
             label: 'Claude 4.6',
             icon: <AnthropicIcon />

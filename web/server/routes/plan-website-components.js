@@ -258,7 +258,7 @@ ${premiumMode === 'off' ? '<!-- Premium selection disabled -->' : `SELECTION CON
           source: 'premium',
           bundleId: dbComp.component_id,
           props: {},
-          role: dbComp.category === 'header' ? 'header' : (dbComp.category === 'hero' ? 'hero' : (dbComp.category === 'footer' ? 'footer' : 'feature'))
+          role: (dbComp.category === 'header' || dbComp.category === 'nav') ? 'header' : (dbComp.category === 'hero' ? 'hero' : (dbComp.category === 'footer' ? 'footer' : 'feature'))
         };
       });
 

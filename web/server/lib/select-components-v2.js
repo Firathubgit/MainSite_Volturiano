@@ -49,13 +49,18 @@ Return the slug of the best match and your confidence score. If no blueprint is 
 Important: A high confidence (>0.8) means the preset closely covers all the user's core needs.`;
 
         try {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 15000);
+
             const { object } = await generateObject({
                 model: getModel('google/gemini-3.1-pro-preview'),
                 schema,
                 system: systemPrompt,
                 prompt: `User Prompt: "${prompt}"\nDesign System Industry Context: ${designSystem?.industry || 'None'}`,
-                temperature: 0
+                temperature: 0,
+                abortSignal: controller.signal
             });
+            clearTimeout(timeoutId);
             return object;
         } catch (e) {
             console.warn('[Pipeline] LLM match failed, returning low confidence:', e.message);
@@ -88,13 +93,18 @@ Category Glossary Check (Only use existing slugs):
 ${list}`;
 
         try {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 15000);
+
             const { object } = await generateObject({
                 model: getModel('google/gemini-3.1-pro-preview'),
                 schema,
                 system: systemPrompt,
                 prompt: `User Prompt: "${prompt}"\nRefine the categories to perfectly match this request.`,
-                temperature: 0
+                temperature: 0,
+                abortSignal: controller.signal
             });
+            clearTimeout(timeoutId);
             return object.refined_categories;
         } catch (e) {
             console.warn('[Pipeline] Refinement LLM failed, falling back to required categories:', e.message);
@@ -130,13 +140,18 @@ RULES:
 4. Return only the EXACT component_ids from the list above.`;
 
         try {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 15000);
+
             const { object } = await generateObject({
                 model: getModel('google/gemini-3.1-pro-preview'),
                 schema,
                 system: systemPrompt,
                 prompt: `User Request: "${prompt}"\nDesign Context: ${JSON.stringify(designSystem)}\n\nSelect the best 5-11 components to build out all requested pages.`,
-                temperature: 0
+                temperature: 0,
+                abortSignal: controller.signal
             });
+            clearTimeout(timeoutId);
             return object.selected_component_ids;
         } catch (e) {
             console.warn('[Pipeline] Final selection LLM failed, picking top 8 deterministically:', e.message);
@@ -147,7 +162,7 @@ RULES:
      * AI Step 0: Match prompt against available community templates
      */
     matchTemplate: async (prompt, designSystem, templates) => {
-        console.group('[LLM matchTemplate] ════════════════════════════════');
+        console.log('[LLM matchTemplate] 🏗️ PIPELINE STEP 0a: TEMPLATE MATCHING ════════════════════════════════');
         console.log('[LLM matchTemplate] 🧠 Called with', templates.length, 'templates');
         console.log('[LLM matchTemplate] User prompt (first 100 chars):', prompt?.substring(0, 100));
 
@@ -176,21 +191,24 @@ Rules:
 
         const userPrompt = `User Request: "${prompt}"\nDesign Context: ${JSON.stringify(designSystem)}`;
         console.log('[LLM matchTemplate] 📤 Sending to LLM (model: google/gemini-3.1-pro-preview)');
-        console.log('[LLM matchTemplate] User prompt to LLM:', userPrompt.substring(0, 200));
-
+        
         try {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 15000);
+
             console.time('[LLM matchTemplate] LLM call duration');
             const { object } = await generateObject({
                 model: getModel('google/gemini-3.1-pro-preview'),
                 schema,
                 system: systemPrompt,
                 prompt: userPrompt,
-                temperature: 0
+                temperature: 0,
+                abortSignal: controller.signal
             });
+            clearTimeout(timeoutId);
             console.timeEnd('[LLM matchTemplate] LLM call duration');
             console.log('[LLM matchTemplate] 📥 LLM returned:', JSON.stringify(object, null, 2));
             console.log('[LLM matchTemplate] ✅ LLM call succeeded');
-            console.groupEnd();
             return object;
         } catch (e) {
             console.timeEnd('[LLM matchTemplate] LLM call duration');
@@ -198,8 +216,7 @@ Rules:
             console.error('[LLM matchTemplate] Error name:', e.name);
             console.error('[LLM matchTemplate] Stack:', e.stack?.substring(0, 300));
             console.log('[LLM matchTemplate] 💡 Returning no-match fallback');
-            console.groupEnd();
-            return { template_id: '', confidence: 0, reasoning: 'LLM call failed' };
+            return { template_id: '', confidence: 0, reasoning: 'LLM call failed or timed out' };
         }
     },
 };

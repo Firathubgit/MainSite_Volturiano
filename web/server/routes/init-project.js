@@ -1,4 +1,5 @@
 import { checkAndDeductUserCredit, createProject } from '../lib/db/projects.js';
+import { supabaseAdmin } from '../lib/supabase-admin.js';
 import crypto from 'crypto';
 import { logger } from '../lib/logger.js';
 
@@ -9,6 +10,24 @@ export default async function initProject(req, res) {
     try {
         const { prompt, buildId } = req.body;
         const projectId = buildId || crypto.randomUUID();
+
+        // 0. Idempotency Check (prevent double-credit deduction on simultaneous clicks)
+        if (buildId && supabaseAdmin) {
+            const { data: existing } = await supabaseAdmin
+                .from('projects')
+                .select('id')
+                .eq('id', buildId)
+                .maybeSingle();
+
+            if (existing) {
+                console.log(`[initProject] BuildId ${buildId} already exists — bypassing credit deduction`);
+                return res.status(200).json({
+                    success: true,
+                    projectId: buildId,
+                    message: 'Project already exists.'
+                });
+            }
+        }
 
         // 1. Credit Check (Now mandatory as route is requireAuth)
         const creditCheck = await checkAndDeductUserCredit(userId);

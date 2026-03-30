@@ -293,6 +293,17 @@ function ShowcaseCarousel({ isActive, generationProgress, logoState }) {
     return () => timers.forEach(t => clearTimeout(t));
   }, [generationProgress?.isGenerating]);
 
+  // Breathing effect: Add tiny increments every 30s to ensure it never looks "stuck"
+  useEffect(() => {
+    if (!generationProgress?.isGenerating) return;
+    
+    const interval = setInterval(() => {
+      setRandomBoost(prev => prev + (Math.random() * 1.5 + 0.5));
+    }, 30000);
+    
+    return () => clearInterval(interval);
+  }, [generationProgress?.isGenerating]);
+
   // Ensure logical monotonic growth (NO GOING DOWN)
   useEffect(() => {
     if (!generationProgress?.isGenerating) return;
@@ -301,31 +312,31 @@ function ShowcaseCarousel({ isActive, generationProgress, logoState }) {
     const status = (generationProgress?.status || '').toLowerCase();
     
     if (status.includes('complete') || status.includes('done')) baseFill = 100;
-    else if (status.includes('finishing')) baseFill = 95;
-    else if (status.includes('polish') || status.includes('finalizing')) baseFill = 80;
-    else if (status.includes('verify') || status.includes('validating')) baseFill = 65;
-    else if (status.includes('applying') || status.includes('injecting')) baseFill = 55;
-    else if (status.includes('synthesizing')) baseFill = 45;
+    else if (status.includes('finishing')) baseFill = 90;
+    else if (status.includes('polish') || status.includes('finalizing')) baseFill = 75;
+    else if (status.includes('verify') || status.includes('validating')) baseFill = 60;
+    else if (status.includes('applying') || status.includes('injecting')) baseFill = 50;
+    else if (status.includes('synthesizing')) baseFill = 40;
     else if (status.includes('generating') || status.includes('writing') || status.includes('building')) {
       if (generationProgress?.components?.length > 0) {
         const total = generationProgress.components.length;
         const completed = generationProgress.components.filter(c => c.completed).length;
-        baseFill = 25 + (35 * (completed / Math.max(1, total))); // 25-60% based on components
+        baseFill = 20 + (30 * (completed / Math.max(1, total))); // 20-50% based on components
       } else {
-        baseFill = 25; // 25% baseline if just generating text stream
+        baseFill = 20; // 20% baseline if just generating text stream
       }
     }
-    else if (status.includes('dependencies') || status.includes('installing') || status.includes('fetching')) baseFill = 15;
-    else if (status.includes('planning') || status.includes('designing')) baseFill = 8;
-    else if (status.includes('enhancing') || status.includes('deriving')) baseFill = 4;
-    else if (status.includes('starting') || status.includes('booting') || status.includes('deducting')) baseFill = 1;
-    else if (status) baseFill = 3; // E.g. "Working..." or "Thinking..."
+    else if (status.includes('dependencies') || status.includes('installing') || status.includes('fetching')) baseFill = 10;
+    else if (status.includes('planning') || status.includes('designing')) baseFill = 3;
+    else if (status.includes('enhancing') || status.includes('deriving')) baseFill = 1;
+    else if (status.includes('starting') || status.includes('booting') || status.includes('deducting')) baseFill = 0.5;
+    else if (status) baseFill = 2; // E.g. "Working..." or "Thinking..."
 
     // Add logarithmic decay to randomBoost so it doesn't instantly hit 99% in late stages
     // We also dampen the total effect of randomBoost as baseFill increases
     const boostDamping = (100 - baseFill) / 100;
     let targetFill = baseFill + (randomBoost * boostDamping * 0.8); 
-    targetFill = Math.min(99, targetFill);
+    targetFill = Math.min(97, targetFill);
     if (baseFill >= 100) targetFill = 100;
     
     // Strict monotonic enforcement + floor to avoid decimal jumping
@@ -341,7 +352,7 @@ function ShowcaseCarousel({ isActive, generationProgress, logoState }) {
   let fillPercentage = 0;
   if (generationProgress?.isGenerating) {
     fillPercentage = monotonicFill;
-  } else if (monotonicFill >= 90) {
+  } else if (monotonicFill >= 85) {
     fillPercentage = 100;
   }
 

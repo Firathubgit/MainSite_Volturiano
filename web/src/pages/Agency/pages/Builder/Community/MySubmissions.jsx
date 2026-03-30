@@ -264,10 +264,11 @@ export default function MySubmissions() {
                                             </button>
                                             
                                             {menuOpenId === sub.id && (
-                                                <div className={styles.dropdownMenu}>
+                                                <div className={styles.dropdownMenu} onClick={(e) => e.stopPropagation()}>
                                                     <button 
                                                         className={styles.menuItemDanger}
-                                                        onClick={() => {
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
                                                             setConfirmDeleteId(sub.id);
                                                             setMenuOpenId(null);
                                                         }}

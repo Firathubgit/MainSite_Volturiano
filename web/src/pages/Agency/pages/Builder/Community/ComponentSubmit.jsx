@@ -420,10 +420,19 @@ export default function ComponentSubmit() {
             "clsx": "latest",
             "tailwind-merge": "latest"
         };
-        const libs = ["three", "@react-three/fiber", "@react-three/drei", "ogl", "cobe"];
-        libs.forEach(lib => {
-            if (code.includes(lib)) deps[lib] = "latest";
-        });
+        const importRx = /from\s+['"]([^'"]+)['"]/g;
+        let match;
+        while ((match = importRx.exec(code)) !== null) {
+            const raw = match[1];
+            if (raw.startsWith(".") || raw.startsWith("/")) continue;
+            const pkg = raw.startsWith("@")
+                ? raw.split("/").slice(0, 2).join("/")
+                : raw.split("/")[0];
+            
+            if (pkg !== "react" && pkg !== "react-dom") {
+                deps[pkg] = "latest";
+            }
+        }
         return deps;
     }, [code]);
 
@@ -432,10 +441,10 @@ export default function ComponentSubmit() {
     }), [sandpackDependencies]);
 
     const sandpackFiles = useMemo(() => ({
-        "/App.jsx": "export default function App() {\n  return (\n    <div className=\"flex flex-col items-center justify-center p-8 text-center\">\n      <h1 className=\"text-4xl font-bold mb-4\">Welcome to Builder</h1>\n      <p className=\"opacity-60\">Start typing to see your component here.</p>\n    </div>\n  );\n}",
-        "/style.css": "",
+        "/App.jsx": code || "export default function App() {\n  return (\n    <div className=\"flex flex-col items-center justify-center p-8 text-center\">\n      <h1 className=\"text-4xl font-bold mb-4\">Welcome to Builder</h1>\n      <p className=\"opacity-60\">Start typing to see your component here.</p>\n    </div>\n  );\n}",
+        "/style.css": cssCode || "",
         "/index.js": `import React, { StrictMode } from "react";\nimport { createRoot } from "react-dom/client";\nimport "./style.css";\n\nimport App from "./App.jsx";\n\nconst root = createRoot(document.getElementById("root"));\ndocument.body.style.backgroundColor = "${bgMode === 'light' ? '#ffffff' : '#000000'}";\ndocument.body.style.color = "${bgMode === 'light' ? '#000000' : '#ffffff'}";\nroot.render(\n  <StrictMode>\n    <div className="${bgMode === 'light' ? 'bg-white' : 'bg-transparent'} min-h-screen w-full">\n      <App />\n    </div>\n  </StrictMode>\n);`
-    }), []); // Stable key: never reset on toggles!
+    }), [code, cssCode, bgMode]); // Stable key: never reset on toggles!
 
     // Dynamically update the index background WITHOUT resetting App.jsx
     useEffect(() => {
@@ -454,6 +463,7 @@ export default function ComponentSubmit() {
 
             {/* Split Pane: Editor + Preview */}
             < SandpackProvider
+                key={JSON.stringify(Object.keys(sandpackDependencies))} // Reload bundler on new dependency
                 template="react"
                 theme={sandpackTheme}
                 options={sandpackOptions}

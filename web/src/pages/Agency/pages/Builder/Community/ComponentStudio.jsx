@@ -428,47 +428,48 @@ export default function ComponentStudio() {
     const [detectedDeps, setDetectedDeps] = useState({});
     const depDetectTimerRef = useRef(null);
 
-    // Debounced dependency detection — only re-evaluate after 2s of no typing
+    // Debounced dependency detection — scans code for all imports and automatically adds them
     useEffect(() => {
         if (depDetectTimerRef.current) clearTimeout(depDetectTimerRef.current);
         depDetectTimerRef.current = setTimeout(() => {
-            const libs = {
-                "three": "three",
-                "@react-three/fiber": "@react-three/fiber",
-                "@react-three/drei": "@react-three/drei",
-                "ogl": "ogl",
-                "cobe": "cobe"
+            const deps = {
+                "framer-motion": "latest",
+                "lucide-react": "latest",
+                "clsx": "latest",
+                "tailwind-merge": "latest"
             };
-            const newDeps = {};
-            Object.entries(libs).forEach(([key, name]) => {
-                if (code.includes(name)) {
-                    newDeps[key] = "latest";
+
+            const importRx = /from\s+['"]([^'"]+)['"]/g;
+            let match;
+            while ((match = importRx.exec(code)) !== null) {
+                const raw = match[1];
+                if (raw.startsWith(".") || raw.startsWith("/")) continue;
+                const pkg = raw.startsWith("@")
+                    ? raw.split("/").slice(0, 2).join("/")
+                    : raw.split("/")[0];
+                
+                if (pkg !== "react" && pkg !== "react-dom") {
+                    deps[pkg] = "latest";
                 }
-            });
+            }
+
             setDetectedDeps(prev => {
-                // Only update if actually different to prevent unnecessary remounts
-                if (JSON.stringify(prev) === JSON.stringify(newDeps)) return prev;
-                return newDeps;
+                if (JSON.stringify(prev) === JSON.stringify(deps)) return prev;
+                return deps;
             });
-        }, 2000);
+        }, 500); // Faster debounce
         return () => { if (depDetectTimerRef.current) clearTimeout(depDetectTimerRef.current); };
     }, [code]);
 
     const sandpackCustomSetup = useMemo(() => ({
-        dependencies: {
-            "framer-motion": "latest",
-            "lucide-react": "latest",
-            "clsx": "latest",
-            "tailwind-merge": "latest",
-            ...detectedDeps
-        }
+        dependencies: detectedDeps
     }), [detectedDeps]);
 
     const sandpackFiles = useMemo(() => ({
-        "/App.jsx": "export default function App() {\n  return (\n    <div className=\"flex flex-col items-center justify-center p-8 text-center\">\n      <h1 className=\"text-4xl font-bold mb-4\">Welcome to Builder</h1>\n      <p className=\"opacity-60\">Start typing to see your component here.</p>\n    </div>\n  );\n}",
-        "/style.css": "",
+        "/App.jsx": code || "export default function App() {\n  return (\n    <div className=\"flex flex-col items-center justify-center p-8 text-center\">\n      <h1 className=\"text-4xl font-bold mb-4\">Welcome to Builder</h1>\n      <p className=\"opacity-60\">Start typing to see your component here.</p>\n    </div>\n  );\n}",
+        "/style.css": cssCode || "",
         "/index.js": `import React, { StrictMode } from "react";\nimport { createRoot } from "react-dom/client";\nimport "./style.css";\n\nimport App from "./App.jsx";\n\nconst root = createRoot(document.getElementById("root"));\ndocument.body.style.backgroundColor = "${bgMode === 'light' ? '#ffffff' : '#000000'}";\ndocument.body.style.color = "${bgMode === 'light' ? '#000000' : '#ffffff'}";\nroot.render(\n  <StrictMode>\n    <div className="${bgMode === 'light' ? 'bg-white' : 'bg-transparent'} min-h-screen w-full">\n      <App />\n    </div>\n  </StrictMode>\n);`
-    }), []);
+    }), [code, cssCode, bgMode]); // Key fix: must include code/cssCode to prevent reverting on re-renders
 
     useEffect(() => {
         if (updateFileRef.current) {
@@ -561,6 +562,7 @@ export default function ComponentStudio() {
 
             {/* ── BODY (3-PANEL) ── */}
             <SandpackProvider
+                key={JSON.stringify(Object.keys(detectedDeps))} // Force bundler reload when a new package is detected
                 template="react"
                 theme={sandpackTheme}
                 options={sandpackOptions}

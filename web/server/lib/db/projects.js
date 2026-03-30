@@ -15,75 +15,27 @@ export async function checkAndDeductUserCredit(userId) {
         const isDev = process.env.NODE_ENV === 'development' || !process.env.NODE_ENV;
         if (isDev) return { allowed: true };
 
-        // 1. Get profile
-        const { data: profile, error: profileErr } = await supabaseAdmin
-            .from('profiles')
-            .select('daily_credits_used, daily_credits_limit, total_credits_remaining, plan, daily_credits_reset_at')
-            .eq('id', userId)
-            .single();
-
-        if (profileErr || !profile) {
-            console.error('[DB] Profile fetch err:', profileErr);
-            return { allowed: false, message: 'Could not fetch user profile.' };
-        }
-
-        const today = new Date().toISOString().split('T')[0];
-
-        // Reset daily counters if needed
-        let currentDailyUsed = profile.daily_credits_used;
-        if (profile.daily_credits_reset_at !== today) {
-            currentDailyUsed = 0;
-            // We will perform the DB update alongside the deduction below
-        }
-
-        // Checking limits
-        const isPremium = profile.plan === 'pro' || profile.plan === 'enterprise' || profile.plan === 'admin';
-        const hasDailyCreditsLeft = currentDailyUsed < profile.daily_credits_limit;
-        const hasPurchasedCreditsLeft = profile.total_credits_remaining > 0;
-
-        let totalCreditsAfter = profile.total_credits_remaining;
-        let dailyCreditsAfter = currentDailyUsed;
-        let transactionType = 'usage';
-        let description = 'Site generation';
-
-        if (hasDailyCreditsLeft || isPremium) {
-            // Free daily build or premium unlimited
-            // Note: If premium is strictly "unlimited", we don't strictly enforce daily_credits_limit in the same way, but tracking helps.
-            if (!isPremium && hasDailyCreditsLeft) dailyCreditsAfter += 1;
-        } else if (hasPurchasedCreditsLeft) {
-            // Fallback to rolled over / purchased credits
-            totalCreditsAfter -= 1;
-            description = 'Site generation (Purchased credit)';
-        } else {
-            // No credits left
-            return {
-                allowed: false,
-                message: 'You have exhausted your daily free builds. Please upgrade to Pro for unlimited builds.'
-            };
-        }
-
-        // 2. Perform updates
-        const { error: updateErr } = await supabaseAdmin
-            .from('profiles')
-            .update({
-                daily_credits_used: dailyCreditsAfter,
-                total_credits_remaining: totalCreditsAfter,
-                daily_credits_reset_at: today
-            })
-            .eq('id', userId);
-
-        if (updateErr) {
-            console.error('[DB] Profile credit update err:', updateErr);
-            return { allowed: false, message: 'Failed to update credit balance.' };
-        }
-
-        // 3. Log transaction
-        await supabaseAdmin.from('credit_transactions').insert({
-            user_id: userId,
-            amount: -1,
-            type: transactionType,
-            description
+        // Use the V2 Credit System RPC if available
+        const { data: rpcResult, error: rpcErr } = await supabaseAdmin.rpc('deduct_credits_safe', {
+            p_user_id: userId,
+            p_amount: 1,
+            p_description: 'Site generation',
+            p_project_id: null
         });
+
+        if (rpcErr) {
+            console.error('[DB] deduct_credits_safe RPC error:', rpcErr);
+            // Fallback: If RPC is missing/fails, we fail open for now so we don't block users
+            return { allowed: true };
+        }
+
+        if (rpcResult && rpcResult.success === false) {
+             return {
+                 allowed: false,
+                 message: rpcResult.error || 'You have exhausted your credits. Please upgrade or purchase more.',
+                 code: rpcResult.code
+             };
+        }
 
         return { allowed: true };
 

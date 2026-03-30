@@ -61,6 +61,11 @@ export function BuilderAuthProvider({ children }) {
     }, [fetchProfile]);
 
     // Initialize auth + listen for changes
+    // We rely solely on onAuthStateChange — Supabase v2+ fires an INITIAL_SESSION
+    // event synchronously on registration, which delivers the existing session.
+    // Previously we also called getSession() manually, but that creates a race
+    // condition: both getSession() and INITIAL_SESSION call handleSession(),
+    // causing duplicate profile fetches and potential state overwrites.
     useEffect(() => {
         if (!builderSupabase) {
             console.warn('[BuilderAuth] Supabase client not available — auth disabled.');
@@ -70,21 +75,17 @@ export function BuilderAuthProvider({ children }) {
 
         let active = true;
 
-        const init = async () => {
-            try {
-                const { data: { session: existing } } = await builderSupabase.auth.getSession();
-                if (active) await handleSession(existing);
-            } catch (err) {
-                console.error('[BuilderAuth] Init failed:', err);
-                if (active) setLoading(false);
-            }
-        };
-
-        init();
-
         const { data: subscription } = builderSupabase.auth.onAuthStateChange(
-            async (_event, newSession) => {
-                if (active) await handleSession(newSession);
+            async (event, newSession) => {
+                console.log('[BuilderAuth] Auth state change:', event, !!newSession);
+                if (active) {
+                    try {
+                        await handleSession(newSession);
+                    } catch (err) {
+                        console.error('[BuilderAuth] handleSession failed:', err);
+                        if (active) setLoading(false);
+                    }
+                }
             }
         );
 
@@ -96,23 +97,23 @@ export function BuilderAuthProvider({ children }) {
 
     // --- Auth Methods ---
 
-    const signInWithGoogle = useCallback(async () => {
+    const signInWithGoogle = useCallback(async (redirectTo) => {
         if (!builderSupabase) return { error: { message: 'Supabase not configured' } };
         setError(null);
         const { error: err } = await builderSupabase.auth.signInWithOAuth({
             provider: 'google',
-            options: { redirectTo: window.location.origin + '/builder' },
+            options: { redirectTo: redirectTo || window.location.origin + '/builder' },
         });
         if (err) setError(err.message);
         return { error: err };
     }, []);
 
-    const signInWithGithub = useCallback(async () => {
+    const signInWithGithub = useCallback(async (redirectTo) => {
         if (!builderSupabase) return { error: { message: 'Supabase not configured' } };
         setError(null);
         const { error: err } = await builderSupabase.auth.signInWithOAuth({
             provider: 'github',
-            options: { redirectTo: window.location.origin + '/builder' },
+            options: { redirectTo: redirectTo || window.location.origin + '/builder' },
         });
         if (err) setError(err.message);
         return { error: err };
@@ -155,7 +156,14 @@ export function BuilderAuthProvider({ children }) {
                 emailRedirectTo: window.location.origin + '/builder',
             },
         });
-        if (err) setError(err.message);
+        if (err) {
+            setError(err.message);
+        } else if (!data?.user || data?.user?.identities?.length === 0) {
+            // Protect against Supabase's silent duplicate email return
+            const customErr = { message: 'An account with this email may already exist. Try signing in instead.' };
+            setError(customErr.message);
+            return { data, error: customErr };
+        }
         return { data, error: err };
     }, []);
 

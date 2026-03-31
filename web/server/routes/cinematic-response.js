@@ -23,13 +23,23 @@ Narrative:
 Summarize the visual soul and the kinetic physics of the site build in a single, dense, sophisticated breath.`;
 
         console.log(`[cinematic-response] Synthesizing short architecture for: "${prompt}"`);
-        const { text, finishReason } = await generateText({
-            model: getModel(model),
-            system: systemPrompt,
-            prompt: `Execute a 2-sentence architectural vision for: "${prompt}". Stay under 70 words.`,
-            maxTokens: 1000,
-            temperature: 0.75,
-        });
+        let text = '';
+        if (model.includes('openai/')) {
+            const { generateFast } = await import('../lib/provider-helpers.js');
+            text = await generateFast(
+                systemPrompt,
+                `Execute a 2-sentence architectural vision for: "${prompt}". Stay under 70 words.`
+            );
+        } else {
+            const result = await generateText({
+                model: getModel(model),
+                system: systemPrompt,
+                prompt: `Execute a 2-sentence architectural vision for: "${prompt}". Stay under 70 words.`,
+                maxTokens: 1000,
+                temperature: 0.75,
+            });
+            text = result.text;
+        }
 
         const cleanedResponse = text.trim();
         console.log(`[cinematic-response] LLM returned (${cleanedResponse.length} chars / ${cleanedResponse.split(' ').length} words).`);

@@ -444,6 +444,7 @@ ${premiumMode === 'off' ? '<!-- Premium selection disabled -->' : `SELECTION CON
 
         const { object } = await generateObject({
           model: getModel(model),
+          maxRetries: 7, // Highly resilient config to combat rate limit overloads
           schema: z.object({
             components: z.array(z.object({
               name: z.string(),
@@ -624,14 +625,15 @@ ${premiumMode === 'off' ? '<!-- Premium selection disabled -->' : `SELECTION CON
         console.log(`[plan-website-components] Attempting generation with model: ${model}`);
         result = await generateObject({
           model: getModel(model),
+          maxRetries: 7,
           schema: planSchema,
           messages: [{ role: 'system', content: SYSTEM_PROMPT }, { role: 'user', content }],
           temperature: 0,
         });
       } catch (err) {
-        console.warn(`[plan-website-components] Model ${model} failed, retrying with gpt-5.2. Error:`, err.message);
+        console.warn(`[plan-website-components] Model ${model} failed, retrying with gpt-5.4. Error:`, err.message);
         result = await generateObject({
-          model: getModel('openai/gpt-5.2'),
+          model: getModel('openai/gpt-5.4'),
           schema: planSchema,
           messages: [{ role: 'system', content: SYSTEM_PROMPT }, { role: 'user', content }],
           temperature: 0,

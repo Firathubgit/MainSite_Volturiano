@@ -31,12 +31,16 @@ export function getModel(model) {
   try {
     if (model.startsWith('anthropic/')) {
       let modelId = model.replace('anthropic/', '');
-      if (modelId === 'claude-4.6') modelId = 'claude-3-7-sonnet-20250219'; // Map to real model backend
+      // Use exact names requested by user
+      if (modelId === 'claude-4.6') modelId = 'claude-sonnet-4-6';
       return anthropic(modelId);
     }
     if (model.startsWith('openai/')) {
       let modelName = model.replace('openai/', '');
-      if (modelName === 'gpt-5.2') modelName = 'gpt-4o'; // Map UI to real model
+      if (modelName === 'gpt-5.2') modelName = 'gpt-4o'; // Old mapping cleanup
+      // Use exact names requested by user, bypass o3-mini completely
+      if (modelName === 'gpt-5.4') return openai('gpt-5.4');
+      if (modelName === 'gpt-5.4-mini') return openai('gpt-5.4-mini');
       return model.includes('gpt-oss') ? groq(model) : openai(modelName);
     }
     if (model.startsWith('google/')) {
@@ -48,6 +52,41 @@ export function getModel(model) {
     console.error(`[provider-helpers] Error resolving model ${model}, falling back to groq default:`, error.message);
     return groq('llama-3.1-70b-versatile');
   }
+}
+
+// ----------------------------------------------------------------------
+// NATIVE OPENAI RESPONSES API WRAPPER
+// Minimal implementation as per OpenAI's current model guidance: gpt-5.4
+// is the main frontier model, preferring Responses API for correct reasoning
+// ----------------------------------------------------------------------
+import OpenAI from "openai";
+const nativeOpenAIClient = new OpenAI({
+  apiKey: process.env.AI_GATEWAY_API_KEY ?? process.env.OPENAI_API_KEY,
+  baseURL: isUsingAIGateway ? aiGatewayBaseURL : process.env.OPENAI_BASE_URL,
+});
+
+export async function generateWithQuality(systemPrompt, userPrompt) {
+  const res = await nativeOpenAIClient.responses.create({
+    model: "gpt-5.4",
+    reasoning: { effort: "medium" },
+    input: [
+      { role: "system", content: systemPrompt || "You are a senior architect." },
+      { role: "user", content: userPrompt },
+    ],
+  });
+  return res.output_text;
+}
+
+export async function generateFast(systemPrompt, userPrompt) {
+  const res = await nativeOpenAIClient.responses.create({
+    model: "gpt-5.4-mini",
+    reasoning: { effort: "low" },
+    input: [
+      { role: "system", content: systemPrompt || "You are a fast precision assistant." },
+      { role: "user", content: userPrompt },
+    ],
+  });
+  return res.output_text;
 }
 
 export { groq, anthropic, openai, googleGenerativeAI };

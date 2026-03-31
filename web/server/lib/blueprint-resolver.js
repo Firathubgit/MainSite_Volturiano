@@ -134,7 +134,7 @@ RULES:
     } catch (err) {
         console.warn('[blueprint-resolver] Gemini failed, trying fallback:', err.message);
         result = await generateObject({
-            model: getModel('openai/gpt-5.2'),
+            model: getModel('openai/gpt-5.4'),
             schema,
             system: systemPrompt,
             prompt: `Create a website blueprint for: "${prompt}"`,

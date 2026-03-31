@@ -3098,11 +3098,11 @@ Just position the new components in a logical order (e.g. after the Hero or befo
                               <span>Gemini 3.1 Pro</span>
                             </button>
                             <button
-                              className={`${styles.modelOption} ${aiModel.includes('openai/gpt-5.2') ? styles.modelOptionActive : ''}`}
-                              onClick={() => { setAiModel('openai/gpt-5.2'); setModelDropdownOpen(false); }}
+                              className={`${styles.modelOption} ${aiModel.includes('openai/gpt-5.4') ? styles.modelOptionActive : ''}`}
+                              onClick={() => { setAiModel('openai/gpt-5.4'); setModelDropdownOpen(false); }}
                             >
                               <OpenAIIcon width="20" height="20" style={{ color: 'white' }} />
-                              <span>GPT-5.2</span>
+                              <span>GPT-5.4</span>
                             </button>
                             <button
                               className={`${styles.modelOption} ${aiModel.includes('anthropic/claude-sonnet-4-6') ? styles.modelOptionActive : ''}`}

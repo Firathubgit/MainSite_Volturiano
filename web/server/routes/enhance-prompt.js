@@ -46,11 +46,16 @@ function extractExplicitComponentNames(rawPrompt) {
 }
 
 export default async function enhancePrompt(req, res) {
-  const ENHANCE_MODEL = 'google/gemini-2.5-flash';  // Fast stable model — avoids RPM collision with pro-preview
   const TIMEOUT_MS = 15_000;                         // 15s hard timeout — never block the pipeline
 
   try {
-    const { prompt, images = [], mode = 'prompt-only', buildId } = req.body;
+    const { prompt, images = [], mode = 'prompt-only', buildId, model } = req.body;
+
+    let ENHANCE_MODEL = 'google/gemini-2.5-flash';  // Fast stable model — avoids RPM collision with pro-preview
+    if (model) {
+        if (model.includes('openai/')) ENHANCE_MODEL = 'openai/gpt-5.4-mini';
+        else if (model.includes('anthropic/')) ENHANCE_MODEL = 'anthropic/claude-haiku-4-5-20251001';
+    }
 
     if (!prompt || typeof prompt !== 'string') {
       return res.status(400).json({ success: false, error: 'prompt is required' });

@@ -131,6 +131,7 @@ export default async function deriveDesignSystem(req, res) {
         const result = await generateObject({
             model: getModel(model),
             schema: designSystemSchema,
+            maxRetries: 7, // Highly resilient config to combat rate limit overloads
             messages: [
                 { role: 'system', content: SYSTEM_PROMPT },
                 { role: 'user', content },

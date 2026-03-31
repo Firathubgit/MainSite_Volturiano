@@ -105,13 +105,28 @@ ${buildErrors || 'None - perform aesthetic optimizations and copy specialization
         const timeoutId = setTimeout(() => controller.abort(), 120000); // 120s timeout for heavy polish pass
 
         const startTime = Date.now();
-        const { text } = await generateText({
-            model: getModel(model),
-            system: systemPrompt,
-            prompt: `Perform a Final Polish on the following website files to perfectly match the vision of "${prompt}". Focus on specialization and premium aesthetics.\n\n${fileContext}`,
-            temperature: 0,
-            abortSignal: controller.signal
-        });
+        let text;
+
+        if (model.includes('openai/')) {
+            console.log(' [process] Using OpenAI Native Responses API for Quality Mode...');
+            const { generateWithQuality } = await import('./provider-helpers.js');
+            text = await generateWithQuality(
+                systemPrompt,
+                `Perform a Final Polish on the following website files to perfectly match the vision of "${prompt}". Focus on specialization and premium aesthetics.\n\n${fileContext}`
+            );
+        } else {
+            console.log(' [process] Using Standard AI SDK...');
+            const result = await generateText({
+                model: getModel(model),
+                system: systemPrompt,
+                prompt: `Perform a Final Polish on the following website files to perfectly match the vision of "${prompt}". Focus on specialization and premium aesthetics.\n\n${fileContext}`,
+                temperature: 0,
+                maxRetries: 7, // Highly resilient retry budget to combat Claude/anthropic '503 Overloaded'
+                abortSignal: controller.signal
+            });
+            text = result.text;
+        }
+
         clearTimeout(timeoutId);
 
         const duration = ((Date.now() - startTime) / 1000).toFixed(1);

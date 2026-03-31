@@ -231,8 +231,8 @@ const BuilderContent = () => {
             icon: <GeminiIcon />
         },
         {
-            id: 'openai/gpt-5.2',
-            label: 'GPT-5.2',
+            id: 'openai/gpt-5.4',
+            label: 'GPT-5.4',
             icon: <OpenAIIcon />
         },
         {

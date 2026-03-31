@@ -26,10 +26,16 @@ export const RouteTransitionProvider = ({ children }) => {
         let cinematicPromise = null;
         
         if (!stateToPass?.isProjectRevisit && !stateToPass?.templateId && stateToPass?.prompt) {
+            let cineModel = 'google/gemini-2.5-flash';
+            if (stateToPass.model) {
+                if (stateToPass.model.includes('openai/')) cineModel = 'openai/gpt-5.4-mini';
+                if (stateToPass.model.includes('anthropic/')) cineModel = 'anthropic/claude-haiku-4-5-20251001';
+            }
+            
             cinematicPromise = fetch('/api/cinematic-response', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ prompt: stateToPass.prompt, model: 'google/gemini-2.5-flash' })
+                body: JSON.stringify({ prompt: stateToPass.prompt, model: cineModel })
             }).catch(e => {
                 console.error('Initial fetch failed:', e);
                 return null;

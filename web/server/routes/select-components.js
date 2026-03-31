@@ -83,6 +83,7 @@ export default async function selectComponents(req, res) {
         const result = await generateObject({
             model: getModel(model),
             schema: selectionResultSchema,
+            maxRetries: 7, // Highly resilient config to combat rate limit overloads
             messages: [
                 {
                     role: 'system',

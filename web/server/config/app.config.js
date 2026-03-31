@@ -1,6 +1,6 @@
 export const appConfig = {
   e2b: {
-    timeoutMinutes: 5,
+    timeoutMinutes: 60,
     get timeoutMs() { return this.timeoutMinutes * 60 * 1000; },
     vitePort: 5173,
     viteStartupDelay: 10000,

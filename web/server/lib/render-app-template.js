@@ -25,6 +25,14 @@ export function renderAppTemplate({ components, isMultiPage = false, pages = [],
     return renderMPATemplate(components, pages, sharedComponents);
 }
 
+function inferComponentRole(component) {
+    const text = `${component?.role || ''} ${component?.exportName || ''} ${component?.path || ''}`.toLowerCase();
+    if (/(^|\b)(header|navbar|navigation|topbar|menu)(\b|$)/.test(text)) return 'header';
+    if (/(^|\b)(hero|masthead|splash|landing|banner)(\b|$)/.test(text)) return 'hero';
+    if (/(^|\b)(footer|copyright|site-footer)(\b|$)/.test(text)) return 'footer';
+    return 'feature';
+}
+
 // ═══════════════════════════════════════════════════════════
 // SPA MODE — Existing behavior, unchanged
 // ═══════════════════════════════════════════════════════════
@@ -41,13 +49,10 @@ function renderSPATemplate(components) {
         }
     }
 
-    // AI_STABILITY_FIX: Ensure Footers are always at the bottom
+    // AI_STABILITY_FIX: deterministic structure ordering
     uniqueComponents.sort((a, b) => {
-        const aIsFooter = a.exportName.toLowerCase().includes('footer');
-        const bIsFooter = b.exportName.toLowerCase().includes('footer');
-        if (aIsFooter && !bIsFooter) return 1;
-        if (!aIsFooter && bIsFooter) return -1;
-        return 0;
+        const order = { header: 0, hero: 1, feature: 2, footer: 3 };
+        return (order[inferComponentRole(a)] ?? 2) - (order[inferComponentRole(b)] ?? 2);
     });
 
     const imports = uniqueComponents.map(c => {
@@ -104,21 +109,32 @@ function renderMPATemplate(components, pages, sharedComponents) {
     }).join('\n');
 
     // 3. Build route elements by aggregating the page's components
-    const routes = pages.map(p => {
+    const normalizedPages = (pages || []).map((p, index) => {
+        const rawPath = (p.pagePath || p.path || '/').trim();
+        let routePath = rawPath.startsWith('/') ? rawPath : `/${rawPath}`;
+        if (routePath === '/home' || routePath === '/index') routePath = '/';
+        if (index === 0 && !routePath) routePath = '/';
+        return { ...p, routePath };
+    });
+
+    // Safety: always ensure at least one root route exists
+    if (!normalizedPages.some(p => p.routePath === '/') && normalizedPages.length > 0) {
+        normalizedPages[0] = { ...normalizedPages[0], routePath: '/' };
+    }
+
+    const routes = normalizedPages.map(p => {
         // Find components mapped to this page
         let pageComps = (p.componentRefIds || []).map(refId => 
             components.find(c => c.refId === refId || c.exportName === refId)
         ).filter(Boolean);
         
-        const routePath = p.pagePath || p.path || '/'; // Use pagePath from schema, fallback to '/'
-        
         // Fallback: If no components matched via refId (maybe legacy string match), just dump everything non-shared into the first page
-        if (pageComps.length === 0 && routePath === '/') {
+        if (pageComps.length === 0 && p.routePath === '/') {
             pageComps = components.filter(c => !sharedRefIds.has(c.refId) && !sharedRefIds.has(c.exportName));
         }
 
         const inlineElements = pageComps.map(c => `            <${c.exportName} />`).join('\n');
-        return `          <Route path="${routePath}" element={<main>\n${inlineElements}\n          </main>} />`;
+        return `          <Route path="${p.routePath}" element={<main>\n${inlineElements}\n          </main>} />`;
     }).join('\n');
 
     // 4. Determine shared layout

@@ -78,28 +78,32 @@ FINAL REMINDER: The user's goal is "${prompt}". Ensure the code is complete with
 `;
 
     let object;
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 60000); // 60s component generation timeout
 
     try {
       console.log(`[generate-single-component] Attempting ${name} with ${model}...`);
-      const result = await generateObject({
+      const { object: resultObject } = await generateObject({
         model: getModel(model),
         system: SYSTEM_PROMPT,
         prompt: `Create the ${name} component for the "${prompt}" website. Export it as ${finalExportName}.`,
         schema: schema,
         temperature: 0,
+        abortSignal: controller.signal
       });
-      object = result.object;
+      clearTimeout(timeoutId);
+      object = resultObject;
     } catch (err) {
-      console.warn(`[generate-single-component] Model ${model} failed, retrying with gpt-5.2. Error:`, err.message);
+      console.warn(`[generate-single-component] Model ${model} failed, retrying with gpt-4o. Error:`, err.message);
       try {
-        const result = await generateObject({
-          model: getModel('openai/gpt-5.2'),
+        const { object: resultObject } = await generateObject({
+          model: getModel('openai/gpt-4o'),
           system: SYSTEM_PROMPT,
           prompt: `Create the ${name} component for the "${prompt}" website. Export it as ${finalExportName}.`,
           schema: schema,
           temperature: 0,
         });
-        object = result.object;
+        object = resultObject;
       } catch (fallbackErr) {
         console.error(`[generate-single-component] Fallback model also failed.`, fallbackErr.message);
         throw fallbackErr; // Throw to the outer catch block to be handled by the 503 logic

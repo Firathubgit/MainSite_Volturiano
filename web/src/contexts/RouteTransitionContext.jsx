@@ -21,6 +21,21 @@ export const RouteTransitionProvider = ({ children }) => {
         setTransitionData(stateToPass);
         setPhase('outro');
 
+        // Fire the cinematic response API call as early as possible (in parallel with transitions)
+        const fetchStartTime = Date.now();
+        let cinematicPromise = null;
+        
+        if (!stateToPass?.isProjectRevisit && !stateToPass?.templateId && stateToPass?.prompt) {
+            cinematicPromise = fetch('/api/cinematic-response', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ prompt: stateToPass.prompt, model: 'google/gemini-2.5-flash' })
+            }).catch(e => {
+                console.error('Initial fetch failed:', e);
+                return null;
+            });
+        }
+
         // Wait for Builder screen to fade out
         await new Promise(r => setTimeout(r, 500));
 
@@ -54,13 +69,15 @@ export const RouteTransitionProvider = ({ children }) => {
             }));
         } else {
             try {
-                const fetchStartTime = Date.now();
-                const res = await fetch('/api/cinematic-response', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ prompt: stateToPass.prompt, model: stateToPass.model })
-                });
-                const data = await res.json();
+                let res = null;
+                if (cinematicPromise) {
+                    res = await cinematicPromise;
+                }
+                
+                let data = null;
+                if (res && res.ok) {
+                    data = await res.json();
+                }
 
                 // Slashed suspense time for "fast fast" transition
                 const fetchDuration = Date.now() - fetchStartTime;
@@ -70,7 +87,7 @@ export const RouteTransitionProvider = ({ children }) => {
                     await new Promise(r => setTimeout(r, minimumSuspenseTime - fetchDuration));
                 }
 
-                if (data.success && data.response) {
+                if (data && data.success && data.response) {
                     setTransitionData(prev => ({ ...prev, cinematicResponse: data.response }));
                 } else {
                     setTransitionData(prev => ({ ...prev, cinematicResponse: "Architecting a premium experience with precise visuals." }));

@@ -27,12 +27,97 @@ async function cachedQuery(key, ttl, queryFn) {
     return data;
 }
 
+function normalizeToken(value = '') {
+    return String(value || '').trim().toLowerCase();
+}
+
+function inferStructuralRole(component = {}) {
+    const category = normalizeToken(component.category);
+    const componentId = normalizeToken(component.component_id || component.id);
+    const name = normalizeToken(component.name);
+    const description = normalizeToken(component.description || component.visual_description || '');
+    const haystack = `${category} ${componentId} ${name} ${description}`;
+
+    if (/(^|\b)(header|navbar|navigation|topbar|menu)(\b|$)/.test(haystack)) return 'header';
+    if (/(^|\b)(hero|masthead|splash|landing|banner)(\b|$)/.test(haystack)) return 'hero';
+    if (/(^|\b)(footer|copyright|site-footer)(\b|$)/.test(haystack)) return 'footer';
+    return 'feature';
+}
+
+function matchesCategoryHint(component = {}, categoryHint = '') {
+    const hint = normalizeToken(categoryHint);
+    if (!hint) return false;
+
+    const category = normalizeToken(component.category);
+    const componentId = normalizeToken(component.component_id || component.id);
+    const name = normalizeToken(component.name);
+    const description = normalizeToken(component.description || component.visual_description || '');
+    const text = `${category} ${componentId} ${name} ${description}`;
+
+    if (hint === 'header') return inferStructuralRole(component) === 'header';
+    if (hint === 'hero') return inferStructuralRole(component) === 'hero';
+    if (hint === 'footer') return inferStructuralRole(component) === 'footer';
+    if (hint === 'testimonials') return /(testimonial|review|marquee)/.test(text);
+    if (hint === 'services') return /(service|feature|offering|cards|grid)/.test(text);
+    if (hint === 'booking') return /(booking|calendar|appointment|schedule)/.test(text);
+    if (hint === 'pricing') return /(pricing|price|plan|tier)/.test(text);
+    if (hint === 'gallery') return /(gallery|showcase|portfolio|carousel)/.test(text);
+    if (hint === 'contact') return /(contact|form|inquiry|reach)/.test(text);
+    if (hint === 'stats') return /(stat|metric|counter|kpi)/.test(text);
+    if (hint === 'faq') return /(faq|question|accordion)/.test(text);
+    return text.includes(hint);
+}
+
+function pickStructuredFallback(candidates = [], requiredCategories = [], explicitComponents = []) {
+    const sorted = [...candidates].sort((a, b) => (b.computed_score || 0) - (a.computed_score || 0));
+    const selected = [];
+    const usedIds = new Set();
+    const roleCount = { header: 0, hero: 0, footer: 0 };
+
+    const tryAdd = (component) => {
+        if (!component?.component_id || usedIds.has(component.component_id)) return false;
+        const role = inferStructuralRole(component);
+        if ((role === 'header' || role === 'hero' || role === 'footer') && roleCount[role] >= 1) return false;
+        selected.push(component.component_id);
+        usedIds.add(component.component_id);
+        if (roleCount[role] !== undefined) roleCount[role] += 1;
+        return true;
+    };
+
+    for (const explicit of explicitComponents) {
+        const hit = sorted.find(c =>
+            normalizeToken(c.component_id) === normalizeToken(explicit) ||
+            normalizeToken(c.id) === normalizeToken(explicit) ||
+            normalizeToken(c.name) === normalizeToken(explicit)
+        );
+        if (hit) tryAdd(hit);
+    }
+
+    ['header', 'hero', 'footer'].forEach(role => {
+        const hit = sorted.find(c => inferStructuralRole(c) === role);
+        if (hit) tryAdd(hit);
+    });
+
+    for (const cat of requiredCategories) {
+        const hit = sorted.find(c => !usedIds.has(c.component_id) && matchesCategoryHint(c, cat));
+        if (hit) tryAdd(hit);
+    }
+
+    const targetSize = Math.min(9, Math.max(6, requiredCategories.length + 1));
+    for (const c of sorted) {
+        if (selected.length >= targetSize) break;
+        tryAdd(c);
+    }
+
+    return selected;
+}
+
 // Helper to wrap AI LLM logic for specific pipeline steps
 const llm = {
     /**
      * AI Step 1: Match prompt against available blueprints
      */
-    matchWebsiteType: async (prompt, designSystem, blueprints) => {
+    matchWebsiteType: async (prompt, designSystem, blueprints, aiModel = 'google/gemini-3.1-pro-preview') => {
         const schema = z.object({
             slug: z.string().describe('The slug of the best matching blueprint, or "" if no good match'),
             confidence: z.number().describe('Confidence score from 0.0 to 1.0. Use < 0.6 if it is a poor match for the user request.'),
@@ -53,7 +138,7 @@ Important: A high confidence (>0.8) means the preset closely covers all the user
             const timeoutId = setTimeout(() => controller.abort(), 15000);
 
             const { object } = await generateObject({
-                model: getModel('google/gemini-3.1-pro-preview'),
+                model: getModel(aiModel),
                 schema,
                 system: systemPrompt,
                 prompt: `User Prompt: "${prompt}"\nDesign System Industry Context: ${designSystem?.industry || 'None'}`,
@@ -71,7 +156,7 @@ Important: A high confidence (>0.8) means the preset closely covers all the user
     /**
      * AI Step 3: Refine explicit category payload based on unique constraints 
      */
-    refineCategories: async (prompt, designSystem, categoryDetails, blueprint) => {
+    refineCategories: async (prompt, designSystem, categoryDetails, blueprint, aiModel = 'google/gemini-3.1-pro-preview') => {
         const schema = z.object({
             refined_categories: z.array(z.string()).describe('Final list of exact category slugs to include'),
             reasoning: z.string().describe('Explain why you kept, added, or removed specific categories')
@@ -97,7 +182,7 @@ ${list}`;
             const timeoutId = setTimeout(() => controller.abort(), 15000);
 
             const { object } = await generateObject({
-                model: getModel('google/gemini-3.1-pro-preview'),
+                model: getModel(aiModel),
                 schema,
                 system: systemPrompt,
                 prompt: `User Prompt: "${prompt}"\nRefine the categories to perfectly match this request.`,
@@ -115,7 +200,7 @@ ${list}`;
     /**
      * AI Step 5: Final component selection from the top 30 filtered candidates
      */
-    selectFinalComponents: async (prompt, designSystem, candidates, explicitComponents = []) => {
+    selectFinalComponents: async (prompt, designSystem, candidates, explicitComponents = [], requestedCategories = [], aiModel = 'google/gemini-3.1-pro-preview') => {
         const schema = z.object({
             selected_component_ids: z.array(z.string()).describe('List of component_ids chosen for the final build'),
             reasoning: z.string().describe('Explain why this particular mix of components was chosen')
@@ -141,10 +226,10 @@ RULES:
 
         try {
             const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 15000);
+            const timeoutId = setTimeout(() => controller.abort(), 60000); // 60s instead of 15s to withstand load peaks
 
             const { object } = await generateObject({
-                model: getModel('google/gemini-3.1-pro-preview'),
+                model: getModel(aiModel),
                 schema,
                 system: systemPrompt,
                 prompt: `User Request: "${prompt}"\nDesign Context: ${JSON.stringify(designSystem)}\n\nSelect the best 5-11 components to build out all requested pages.`,
@@ -154,14 +239,16 @@ RULES:
             clearTimeout(timeoutId);
             return object.selected_component_ids;
         } catch (e) {
-            console.warn('[Pipeline] Final selection LLM failed, picking top 8 deterministically:', e.message);
-            return candidates.slice(0, 8).map(c => c.component_id);
+            console.warn('[Pipeline] Final selection LLM failed, using structured fallback selector:', e.message);
+            const fallbackIds = pickStructuredFallback(candidates, requestedCategories, explicitComponents);
+            console.log('[Pipeline] Structured fallback selected IDs:', fallbackIds);
+            return fallbackIds;
         }
     },
     /**
      * AI Step 0: Match prompt against available community templates
      */
-    matchTemplate: async (prompt, designSystem, templates) => {
+    matchTemplate: async (prompt, designSystem, templates, aiModel = 'google/gemini-3.1-pro-preview') => {
         console.log('[LLM matchTemplate] 🏗️ PIPELINE STEP 0a: TEMPLATE MATCHING ════════════════════════════════');
         console.log('[LLM matchTemplate] 🧠 Called with', templates.length, 'templates');
         console.log('[LLM matchTemplate] User prompt (first 100 chars):', prompt?.substring(0, 100));
@@ -190,15 +277,15 @@ Rules:
 - Return "" for template_id if no template is a good match.`;
 
         const userPrompt = `User Request: "${prompt}"\nDesign Context: ${JSON.stringify(designSystem)}`;
-        console.log('[LLM matchTemplate] 📤 Sending to LLM (model: google/gemini-3.1-pro-preview)');
+        console.log('[LLM matchTemplate] 📤 Sending to LLM (model: ' + aiModel + ')');
         
         try {
             const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 15000);
+            const timeoutId = setTimeout(() => controller.abort(), 60000); // 60s instead of 15s
 
             console.time('[LLM matchTemplate] LLM call duration');
             const { object } = await generateObject({
-                model: getModel('google/gemini-3.1-pro-preview'),
+                model: getModel(aiModel),
                 schema,
                 system: systemPrompt,
                 prompt: userPrompt,
@@ -224,7 +311,7 @@ Rules:
 /**
  * Step 1: Detect website type from user prompt + fallback
  */
-async function detectWebsiteType(prompt, designSystem) {
+async function detectWebsiteType(prompt, designSystem, aiModel = 'google/gemini-3.1-pro-preview') {
     const blueprints = await cachedQuery('blueprints_active', CACHE_TTL.blueprints, async () => {
         const { data } = await sb
             .from('website_type_blueprints')
@@ -235,12 +322,12 @@ async function detectWebsiteType(prompt, designSystem) {
     });
 
     // 1a: Send compact blueprint list to LLM for matching
-    const match = await llm.matchWebsiteType(prompt, designSystem, blueprints);
+    const match = await llm.matchWebsiteType(prompt, designSystem, blueprints, aiModel);
 
     // 1b: DYNAMIC BLUEPRINT GENERATION FALLBACK
     if (!match || match.confidence < 0.6) {
         console.log('[Pipeline] No confident blueprint match — entering Dynamic Blueprint Generation');
-        const dynamicBlueprint = await generateDynamicBlueprint(prompt, designSystem);
+        const dynamicBlueprint = await generateDynamicBlueprint(prompt, designSystem, aiModel);
         return dynamicBlueprint; // returns properly shaped custom blueprint
     }
 
@@ -251,7 +338,7 @@ async function detectWebsiteType(prompt, designSystem) {
  * Dynamic Blueprint Generation
  * Creates a custom blueprint on-the-fly when preselected presets don't fit well.
  */
-async function generateDynamicBlueprint(prompt, designSystem) {
+async function generateDynamicBlueprint(prompt, designSystem, aiModel = 'google/gemini-3.1-pro-preview') {
     const allCategories = await cachedQuery('categories_top_level', CACHE_TTL.categories, async () => {
         const { data } = await sb.from('component_categories')
             .select('slug, name, description')
@@ -316,7 +403,7 @@ REQUIREMENTS:
     let dynamicBlueprint;
     try {
         const { object } = await generateObject({
-            model: getModel('google/gemini-3.1-pro-preview'),
+            model: getModel(aiModel),
             schema,
             system: systemPrompt,
             prompt: `User Request requiring dynamic blueprint: "${prompt}"`,
@@ -376,7 +463,7 @@ async function loadBlueprint(blueprintSlug, dynamicData) {
 /**
  * Step 3: Refine categories with LLM
  */
-async function refineCategories(blueprint, prompt, designSystem) {
+async function refineCategories(blueprint, prompt, designSystem, aiModel = 'google/gemini-3.1-pro-preview') {
     const allCategories = [
         ...(blueprint.required_categories || []),
         ...(blueprint.optional_categories || [])
@@ -393,7 +480,7 @@ async function refineCategories(blueprint, prompt, designSystem) {
         return blueprint.required_categories;
     }
 
-    const refined = await llm.refineCategories(prompt, designSystem, categoryDetails, blueprint);
+    const refined = await llm.refineCategories(prompt, designSystem, categoryDetails, blueprint, aiModel);
 
     // Ensure header and footer are always included as safety
     const safeRefined = new Set(refined);
@@ -440,10 +527,38 @@ async function filterByIndustry(categories, industrySlug) {
     }
 }
 
+function enforceStructuralSelection(selectedComponents = [], candidatePool = []) {
+    const sanitized = [];
+    const seen = new Set();
+    const roleSeen = { header: false, hero: false, footer: false };
+
+    for (const component of selectedComponents) {
+        if (!component?.component_id || seen.has(component.component_id)) continue;
+        const role = inferStructuralRole(component);
+        if ((role === 'header' || role === 'hero' || role === 'footer') && roleSeen[role]) continue;
+        sanitized.push(component);
+        seen.add(component.component_id);
+        if (roleSeen[role] !== undefined) roleSeen[role] = true;
+    }
+
+    for (const requiredRole of ['header', 'hero', 'footer']) {
+        if (roleSeen[requiredRole]) continue;
+        const fallback = candidatePool.find(c => !seen.has(c.component_id) && inferStructuralRole(c) === requiredRole);
+        if (fallback) {
+            sanitized.push(fallback);
+            seen.add(fallback.component_id);
+            roleSeen[requiredRole] = true;
+            console.log(`[Pipeline] Structural enforcement added missing ${requiredRole}: ${fallback.component_id}`);
+        }
+    }
+
+    return sanitized;
+}
+
 /**
  * Step 5: Theme & style scoring + LLM final selection
  */
-async function scoreAndSelect(candidates, designSystem, prompt, explicitComponents = []) {
+async function scoreAndSelect(candidates, designSystem, prompt, explicitComponents = [], requiredCategories = [], aiModel = 'google/gemini-3.1-pro-preview') {
     if (!candidates || candidates.length === 0) return [];
 
     // Score each candidate
@@ -485,12 +600,14 @@ async function scoreAndSelect(candidates, designSystem, prompt, explicitComponen
     });
 
     // LLM picks final 8-14 from top 50
-    const selectedIds = await llm.selectFinalComponents(prompt, designSystem, top50, mappedExplicit);
+    const selectedIds = await llm.selectFinalComponents(prompt, designSystem, top50, mappedExplicit, requiredCategories, aiModel);
 
     // Map IDs back to full component objects
-    return selectedIds
+    const selectedComponents = selectedIds
         .map(id => top50.find(c => c.component_id === id))
         .filter(Boolean); // remove any LLM hallucinations
+
+    return enforceStructuralSelection(selectedComponents, top50);
 }
 
 /**
@@ -559,7 +676,7 @@ async function fetchBundles(componentIds) {
 /**
  * Step 0a: Fetch top templates from weighted_templates view
  */
-async function matchTemplateFromDB(prompt, designSystem) {
+async function matchTemplateFromDB(prompt, designSystem, aiModel = 'google/gemini-3.1-pro-preview') {
     console.group('[Pipeline Step 0a] ════════════════════════════════════');
     console.log('[Step 0a] 🚀 matchTemplateFromDB called at', new Date().toISOString());
     console.log('[Step 0a] Prompt:', prompt?.substring(0, 100) + '...');
@@ -599,7 +716,7 @@ async function matchTemplateFromDB(prompt, designSystem) {
     });
 
     console.log('[Step 0a] 📤 Sending', templates.length, 'templates to LLM for matching...');
-    const match = await llm.matchTemplate(prompt, designSystem, templates);
+    const match = await llm.matchTemplate(prompt, designSystem, templates, aiModel);
 
     console.log('[Step 0a] 📥 LLM response:', JSON.stringify(match, null, 2));
 
@@ -707,7 +824,7 @@ async function getTemplateBlueprint(templateId) {
  * MAIN PIPELINE ORCHESTRATOR
  * Orchestrates the full 7-step process (with Step 0: Template Matching).
  */
-export async function selectComponentsV2(prompt, designSystem = {}, explicitNames = [], strictMode = false) {
+export async function selectComponentsV2(prompt, designSystem = {}, explicitNames = [], strictMode = false, aiModel = 'google/gemini-3.1-pro-preview') {
     console.log('\n======================================================');
     console.log('🚀 ULTRA PIPELINE V2: STARTED');
     console.log('======================================================');
@@ -727,7 +844,7 @@ export async function selectComponentsV2(prompt, designSystem = {}, explicitName
         let templateMatch = null;
         let templateComponents = null;
         try {
-            templateMatch = await matchTemplateFromDB(prompt, designSystem);
+            templateMatch = await matchTemplateFromDB(prompt, designSystem, aiModel);
             console.log('[Step 0] matchTemplateFromDB result:', templateMatch ? `MATCH (${templateMatch.template_id})` : 'NO MATCH');
 
             if (templateMatch) {
@@ -863,7 +980,7 @@ export async function selectComponentsV2(prompt, designSystem = {}, explicitName
         // -----------------------------------------------------------------
         let websiteType;
         try {
-            websiteType = await detectWebsiteType(prompt, designSystem);
+            websiteType = await detectWebsiteType(prompt, designSystem, aiModel);
         } catch (e) {
             console.warn(`[Pipeline] Step 1 Failed. Falling back to default landing preset:`, e.message);
             websiteType = { slug: 'saas-landing', confidence: 0.5, isDynamic: false };
@@ -896,7 +1013,7 @@ export async function selectComponentsV2(prompt, designSystem = {}, explicitName
         // -----------------------------------------------------------------
         let finalCategories = [...blueprint.required_categories];
         try {
-            finalCategories = await refineCategories(blueprint, prompt, designSystem);
+            finalCategories = await refineCategories(blueprint, prompt, designSystem, aiModel);
         } catch (e) {
             console.warn(`[Pipeline] Step 3 Failed. Using blueprint categories directly.`, e.message);
         }
@@ -1042,7 +1159,7 @@ export async function selectComponentsV2(prompt, designSystem = {}, explicitName
         // -----------------------------------------------------------------
         // STEP 5: Theme & Style Scoring + AI Selection
         // -----------------------------------------------------------------
-        const selectedComponents = await scoreAndSelect(candidates, designSystem, prompt, currentExplicit);
+        const selectedComponents = await scoreAndSelect(candidates, designSystem, prompt, currentExplicit, finalCategories, aiModel);
         console.log(`\n[Step 5] Theme & Style Scoring + AI Final Selection ✅`);
         console.log(`  └─ AI Selected: ${selectedComponents.length} components`);
         selectedComponents.forEach(c => console.log(`     - ${c.component_id} (Score: ${c.computed_score?.toFixed(2)})`));
@@ -1053,8 +1170,10 @@ export async function selectComponentsV2(prompt, designSystem = {}, explicitName
         let validatedComponents = selectedComponents;
         try {
             validatedComponents = await validateCompatibility(selectedComponents);
+            validatedComponents = enforceStructuralSelection(validatedComponents, candidates);
         } catch (e) {
             console.warn(`[Pipeline] Step 6 Failed. Skipping graph validation.`, e.message);
+            validatedComponents = enforceStructuralSelection(selectedComponents, candidates);
         }
 
         console.log(`\n[Step 6] Compatibility Validation ✅`);

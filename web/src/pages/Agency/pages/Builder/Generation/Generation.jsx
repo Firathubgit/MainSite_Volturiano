@@ -1423,7 +1423,7 @@ export default function Generation() {
       try {
         const dsRes = await authFetch('/api/derive-design-system', {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ enhancedPrompt: finalPrompt, images: initialImages, buildId })
+          body: JSON.stringify({ enhancedPrompt: finalPrompt, images: initialImages, buildId, model: aiModel })
         });
         const dsData = await safeParseJson(dsRes, 'derive-ds');
         if (dsData.success) {
@@ -1903,8 +1903,21 @@ Just position the new components in a logical order (e.g. after the Hero or befo
 
     } catch (error) {
       console.error('[startGeneration] Fatal Gen Error:', error);
-      // Fallback: ONLY if we didn't finish planning
-      if (generationProgress.status.includes('Planning') || generationProgress.status.includes('Selecting')) {
+
+      const isOverloaded = error.message?.toLowerCase().includes('demand') || 
+                           error.message?.toLowerCase().includes('503') || 
+                           error.message?.toLowerCase().includes('overload') ||
+                           error.message?.toLowerCase().includes('quota');
+
+      if (isOverloaded) {
+          addChatMessage('Generation failed: The AI Provider is currently experiencing high traffic or is overloaded. Please wait a few moments and try again.', 'error');
+          // Phase S2: Sync failure state
+          authFetch('/api/projects/update', {
+            method: 'POST', headers: { 'Content-Type': 'application/json', ...(session?.access_token ? { 'Authorization': `Bearer ${session.access_token}` } : {}) },
+            body: JSON.stringify({ buildId, updates: { build_status: 'failed' } })
+          }).catch(e => { });
+      } else if (generationProgress.status.includes('Planning') || generationProgress.status.includes('Selecting')) {
+        // Fallback: ONLY if we didn't finish planning and it's NOT a 503
         addChatMessage(`Generation failed: ${error.message}. Switching to streaming fallback...`, 'system');
         try {
           setGenerationProgress(prev => ({ ...prev, status: 'Generating (streaming)...' }));
@@ -2057,7 +2070,16 @@ Just position the new components in a logical order (e.g. after the Hero or befo
         await handleAIGeneratedEdit(finalInstruction, buildId, sandbox);
         addChatMessage('Changes applied!', 'ai');
       } catch (error) {
-        addChatMessage(`Edit failed: ${error.message}`, 'error');
+        const isOverloaded = error.message?.toLowerCase().includes('demand') || 
+                             error.message?.toLowerCase().includes('503') || 
+                             error.message?.toLowerCase().includes('overload') ||
+                             error.message?.toLowerCase().includes('quota');
+        
+        if (isOverloaded) {
+          addChatMessage('Edit failed: The AI Provider is currently experiencing high traffic or is overloaded. Please wait a few moments and try again.', 'error');
+        } else {
+          addChatMessage(`Edit failed: ${error.message}`, 'error');
+        }
       } finally {
         setLoading(false);
         setGenerationProgress(prev => ({ ...prev, isGenerating: false, status: '', isEdit: false }));
@@ -2861,6 +2883,60 @@ Just position the new components in a logical order (e.g. after the Hero or befo
                               <svg xmlns="http://www.w3.org/2000/svg" height="18" viewBox="0 -960 960 960" width="18" fill="currentColor">
                                 <path d="M280-200v-80h284q63 0 109.5-40T720-420q0-60-46.5-100T564-560H312l104 104-56 56-200-200 200-200 56 56-104 104h252q97 0 166.5 63T800-420q0 94-69.5 157T564-200H280Z"/>
                               </svg>
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  }
+                  
+                  if (msg.type === 'error') {
+                    return (
+                      <div key={i} className={styles.chatMsgWrapper}>
+                        <div className={`${styles.chatMsg} ${styles.chatMsg_system}`} style={{
+                          background: 'rgba(239, 68, 68, 0.1)',
+                          border: '1px solid rgba(239, 68, 68, 0.3)',
+                          borderRadius: '8px',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: '12px'
+                        }}>
+                          <div className={styles.chatBubble} style={{ color: '#ef4444' }}>
+                            <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                              {msg.content}
+                            </span>
+                          </div>
+                          
+                          {msg.content.includes('overloaded') && isLast && (
+                            <button
+                              onClick={() => {
+                                // Find the last user message that caused this error
+                                const lastUserMsg = chatMessages.slice().reverse().find(m => m.type === 'user');
+                                if (lastUserMsg) {
+                                  setAiChatInput(lastUserMsg.content || '');
+                                  if (lastUserMsg.metadata?.images) setPendingImages([...lastUserMsg.metadata.images]);
+                                  if (lastUserMsg.metadata?.stagedComponents) setPendingComponents([...lastUserMsg.metadata.stagedComponents]);
+                                }
+                                // Pop the error message AND the user message visually
+                                setChatMessages(prev => prev.filter(m => m !== msg && m !== lastUserMsg));
+                              }}
+                              style={{
+                                alignSelf: 'flex-start',
+                                padding: '8px 16px',
+                                background: 'rgba(239, 68, 68, 0.2)',
+                                border: '1px solid rgba(239, 68, 68, 0.4)',
+                                borderRadius: '6px',
+                                color: '#f87171',
+                                fontSize: '12px',
+                                fontWeight: '600',
+                                cursor: 'pointer',
+                                transition: 'all 0.2s ease'
+                              }}
+                              onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(239, 68, 68, 0.3)'}
+                              onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(239, 68, 68, 0.2)'}
+                            >
+                              Restore Prompt to Input
                             </button>
                           )}
                         </div>

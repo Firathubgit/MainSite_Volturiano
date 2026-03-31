@@ -36,7 +36,7 @@ const designSystemSchema = z.object({
         cardStyle: z.enum(['glass', 'solid', 'outlined', 'elevated']).describe('Preferred card style'),
         sectionPadding: z.string().describe('Tailwind section padding class, e.g. "py-20"'),
     }),
-    mood: z.string().describe('Overall mood description for the entire design'),
+    mood: z.string().optional().describe('Overall mood description for the entire design'),
     industryCategory: z.string().describe('Industry category, e.g. "pet-services", "finance", "restaurant"'),
     designPersonality: z.array(z.string()).min(2).max(5).describe('Design personality traits, e.g. ["friendly", "trustworthy"]'),
 });
@@ -109,12 +109,7 @@ CRITICAL RULES:
  */
 export default async function deriveDesignSystem(req, res) {
     try {
-        const {
-            enhancedPrompt,
-            images = [],
-            model = 'google/gemini-3.1-pro-preview',
-            buildId,
-        } = req.body;
+        const { enhancedPrompt, images = [], buildId, model } = req.body;
 
         if (!enhancedPrompt || typeof enhancedPrompt !== 'string') {
             return res.status(400).json({ success: false, error: 'enhancedPrompt is required' });
@@ -159,7 +154,16 @@ export default async function deriveDesignSystem(req, res) {
         res.json({ success: true, designSystem });
     } catch (error) {
         console.error('[derive-design-system] Error:', error);
-        // Graceful degradation: if derivation fails, return null so pipeline continues without it
+        const isOverloaded = error.name === 'AI_RetryError' || error.message?.includes('maxRetriesExceeded') || error.message?.includes('429') || error.message?.includes('503') || error.message?.includes('overload') || error.message?.includes('high demand');
+        
+        if (isOverloaded) {
+            return res.status(503).json({
+                success: false,
+                error: 'AI Provider is currently experiencing high demand. Please try again later.'
+            });
+        }
+
+        // Graceful degradation: if derivation fails for other reasons, return null so pipeline continues without it
         res.json({
             success: true,
             designSystem: null,

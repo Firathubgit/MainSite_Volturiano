@@ -551,7 +551,12 @@ export default async function applyAiCodeStream(req, res) {
             sandboxId: activeSandboxId
           });
 
-          if (result && result.length > 0) {
+          if (!result) {
+            console.warn('[apply] Polish skipped due to provider overload/error. Keeping existing files.');
+            return null;
+          }
+
+          if (result.length > 0) {
             console.log(`[apply] Writing ${result.length} polished files...`);
             for (const file of result) {
               await provider.writeFile(file.path, file.content);
@@ -559,6 +564,8 @@ export default async function applyAiCodeStream(req, res) {
                 global.sandboxState.fileCache.files[file.path] = { content: file.content, lastModified: Date.now() };
               }
             }
+          } else {
+            console.log('[apply] Polish produced no file changes.');
           }
           return result;
         };
@@ -575,7 +582,7 @@ export default async function applyAiCodeStream(req, res) {
           sse.send(SSE_EVENTS.WARNING, { message: 'Final polish needed a small adjustment' });
 
           // Pass 2: Surgical Repair
-          await runAndApplyPolish(polishedFiles || filesToPolish, polishVerify.logs);
+          await runAndApplyPolish(polishedFiles?.length ? polishedFiles : filesToPolish, polishVerify.logs);
 
           const finalVerify = await verifySandboxBuild(activeSandboxId);
           if (finalVerify.success) {

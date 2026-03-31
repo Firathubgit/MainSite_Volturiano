@@ -101,22 +101,27 @@ ${buildErrors || 'None - perform aesthetic optimizations and copy specialization
     console.log(' [process] Sending request to LLM...');
 
     try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 120000); // 120s timeout for heavy polish pass
+
         const startTime = Date.now();
-        const result = await generateText({
+        const { text } = await generateText({
             model: getModel(model),
             system: systemPrompt,
             prompt: `Perform a Final Polish on the following website files to perfectly match the vision of "${prompt}". Focus on specialization and premium aesthetics.\n\n${fileContext}`,
             temperature: 0,
+            abortSignal: controller.signal
         });
+        clearTimeout(timeoutId);
 
         const duration = ((Date.now() - startTime) / 1000).toFixed(1);
         console.log(` [success] LLM response received in ${duration}s`);
 
-        const refinedFiles = parseFileBlocks(result.text);
+        const refinedFiles = parseFileBlocks(text);
 
         if (refinedFiles.length === 0) {
             console.log(' [warning] No files were modified during polish pass.');
-            return files;
+            return [];
         }
 
         console.log(` [apply] Polished ${refinedFiles.length} files:`);
@@ -133,6 +138,6 @@ ${buildErrors || 'None - perform aesthetic optimizations and copy specialization
     } catch (e) {
         console.error(` [fatal] Polish analysis failed: ${e.message}`);
         console.log('═'.repeat(60) + '\n');
-        return files; // Return originals on failure
+        return null; // Signal failure to caller; keep existing files untouched
     }
 }

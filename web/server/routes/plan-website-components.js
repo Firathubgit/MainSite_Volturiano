@@ -48,6 +48,90 @@ const planSchema = z.object({
   sharedComponentRefIds: z.array(z.string()).optional().describe('RefIds of components shared across ALL pages (e.g. header, footer). Only present when isMultiPage is true.'),
 });
 
+function normalizeToken(value = '') {
+  return String(value || '').trim().toLowerCase();
+}
+
+function inferRoleFromComponent(dbComp = {}) {
+  const haystack = [
+    dbComp.category,
+    dbComp.component_id,
+    dbComp.name,
+    dbComp.description,
+    dbComp.visual_description
+  ].map(normalizeToken).join(' ');
+
+  if (/(^|\b)(header|navbar|navigation|topbar|menu)(\b|$)/.test(haystack)) return 'header';
+  if (/(^|\b)(hero|masthead|splash|landing|banner)(\b|$)/.test(haystack)) return 'hero';
+  if (/(^|\b)(footer|copyright|site-footer)(\b|$)/.test(haystack)) return 'footer';
+  return 'feature';
+}
+
+function enforcePlanStructure(components = []) {
+  const roleOrder = { header: 0, hero: 1, feature: 2, footer: 3 };
+  const unique = [];
+  const roleSeen = { header: false, hero: false, footer: false };
+  const idSeen = new Set();
+
+  for (const comp of components) {
+    if (!comp?.refId || idSeen.has(comp.refId)) continue;
+    const role = comp.role || 'feature';
+    if ((role === 'header' || role === 'hero' || role === 'footer') && roleSeen[role]) continue;
+    unique.push({ ...comp, role });
+    idSeen.add(comp.refId);
+    if (roleSeen[role] !== undefined) roleSeen[role] = true;
+  }
+
+  unique.sort((a, b) => (roleOrder[a.role] ?? 2) - (roleOrder[b.role] ?? 2));
+  return unique;
+}
+
+function buildDeterministicMultiPagePlan(components = []) {
+  const headerFooter = components.filter(c => c.role === 'header' || c.role === 'footer').map(c => c.refId);
+  const content = components.filter(c => c.role !== 'header' && c.role !== 'footer');
+
+  const byIntent = {
+    pricing: [],
+    reviews: [],
+    services: [],
+    other: []
+  };
+
+  content.forEach(c => {
+    const text = `${c.name} ${c.description} ${c.designFocus}`.toLowerCase();
+    if (/(pricing|price|plan|tier)/.test(text)) byIntent.pricing.push(c.refId);
+    else if (/(review|testimonial|client|marquee)/.test(text)) byIntent.reviews.push(c.refId);
+    else if (/(service|feature|booking|calendar|gallery|showcase|grid|scroll)/.test(text)) byIntent.services.push(c.refId);
+    else byIntent.other.push(c.refId);
+  });
+
+  const homeRefs = [...byIntent.services.slice(0, 2), ...byIntent.other.slice(0, 1)];
+  const servicesRefs = [...byIntent.services.slice(2), ...byIntent.other.slice(1, 3)];
+  const pricingRefs = [...byIntent.pricing, ...byIntent.reviews.slice(0, 1)];
+  const reviewsRefs = [...byIntent.reviews.slice(1)];
+
+  const pages = [
+    { pagePath: '/', path: '/', pageLabel: 'Home', pageComponent: 'Home', navVisible: true, componentRefIds: homeRefs },
+    { pagePath: '/services', path: '/services', pageLabel: 'Services', pageComponent: 'Services', navVisible: true, componentRefIds: servicesRefs },
+    { pagePath: '/pricing', path: '/pricing', pageLabel: 'Pricing', pageComponent: 'Pricing', navVisible: true, componentRefIds: pricingRefs },
+    { pagePath: '/reviews', path: '/reviews', pageLabel: 'Reviews', pageComponent: 'Reviews', navVisible: true, componentRefIds: reviewsRefs }
+  ].filter(p => p.componentRefIds.length > 0);
+
+  if (pages.length < 2) {
+    const allContent = content.map(c => c.refId);
+    return {
+      isMultiPage: true,
+      pages: [
+        { pagePath: '/', path: '/', pageLabel: 'Home', pageComponent: 'Home', navVisible: true, componentRefIds: allContent },
+        { pagePath: '/about', path: '/about', pageLabel: 'About', pageComponent: 'About', navVisible: true, componentRefIds: allContent.slice(Math.floor(allContent.length / 2)) }
+      ],
+      sharedComponentRefIds: headerFooter
+    };
+  }
+
+  return { isMultiPage: true, pages, sharedComponentRefIds: headerFooter };
+}
+
 export default async function planWebsiteComponents(req, res) {
   // premiumMode: 'off' | 'hybrid' | 'strict' (default: 'hybrid')
   // If 'off', the frontend shouldn't have sent selectionContext, but we handle it anyway.
@@ -236,7 +320,7 @@ ${premiumMode === 'off' ? '<!-- Premium selection disabled -->' : `SELECTION CON
         allMandatory = [...new Set([...explicitNames, ...manualSelectionIds])];
       }
 
-      const v2Result = await selectComponentsV2(prompt, v2Context, allMandatory, strictMode);
+      const v2Result = await selectComponentsV2(prompt, v2Context, allMandatory, strictMode, model);
 
       // Map V2 components (DB rows) into the exact V1 shape the frontend expects
       const mappedComponents = v2Result.components.map((dbComp, idx) => {
@@ -258,7 +342,7 @@ ${premiumMode === 'off' ? '<!-- Premium selection disabled -->' : `SELECTION CON
           source: 'premium',
           bundleId: dbComp.component_id,
           props: {},
-          role: (dbComp.category === 'header' || dbComp.category === 'nav') ? 'header' : (dbComp.category === 'hero' ? 'hero' : (dbComp.category === 'footer' ? 'footer' : 'feature'))
+          role: inferRoleFromComponent(dbComp)
         };
       });
 
@@ -328,12 +412,11 @@ ${premiumMode === 'off' ? '<!-- Premium selection disabled -->' : `SELECTION CON
         }
       }
 
-      // Force Header first, Footer last visually
-      mappedComponents.sort((a, b) => {
-        const roleOrder = { 'header': 0, 'hero': 1, 'feature': 2, 'footer': 3 };
-        return (roleOrder[a.role] ?? 2) - (roleOrder[b.role] ?? 2);
-      });
-      console.log(`[plan-website-components] ✍️ Starting Master Copywriter & MPA Architect for ${mappedComponents.length} components...`);
+      const structuredComponents = enforcePlanStructure(mappedComponents);
+      if (structuredComponents.length !== mappedComponents.length) {
+        console.log(`[plan-website-components] Structural dedupe removed ${mappedComponents.length - structuredComponents.length} duplicate role component(s).`);
+      }
+      console.log(`[plan-website-components] ✍️ Starting Master Copywriter & MPA Architect for ${structuredComponents.length} components...`);
 
       let copyResult = { components: [], isMultiPage: true, pages: [], sharedComponentRefIds: [] };
       try {
@@ -341,13 +424,13 @@ ${premiumMode === 'off' ? '<!-- Premium selection disabled -->' : `SELECTION CON
         The user wants a website for: "${prompt}"
         The design system is: ${JSON.stringify(designSystem)}
         
-        I have selected ${mappedComponents.length} components for this site. 
+        I have selected ${structuredComponents.length} components for this site. 
         Your job is TWO-FOLD:
         PART A - ARCHITECTURE: The user STRONGLY PREFERS MULTI-PAGE WEBSITES (isMultiPage: true). You must distribute the components below across multiple logical pages (e.g., Home, About, Pricing, etc). Share the header/navbar and footer via 'sharedComponentRefIds'.
         PART B - COPYWRITING: Generate high-converting, contextually perfect copy (TEXT) for each component.
         
         COMPONENTS REQUIRING ATTENTION:
-        ${mappedComponents.map(c => `- NAME: ${c.name} | REF_ID: ${c.refId} | ROLE: ${c.role} | DESC: ${c.description}`).join('\n')}
+        ${structuredComponents.map(c => `- NAME: ${c.name} | REF_ID: ${c.refId} | ROLE: ${c.role} | DESC: ${c.description}`).join('\n')}
         
         RULES:
         1. Default to isMultiPage: true. Group components into 'pages'. 
@@ -355,6 +438,9 @@ ${premiumMode === 'off' ? '<!-- Premium selection disabled -->' : `SELECTION CON
         3. Assign EVERY single one of the remaining refIds to at least one page.
         4. For each component, generate 'keyContent' and 'props' (key-value strings) matching the tone: ${designSystem?.mood || 'professional'}.
         5. Common props: 'title', 'subtitle', 'description', 'primaryBtnText', 'features'.`;
+
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 90000); 
 
         const { object } = await generateObject({
           model: getModel(model),
@@ -375,15 +461,17 @@ ${premiumMode === 'off' ? '<!-- Premium selection disabled -->' : `SELECTION CON
             sharedComponentRefIds: z.array(z.string()).optional()
           }),
           prompt: copyPrompt,
-          temperature: 0.2
+          temperature: 0.2,
+          abortSignal: controller.signal
         });
+        clearTimeout(timeoutId);
         copyResult = object;
       } catch (copyErr) {
         console.warn('[plan-website-components] Copywriter/Architect failed, using single-page default:', copyErr);
       }
 
       // Merge copy back into mapped components
-      const finalComponents = mappedComponents.map(c => {
+      const finalComponents = structuredComponents.map(c => {
         const copy = copyResult.components?.find(cc => cc.name === c.name);
         return {
           ...c,
@@ -392,6 +480,7 @@ ${premiumMode === 'off' ? '<!-- Premium selection disabled -->' : `SELECTION CON
         };
       });
 
+      const deterministicMpa = buildDeterministicMultiPagePlan(finalComponents);
       planData = {
         components: finalComponents,
         complexity: finalComponents.length <= 6 ? 'simple' : (finalComponents.length <= 9 ? 'medium' : 'complex'),
@@ -405,11 +494,11 @@ ${premiumMode === 'off' ? '<!-- Premium selection disabled -->' : `SELECTION CON
         appComposition: {
           order: finalComponents.map(c => ({ refId: c.refId }))
         },
-        isMultiPage: copyResult.isMultiPage ?? true,
-        pages: copyResult.pages || [
-          { pagePath: '/', pageLabel: 'Home', pageComponent: 'Home', navVisible: true, componentRefIds: finalComponents.map(c => c.refId) }
-        ],
-        sharedComponentRefIds: copyResult.sharedComponentRefIds || []
+        isMultiPage: true,
+        pages: (copyResult.pages && copyResult.pages.length > 0) ? copyResult.pages : deterministicMpa.pages,
+        sharedComponentRefIds: (copyResult.sharedComponentRefIds && copyResult.sharedComponentRefIds.length > 0)
+          ? copyResult.sharedComponentRefIds
+          : deterministicMpa.sharedComponentRefIds
       };
 
       // V2 Narration
@@ -418,8 +507,8 @@ ${premiumMode === 'off' ? '<!-- Premium selection disabled -->' : `SELECTION CON
           const narrator = new AIBuildNarrator(getOpenAIClient());
           aiNarration = await narrator.narrate('planning', {
             prompt,
-            componentCount: mappedComponents.length,
-            premiumCount: mappedComponents.length,
+            componentCount: structuredComponents.length,
+            premiumCount: structuredComponents.filter(c => c.source === 'premium').length,
             customCount: 0,
             premiumMode
           });
@@ -427,7 +516,7 @@ ${premiumMode === 'off' ? '<!-- Premium selection disabled -->' : `SELECTION CON
       }
 
       // Record AI selections for usage feedback loop
-      recordComponentSelections(buildId, mappedComponents.map(c => ({
+      recordComponentSelections(buildId, structuredComponents.map(c => ({
         componentId: c.refId,
         confidence: 0.8 // Using 0.8 as baseline confidence for V2 selections
       })));
@@ -583,7 +672,7 @@ ${premiumMode === 'off' ? '<!-- Premium selection disabled -->' : `SELECTION CON
     // HARDENING: Force-correct all paths locally before returning
     // This stops AI "sub-folder hallucinations" from reaching the client
     // V4.0: Also allows src/pages/ paths for multi-page sites
-    const flattenedComponents = planData.components.map(c => {
+    const flattenedComponentsRaw = planData.components.map(c => {
       const baseName = path.basename(c.path).trim();
       let flatPath = `src/components/${baseName}`;
 
@@ -605,27 +694,63 @@ ${premiumMode === 'off' ? '<!-- Premium selection disabled -->' : `SELECTION CON
       return { ...c, path: flatPath };
     });
 
-    // HARDENING: STRICT ORDERING ENFORCEMENT
-    // We explicitly sort the components to ensure the user's desired structure:
-    // 1. Header
-    // 2. Hero
-    // 3. Features (Content)
-    // 4. Footer
-    const roleOrder = { 'header': 0, 'hero': 1, 'feature': 2, 'footer': 3 };
-    flattenedComponents.sort((a, b) => {
-      const orderA = roleOrder[a.role] ?? 2; // Default to 'feature' (2) if undefined
-      const orderB = roleOrder[b.role] ?? 2;
-      return orderA - orderB;
-    });
+    let flattenedComponents = enforcePlanStructure(flattenedComponentsRaw);
 
     // Double-check mandatory components
     const hasHeader = flattenedComponents.some(c => c.role === 'header');
     const hasHero = flattenedComponents.some(c => c.role === 'hero');
     const hasFooter = flattenedComponents.some(c => c.role === 'footer');
 
-    // If missing, we warn (or theoretically could inject default placeholders, but for now we trust the LLM with the prompt strictness)
+    // If mandatory roles are missing, inject generated placeholders so the UI skeleton stays valid.
     if (!hasHeader || !hasHero || !hasFooter) {
-      console.warn('[plan-website-components] Warning: Component plan missing mandatory roles!', { hasHeader, hasHero, hasFooter });
+      console.warn('[plan-website-components] Warning: Component plan missing mandatory roles! Injecting safe placeholders.', { hasHeader, hasHero, hasFooter });
+      const additions = [];
+      if (!hasHeader) {
+        additions.push({
+          name: 'HeaderSection',
+          refId: 'gen_header_fallback',
+          exportName: 'HeaderSection',
+          path: 'src/components/HeaderSection.jsx',
+          description: 'Fallback generated header section',
+          designFocus: 'clean navigation',
+          keyContent: 'Premium Service Navigation',
+          source: 'generated',
+          bundleId: null,
+          props: {},
+          role: 'header'
+        });
+      }
+      if (!hasHero) {
+        additions.push({
+          name: 'HeroSection',
+          refId: 'gen_hero_fallback',
+          exportName: 'HeroSection',
+          path: 'src/components/HeroSection.jsx',
+          description: 'Fallback generated hero section',
+          designFocus: 'strong primary messaging',
+          keyContent: 'Luxury Car Service Experience',
+          source: 'generated',
+          bundleId: null,
+          props: {},
+          role: 'hero'
+        });
+      }
+      if (!hasFooter) {
+        additions.push({
+          name: 'FooterSection',
+          refId: 'gen_footer_fallback',
+          exportName: 'FooterSection',
+          path: 'src/components/FooterSection.jsx',
+          description: 'Fallback generated footer section',
+          designFocus: 'clear contact and legal links',
+          keyContent: 'Book your premium service drop-off',
+          source: 'generated',
+          bundleId: null,
+          props: {},
+          role: 'footer'
+        });
+      }
+      flattenedComponents = enforcePlanStructure([...flattenedComponents, ...additions]);
     }
 
     // Calculate component counts and packages
@@ -657,10 +782,31 @@ ${premiumMode === 'off' ? '<!-- Premium selection disabled -->' : `SELECTION CON
       order: flattenedComponents.map(c => ({ refId: c.refId || c.name }))
     };
 
+    // Normalize page paths so router always has a root route
+    let normalizedPages = Array.isArray(planData.pages) ? [...planData.pages] : [];
+    normalizedPages = normalizedPages.map((p, index) => {
+      const rawPath = String(p?.pagePath || p?.path || '/').trim();
+      let pagePath = rawPath.startsWith('/') ? rawPath : `/${rawPath}`;
+      if (pagePath === '/home' || pagePath === '/index') pagePath = '/';
+      if (index === 0 && !pagePath) pagePath = '/';
+      return {
+        ...p,
+        pagePath,
+        path: pagePath
+      };
+    });
+    if ((planData.isMultiPage || false) && normalizedPages.length === 0) {
+      normalizedPages = [
+        { pagePath: '/', path: '/', pageLabel: 'Home', pageComponent: 'Home', navVisible: true, componentRefIds: flattenedComponents.map(c => c.refId) }
+      ];
+    } else if (normalizedPages.length > 0 && !normalizedPages.some(p => p.pagePath === '/')) {
+      normalizedPages[0] = { ...normalizedPages[0], pagePath: '/', path: '/' };
+    }
+
     console.log(`[plan-website-components] SUCCESS. Returning ${flattenedComponents.length} components.`);
     res.json({
       success: true,
-      plan: { ...planData, components: flattenedComponents, appComposition: validAppComposition },
+      plan: { ...planData, components: flattenedComponents, appComposition: validAppComposition, pages: normalizedPages },
       components: flattenedComponents, // legacy support
       globalStyle: planData.globalStyle,
       appImports: planData.appImports,
@@ -669,7 +815,7 @@ ${premiumMode === 'off' ? '<!-- Premium selection disabled -->' : `SELECTION CON
       aiNarration, // Include AI plan explanation
       // V4.0: Multi-page support fields
       isMultiPage: planData.isMultiPage || false,
-      pages: planData.pages || [],
+      pages: normalizedPages,
       sharedComponentRefIds: planData.sharedComponentRefIds || [],
     });
 

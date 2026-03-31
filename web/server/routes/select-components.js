@@ -143,6 +143,16 @@ RULES: Maximize premium components. Confidence >= ${adaptationThreshold}.`,
     } catch (error) {
         console.error('[select-components] CRITICAL ERROR:', error);
         if (error.stack) console.error(error.stack);
+
+        const isOverloaded = error.name === 'AI_RetryError' || error.message?.includes('maxRetriesExceeded') || error.message?.includes('429') || error.message?.includes('503') || error.message?.includes('overload') || error.message?.includes('high demand');
+        
+        if (isOverloaded) {
+            return res.status(503).json({
+                success: false,
+                error: 'AI Provider is currently experiencing high demand. Please try again later.'
+            });
+        }
+
         res.json({
             success: true,
             selection: {

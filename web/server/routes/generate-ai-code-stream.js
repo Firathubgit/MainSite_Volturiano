@@ -276,7 +276,8 @@ ${goldenAppJsx}
 
       // Add premium component awareness
       if (context.premiumComponents && context.premiumComponents.length > 0) {
-        systemPrompt += `\n\nPREMIUM COMPONENTS (pre-installed, DO NOT simplify or rewrite these):
+        systemPrompt += `\n\nPREMIUM COMPONENTS (pre-installed):
+These are high-quality, curated components with strong infrastructure. Adapt content seamlessly to the user's vision but PRESERVE their original intention, layout, and complex interactive logic (WebGL, shaders, scroll effects) unless the user's prompt explicitly demands a radical structural rewrite. DO NOT simplify or add unnecessary bloat.
 ${context.premiumComponents.map(pc => {
           return `- ${pc.name} at ${pc.path}`;
         }).join('\n')}`;
@@ -309,9 +310,9 @@ ${context.premiumComponents.map(pc => {
     // Update system prompt with iteration preservation rules
     systemPrompt += `
 ITERATION RULES:
-1. PRESERVE PREMIUM QUALITY: When editing an existing component (like a Hero or Feature), do NOT simplify the code. Preserve the complex animations, glassmorphism, and responsive structures.
-2. SURGICAL EDITS: If the user asks to "change a headline", only change the specific text or props. Do not rewrite the entire component from scratch if it already exists.
-3. COMPONENT INTEGRITY: Keep the existing imports and exports unless specifically asked to change them.
+1. INFRASTRUCTURE & INTENT (TOYOTA PHILOSOPHY): Premium components come with highly intentional, solid infrastructure. Preserve their complex animations, WebGL, sticky effects, and precise layouts. Only rewrite their mechanics if the user's prompt explicitly pushes for a highly custom "0.01%" edge-case behavior.
+2. SURGICAL ADAPTATION: Adapt the text, imagery, and theme strictly to the user's vision. Make as little unnecessary code changes as possible to the core engine. Do not add generic "bloat" to a well-crafted component.
+3. COMPONENT INTEGRITY: Keep the existing imports and exports intact. Treat the components as powerful, immutable engines where you only change the paint and upholstery, unless absolutely necessary.
 `;
 
     // Build messages

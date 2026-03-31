@@ -231,14 +231,14 @@ CONTENT FIDELITY(CRITICAL):
   - Do NOT pad components with generic tech / business buzzwords from unrelated industries
   - Every mock data entry must feel like it belongs on THIS specific website
 
-PREMIUM COMPONENT TEXT CUSTOMIZATION:
-When you include a premium component (source: 'premium'), you MUST customize
-its props with REAL content relevant to the user's website:
+PREMIUM COMPONENT CUSTOMIZATION (TOYOTA PHILOSOPHY):
+When you include a premium component (source: 'premium'), treat it as a powerful, immutable infrastructure shell.
+Your goal is to seamlessly inject the user's vision into this shell WITHOUT breaking the engine.
+You MUST customize its props/payload with REAL content relevant to the user's website:
 - title: Industry-specific headline (NOT "Welcome to Our Website")
 - subtitle: Specific supporting copy
 - features: Real feature list based on the business type
-- stats: Realistic, rounded numbers appropriate for the industry
-- ctaText: Action-oriented text matching the conversion goal
+- mechanics: Assume the component's interactive logic (WebGL, scroll, layouts) will run perfectly. ONLY plan content adaptation, NOT structural rewrites.
 
 DESIGN COHERENCE — "LESS IS MORE":
   - ALL components must use the SAME color palette from the design system below

@@ -75,9 +75,12 @@ GOALS:
 3. NO PLACEHOLDERS: Generate real, high-quality copy for the "${prompt}" industry.
 4. COLOR HARMONY: Ensure the Tailwind color palette is consistent across ALL files. 
 5. ERROR CORRECTION: If build errors are provided below, fix them SURGICALLY.
-6. VISUAL WOW-FACTOR: 
-   - Improve spacing (py-12 to py-24 for rhythm).
-   - Add subtle entrance animations using Framer Motion (whileInView).
+6. STRUCTURAL INTEGRITY (TOYOTA PHILOSOPHY):
+   - The provided components are premium and already have solid, high-quality infrastructure (WebGL, complex Framer Motion logic, sticky scrolls, shaders). 
+   - PRESERVE their original intention, layout, and specialized interactive logic. 
+   - Make ONLY necessary code changes to adapt the component perfectly to the user's vision (copy, images, theme colors). 
+   - Do NOT add unnecessary complexity or generic "enhancements" that overwrite the component's unique magic.
+   - EXCEPTION: If the user's prompt is overwhelmingly, aggressively custom and specifically demands a radical structural change, you have the full intelligence to rewrite the code to satisfy them. Otherwise, adapt gracefully without destroying the foundation.
 
 CONSTRAINTS:
 - DO NOT change the file names or overall structure unless fixing a broken import.

@@ -1426,13 +1426,13 @@ export default function Generation() {
           body: JSON.stringify({ enhancedPrompt: finalPrompt, images: initialImages, buildId, model: aiModel })
         });
         const dsData = await safeParseJson(dsRes, 'derive-ds');
-        if (dsData.success) {
+        if (dsData.success && dsData.designSystem) {
           designSystem = dsData.designSystem;
           designSystemRef.current = designSystem;
           // Phase S2 & S13: Sync design system
           saveProjectUpdates({
             design_system: designSystem,
-            industry: designSystem.industryCategory,
+            industry: designSystem.industryCategory || 'general',
             build_status: 'generating'
           });
         }

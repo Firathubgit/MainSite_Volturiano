@@ -440,11 +440,11 @@ ${premiumMode === 'off' ? '<!-- Premium selection disabled -->' : `SELECTION CON
         5. Common props: 'title', 'subtitle', 'description', 'primaryBtnText', 'features'.`;
 
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 90000); 
+        const timeoutId = setTimeout(() => controller.abort(), 45000); 
 
         const { object } = await generateObject({
           model: getModel(model),
-          maxRetries: 7, // Highly resilient config to combat rate limit overloads
+          maxRetries: 3, // Lowered from 7 to prevent 502 Proxy timeout during high provider load
           schema: z.object({
             components: z.array(z.object({
               name: z.string(),
@@ -625,7 +625,7 @@ ${premiumMode === 'off' ? '<!-- Premium selection disabled -->' : `SELECTION CON
         console.log(`[plan-website-components] Attempting generation with model: ${model}`);
         result = await generateObject({
           model: getModel(model),
-          maxRetries: 7,
+          maxRetries: 3, // Lowered from 7 to prevent 502 Proxy timeout
           schema: planSchema,
           messages: [{ role: 'system', content: SYSTEM_PROMPT }, { role: 'user', content }],
           temperature: 0,

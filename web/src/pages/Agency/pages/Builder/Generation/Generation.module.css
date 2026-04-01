@@ -659,17 +659,23 @@ svg.shimmerText {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: 16px;
   height: 64px;
-  padding-left: 24px;
+  padding: 0 24px;
   border-top: 1px solid #ffffff;
   border-bottom: 1px solid #ffffff;
   background: #030304;
+  position: relative;
+  z-index: 100;
+  box-sizing: border-box;
 }
 
 .tabsGroup {
   display: flex;
+  align-items: center;
   gap: 12px;
+  flex: 1;
+  justify-content: flex-start;
 }
 
 .downloadBtn {
@@ -700,10 +706,9 @@ svg.shimmerText {
 .actionsGroup {
   display: flex;
   align-items: center;
+  justify-content: flex-end;
   gap: 6px;
-  padding-right: 24px;
-  border-right: 1px solid #ffffff;
-  height: 100%;
+  flex: 1;
 }
 
 .addComponentsBtn {
@@ -712,7 +717,7 @@ svg.shimmerText {
   justify-content: center;
   gap: 8px;
   padding: 0 14px;
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 700;
   color: #ffffff;
   background: #000;
@@ -724,9 +729,16 @@ svg.shimmerText {
   overflow: hidden;
   height: 34px;
   box-sizing: border-box;
+  white-space: nowrap;
 }
 
 .addComponentsBtn span {
+  position: relative;
+  z-index: 1;
+}
+
+.addComponentsBtnIcon {
+  margin-right: 6px;
   position: relative;
   z-index: 1;
 }
@@ -2011,9 +2023,9 @@ svg.shimmerText {
   color: rgb(255, 255, 255);
   line-height: 19px;
   font-weight: 700;
-  font-size: 16px;
+  font-size: 14px;
   font-family: ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
-  padding: 16px 36px;
+  padding: 10px 24px;
   border-radius: 11px;
   justify-content: center;
   align-items: center;
@@ -2027,7 +2039,7 @@ svg.shimmerText {
   border-color: rgb(39, 39, 42);
   text-transform: none;
   margin: 0px;
-  min-width: 132px;
+  min-width: 100px;
   gap: 8px;
 
   --pos-x: 0%;
@@ -2299,12 +2311,12 @@ svg.shimmerText {
 
 /* ─── TOP BAR LOADING INDICATOR ─── */
 .topBarLoading {
-  flex: 0 1 auto;
+  flex: 1;
   display: flex;
   align-items: center;
-  justify-content: flex-end;
-  min-width: 0;
-  padding: 0 16px;
+  justify-content: center;
+  min-width: 140px;
+  padding: 0 8px;
 }
 
 .topBarLoadingInner {
@@ -2528,3 +2540,36 @@ svg.shimmerText {
   background-clip: text;
   color: transparent;
 }
+
+/* ─── RESPONSIVE HEADER COMPACTION (1000px - 1350px) ─── */
+@media (max-width: 1350px) {
+  .tabs { padding: 0 12px; gap: 8px; }
+  .tabsGroup { gap: 6px; }
+  .actionsGroup { padding-left: 0; gap: 4px; border-right: none; }
+  .tab { padding: 4px 10px; font-size: 12px; }
+  .topBarLoadingInner { width: 150px; }
+  .topBarQuote { font-size: 9px; }
+  .addComponentsBtn { padding: 0 10px; font-size: 9px; gap: 4px; border-radius: 8px; min-width: 32px; }
+  .downloadBtnText { display: none; }
+  .downloadBtn { padding: 4px 8px; }
+  .publishBtnPremium { min-width: 80px; font-size: 13px; padding: 8px 18px; }
+  .separatorSmall { margin: 0 4px; }
+}
+
+@media (max-width: 1250px) {
+  .addComponentsBtn span { display: none; }
+  .addComponentsBtnIcon { margin-right: 0; }
+  .addComponentsBtn { width: 34px; padding: 0; display: flex; justify-content: center; }
+}
+
+@media (max-width: 1150px) {
+  .tabs { gap: 4px; }
+  .topBarLoadingInner { width: 120px; }
+  .publishBtnPremium { min-width: 70px; font-size: 12px; padding: 6px 14px; border-radius: 9px; }
+  .viewportBtn, .refreshBtn, .downloadBtn, .openTabBtn { padding: 4px 6px; gap: 2px; }
+}
+
+@media (max-width: 1000px) {
+  /* Site begins to overlap or overflow - per user instruction we let it be or future plans */
+}
+

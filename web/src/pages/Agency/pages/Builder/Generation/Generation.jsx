@@ -3143,7 +3143,7 @@ Just position the new components in a logical order (e.g. after the Hero or befo
                     onClick={() => setIsCommunityPopupOpen(true)}
                     title="Browse and add community components"
                   >
-                    <FiPlus size={14} style={{ marginRight: '6px', position: 'relative', zIndex: 1 }} />
+                    <FiPlus size={14} className={styles.addComponentsBtnIcon} />
                     <span>Add Components</span>
                   </button>
 
@@ -3225,7 +3225,9 @@ Just position the new components in a logical order (e.g. after the Hero or befo
                     title="Download project as ZIP"
                   >
                     <FiDownload size={14} />
-                    {isDownloading ? 'Preparing...' : 'Download'}
+                    <span className={styles.downloadBtnText}>
+                      {isDownloading ? 'Preparing...' : 'Download'}
+                    </span>
                   </button>
 
                   {/* GitHub Push (Available soon) */}

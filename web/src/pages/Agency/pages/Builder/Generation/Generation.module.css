@@ -2297,7 +2297,64 @@ svg.shimmerText {
   font-size: 11px;
 }
 
-/* ─── LOADING UI ─── */
+/* ─── TOP BAR LOADING INDICATOR ─── */
+.topBarLoading {
+  flex: 0 1 auto;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  min-width: 0;
+  padding: 0 16px;
+}
+
+.topBarLoadingInner {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 180px;
+}
+
+.topBarQuote {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 10px;
+  font-family: 'Inter', sans-serif;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  background: linear-gradient(90deg, #ffffff 0%, #b0b0b0 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  color: transparent;
+  line-height: 1.3;
+}
+
+.topBarBarRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.topBarLoadingBarWrap {
+  flex: 1;
+  min-width: 0;
+}
+
+.topBarPercent {
+  flex-shrink: 0;
+  font-size: 11px;
+  font-family: 'Inter', sans-serif;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  background: linear-gradient(90deg, #ffffff 0%, #707070 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  color: transparent;
+}
+
+/* ─── PREVIEW LOADING UI ─── */
 .loadingContainer {
   display: flex;
   align-items: center;

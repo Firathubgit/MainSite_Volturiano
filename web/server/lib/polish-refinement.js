@@ -75,12 +75,24 @@ GOALS:
 3. NO PLACEHOLDERS: Generate real, high-quality copy for the "${prompt}" industry.
 4. COLOR HARMONY: Ensure the Tailwind color palette is consistent across ALL files. 
 5. ERROR CORRECTION: If build errors are provided below, fix them SURGICALLY.
-6. STRUCTURAL INTEGRITY (TOYOTA PHILOSOPHY):
+7. INTENTIONALITY & ROLE VALIDATION (MINDSET):
+   - Ask yourself: "Is this component truly appropriate for its role (Header, LandingPage, Hero, Footer)?"
+   - Header: Must have functional navigation links that map correctly to the routes in App.jsx.
+   - LandingPage/Hero: Must be high-impact and immediately communicate "${prompt}".
+   - Sections: Must flow logically from one to the next (Problem -> Solution -> Services -> CTA).
+   - Footer: Must be professional, complete, and contextually relevant to "${prompt}".
+   - If a component feels misplaced, adjust its content and styling to "force" it into the correct intentionality without breaking its premium engine.
+8. STRUCTURAL INTEGRITY (TOYOTA PHILOSOPHY):
    - The provided components are premium and already have solid, high-quality infrastructure (WebGL, complex Framer Motion logic, sticky scrolls, shaders). 
    - PRESERVE their original intention, layout, and specialized interactive logic. 
    - Make ONLY necessary code changes to adapt the component perfectly to the user's vision (copy, images, theme colors). 
    - Do NOT add unnecessary complexity or generic "enhancements" that overwrite the component's unique magic.
    - EXCEPTION: If the user's prompt is overwhelmingly, aggressively custom and specifically demands a radical structural change, you have the full intelligence to rewrite the code to satisfy them. Otherwise, adapt gracefully without destroying the foundation.
+9. NO SKELETON PAGES (CRITICAL):
+   - If you are polishing a secondary page (e.g., /services or /about), it MUST be a "full-fledged attempt."
+   - DO NOT leave a page as an empty <div> or just a single line of text.
+   - Each page must have a minimum of 3-4 sections (e.g., SimpleHero -> FeatureGrid -> TextSection -> Contact/CTA).
+   - If a page is empty or sparse, INJECT appropriate sections from the existing component library (check imports) or create clean Tailwind-based sections that maintain the site's premium feel.
 
 CONSTRAINTS:
 - DO NOT change the file names or overall structure unless fixing a broken import.
@@ -95,8 +107,11 @@ MULTI-PAGE POLISH RULES (if the project uses HashRouter/Routes):
 - Navigation labels must be concise and clear (Home, About, Pricing — not "Our Amazing Homepage").
 - Consistent color palette across ALL pages — no page should feel like a different site.
 - Do NOT modify App.jsx routing structure, siteMap.js, or Route paths. Only polish visual content.
+- NAVIGATION INTEGRITY:
+    - Ensure all links in the Header and Footer (e.g., Link to="/services") actually correspond to the pages being polished.
+    - If a user clicks a button to go to "Services," that page must EXIST and be FULLY POPULATED (per the NO SKELETON PAGES rule).
 
-FINAL REMINDER: The user's goal is "${prompt}". Do not overwrite it with component brand names.
+FINAL REMINDER: The user's goal is "${prompt}". Do not overwrite it with component brand names. Ensure every single page is a "wow" experience, not just a landing page with empty links. Every page MUST have real content sections.
 BUILD ERRORS/LOGS (If any):
 ${buildErrors || 'None - perform aesthetic optimizations and copy specialization only.'}
 `;

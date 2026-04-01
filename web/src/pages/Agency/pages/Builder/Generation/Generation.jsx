@@ -239,26 +239,19 @@ function getStageCategory(status) {
   return 'fallback';
 }
 
-// ─── Loading View (Figma Based) ─────────────
-function ShowcaseCarousel({ isActive, generationProgress, logoState }) {
+// ─── Shared loading state hook ─────────────
+function useLoadingProgress(generationProgress) {
   const [current, setCurrent] = useState(0);
+  const [randomBoost, setRandomBoost] = useState(0);
+  const [monotonicFill, setMonotonicFill] = useState(0);
 
   useEffect(() => {
-    // Sync the quotes with the current generation stage
     const interval = setInterval(() => {
       setCurrent(prev => prev + 1);
     }, 4500);
     return () => clearInterval(interval);
   }, [generationProgress?.status]);
 
-  const currentStage = getStageCategory(generationProgress?.status);
-  const activeQuotes = NARRATIVE_QUOTES[currentStage] || NARRATIVE_QUOTES.fallback;
-  const currentTitle = activeQuotes[current % activeQuotes.length];
-
-  const [randomBoost, setRandomBoost] = useState(0);
-  const [monotonicFill, setMonotonicFill] = useState(0);
-
-  // Add a bit of randomized values each step the status changes
   useEffect(() => {
     if (!generationProgress?.isGenerating) {
       setRandomBoost(0);
@@ -268,49 +261,32 @@ function ShowcaseCarousel({ isActive, generationProgress, logoState }) {
     setRandomBoost(prev => prev + (Math.random() * 2 + 1));
   }, [generationProgress?.status, generationProgress?.isGenerating]);
 
-  // Randomly timed cutoff jumps - more distributed for longer LLM wait times
   useEffect(() => {
     if (!generationProgress?.isGenerating) return;
-
     const createTimer = (seconds, minInc, range) => setTimeout(() => {
       setRandomBoost(prev => prev + (Math.random() * range + minInc));
     }, seconds * 1000);
-
     const timers = [
-      createTimer(5, 4, 4),    // 5s
-      createTimer(12, 5, 5),   // 12s
-      createTimer(25, 5, 5),   // 25s
-      createTimer(40, 5, 5),   // 40s
-      createTimer(60, 4, 4),   // 60s
-      createTimer(80, 4, 4),   // 80s
-      createTimer(105, 4, 4),  // 105s
-      createTimer(130, 4, 4),  // 130s
-      createTimer(160, 4, 4),  // 160s
-      createTimer(190, 4, 4),  // 190s
-      createTimer(220, 3, 3),  // 220s
+      createTimer(5, 4, 4), createTimer(12, 5, 5), createTimer(25, 5, 5),
+      createTimer(40, 5, 5), createTimer(60, 4, 4), createTimer(80, 4, 4),
+      createTimer(105, 4, 4), createTimer(130, 4, 4), createTimer(160, 4, 4),
+      createTimer(190, 4, 4), createTimer(220, 3, 3),
     ];
-
     return () => timers.forEach(t => clearTimeout(t));
   }, [generationProgress?.isGenerating]);
 
-  // Breathing effect: Add tiny increments every 30s to ensure it never looks "stuck"
   useEffect(() => {
     if (!generationProgress?.isGenerating) return;
-    
     const interval = setInterval(() => {
       setRandomBoost(prev => prev + (Math.random() * 1.5 + 0.5));
     }, 30000);
-    
     return () => clearInterval(interval);
   }, [generationProgress?.isGenerating]);
 
-  // Ensure logical monotonic growth (NO GOING DOWN)
   useEffect(() => {
     if (!generationProgress?.isGenerating) return;
-    
     let baseFill = 0;
     const status = (generationProgress?.status || '').toLowerCase();
-    
     if (status.includes('complete') || status.includes('done')) baseFill = 100;
     else if (status.includes('finishing')) baseFill = 90;
     else if (status.includes('polish') || status.includes('finalizing')) baseFill = 75;
@@ -321,114 +297,94 @@ function ShowcaseCarousel({ isActive, generationProgress, logoState }) {
       if (generationProgress?.components?.length > 0) {
         const total = generationProgress.components.length;
         const completed = generationProgress.components.filter(c => c.completed).length;
-        baseFill = 20 + (30 * (completed / Math.max(1, total))); // 20-50% based on components
-      } else {
-        baseFill = 20; // 20% baseline if just generating text stream
-      }
+        baseFill = 20 + (30 * (completed / Math.max(1, total)));
+      } else baseFill = 20;
     }
     else if (status.includes('dependencies') || status.includes('installing') || status.includes('fetching')) baseFill = 10;
     else if (status.includes('planning') || status.includes('designing')) baseFill = 3;
     else if (status.includes('enhancing') || status.includes('deriving')) baseFill = 1;
     else if (status.includes('starting') || status.includes('booting') || status.includes('deducting')) baseFill = 0.5;
-    else if (status) baseFill = 2; // E.g. "Working..." or "Thinking..."
-
-    // Add logarithmic decay to randomBoost so it doesn't instantly hit 99% in late stages
-    // We also dampen the total effect of randomBoost as baseFill increases
+    else if (status) baseFill = 2;
     const boostDamping = (100 - baseFill) / 100;
-    let targetFill = baseFill + (randomBoost * boostDamping * 0.8); 
+    let targetFill = baseFill + (randomBoost * boostDamping * 0.8);
     targetFill = Math.min(97, targetFill);
     if (baseFill >= 100) targetFill = 100;
-    
-    // Strict monotonic enforcement + floor to avoid decimal jumping
     setMonotonicFill(prev => {
       const isStarting = status.includes('starting...');
-      const actualPrev = isStarting ? 0 : prev; // HARD RESET ON EDIT/START
-      const finalFill = Math.floor(Math.max(actualPrev, targetFill));
-      console.log(`[LoadingBar] Time: ${new Date().toLocaleTimeString()} | Status: "${status}" | BaseFill: ${baseFill} | RandomBoost: ${Math.floor(randomBoost)} | TargetFill: ${Math.floor(targetFill)} | Monotonic: ${finalFill}`);
-      return finalFill;
+      const actualPrev = isStarting ? 0 : prev;
+      return Math.floor(Math.max(actualPrev, targetFill));
     });
   }, [generationProgress, randomBoost]);
 
   let fillPercentage = 0;
-  if (generationProgress?.isGenerating) {
-    fillPercentage = monotonicFill;
-  } else if (monotonicFill >= 85) {
-    fillPercentage = 100;
-  }
+  if (generationProgress?.isGenerating) fillPercentage = monotonicFill;
+  else if (monotonicFill >= 85) fillPercentage = 100;
 
+  const currentStage = getStageCategory(generationProgress?.status);
+  const activeQuotes = NARRATIVE_QUOTES[currentStage] || NARRATIVE_QUOTES.fallback;
+  const currentTitle = activeQuotes[current % activeQuotes.length];
 
-  // Use the live generation progress for the fill!
-  const displayFill = fillPercentage;
+  return { displayFill: fillPercentage, currentTitle, current };
+}
 
+// ─── Top Bar Loading Indicator (inline in header) ─────────────
+function TopBarLoadingIndicator({ generationProgress }) {
+  const { displayFill, currentTitle, current } = useLoadingProgress(generationProgress);
+  const isActive = generationProgress?.isGenerating || displayFill > 0;
+
+  if (!isActive) return null;
+
+  return (
+    <div className={styles.topBarLoading}>
+      <div className={styles.topBarLoadingInner}>
+        <AnimatePresence mode="wait">
+          <motion.span
+            key={current}
+            initial={{ opacity: 0, y: 3 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -3 }}
+            transition={{ duration: 0.2 }}
+            className={styles.topBarQuote}
+          >
+            {currentTitle}
+          </motion.span>
+        </AnimatePresence>
+        <div className={styles.topBarBarRow}>
+          <div className={styles.topBarLoadingBarWrap}>
+            <div
+              className={styles.rectangleLoadingBar}
+              style={{ width: '100%', height: 9, borderRadius: 4.5, border: '1.5px solid rgba(255,255,255,0.5)', overflow: 'hidden' }}
+            >
+              <div className={styles.loadingFill} style={{ width: `${displayFill}%` }} />
+            </div>
+          </div>
+          <span className={styles.topBarPercent}>
+            <AnimatedNumber value={displayFill} />
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Preview Loading Logo (centered in preview area) ─────────────
+function LoadingLogoView({ logoState }) {
   return (
     <div className={styles.loadingContainer} style={{ position: 'relative', overflow: 'hidden' }}>
       <CornerWave />
-
-
-      <div data-layer="LoadingPart" style={{width: 312, height: 184, position: 'relative'}}>
-        <div 
-          data-layer="TornadoLogo" 
-          className={
-            logoState === 1 ? styles.tornadoLogoPulse : 
-            logoState === 2 ? styles.tornadoLogoTikiTaka : 
-            logoState === 3 ? styles.tornadoLogoScanner :
-            styles.tornadoLogoShimmer
-          } 
-          style={{
-            width: 110, height: 110, left: 101, top: 0, position: 'absolute',
-            '--logo-url': `url(${volturianoLogo})`
-          }} 
-        />
-        
-        <div style={{ position: 'absolute', top: 136, left: 10, width: 292, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
-          <AnimatePresence mode="wait">
-            <motion.div 
-              key={current}
-              initial={{ opacity: 0, y: 5 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -5 }}
-              transition={{ duration: 0.3 }}
-              style={{ 
-                background: 'linear-gradient(90deg, #ffffff 0%, #b0b0b0 100%)', 
-                WebkitBackgroundClip: 'text', 
-                WebkitTextFillColor: 'transparent', 
-                backgroundClip: 'text', 
-                color: 'transparent', 
-                fontSize: 15, 
-                fontFamily: '"Inter", sans-serif', 
-                fontWeight: '500', 
-                whiteSpace: 'nowrap', 
-                letterSpacing: '-0.01em' 
-              }}
-            >
-              {currentTitle}
-            </motion.div>
-          </AnimatePresence>
-          <div 
-            className={styles.tinyTextShimmer}
-            style={{ 
-              fontSize: 18, 
-              fontFamily: '"Inter", sans-serif', 
-              fontWeight: '600', 
-              letterSpacing: '-0.02em' 
-            }}
-          >
-            <AnimatedNumber value={displayFill} />
-          </div>
-        </div>
-        
-        <div 
-          data-layer="RectangleLoadingbarThingy." 
-          className={styles.rectangleLoadingBar} 
-          style={{ width: 292, height: 14, left: 10, top: 165, position: 'absolute', borderRadius: 7, border: '2px white solid', overflow: 'hidden' }} 
-        >
-          {/* Elegant Mature Fill Material with Shimmer */}
-          <div 
-            className={styles.loadingFill} 
-            style={{ width: `${displayFill}%` }} 
-          />
-        </div>
-      </div>
+      <div
+        data-layer="TornadoLogo"
+        className={
+          logoState === 1 ? styles.tornadoLogoPulse :
+          logoState === 2 ? styles.tornadoLogoTikiTaka :
+          logoState === 3 ? styles.tornadoLogoScanner :
+          styles.tornadoLogoShimmer
+        }
+        style={{
+          width: 110, height: 110,
+          '--logo-url': `url(${volturianoLogo})`
+        }}
+      />
     </div>
   );
 }
@@ -3179,6 +3135,7 @@ Just position the new components in a logical order (e.g. after the Hero or befo
                   <button className={`${styles.tab} ${activeTab === 'generation' ? styles.tabActive : ''}`} onClick={() => setActiveTab('generation')}>Code</button>
                   <button className={`${styles.tab} ${activeTab === 'preview' ? styles.tabActive : ''}`} onClick={() => setActiveTab('preview')}>Preview</button>
                 </div>
+                <TopBarLoadingIndicator generationProgress={generationProgress} />
                 <div className={styles.actionsGroup}>
                   {/* Phase S11: Add Components Button */}
                   <button
@@ -3411,11 +3368,7 @@ Just position the new components in a logical order (e.g. after the Hero or befo
                           </AnimatePresence>
 
                           {generationProgress.isGenerating || !sandboxData?.url ? (
-                            <ShowcaseCarousel 
-                              isActive={true} 
-                              generationProgress={generationProgress} 
-                              logoState={logoState}
-                            />
+                            <LoadingLogoView logoState={logoState} />
                           ) : (
                             <iframe
                               ref={iframeRef}

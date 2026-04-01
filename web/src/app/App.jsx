@@ -38,6 +38,9 @@ const Builder = lazy(() => import("../pages/Agency/pages/Builder/Builder"));
 const BuilderGeneration = lazy(
   () => import("../pages/Agency/pages/Builder/Generation/Generation"),
 );
+const BuilderBillingPage = lazy(
+  () => import("../pages/Agency/pages/Builder/Billing/BuilderBillingPage"),
+);
 const BuilderAuthPage = lazy(() =>
   import("../pages/Agency/pages/Builder/components/AuthPage").then(
     (module) => ({ default: module.AuthPage }),
@@ -381,7 +384,7 @@ export default function App() {
               (!session && (status === "loading" || status === "idle"))
             }
           />
-          {location.pathname !== "/builder/generation" && location.pathname !== "/builder/login" && location.pathname !== "/builder/profile" && location.pathname !== "/builder/privacy" && location.pathname !== "/builder/terms" && !location.pathname.startsWith("/community") && !location.pathname.startsWith("/guidelines") && (
+          {location.pathname !== "/builder/generation" && location.pathname !== "/builder/login" && location.pathname !== "/builder/profile" && location.pathname !== "/builder/privacy" && location.pathname !== "/builder/terms" && location.pathname !== "/builder/billing" && !location.pathname.startsWith("/community") && !location.pathname.startsWith("/guidelines") && (
             <>
               {(location.pathname.startsWith("/builder")) ? (
                 <Suspense fallback={null}>
@@ -417,6 +420,7 @@ export default function App() {
                 <Route path="/agency/booking" element={<Booking />} />
                 <Route path="/builder" element={<Builder />} />
                 <Route path="/builder/generation" element={<BuilderGeneration />} />
+                <Route path="/builder/billing" element={<BuilderBillingPage />} />
                 <Route path="/builder/login" element={<BuilderAuthPage />} />
                 <Route path="/builder/profile" element={<ProfileSettings />} />
                 <Route path="/builder/dashboard" element={<Navigate to="/builder/profile?tab=Websites" replace />} />

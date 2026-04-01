@@ -5,7 +5,6 @@ import FeedbackModal from "../../../../../components/Modals/FeedbackModal/Feedba
 import { UserIcon, LogOutIcon, LayoutDashboardIcon, ChevronDownIcon, SparklesIcon, ZapIcon, MessageSquareIcon } from "lucide-react";
 import { useBuilderAuth } from "../../../../../contexts/BuilderAuthContext";
 import { useCredits } from "../../../../../hooks/useCredits";
-import CreditLimitModal from "../../../../../components/Modals/CreditLimitModal";
 import navStyles from "../../../../../components/NavBar/NavBar.module.css";
 import tornadoLogo from "../../../../../assets/Logo/TornadoLogo.png";
 import accountIcon from "../../../../../assets/Logo/LoginAccountIcon.png";
@@ -225,9 +224,9 @@ export function BuilderNavBar() {
 // Credit Badge — Glassmorphism "Creative Energy" Indicator
 // ─────────────────────────────────────────────────────────────
 function CreditBadge({ isCinematic }) {
+  const navigate = useNavigate();
   const { totalAvailable, monthlyFreeRemaining, signupBonusRemaining, subscriptionRemaining, purchasedRemaining, isUnlimited, plan, loaded } = useCredits();
   const [showTooltip, setShowTooltip] = useState(false);
-  const [showLimitModal, setShowLimitModal] = useState(false);
   const [optimisticDeduction, setOptimisticDeduction] = useState(0);
   const [isDeducting, setIsDeducting] = useState(false);
 
@@ -297,7 +296,7 @@ function CreditBadge({ isCinematic }) {
       
       {/* Premium Upgrade CTA */}
       <button
-        onClick={() => setShowLimitModal(true)}
+        onClick={() => navigate("/builder/billing")}
         style={{
           display: 'flex',
           alignItems: 'center',
@@ -449,8 +448,8 @@ function CreditBadge({ isCinematic }) {
               <button
                 onClick={(e) => {
                   e.stopPropagation();
-                  setShowLimitModal(true);
                   setShowTooltip(false);
+                  navigate('/builder/billing');
                 }}
                 style={{
                   marginTop: '12px',
@@ -480,10 +479,6 @@ function CreditBadge({ isCinematic }) {
         </div>
       )}
 
-      <CreditLimitModal 
-        isOpen={showLimitModal} 
-        onClose={() => setShowLimitModal(false)} 
-      />
       </div>
     </div>
   );

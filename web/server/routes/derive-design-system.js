@@ -36,7 +36,7 @@ const designSystemSchema = z.object({
         cardStyle: z.enum(['glass', 'solid', 'outlined', 'elevated']).describe('Preferred card style'),
         sectionPadding: z.string().describe('Tailwind section padding class, e.g. "py-20"'),
     }),
-    mood: z.string().optional().describe('Overall mood description for the entire design'),
+    mood: z.string().describe('Overall mood description for the entire design'),
     industryCategory: z.string().describe('Industry category, e.g. "pet-services", "finance", "restaurant"'),
     designPersonality: z.array(z.string()).min(2).max(5).describe('Design personality traits, e.g. ["friendly", "trustworthy"]'),
 });

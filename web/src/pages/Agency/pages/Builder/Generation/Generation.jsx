@@ -52,7 +52,7 @@ function parseFilesFromCode(code) {
   let m;
   while ((m = regex.exec(code)) !== null) {
     let path = m[1].replace(/^\/+/, '');
-    
+
     // Normalize path to ensure components land in src/components/
     if (!path.startsWith('src/') && !path.startsWith('public/')) {
       const isConfig = path.includes('config.') || path === 'package.json' || path.endsWith('.html');
@@ -132,15 +132,15 @@ const CornerWave = () => (
 // ─── Number interpolation utility ───────────
 function AnimatedNumber({ value }) {
   const [displayValue, setDisplayValue] = useState(value);
-  
+
   useEffect(() => {
     let start = displayValue;
     let end = value;
     if (start === end) return;
-    
+
     let startTime = Date.now();
     let duration = 800; // ms spring duration
-    
+
     let timer = setInterval(() => {
       let now = Date.now();
       let progress = Math.min((now - startTime) / duration, 1);
@@ -232,7 +232,7 @@ const NARRATIVE_QUOTES = {
 function getStageCategory(status) {
   if (!status) return 'fallback';
   const s = status.toLowerCase();
-  
+
   if (s.includes('starting') || s.includes('booting') || s.includes('deducting')) return 'booting';
   if (s.includes('enhancing') || s.includes('deriving')) return 'enhancing';
   if (s.includes('planning') || s.includes('designing')) return 'planning';
@@ -244,7 +244,7 @@ function getStageCategory(status) {
   if (s.includes('polish') || s.includes('finalizing')) return 'polish';
   if (s.includes('finishing')) return 'finishing_up';
   if (s.includes('complete') || s.includes('done')) return 'complete';
-  
+
   return 'fallback';
 }
 
@@ -275,11 +275,12 @@ function useLoadingProgress(generationProgress) {
     const createTimer = (seconds, minInc, range) => setTimeout(() => {
       setRandomBoost(prev => prev + (Math.random() * range + minInc));
     }, seconds * 1000);
+    // Reduced boost values to decrease overall pacing
     const timers = [
-      createTimer(5, 4, 4), createTimer(12, 5, 5), createTimer(25, 5, 5),
-      createTimer(40, 5, 5), createTimer(60, 4, 4), createTimer(80, 4, 4),
-      createTimer(105, 4, 4), createTimer(130, 4, 4), createTimer(160, 4, 4),
-      createTimer(190, 4, 4), createTimer(220, 3, 3),
+      createTimer(5, 1, 1), createTimer(12, 2, 2), createTimer(25, 3, 3),
+      createTimer(40, 3, 3), createTimer(60, 2, 2), createTimer(80, 2, 2),
+      createTimer(105, 2, 2), createTimer(130, 2, 2), createTimer(160, 2, 2),
+      createTimer(190, 2, 2), createTimer(220, 1, 1),
     ];
     return () => timers.forEach(t => clearTimeout(t));
   }, [generationProgress?.isGenerating]);
@@ -287,8 +288,9 @@ function useLoadingProgress(generationProgress) {
   useEffect(() => {
     if (!generationProgress?.isGenerating) return;
     const interval = setInterval(() => {
-      setRandomBoost(prev => prev + (Math.random() * 1.5 + 0.5));
-    }, 30000);
+      // 65% Slower Pacing (14s interval) for a more deliberate and high-end "stretching" effect
+      setRandomBoost(prev => prev + (Math.random() * 0.4 + 0.4));
+    }, 14000);
     return () => clearInterval(interval);
   }, [generationProgress?.isGenerating]);
 
@@ -297,25 +299,27 @@ function useLoadingProgress(generationProgress) {
     let baseFill = 0;
     const status = (generationProgress?.status || '').toLowerCase();
     if (status.includes('complete') || status.includes('done')) baseFill = 100;
-    else if (status.includes('finishing')) baseFill = 90;
-    else if (status.includes('polish') || status.includes('finalizing')) baseFill = 75;
-    else if (status.includes('verify') || status.includes('validating')) baseFill = 60;
-    else if (status.includes('applying') || status.includes('injecting')) baseFill = 50;
-    else if (status.includes('synthesizing')) baseFill = 40;
+    else if (status.includes('finishing')) baseFill = 75;
+    else if (status.includes('polish') || status.includes('finalizing')) baseFill = 50;
+    else if (status.includes('verify') || status.includes('validating')) baseFill = 45;
+    else if (status.includes('applying') || status.includes('injecting')) baseFill = 40;
+    else if (status.includes('synthesizing')) baseFill = 35;
     else if (status.includes('generating') || status.includes('writing') || status.includes('building')) {
       if (generationProgress?.components?.length > 0) {
         const total = generationProgress.components.length;
         const completed = generationProgress.components.filter(c => c.completed).length;
-        baseFill = 20 + (30 * (completed / Math.max(1, total)));
-      } else baseFill = 20;
+        baseFill = 10 + (20 * (completed / Math.max(1, total)));
+      } else baseFill = 10;
     }
-    else if (status.includes('dependencies') || status.includes('installing') || status.includes('fetching')) baseFill = 10;
-    else if (status.includes('planning') || status.includes('designing')) baseFill = 3;
-    else if (status.includes('enhancing') || status.includes('deriving')) baseFill = 1;
-    else if (status.includes('starting') || status.includes('booting') || status.includes('deducting')) baseFill = 0.5;
+    else if (status.includes('dependencies') || status.includes('installing') || status.includes('fetching')) baseFill = 5;
+    else if (status.includes('planning') || status.includes('designing')) baseFill = 1.5;
+    else if (status.includes('enhancing') || status.includes('deriving')) baseFill = 0.5;
+    else if (status.includes('starting') || status.includes('booting') || status.includes('deducting')) baseFill = 0.2;
     else if (status) baseFill = 2;
+
+    // Decreased pacing by reducing the boost damping effect (from 0.8 to 0.5) for a slower final stretch
     const boostDamping = (100 - baseFill) / 100;
-    let targetFill = baseFill + (randomBoost * boostDamping * 0.8);
+    let targetFill = baseFill + (randomBoost * boostDamping * 0.5);
     targetFill = Math.min(97, targetFill);
     if (baseFill >= 100) targetFill = 100;
     setMonotonicFill(prev => {
@@ -385,9 +389,9 @@ function LoadingLogoView({ logoState }) {
         data-layer="TornadoLogo"
         className={
           logoState === 1 ? styles.tornadoLogoPulse :
-          logoState === 2 ? styles.tornadoLogoTikiTaka :
-          logoState === 3 ? styles.tornadoLogoScanner :
-          styles.tornadoLogoShimmer
+            logoState === 2 ? styles.tornadoLogoTikiTaka :
+              logoState === 3 ? styles.tornadoLogoScanner :
+                styles.tornadoLogoShimmer
         }
         style={{
           width: 110, height: 110,
@@ -421,11 +425,26 @@ export default function Generation() {
   const [showLimitModal, setShowLimitModal] = useState(false);
 
   // ─── Auth-aware fetch wrapper ──────────────
-  // Automatically injects Authorization header for all API calls
-  const authFetch = useCallback((url, options = {}) => {
+  // Always fetches a FRESH token via getSession() before each request.
+  // This prevents the stale-closure bug where a long-running pipeline
+  // (enhance → plan → generate → apply) holds on to an expired JWT from
+  // the moment the user clicked "Generate".
+  const authFetch = useCallback(async (url, options = {}) => {
+    // getSession() is cheap: it reads from localStorage and only hits
+    // the network if the token is close to expiry (Supabase auto-refresh).
+    let freshToken = session?.access_token;
+    try {
+      if (builderSupabase) {
+        const { data } = await builderSupabase.auth.getSession();
+        if (data?.session?.access_token) {
+          freshToken = data.session.access_token;
+        }
+      }
+    } catch (_) { /* fall back to last-known session token */ }
+
     const headers = {
       ...(options.headers || {}),
-      ...(session?.access_token ? { 'Authorization': `Bearer ${session.access_token}` } : {})
+      ...(freshToken ? { 'Authorization': `Bearer ${freshToken}` } : {})
     };
     return fetch(url, { ...options, headers });
   }, [session]);
@@ -478,7 +497,7 @@ export default function Generation() {
   }, []);
 
   useEffect(() => {
-      setOptimisticDeduction(0);
+    setOptimisticDeduction(0);
   }, [totalAvailable]);
   // MPA State Tracking
   const [expandedFolders, setExpandedFolders] = useState(new Set(['src', 'src/components', 'src/pages', 'src/app']));
@@ -505,7 +524,7 @@ export default function Generation() {
   const [templateResult, setTemplateResult] = useState(null); // { success, message } or null
   const [showSlugModal, setShowSlugModal] = useState(false);
   const [customSlug, setCustomSlug] = useState('');
-  
+
   // Custom Website Info states
   const [siteTitle, setSiteTitle] = useState('');
   const [siteDescription, setSiteDescription] = useState('');
@@ -513,7 +532,7 @@ export default function Generation() {
   const [siteIconPreview, setSiteIconPreview] = useState('');
   const [isUploadingIcon, setIsUploadingIcon] = useState(false);
   const [publishStep, setPublishStep] = useState(1); // 1 = URL, 2 = Site Info
-  
+
   const [existingPublishedSlug, setExistingPublishedSlug] = useState(null);
   const [notification, setNotification] = useState(null);
   const [lastPrompt, setLastPrompt] = useState('');
@@ -543,10 +562,7 @@ export default function Generation() {
 
       await authFetch('/api/projects/update', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(session?.access_token ? { 'Authorization': `Bearer ${session.access_token}` } : {})
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ buildId: targetId, updates: cleanUpdates })
       });
     } catch (e) {
@@ -563,31 +579,71 @@ export default function Generation() {
     });
   }, [saveProjectUpdates]);
 
-  // Robust Auto-scroll logic: ALWAYS go down when messages or status changes
+  const [autoScrollPaused, setAutoScrollPaused] = useState(false);
+  const pauseTimerRef = useRef(null);
+
+  const handleManualScroll = useCallback((e) => {
+    const el = e.currentTarget;
+    // If user is within 60px of bottom, consider them "at bottom" and keep pinning.
+    // If they scroll higher, pause auto-scroll so they can read history without being snapped back.
+    const isAtBottom = el.scrollHeight - el.scrollTop <= el.clientHeight + 60;
+
+    if (!isAtBottom) {
+      if (!autoScrollPaused) setAutoScrollPaused(true);
+      if (pauseTimerRef.current) clearTimeout(pauseTimerRef.current);
+      pauseTimerRef.current = setTimeout(() => {
+        setAutoScrollPaused(false);
+      }, 4000); // Resume pinning after 4s of no scroll activity
+    } else {
+      if (autoScrollPaused) setAutoScrollPaused(false);
+    }
+  }, [autoScrollPaused]);
+
+  // 🚀 HIGH-PERFORMANCE AUTO-SCROLL ENGINE
+  // This ensures the chat is ALWAYS at the bottom during:
+  // 1. New message additions (chatMessages dependency)
+  // 2. Status updates / thinking indicators
+  // 3. INTERNAL height changes (images loading, logs manifesting)
+  // 4. Real-time letter-by-letter streaming animations
   useEffect(() => {
     if (!chatEndRef.current) return;
-    
-    // We use a minor delay to let React DOM render the new elements first
+    const container = chatEndRef.current.parentElement;
+    if (!container) return;
+
+    const resizeObserver = new ResizeObserver(() => {
+      if (autoScrollPaused) return; // Respect user manual scroll reviews
+      container.scrollTop = container.scrollHeight;
+    });
+
+    resizeObserver.observe(container);
+    return () => resizeObserver.disconnect();
+  }, [autoScrollPaused]);
+
+  // Dedicated loop for AI Text Streaming to ensure pixel-perfect tracking of the reveal animation
+  useEffect(() => {
+    if (!isTextStreaming || !chatEndRef.current) return;
+    const container = chatEndRef.current.parentElement;
+    if (!container) return;
+
+    let active = true;
+    const forceScroll = () => {
+      if (!active || autoScrollPaused) return;
+      container.scrollTop = container.scrollHeight;
+      requestAnimationFrame(forceScroll);
+    };
+
+    forceScroll();
+    return () => { active = false; };
+  }, [isTextStreaming, autoScrollPaused]);
+
+  // Fallback for metadata-driven changes and discrete state swaps
+  useEffect(() => {
+    if (!chatEndRef.current || autoScrollPaused) return;
     const timer = setTimeout(() => {
       chatEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
-    }, 50);
-
+    }, 100);
     return () => clearTimeout(timer);
-  }, [chatMessages, generationProgress.status, generationProgress.isGenerating, isTextStreaming, aiThinking]);
-
-  // Aggressive fallback to keep it pinned during fast text streams
-  useEffect(() => {
-    if (!chatEndRef.current) return;
-    const chatContainer = chatEndRef.current.parentElement;
-    if (!chatContainer) return;
-
-    const observer = new MutationObserver(() => {
-      chatContainer.scrollTop = chatContainer.scrollHeight;
-    });
-    
-    observer.observe(chatContainer, { childList: true, subtree: true, characterData: true });
-    return () => observer.disconnect();
-  }, []);
+  }, [chatMessages, generationProgress.status, isTextStreaming, aiThinking, autoScrollPaused]);
 
   const getThumbnailUrl = useCallback((path) => {
     if (!path) return null;
@@ -630,9 +686,7 @@ export default function Generation() {
   const fetchSnapshots = useCallback(async () => {
     if (!currentProjectId) return;
     try {
-      const res = await fetch(`/api/snapshots?projectId=${currentProjectId}`, {
-        headers: { ...(session?.access_token ? { 'Authorization': `Bearer ${session.access_token}` } : {}) }
-      });
+      const res = await authFetch(`/api/snapshots?projectId=${currentProjectId}`);
       const data = await res.json();
       if (data.success) setSnapshots(data.snapshots);
     } catch (e) { console.warn('Fetch snapshots failed:', e); }
@@ -654,10 +708,7 @@ export default function Generation() {
 
       const res = await authFetch('/api/snapshots', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(session?.access_token ? { 'Authorization': `Bearer ${session.access_token}` } : {})
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           projectId: currentProjectId,
           chatIndex: chatMessages.length,
@@ -716,7 +767,9 @@ export default function Generation() {
 
       if (next.type === 'log') {
         addChatMessage(next.path, 'log');
-        await new Promise(r => setTimeout(r, 2000)); // 2s gap for creation effect
+        // Randomized delay between 1-3 seconds to make the process feel "deliberate" but snappy
+        const logDelay = Math.floor(Math.random() * 2000) + 1000;
+        await new Promise(r => setTimeout(r, logDelay));
       } else {
         addChatMessage(next.content, next.chatType || 'ai-narrator', next.metadata);
         await new Promise(r => setTimeout(r, 400)); // Short gap for messages
@@ -908,10 +961,7 @@ export default function Generation() {
       try {
         const res = await authFetch('/api/create-ai-sandbox-v2', {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            ...(session?.access_token ? { 'Authorization': `Bearer ${session.access_token}` } : {})
-          }
+          headers: { 'Content-Type': 'application/json' }
         });
         const data = await safeParseJson(res, 'create-ai-sandbox');
         if (!data.success) throw new Error(data.error || 'Failed to create sandbox');
@@ -959,10 +1009,7 @@ export default function Generation() {
 
       const response = await authFetch('/api/apply-ai-code-stream', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(session?.access_token ? { 'Authorization': `Bearer ${session.access_token}` } : {})
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           response: generatedCode || '', // Legacy fallback (can be empty if files provided)
           files: filesPayload || [],     // New primary payload
@@ -1135,10 +1182,7 @@ export default function Generation() {
 
                           return authFetch('/api/snapshots', {
                             method: 'POST',
-                            headers: {
-                              'Content-Type': 'application/json',
-                              ...(session?.access_token ? { 'Authorization': `Bearer ${session.access_token}` } : {})
-                            },
+                            headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({
                               projectId: buildId,
                               chatIndex: chatMessages.length, // Current message will be added after this
@@ -1280,7 +1324,7 @@ export default function Generation() {
 
     // Add deducting message to the loading state
     setGenerationProgress(prev => ({ ...prev, isGenerating: true, status: 'Starting... (Deducting 1 Credit)', files: [], streamedCode: '' }));
-    
+
     const displayPrompt = templateId ? "I want to use this template" : prompt;
     addChatMessage(displayPrompt, 'user', { images: initialImages, stagedComponents: initialComponentsFull });
 
@@ -1303,10 +1347,7 @@ export default function Generation() {
         setGenerationProgress(prev => ({ ...prev, status: 'Initializing project...' }));
         const initRes = await authFetch('/api/projects/init', {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            ...(session?.access_token ? { 'Authorization': `Bearer ${session.access_token}` } : {})
-          },
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ prompt: displayPrompt, buildId })
         });
 
@@ -1471,18 +1512,18 @@ export default function Generation() {
             const exportMatch = data.fileBlocks.match(/export default (?:function |class |const )?(\w+)/);
             const compName = exportMatch ? exportMatch[1] : 'Unknown';
             if (exportMatch) componentNames.push(compName);
-            
+
             // V4.0 logic: If component is labeled as a page in metadata (or fallback inference)
             const isPage = data.component_type === 'page' || compName.toLowerCase().includes('page');
             const basePath = isPage ? 'src/pages' : 'src/components/premium';
 
             const updatedFiles = files.map(f => {
-               // Route the file to src/pages if it represents a page component
-               if (isPage && f.path.includes('src/components/premium/')) {
-                  const fileName = f.path.split('/').pop();
-                  return { ...f, path: `${basePath}/${fileName}` };
-               }
-               return f;
+              // Route the file to src/pages if it represents a page component
+              if (isPage && f.path.includes('src/components/premium/')) {
+                const fileName = f.path.split('/').pop();
+                return { ...f, path: `${basePath}/${fileName}` };
+              }
+              return f;
             });
 
             newFiles.push(...updatedFiles);
@@ -1579,12 +1620,12 @@ Just position the new components in a logical order (e.g. after the Hero or befo
       if (!planData.success) throw new Error(planData.error || 'Planning failed');
 
       const { components: rawComponents, globalStyle, isMultiPage, pages, sharedComponentRefIds } = planData;
-      
+
       // Save MPA state for the renderer and future edit cycles
       if (isMultiPage) {
         setIsMultiPageProject(true);
         setProjectPages(pages || []);
-        
+
         // Convert shared refIds to actual component objects
         const sharedComps = rawComponents.filter(c => (sharedComponentRefIds || []).includes(c.refId || c.name));
         setProjectSharedComponents(sharedComps);
@@ -1771,7 +1812,7 @@ Just position the new components in a logical order (e.g. after the Hero or befo
         const renderRes = await authFetch('/api/render-app', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ 
+          body: JSON.stringify({
             components: validComponents,
             buildId,
             isMultiPage: planData?.isMultiPage || isMultiPageProject,
@@ -1869,18 +1910,18 @@ Just position the new components in a logical order (e.g. after the Hero or befo
     } catch (error) {
       console.error('[startGeneration] Fatal Gen Error:', error);
 
-      const isOverloaded = error.message?.toLowerCase().includes('demand') || 
-                           error.message?.toLowerCase().includes('503') || 
-                           error.message?.toLowerCase().includes('overload') ||
-                           error.message?.toLowerCase().includes('quota');
+      const isOverloaded = error.message?.toLowerCase().includes('demand') ||
+        error.message?.toLowerCase().includes('503') ||
+        error.message?.toLowerCase().includes('overload') ||
+        error.message?.toLowerCase().includes('quota');
 
       if (isOverloaded) {
-          addChatMessage('Generation failed: The AI Provider is currently experiencing high traffic or is overloaded. Please wait a few moments and try again.', 'error');
-          // Phase S2: Sync failure state
-          authFetch('/api/projects/update', {
-            method: 'POST', headers: { 'Content-Type': 'application/json', ...(session?.access_token ? { 'Authorization': `Bearer ${session.access_token}` } : {}) },
-            body: JSON.stringify({ buildId, updates: { build_status: 'failed' } })
-          }).catch(e => { });
+        addChatMessage('Generation failed: The AI Provider is currently experiencing high traffic or is overloaded. Please wait a few moments and try again.', 'error');
+        // Phase S2: Sync failure state
+        authFetch('/api/projects/update', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ buildId, updates: { build_status: 'failed' } })
+        }).catch(e => { });
       } else if (generationProgress.status.includes('Planning') || generationProgress.status.includes('Selecting')) {
         // Fallback: ONLY if we didn't finish planning and it's NOT a 503
         addChatMessage(`Generation failed: ${error.message}. Switching to streaming fallback...`, 'system');
@@ -1922,7 +1963,7 @@ Just position the new components in a logical order (e.g. after the Hero or befo
           addChatMessage(`Fallback failed: ${fallbackError.message}`, 'error');
           // Phase S2: Sync failure state
           authFetch('/api/projects/update', {
-            method: 'POST', headers: { 'Content-Type': 'application/json', ...(session?.access_token ? { 'Authorization': `Bearer ${session.access_token}` } : {}) },
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ buildId, updates: { build_status: 'failed' } })
           }).catch(e => { });
         }
@@ -1930,7 +1971,7 @@ Just position the new components in a logical order (e.g. after the Hero or befo
         addChatMessage(`Partial success: ${error.message}. Attempting to proceed with available code.`, 'warning');
         // Phase S2: Sync failure state
         authFetch('/api/projects/update', {
-          method: 'POST', headers: { 'Content-Type': 'application/json', ...(session?.access_token ? { 'Authorization': `Bearer ${session.access_token}` } : {}) },
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ buildId, updates: { build_status: 'failed' } })
         }).catch(e => { });
       }
@@ -2012,11 +2053,11 @@ Just position the new components in a logical order (e.g. after the Hero or befo
               const basePath = isPage ? 'src/pages' : 'src/components/premium';
 
               const updatedFiles = files.map(f => {
-                 if (isPage && f.path.includes('src/components/premium/')) {
-                    const fileName = f.path.split('/').pop();
-                    return { ...f, path: `${basePath}/${fileName}` };
-                 }
-                 return f;
+                if (isPage && f.path.includes('src/components/premium/')) {
+                  const fileName = f.path.split('/').pop();
+                  return { ...f, path: `${basePath}/${fileName}` };
+                }
+                return f;
               });
 
               newFiles.push(...updatedFiles);
@@ -2035,11 +2076,11 @@ Just position the new components in a logical order (e.g. after the Hero or befo
         await handleAIGeneratedEdit(finalInstruction, buildId, sandbox);
         addChatMessage('Changes applied!', 'ai');
       } catch (error) {
-        const isOverloaded = error.message?.toLowerCase().includes('demand') || 
-                             error.message?.toLowerCase().includes('503') || 
-                             error.message?.toLowerCase().includes('overload') ||
-                             error.message?.toLowerCase().includes('quota');
-        
+        const isOverloaded = error.message?.toLowerCase().includes('demand') ||
+          error.message?.toLowerCase().includes('503') ||
+          error.message?.toLowerCase().includes('overload') ||
+          error.message?.toLowerCase().includes('quota');
+
         if (isOverloaded) {
           addChatMessage('Edit failed: The AI Provider is currently experiencing high traffic or is overloaded. Please wait a few moments and try again.', 'error');
         } else {
@@ -2097,9 +2138,7 @@ Just position the new components in a logical order (e.g. after the Hero or befo
     setGenerationProgress(prev => ({ ...prev, isGenerating: true, status: 'Preparing environment...' }));
 
     try {
-      const res = await fetch(`/api/projects/get?projectId=${projectId}`, {
-        headers: { ...(session?.access_token ? { 'Authorization': `Bearer ${session.access_token}` } : {}) }
-      });
+      const res = await authFetch(`/api/projects/get?projectId=${projectId}`);
       const data = await res.json();
 
       if (!data.success) throw new Error(data.error || 'Failed to load project');
@@ -2111,9 +2150,9 @@ Just position the new components in a logical order (e.g. after the Hero or befo
       // Touch updated_at so dashboard sorts by most recently opened
       authFetch('/api/projects/update', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...(session?.access_token ? { 'Authorization': `Bearer ${session.access_token}` } : {}) },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ buildId: projectId, updates: { updated_at: new Date().toISOString() } })
-      }).catch(() => {});
+      }).catch(() => { });
 
       // 1. Restore Chat History
       if (project.chat_history && Array.isArray(project.chat_history)) {
@@ -2193,13 +2232,9 @@ Just position the new components in a logical order (e.g. after the Hero or befo
 
     const intervalId = setInterval(async () => {
       try {
-        const token = session?.access_token;
         const res = await authFetch('/api/sandbox/keepalive', {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            ...(token && { Authorization: `Bearer ${token}` })
-          },
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ sandboxId: sandboxData.sandboxId })
         });
         if (!res.ok) {
@@ -2247,11 +2282,11 @@ Just position the new components in a logical order (e.g. after the Hero or befo
     } else if (prompt?.trim() || initialImages.length > 0 || manualSelectionIds) {
       initStartedRef.current = true;
       startGeneration(
-        prompt?.trim() || (manualSelectionIds ? "Build from community components" : "Analyze design and build"), 
-        null, 
-        initialImages, 
-        manualSelectionIds, 
-        null, 
+        prompt?.trim() || (manualSelectionIds ? "Build from community components" : "Analyze design and build"),
+        null,
+        initialImages,
+        manualSelectionIds,
+        null,
         strictModeValue,
         initialComponents
       );
@@ -2425,7 +2460,7 @@ Just position the new components in a logical order (e.g. after the Hero or befo
   const confirmPublish = async (overrideSlug = null) => {
     const slugToUse = overrideSlug || customSlug;
     if (!slugToUse || isPublishing) return;
-    
+
     // Prepare icon
     let iconBase64 = null;
     let iconFileName = null;
@@ -2446,7 +2481,7 @@ Just position the new components in a logical order (e.g. after the Hero or befo
         setIsUploadingIcon(false);
       }
     }
-    
+
     setShowSlugModal(false);
 
     const isUpdate = !!existingPublishedSlug;
@@ -2477,10 +2512,7 @@ Just position the new components in a logical order (e.g. after the Hero or befo
 
       const res = await authFetch('/api/publish-site', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(session?.access_token ? { 'Authorization': `Bearer ${session.access_token}` } : {})
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(requestBody)
       });
 
@@ -2540,6 +2572,7 @@ Just position the new components in a logical order (e.g. after the Hero or befo
   useEffect(() => {
     if (isRevealing && cinematicText && !hasPlayedCinematic && chatMessages.length > 0) {
       setHasPlayedCinematic(true);
+      // Reveal chat message shortly after page load
       setTimeout(() => {
         addChatMessage(cinematicText, 'ai-narrator', { style: 'planning' });
       }, 300);
@@ -2592,7 +2625,7 @@ Just position the new components in a logical order (e.g. after the Hero or befo
                     onMouseLeave={() => setShowCreditsPopup(false)}
                     style={{ position: 'relative', right: 'auto', display: 'flex', alignItems: 'center', gap: '6px' }}
                   >
-                  <style>{`
+                    <style>{`
                     @keyframes creditPopUpOff {
                       0% { transform: translateY(0) scale(1); filter: brightness(1) drop-shadow(0 0 0px rgba(255,255,255,0)); color: #fff; }
                       40% { transform: translateY(-4px) scale(1.4); filter: brightness(1.6) drop-shadow(0 4px 15px rgba(255,255,255,0.6)); color: #AFFFFC; }
@@ -2604,146 +2637,146 @@ Just position the new components in a logical order (e.g. after the Hero or befo
                     }
                   `}</style>
                     <img src={coinIcon} alt="Credits" style={{ width: '16px', height: '16px', objectFit: 'contain' }} />
-                    <span 
-                      className={styles.creditsNumber} 
-                      style={{ 
-                        fontFamily: "'Inter', sans-serif", 
-                        fontSize: '14px', 
+                    <span
+                      className={styles.creditsNumber}
+                      style={{
+                        fontFamily: "'Inter', sans-serif",
+                        fontSize: '14px',
                         fontWeight: '500',
                         color: '#ffffff',
                         letterSpacing: '0.02em',
                         lineHeight: 1
                       }}
                     >
-                    {totalAvailable === Infinity ? '∞' : Math.max(0, totalAvailable - optimisticDeduction)}
-                  </span>
-                  
-                  <AnimatePresence>
-                    {showCreditsPopup && (
-                      <motion.div
-                        initial={{ opacity: 0, scale: 0.95, y: 10 }}
-                        animate={{ opacity: 1, scale: 1, y: 0 }}
-                        exit={{ opacity: 0, scale: 0.95, y: 10 }}
-                        transition={{ duration: 0.15, ease: "easeOut" }}
-                        style={{
-                          position: 'absolute',
-                          top: 'calc(100% + 5px)',
-                          right: 0,
-                          minWidth: '200px',
-                          padding: '14px 16px',
-                          background: '#000000',
-                          backdropFilter: 'blur(24px)',
-                          border: '1px solid #ffffff',
-                          borderRadius: '12px',
-                          boxShadow: '0 12px 40px rgba(0, 0, 0, 0.8), 0 0 20px rgba(255, 255, 255, 0.05)',
-                          zIndex: 10000,
-                        }}
-                      >
-                        {/* Invisible bridge to catch the mouse during the movement gap */}
-                        <div style={{
-                          position: 'absolute',
-                          top: '-15px',
-                          left: 0,
-                          right: 0,
-                          height: '15px',
-                          background: 'transparent'
-                        }} />
-                        
-                        <div style={{ padding: '0px' }}>
-                          {/* Header */}
-                          <div style={{
-                            fontSize: '11px',
-                            fontWeight: '700',
-                            textTransform: 'uppercase',
-                            letterSpacing: '0.1em',
-                            color: '#e5e7eb',
-                            marginBottom: '10px',
-                          }}>
-                            Creative Energy
-                          </div>
+                      {totalAvailable === Infinity ? '∞' : Math.max(0, totalAvailable - optimisticDeduction)}
+                    </span>
 
-                          {/* Plan badge */}
+                    <AnimatePresence>
+                      {showCreditsPopup && (
+                        <motion.div
+                          initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                          animate={{ opacity: 1, scale: 1, y: 0 }}
+                          exit={{ opacity: 0, scale: 0.95, y: 10 }}
+                          transition={{ duration: 0.15, ease: "easeOut" }}
+                          style={{
+                            position: 'absolute',
+                            top: 'calc(100% + 5px)',
+                            right: 0,
+                            minWidth: '200px',
+                            padding: '14px 16px',
+                            background: '#000000',
+                            backdropFilter: 'blur(24px)',
+                            border: '1px solid #ffffff',
+                            borderRadius: '12px',
+                            boxShadow: '0 12px 40px rgba(0, 0, 0, 0.8), 0 0 20px rgba(255, 255, 255, 0.05)',
+                            zIndex: 10000,
+                          }}
+                        >
+                          {/* Invisible bridge to catch the mouse during the movement gap */}
                           <div style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '8px',
-                            padding: '6px 12px',
-                            borderRadius: '8px',
-                            background: 'rgba(255, 255, 255, 0.08)',
-                            fontSize: '11px',
-                            fontWeight: '600',
-                            color: '#ffffff',
-                            textTransform: 'uppercase',
-                            letterSpacing: '0.08em',
-                            marginBottom: '16px',
-                          }}>
-                             {plan ? (plan.charAt(0).toUpperCase() + plan.slice(1)) : 'Free'} plan
-                          </div>
+                            position: 'absolute',
+                            top: '-15px',
+                            left: 0,
+                            right: 0,
+                            height: '15px',
+                            background: 'transparent'
+                          }} />
 
-                          {/* Breakdown */}
-                          {isUnlimited ? (
+                          <div style={{ padding: '0px' }}>
+                            {/* Header */}
                             <div style={{
-                              fontSize: '13px',
-                              color: '#ffffff',
-                              fontWeight: '500',
+                              fontSize: '11px',
+                              fontWeight: '700',
+                              textTransform: 'uppercase',
+                              letterSpacing: '0.1em',
+                              color: '#e5e7eb',
+                              marginBottom: '10px',
                             }}>
-                              Unlimited builds
+                              Creative Energy
                             </div>
-                          ) : (
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                              <CreditRow label="Monthly Free" value={monthlyFreeRemaining} color="#e5e7eb" labelColor="#9ca3af" />
-                              <CreditRow label="Signup Bonus" value={signupBonusRemaining} color="#e5e7eb" labelColor="#9ca3af" />
-                              <CreditRow label="Subscription" value={subscriptionRemaining} color="#e5e7eb" labelColor="#9ca3af" />
-                              <CreditRow label="Purchased" value={purchasedRemaining} color="#e5e7eb" labelColor="#9ca3af" />
-                              
-                              <div style={{
-                                height: '1px',
-                                background: 'rgba(255,255,255,0.1)',
-                                margin: '4px 0',
-                              }} />
-                              
-                              <CreditRow label="Total Available" value={totalAvailable} color="#ffffff" labelColor="#9ca3af" bold />
 
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setShowLimitModal(true);
-                                  setShowCreditsPopup(false);
-                                }}
-                                style={{
-                                  marginTop: '12px',
-                                  width: '100%',
-                                  padding: '8px',
-                                  background: 'rgba(255, 255, 255, 0.1)',
-                                  border: '1px solid rgba(255, 255, 255, 0.1)',
-                                  borderRadius: '6px',
-                                  color: '#ffffff',
-                                  fontSize: '11px',
-                                  fontWeight: '600',
-                                  cursor: 'pointer',
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  justifyContent: 'center',
-                                  gap: '6px',
-                                  transition: 'all 0.2s ease',
-                                  fontFamily: 'inherit',
-                                }}
-                                onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.15)'}
-                                onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)'}
-                              >
-                                Add Credits
-                              </button>
+                            {/* Plan badge */}
+                            <div style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '8px',
+                              padding: '6px 12px',
+                              borderRadius: '8px',
+                              background: 'rgba(255, 255, 255, 0.08)',
+                              fontSize: '11px',
+                              fontWeight: '600',
+                              color: '#ffffff',
+                              textTransform: 'uppercase',
+                              letterSpacing: '0.08em',
+                              marginBottom: '16px',
+                            }}>
+                              {plan ? (plan.charAt(0).toUpperCase() + plan.slice(1)) : 'Free'} plan
                             </div>
-                          )}
-                        </div>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-                </div>
+
+                            {/* Breakdown */}
+                            {isUnlimited ? (
+                              <div style={{
+                                fontSize: '13px',
+                                color: '#ffffff',
+                                fontWeight: '500',
+                              }}>
+                                Unlimited builds
+                              </div>
+                            ) : (
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                                <CreditRow label="Monthly Free" value={monthlyFreeRemaining} color="#e5e7eb" labelColor="#9ca3af" />
+                                <CreditRow label="Signup Bonus" value={signupBonusRemaining} color="#e5e7eb" labelColor="#9ca3af" />
+                                <CreditRow label="Subscription" value={subscriptionRemaining} color="#e5e7eb" labelColor="#9ca3af" />
+                                <CreditRow label="Purchased" value={purchasedRemaining} color="#e5e7eb" labelColor="#9ca3af" />
+
+                                <div style={{
+                                  height: '1px',
+                                  background: 'rgba(255,255,255,0.1)',
+                                  margin: '4px 0',
+                                }} />
+
+                                <CreditRow label="Total Available" value={totalAvailable} color="#ffffff" labelColor="#9ca3af" bold />
+
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setShowLimitModal(true);
+                                    setShowCreditsPopup(false);
+                                  }}
+                                  style={{
+                                    marginTop: '12px',
+                                    width: '100%',
+                                    padding: '8px',
+                                    background: 'rgba(255, 255, 255, 0.1)',
+                                    border: '1px solid rgba(255, 255, 255, 0.1)',
+                                    borderRadius: '6px',
+                                    color: '#ffffff',
+                                    fontSize: '11px',
+                                    fontWeight: '600',
+                                    cursor: 'pointer',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    gap: '6px',
+                                    transition: 'all 0.2s ease',
+                                    fontFamily: 'inherit',
+                                  }}
+                                  onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.15)'}
+                                  onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)'}
+                                >
+                                  Add Credits
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
                 </div>
               </div>
 
-              <div className={styles.chatMessages}>
+              <div className={styles.chatMessages} onScroll={handleManualScroll}>
                 {chatMessages.map((msg, i) => {
                   const isLast = i === chatMessages.length - 1;
 
@@ -2837,16 +2870,16 @@ Just position the new components in a logical order (e.g. after the Hero or befo
                           {snapshot && (
                             <button
                               className={styles.restoreBtn_underUser}
-                              onClick={() => setRevertModalData({ 
-                                snapshot, 
-                                targetIndex: i, 
+                              onClick={() => setRevertModalData({
+                                snapshot,
+                                targetIndex: i,
                                 promptText: msg.content,
                                 components: msg.metadata?.stagedComponents || []
                               })}
                               title={`Undo to ${new Date(snapshot.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`}
                             >
                               <svg xmlns="http://www.w3.org/2000/svg" height="18" viewBox="0 -960 960 960" width="18" fill="currentColor">
-                                <path d="M280-200v-80h284q63 0 109.5-40T720-420q0-60-46.5-100T564-560H312l104 104-56 56-200-200 200-200 56 56-104 104h252q97 0 166.5 63T800-420q0 94-69.5 157T564-200H280Z"/>
+                                <path d="M280-200v-80h284q63 0 109.5-40T720-420q0-60-46.5-100T564-560H312l104 104-56 56-200-200 200-200 56 56-104 104h252q97 0 166.5 63T800-420q0 94-69.5 157T564-200H280Z" />
                               </svg>
                             </button>
                           )}
@@ -2854,7 +2887,7 @@ Just position the new components in a logical order (e.g. after the Hero or befo
                       </div>
                     );
                   }
-                  
+
                   if (msg.type === 'error') {
                     return (
                       <div key={i} className={styles.chatMsgWrapper}>
@@ -2868,11 +2901,11 @@ Just position the new components in a logical order (e.g. after the Hero or befo
                         }}>
                           <div className={styles.chatBubble} style={{ color: '#ef4444' }}>
                             <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" /></svg>
                               {msg.content}
                             </span>
                           </div>
-                          
+
                           {msg.content.includes('overloaded') && isLast && (
                             <button
                               onClick={() => {
@@ -2933,27 +2966,27 @@ Just position the new components in a logical order (e.g. after the Hero or befo
                 })}
 
                 {/* Active Status Indicator */}
-                {(aiThinking || generationProgress.isGenerating || codeApplicationState.stage === 'complete') && (
+                {(aiThinking || generationProgress.isGenerating || codeApplicationState.stage === 'complete') && !isTextStreaming && (
                   <div className={`${styles.chatMsg} ${styles.chatMsg_system}`}>
                     <div className={styles.chatBubble}>
                       <span className={`${styles.typingDots} ${styles.shimmerText}`} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <div 
+                        <div
                           className={
-                            logoState === 1 ? styles.tornadoLogoPulse : 
-                            logoState === 2 ? styles.tornadoLogoTikiTaka : 
-                            logoState === 3 ? styles.tornadoLogoScanner :
-                            styles.tornadoLogoShimmer
-                          } 
+                            logoState === 1 ? styles.tornadoLogoPulse :
+                              logoState === 2 ? styles.tornadoLogoTikiTaka :
+                                logoState === 3 ? styles.tornadoLogoScanner :
+                                  styles.tornadoLogoShimmer
+                          }
                           style={{
-                            width: 18, 
-                            height: 18, 
+                            width: 18,
+                            height: 18,
                             flexShrink: 0,
                             '--logo-url': `url(${volturianoLogo})`,
                             backgroundClip: 'initial',
                             WebkitBackgroundClip: 'initial',
                             WebkitTextFillColor: 'initial',
                             color: 'initial'
-                          }} 
+                          }}
                         />
                         {showThinking ? `Thinking${statusDots}` : `${getUnifiedStatus().replace(/\.\.\.$/, '')}${statusDots}`}
                       </span>
@@ -2985,8 +3018,8 @@ Just position the new components in a logical order (e.g. after the Hero or befo
                         const thumbPath = comp.thumbnail_url || comp.preview_image_url || comp.image_url || comp.image || (comp.metadata && comp.metadata.thumbnail_url);
                         const thumb = getThumbnailUrl(thumbPath);
                         return (
-                          <div 
-                            key={`comp-${comp.id}-${idx}`} 
+                          <div
+                            key={`comp-${comp.id}-${idx}`}
                             className={styles.pendingComponentItem}
                           >
                             {thumb ? (
@@ -3006,8 +3039,8 @@ Just position the new components in a logical order (e.g. after the Hero or befo
                         );
                       })}
 
-                      </div>
-                    )}
+                    </div>
+                  )}
                   <textarea
                     value={aiChatInput}
                     onChange={e => setAiChatInput(e.target.value)}
@@ -3181,7 +3214,7 @@ Just position the new components in a logical order (e.g. after the Hero or befo
                             <span>{label}</span>
                           </button>
                         ))}
-                        
+
                         {previewMode !== 'desktop' && (
                           <>
                             <div className={styles.viewportMenuSeparator} />
@@ -3429,12 +3462,12 @@ Just position the new components in a logical order (e.g. after the Hero or befo
                       <FiExternalLink size={24} color="#2dd4bf" />
                       <h3>Publish to Private URL</h3>
                     </div>
-                    
+
                     {/* Corner Decoration */}
                     <img src={gradientCornerForCard} className={styles.modalCornerDecor} alt="" />
 
                     {publishStep === 1 ? (
-                      <motion.div 
+                      <motion.div
                         initial={{ opacity: 0, x: -20 }}
                         animate={{ opacity: 1, x: 0 }}
                         exit={{ opacity: 0, x: 20 }}
@@ -3457,9 +3490,9 @@ Just position the new components in a logical order (e.g. after the Hero or befo
                         </div>
 
                         <div className={styles.modalActions}>
-                          <button 
-                            className={styles.confirmBtn} 
-                            onClick={() => setPublishStep(2)} 
+                          <button
+                            className={styles.confirmBtn}
+                            onClick={() => setPublishStep(2)}
                             disabled={!customSlug}
                           >
                             Next: Website Info
@@ -3469,7 +3502,7 @@ Just position the new components in a logical order (e.g. after the Hero or befo
                         </div>
                       </motion.div>
                     ) : (
-                      <motion.div 
+                      <motion.div
                         initial={{ opacity: 0, x: 20 }}
                         animate={{ opacity: 1, x: 0 }}
                         exit={{ opacity: 0, x: -20 }}
@@ -3481,7 +3514,7 @@ Just position the new components in a logical order (e.g. after the Hero or befo
                           <div className={styles.siteInfoGroup}>
                             <label>Icon</label>
                             <div className={styles.iconUploader}>
-                              <div 
+                              <div
                                 className={styles.iconPreviewBox}
                                 onClick={() => document.getElementById('site-icon-upload').click()}
                                 style={{ backgroundImage: siteIconPreview ? `url(${siteIconPreview})` : 'none' }}
@@ -3492,10 +3525,10 @@ Just position the new components in a logical order (e.g. after the Hero or befo
                                 <span className={styles.iconUploadPrimary}>Upload Icon</span>
                                 <span className={styles.iconUploadSecondary}>Recommended: 512x512 PNG or SVG</span>
                               </div>
-                              <input 
+                              <input
                                 id="site-icon-upload"
-                                type="file" 
-                                accept="image/png, image/jpeg, image/svg+xml, image/webp" 
+                                type="file"
+                                accept="image/png, image/jpeg, image/svg+xml, image/webp"
                                 style={{ display: 'none' }}
                                 onChange={(e) => {
                                   const file = e.target.files[0];
@@ -3536,9 +3569,9 @@ Just position the new components in a logical order (e.g. after the Hero or befo
                           <button className={styles.closeBtn} onClick={() => setPublishStep(1)}>
                             Back
                           </button>
-                          <button 
-                            className={styles.confirmBtn} 
-                            onClick={() => confirmPublish()} 
+                          <button
+                            className={styles.confirmBtn}
+                            onClick={() => confirmPublish()}
                             disabled={!customSlug || isPublishing || isUploadingIcon}
                           >
                             {isUploadingIcon ? 'Uploading...' : isPublishing ? 'Initiating...' : 'Confirm Publish'}
@@ -3564,7 +3597,7 @@ Just position the new components in a logical order (e.g. after the Hero or befo
                     transition={{ type: 'spring', damping: 25, stiffness: 300 }}
                   >
                     <div className={styles.modalHeader}>
-                      <motion.div 
+                      <motion.div
                         initial={{ scale: 0, rotate: -45 }}
                         animate={{ scale: 1, rotate: 0 }}
                         transition={{ delay: 0.2, type: 'spring' }}

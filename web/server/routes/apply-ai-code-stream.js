@@ -5,6 +5,7 @@ import { verifySandboxBuild } from '../lib/verify-sandbox-build.js';
 import { attemptRepair } from '../lib/auto-repair.js';
 import { SSEWriter, SSE_EVENTS, AIBuildNarrator } from '../shared/sse-events.js';
 import { runPolishStep } from '../lib/polish-refinement.js';
+import { runPolishFillers } from '../lib/polish-filler.js';
 import { getOpenAIClient } from '../lib/openai-client.js';
 import { supabaseAdmin } from '../lib/supabase-admin.js';
 
@@ -570,8 +571,32 @@ export default async function applyAiCodeStream(req, res) {
           return result;
         };
 
-        // Pass 1: Polish
-        let polishedFiles = await runAndApplyPolish(filesToPolish, buildPassed ? '' : buildLogs);
+        // Pass 1: Polish — run alongside filler messages
+        const polishCancelToken = { cancelled: false };
+
+        // Fire filler messages async and in parallel — completely independent
+        // from the heavy LLM call in runAndApplyPolish. Uses the mini/flash
+        // variant of the user's chosen model for speed.
+        const fillerPromise = runPolishFillers({
+            model: modelId,
+            prompt,
+            onMessage: (msg) => sse.aiMessage(msg, {}, 'casual'),
+            cancelToken: polishCancelToken,
+        }).catch(e => {
+            // Filler errors are non-fatal — swallow silently
+            console.warn('[PolishFiller] Filler loop error (non-fatal):', e.message);
+        });
+
+        let polishedFiles;
+        try {
+            polishedFiles = await runAndApplyPolish(filesToPolish, buildPassed ? '' : buildLogs);
+        } finally {
+            // Always stop the filler once the polish LLM responds (success or error)
+            polishCancelToken.cancelled = true;
+        }
+
+        // Filler is now cancelled — let it drain without awaiting it
+        // (it checks cancelToken before each message so no stray messages can fire)
 
         // --- POLISH VERIFICATION LOOP ---
         console.log('[apply] Verifying polish integrity...');

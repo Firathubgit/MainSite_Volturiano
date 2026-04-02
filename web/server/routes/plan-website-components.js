@@ -436,7 +436,7 @@ ${premiumMode === 'off' ? '<!-- Premium selection disabled -->' : `SELECTION CON
         1. Default to isMultiPage: true. Group components into 'pages'. 
         2. Keep 'header' and 'footer' role components in 'sharedComponentRefIds' so they render on all pages.
         3. Assign EVERY single one of the remaining refIds to at least one page.
-        4. For each component, generate 'keyContent' and 'props' (key-value strings) matching the tone: ${designSystem?.mood || 'professional'}.
+        4. For each component, generate 'keyContent' and 'props' (array of {key, value} strings) matching the tone: ${designSystem?.mood || 'professional'}.
         5. Common props: 'title', 'subtitle', 'description', 'primaryBtnText', 'features'.`;
 
         const controller = new AbortController();
@@ -449,7 +449,10 @@ ${premiumMode === 'off' ? '<!-- Premium selection disabled -->' : `SELECTION CON
             components: z.array(z.object({
               name: z.string(),
               keyContent: z.string(),
-              props: z.record(z.string())
+              props: z.array(z.object({
+                key: z.string(),
+                value: z.string()
+              }))
             })),
             isMultiPage: z.boolean().describe("Default to true. Only false if user explicitly demands a single scrolling page."),
             pages: z.array(z.object({
@@ -477,7 +480,7 @@ ${premiumMode === 'off' ? '<!-- Premium selection disabled -->' : `SELECTION CON
         return {
           ...c,
           keyContent: copy?.keyContent || c.description,
-          props: copy?.props || {}
+          props: copy?.props ? Object.fromEntries(copy.props.map(p => [p.key, p.value])) : {}
         };
       });
 

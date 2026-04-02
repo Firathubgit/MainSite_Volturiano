@@ -46,6 +46,15 @@ export const RouteTransitionOverlay = () => {
     const [showContent, setShowContent] = useState(false);
     const [showDots, setShowDots] = useState(false);
     const [step, setStep] = useState(1);
+    const [cinematicDelayed, setCinematicDelayed] = useState(true);
+
+    useEffect(() => {
+        if (phase === 'intro') {
+            setCinematicDelayed(true);
+            const timer = setTimeout(() => setCinematicDelayed(false), 5000);
+            return () => clearTimeout(timer);
+        }
+    }, [phase]);
 
     useEffect(() => {
         if (phase === 'intro') {
@@ -163,7 +172,7 @@ export const RouteTransitionOverlay = () => {
                     </AnimatePresence>
 
                     <AnimatePresence mode="wait">
-                        {showContent && showDots && !transitionData?.cinematicResponse && phase !== 'revealing' && (
+                        {showContent && (showDots || cinematicDelayed || !transitionData?.cinematicResponse) && phase !== 'revealing' && (
                             <motion.div
                                 key="loading"
                                 className={styles.loadingContainer}
@@ -178,7 +187,7 @@ export const RouteTransitionOverlay = () => {
                                 </div>
                             </motion.div>
                         )}
-                        {showContent && transitionData?.cinematicResponse && phase !== 'revealing' && (
+                        {showContent && transitionData?.cinematicResponse && !cinematicDelayed && phase !== 'revealing' && (
                             <motion.div
                                 key="response"
                                 className={styles.assistantMessage}

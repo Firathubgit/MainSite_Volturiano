@@ -73,6 +73,7 @@ GOALS:
    DO NOT let generic luxury or tech branding leak into your copy. 
    If the prompt is about "Coffee", do not write about "Quantum Energy" or "Solar Solutions" just because the component had a tech demo name.
 3. NO PLACEHOLDERS: Generate real, high-quality copy for the "${prompt}" industry.
+   MINIMALIST COPYWRITING (CRITICAL): Less is more. Do NOT overdo the text or write massive paragraphs just to fill space. Every word must feel intentional, punchy, and high-end. Avoid AI-sounding exhaustive bullet points, repetitive adjectives, or overused "scenario" type text. Let the premium design breathe by using as few words as possible to communicate the point. Sometimes doing a small change is the biggest change that could be made. Thats is what makes it feel just right.
 4. COLOR HARMONY: Ensure the Tailwind color palette is consistent across ALL files. 
 5. ERROR CORRECTION: If build errors are provided below, fix them SURGICALLY.
 7. INTENTIONALITY & ROLE VALIDATION (MINDSET):
@@ -85,9 +86,11 @@ GOALS:
 8. STRUCTURAL INTEGRITY (TOYOTA PHILOSOPHY):
    - The provided components are premium and already have solid, high-quality infrastructure (WebGL, complex Framer Motion logic, sticky scrolls, shaders). 
    - PRESERVE their original intention, layout, and specialized interactive logic. 
+   - DO NOT BREAK SHADERS: When adapting WebGL/Shader code (vertexShader/fragmentShader) or Three.js setups, you may ONLY change color values (like uniforms, hex strings, or vec3 color arrays) to match the new theme. Do NOT alter the mathematical logic, noise functions, layout, or core mechanics.
+   - ENSURE SHADER VISIBILITY: When using premium shader or WebGL components (especially backgrounds), ensure they remain completely VISIBLE. Do not accidentally cover them up by adding fully opaque backgrounds (like bg-black, bg-white) or incorrect z-indexes to overlying wrapper divs. Overlying text/content containers must have transparent backgrounds (like bg-transparent or bg-black/40) so the shader magic shines through.
    - Make ONLY necessary code changes to adapt the component perfectly to the user's vision (copy, images, theme colors). 
    - Do NOT add unnecessary complexity or generic "enhancements" that overwrite the component's unique magic.
-   - EXCEPTION: If the user's prompt is overwhelmingly, aggressively custom and specifically demands a radical structural change, you have the full intelligence to rewrite the code to satisfy them. Otherwise, adapt gracefully without destroying the foundation.
+   - EXCEPTION: If the user's prompt is overwhelmingly, aggressively custom and specifically demands a radical structural change, you have the full intelligence to rewrite the HTML/Tailwind styling layout. But even then, do NOT break the shader code.
 9. NO SKELETON PAGES (CRITICAL):
    - If you are polishing a secondary page (e.g., /services or /about), it MUST be a "full-fledged attempt."
    - DO NOT leave a page as an empty <div> or just a single line of text.
@@ -96,7 +99,8 @@ GOALS:
 
 CONSTRAINTS:
 - DO NOT change the file names or overall structure unless fixing a broken import.
-- Output ONLY the files you modified.
+- NO MONOLITHIC APP.JSX: Do not write all your UI layout code directly into App.jsx. App.jsx MUST remain a clean, minimal shell that simply imports and renders the outer components. You must achieve your design by editing the INDIVIDUAL component files (in src/components/) directly.
+- SURGICAL OUTPUT REQUIREMENT: You MUST output at least the 3-4 main component files containing the heavy 'Rivelon'/'Qyvora' demo text to translate them to the user's vision. Skipping component files is absolutely unacceptable!
 - Wrap each updated file in <file path="path/to/file">...code...</file> tags.
 - NO explanation text. NO markdown fences.
 

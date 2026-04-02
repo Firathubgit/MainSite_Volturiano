@@ -422,8 +422,8 @@ export default function ComponentStudio() {
     const sandpackOptions = useMemo(() => ({
         externalResources: ["https://cdn.tailwindcss.com"],
         visibleFiles: ["/App.jsx", "/style.css"],
-        activeFile: "/App.jsx"
-    }), []);
+        activeFile: activeFile
+    }), [activeFile]);
 
     const [detectedDeps, setDetectedDeps] = useState({});
     const depDetectTimerRef = useRef(null);
@@ -436,7 +436,8 @@ export default function ComponentStudio() {
                 "framer-motion": "latest",
                 "lucide-react": "latest",
                 "clsx": "latest",
-                "tailwind-merge": "latest"
+                "tailwind-merge": "latest",
+                "react-router-dom": "latest"
             };
 
             const importRx = /from\s+['"]([^'"]+)['"]/g;
@@ -468,14 +469,60 @@ export default function ComponentStudio() {
     const sandpackFiles = useMemo(() => ({
         "/App.jsx": code || "export default function App() {\n  return (\n    <div className=\"flex flex-col items-center justify-center p-8 text-center\">\n      <h1 className=\"text-4xl font-bold mb-4\">Welcome to Builder</h1>\n      <p className=\"opacity-60\">Start typing to see your component here.</p>\n    </div>\n  );\n}",
         "/style.css": cssCode || "",
-        "/index.js": `import React, { StrictMode } from "react";\nimport { createRoot } from "react-dom/client";\nimport "./style.css";\n\nimport App from "./App.jsx";\n\nconst root = createRoot(document.getElementById("root"));\ndocument.body.style.backgroundColor = "${bgMode === 'light' ? '#ffffff' : '#000000'}";\ndocument.body.style.color = "${bgMode === 'light' ? '#000000' : '#ffffff'}";\nroot.render(\n  <StrictMode>\n    <div className="${bgMode === 'light' ? 'bg-white' : 'bg-transparent'} min-h-screen w-full">\n      <App />\n    </div>\n  </StrictMode>\n);`
-    }), [code, cssCode, bgMode]); // Key fix: must include code/cssCode to prevent reverting on re-renders
+        "/index.js": `import React, { StrictMode } from "react";
+import { createRoot } from "react-dom/client";
+${"react-router-dom" in detectedDeps ? 'import { BrowserRouter } from "react-router-dom";' : ''}
+import "./style.css";
+
+import App from "./App.jsx";
+
+const root = createRoot(document.getElementById("root"));
+document.body.style.backgroundColor = "${bgMode === 'light' ? '#ffffff' : '#000000'}";
+document.body.style.color = "${bgMode === 'light' ? '#000000' : '#ffffff'}";
+
+const isRouterNeeded = ${"react-router-dom" in detectedDeps ? "true" : "false"};
+const hasOwnRouter = App.toString && (App.toString().includes('BrowserRouter') || App.toString().includes('MemoryRouter') || App.toString().includes('HashRouter') || App.toString().includes('Router>'));
+const AppWrapper = (isRouterNeeded && !hasOwnRouter) ? BrowserRouter : React.Fragment;
+
+root.render(
+  <StrictMode>
+    <AppWrapper>
+      <div className="${bgMode === 'light' ? 'bg-white' : 'bg-transparent'} min-h-screen w-full">
+        <App />
+      </div>
+    </AppWrapper>
+  </StrictMode>
+);`
+    }), [code, cssCode, bgMode, detectedDeps]); // Key fix: must include code/cssCode to prevent reverting on re-renders
 
     useEffect(() => {
         if (updateFileRef.current) {
-            updateFileRef.current("/index.js", `import React, { StrictMode } from "react";\nimport { createRoot } from "react-dom/client";\nimport "./style.css";\n\nimport App from "./App.jsx";\n\nconst root = createRoot(document.getElementById("root"));\ndocument.body.style.backgroundColor = "${bgMode === 'light' ? '#ffffff' : '#000000'}";\ndocument.body.style.color = "${bgMode === 'light' ? '#000000' : '#ffffff'}";\nroot.render(\n  <StrictMode>\n    <div className="${bgMode === 'light' ? 'bg-white' : 'bg-transparent'} min-h-screen w-full">\n      <App />\n    </div>\n  </StrictMode>\n);`);
+            updateFileRef.current("/index.js", `import React, { StrictMode } from "react";
+import { createRoot } from "react-dom/client";
+${"react-router-dom" in detectedDeps ? 'import { BrowserRouter } from "react-router-dom";' : ''}
+import "./style.css";
+
+import App from "./App.jsx";
+
+const root = createRoot(document.getElementById("root"));
+document.body.style.backgroundColor = "${bgMode === 'light' ? '#ffffff' : '#000000'}";
+document.body.style.color = "${bgMode === 'light' ? '#000000' : '#ffffff'}";
+
+const isRouterNeeded = ${"react-router-dom" in detectedDeps ? "true" : "false"};
+const hasOwnRouter = App.toString && (App.toString().includes('BrowserRouter') || App.toString().includes('MemoryRouter') || App.toString().includes('HashRouter') || App.toString().includes('Router>'));
+const AppWrapper = (isRouterNeeded && !hasOwnRouter) ? BrowserRouter : React.Fragment;
+
+root.render(
+  <StrictMode>
+    <AppWrapper>
+      <div className="${bgMode === 'light' ? 'bg-white' : 'bg-transparent'} min-h-screen w-full">
+        <App />
+      </div>
+    </AppWrapper>
+  </StrictMode>
+);`);
         }
-    }, [bgMode]);
+    }, [bgMode, detectedDeps]);
 
     // ── ICONS ──
     const VolturianoLogo = () => (

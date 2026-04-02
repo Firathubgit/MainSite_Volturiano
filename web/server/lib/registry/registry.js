@@ -285,6 +285,21 @@ export async function getBundleAsync(componentId, format = 'fileblocks') {
 
             if (data && data.bundle_code) {
                 const bundle = typeof data.bundle_code === 'string' ? JSON.parse(data.bundle_code) : data.bundle_code;
+                
+                // AI_STABILITY_FIX_V5: Enforce src/components/ path structure
+                // Many community bundles omit standard src directories in their payloads.
+                if (bundle.files) {
+                    bundle.files.forEach(f => {
+                        if (f.path && !f.path.startsWith('src/')) {
+                            // Don't auto-prefix config files or root dependencies
+                            const isConfig = f.path.includes('config.') || f.path === 'package.json' || f.path.endsWith('.html');
+                            if (!isConfig) {
+                                f.path = f.path.startsWith('components/') ? `src/${f.path}` : `src/components/${f.path}`;
+                            }
+                        }
+                    });
+                }
+
                 console.log(`[Registry] [SUPABASE_LIVE] Supabase SUCCESS: Loaded bundle for "${componentId}" (${typeof data.bundle_code === 'string' ? data.bundle_code.length : 'JSON'} chars)`);
                 return bundle;
             } else {

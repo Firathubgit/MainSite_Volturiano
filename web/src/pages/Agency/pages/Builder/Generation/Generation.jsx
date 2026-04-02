@@ -51,7 +51,16 @@ function parseFilesFromCode(code) {
   const regex = /<file path="([^"]+)">([\s\S]*?)<\/file>/g;
   let m;
   while ((m = regex.exec(code)) !== null) {
-    const path = m[1].replace(/^\/+/, '');
+    let path = m[1].replace(/^\/+/, '');
+    
+    // Normalize path to ensure components land in src/components/
+    if (!path.startsWith('src/') && !path.startsWith('public/')) {
+      const isConfig = path.includes('config.') || path === 'package.json' || path.endsWith('.html');
+      if (!isConfig) {
+        path = path.startsWith('components/') ? `src/${path}` : `src/components/${path}`;
+      }
+    }
+
     let content = m[2].trim();
 
     // Strip markdown code fences if present

@@ -153,55 +153,85 @@ CODE:
 ${code}
 \`\`\``;
 
-    const parts = [{ text: promptText }];
-    if (screenshotBase64) {
-        parts.push({
-            inlineData: {
-                data: screenshotBase64,
-                mimeType: "image/png"
-            }
-        });
-    }
-
     const MODELS = [
-        'gemini-3-flash-preview',
-        'gemini-3.1-pro-preview',
+        { id: 'gemini-3-flash-preview', provider: 'google' },
+        { id: 'gemini-3.1-pro-preview', provider: 'google' },
+        { id: 'claude-3-5-haiku-latest', provider: 'anthropic' },
+        { id: 'claude-3-7-sonnet-latest', provider: 'anthropic' },
+        { id: 'gpt-5.4-mini', provider: 'openai' },
+        { id: 'gpt-5.4', provider: 'openai' }
     ];
 
     for (let i = 0; i < MODELS.length; i++) {
-        const modelName = MODELS[i];
+        const { id: modelName, provider } = MODELS[i];
         try {
             console.log('\n[DEBUG-LLM] =================================================================');
             console.log(`[DEBUG-LLM] 🚀 STEP 1: analyzeCommunityComponent TRIGGERED for "${userProvidedName}"`);
             console.log(`[DEBUG-LLM] -> Model: ${modelName} (attempt ${i + 1}/${MODELS.length})`);
-            console.log(`[DEBUG-LLM] -> System Instruction Length: ${systemInstruction.length} chars`);
-            console.log(`[DEBUG-LLM] -> Prompt Text Length: ${promptText.length} chars`);
             console.log(`[DEBUG-LLM] -> Has Screenshot (Base64): ${!!screenshotBase64}`);
-
-            const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
             console.log(`[DEBUG-LLM] 📡 STEP 2: Executing ${modelName} generation (30s timeout)...`);
             const startTime = Date.now();
+            let responseText = "";
 
-            // 30 second timeout
-            const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 30000);
+            const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout after 30000ms')), 30000));
 
-            const result = await ai.models.generateContent({
-                model: modelName,
-                contents: [{ role: "user", parts }],
-                config: {
-                    systemInstruction: systemInstruction,
-                    temperature: 0.2,
-                    responseMimeType: "application/json",
+            if (provider === 'google') {
+                const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+                const parts = [{ text: promptText }];
+                if (screenshotBase64) {
+                    parts.push({ inlineData: { data: screenshotBase64, mimeType: "image/png" } });
                 }
-            }); // Note: The new SDK might not fully support AbortController seamlessly in the same way, but it should be fine.
-
-            clearTimeout(timeoutId);
+                const req = ai.models.generateContent({
+                    model: modelName,
+                    contents: [{ role: "user", parts }],
+                    config: {
+                        systemInstruction: systemInstruction,
+                        temperature: 0.2,
+                        responseMimeType: "application/json",
+                    }
+                });
+                const result = await Promise.race([req, timeoutPromise]);
+                responseText = result.text;
+            } 
+            else if (provider === 'anthropic') {
+                const { default: Anthropic } = await import('@anthropic-ai/sdk');
+                const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+                const content = [{ type: 'text', text: promptText }];
+                if (screenshotBase64) {
+                    content.push({ type: 'image', source: { type: 'base64', media_type: 'image/png', data: screenshotBase64 } });
+                }
+                const req = anthropic.messages.create({
+                    model: modelName,
+                    system: systemInstruction,
+                    messages: [{ role: 'user', content }],
+                    max_tokens: 4000,
+                    temperature: 0.2
+                });
+                const msg = await Promise.race([req, timeoutPromise]);
+                responseText = msg.content[0].text;
+            }
+            else if (provider === 'openai') {
+                const { default: OpenAI } = await import('openai');
+                const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY, baseURL: process.env.OPENAI_BASE_URL || undefined });
+                const content = [{ type: 'text', text: promptText }];
+                if (screenshotBase64) {
+                    content.push({ type: 'image_url', image_url: { url: `data:image/png;base64,${screenshotBase64}` } });
+                }
+                const req = openai.chat.completions.create({
+                    model: modelName,
+                    messages: [
+                        { role: 'system', content: systemInstruction },
+                        { role: 'user', content }
+                    ],
+                    response_format: { type: "json_object" },
+                    temperature: 0.2
+                });
+                const msg = await Promise.race([req, timeoutPromise]);
+                responseText = msg.choices[0].message.content;
+            }
 
             console.log(`[DEBUG-LLM] ✅ STEP 3: ${modelName} returned in ${Date.now() - startTime}ms`);
-
-            const responseText = result.text;
             console.log(`[DEBUG-LLM] -> Raw Response Text Length: ${responseText?.length || 0} chars`);
 
             const cleanedJsonText = responseText.replace(/^```json\s*/, '').replace(/\s*```$/, '');

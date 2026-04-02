@@ -311,8 +311,10 @@ ${context.premiumComponents.map(pc => {
     systemPrompt += `
 ITERATION RULES:
 1. INFRASTRUCTURE & INTENT (TOYOTA PHILOSOPHY): Premium components come with highly intentional, solid infrastructure. Preserve their complex animations, WebGL, sticky effects, and precise layouts. Only rewrite their mechanics if the user's prompt explicitly pushes for a highly custom "0.01%" edge-case behavior.
-2. SURGICAL ADAPTATION: Adapt the text, imagery, and theme strictly to the user's vision. Make as little unnecessary code changes as possible to the core engine. Do not add generic "bloat" to a well-crafted component.
-3. COMPONENT INTEGRITY: Keep the existing imports and exports intact. Treat the components as powerful, immutable engines where you only change the paint and upholstery, unless absolutely necessary.
+2. SHADER & WEBGL HANDLING (CRITICAL): When dealing with shader code (vertexShader/fragmentShader) or Three.js/WebGL setups, you may ONLY modify color variables (uniforms, hex strings, vec3 arrays) to match the desired theme. Make NO OTHER CHANGES to mathematical logic, noise, or layout. 
+   - CONTENT OVER SHADERS: If a component has a WebGL/shader background, you MUST still include high-quality text, headings, and CTA buttons OVER it. Do NOT leave the component empty! Just ensure the HTML containers holding your text have transparent or semi-transparent backgrounds (like bg-transparent or bg-black/40) so the WebGL canvas behind them remains fully visible. Do not use an opaque bg-black or bg-white container that hides the shader.
+3. SURGICAL ADAPTATION: Adapt the text, imagery, and theme strictly to the user's vision. Make as little unnecessary code changes as possible to the core engine. Do not add generic "bloat" to a well-crafted component.
+4. COMPONENT INTEGRITY: Keep the existing imports and exports intact. Treat the components as powerful, immutable engines where you only change the paint and upholstery, unless absolutely necessary.
 `;
 
     // Build messages

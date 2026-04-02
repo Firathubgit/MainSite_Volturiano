@@ -209,13 +209,14 @@ export default function SandpackPreviewPopup({
             "clsx": "latest",
             "tailwind-merge": "latest",
             "color-bits": "latest",
+            "react-router-dom": "latest",
           };
 
           // Heavy packages that should ONLY be added if the code actually uses them
           const HEAVY_PACKAGES = new Set([
             "three", "@react-three/fiber", "@react-three/drei",
             "ogl", "cobe", "react-icons", "@radix-ui/react-icons",
-            "recharts", "zustand",
+            "recharts", "zustand", "react-router-dom"
           ]);
 
           // Resolve code to a string for import scanning
@@ -226,7 +227,7 @@ export default function SandpackPreviewPopup({
             if (code.content) scanStr = code.content;
             else if (Array.isArray(code)) scanStr = code.map(f => f.content || "").join("\n");
             else if (code.files && Array.isArray(code.files)) scanStr = code.files.map(f => f.content || "").join("\n");
-            else scanStr = JSON.stringify(code);
+            else scanStr = Object.values(code).map(v => typeof v === 'string' ? v : (v?.content || JSON.stringify(v))).join("\n");
           }
 
           // Auto-detect heavy packages from import statements in the code
@@ -421,6 +422,7 @@ export default function SandpackPreviewPopup({
       "/style.css": globalCss || "",
       "/index.js": `import React, { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
+${"react-router-dom" in finalDependencies ? 'import { BrowserRouter } from "react-router-dom";' : ''}
 import "./style.css";
 
 import App from "./App.jsx";
@@ -428,11 +430,19 @@ import App from "./App.jsx";
 const root = createRoot(document.getElementById("root"));
 document.body.style.backgroundColor = "${themeMode === "light" ? "#ffffff" : "#000000"}";
 document.body.style.color = "${themeMode === "light" ? "#000000" : "#ffffff"}";
+
+const isRouterNeeded = ${"react-router-dom" in finalDependencies ? "true" : "false"};
+// A basic heuristic to avoid double-wrapping if the App already provides a router
+const hasOwnRouter = App.toString && (App.toString().includes('BrowserRouter') || App.toString().includes('MemoryRouter') || App.toString().includes('HashRouter') || App.toString().includes('Router>'));
+const AppWrapper = (isRouterNeeded && !hasOwnRouter) ? BrowserRouter : React.Fragment;
+
 root.render(
   <StrictMode>
-    <div className="${themeMode === "light" ? "bg-white" : "bg-transparent"} min-h-screen w-full">
-      <App />
-    </div>
+    <AppWrapper>
+      <div className="${themeMode === "light" ? "bg-white" : "bg-transparent"} min-h-screen w-full">
+        <App />
+      </div>
+    </AppWrapper>
   </StrictMode>
 );`,
     };

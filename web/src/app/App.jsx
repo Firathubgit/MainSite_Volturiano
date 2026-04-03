@@ -63,6 +63,9 @@ const ComponentStudio = lazy(() =>
 const Guidelines = lazy(() =>
   import("../pages/Agency/pages/Builder/Community/Guidelines"),
 );
+const AdminPanel = lazy(() =>
+  import("../pages/Agency/pages/Builder/Admin/AdminPanel"),
+);
 // Using new premium configurator - switch back to Configurator if needed
 const Configurator = lazy(
   () => import("../pages/Configurator/ConfiguratorNew"),
@@ -384,7 +387,7 @@ export default function App() {
               (!session && (status === "loading" || status === "idle"))
             }
           />
-          {location.pathname !== "/builder/generation" && location.pathname !== "/builder/login" && location.pathname !== "/builder/profile" && location.pathname !== "/builder/privacy" && location.pathname !== "/builder/terms" && location.pathname !== "/builder/billing" && !location.pathname.startsWith("/community") && !location.pathname.startsWith("/guidelines") && (
+          {location.pathname !== "/builder/generation" && location.pathname !== "/builder/login" && location.pathname !== "/builder/profile" && location.pathname !== "/builder/privacy" && location.pathname !== "/builder/terms" && location.pathname !== "/builder/billing" && location.pathname !== "/builder/Atalmoretti" && !location.pathname.startsWith("/community") && !location.pathname.startsWith("/guidelines") && (
             <>
               {(location.pathname.startsWith("/builder")) ? (
                 <Suspense fallback={null}>
@@ -425,6 +428,7 @@ export default function App() {
                 <Route path="/builder/profile" element={<ProfileSettings />} />
                 <Route path="/builder/dashboard" element={<Navigate to="/builder/profile?tab=Websites" replace />} />
                 <Route path="/builder/settings" element={<Navigate to="/builder/profile?tab=Settings" replace />} />
+                <Route path="/builder/Atalmoretti" element={<AdminPanel />} />
                 <Route path="/community" element={<CommunityHub />} />
                 <Route path="/community/studio" element={<ComponentStudio />} />
                 <Route path="/guidelines" element={<Guidelines />} />

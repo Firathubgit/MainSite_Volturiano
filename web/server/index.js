@@ -52,6 +52,7 @@ import billingRoutes from './routes/billing.js';
 import webhookRoutes from './routes/webhooks.js';
 import dashboardRoutes from './routes/dashboard.js';
 import settingsRoutes from './routes/settings.js';
+import adminRoutes from './routes/admin.js';
 
 const app = express();
 
@@ -202,6 +203,9 @@ app.use('/api/dashboard', dashboardRoutes);
 
 // Phase S26: User Settings (preferred mode, etc.)
 app.use('/api/settings', settingsRoutes);
+
+// Admin Panel: Component metadata management
+app.use('/api/admin', strictLimiter, adminRoutes);
 
 // List published sites API (User specific or all depending on auth)
 app.get('/api/published-sites', optionalAuth, async (req, res) => {

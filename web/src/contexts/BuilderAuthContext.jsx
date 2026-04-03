@@ -233,6 +233,7 @@ export function BuilderAuthProvider({ children }) {
         loading,
         error,
         isAuthenticated: !!user,
+        isAdmin: !!profile?.admin_role,
 
         // Methods
         signInWithGoogle,

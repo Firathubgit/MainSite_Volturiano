@@ -13,6 +13,7 @@
 
 import { generateText } from 'ai';
 import { getModel, generateFast } from './provider-helpers.js';
+import { llmLog } from './llm-logger.js';
 
 // ─── Lightweight model resolver (mirrors enhance-prompt.js exactly) ──
 function getLightweightModel(model) {
@@ -68,24 +69,39 @@ Write only the message, nothing else.`;
 // ─── Single filler call (matches enhance-prompt.js pattern) ─────────────
 async function generateFillerMessage(modelInfo, fillerPrompt) {
     const { id, useFast } = modelInfo;
+    llmLog.request('POLISH-FILLER', {
+        model: id,
+        userPrompt: fillerPrompt,
+        temperature: 0.85
+    });
+    
+    const startMs = Date.now();
     try {
+        let text;
         if (useFast) {
             // OpenAI path — uses generateFast (Responses API, gpt-5.4-mini)
-            return await generateFast(
+            text = await generateFast(
                 'You are the Volturiano Builder AI. Generate brief, natural progress messages.',
                 fillerPrompt
             );
+        } else {
+            // Anthropic + Google path — standard AI SDK
+            const result = await generateText({
+                model: getModel(id),
+                prompt: fillerPrompt,
+                maxTokens: 80,
+                temperature: 0.85, // Slightly higher for natural variation between messages
+            });
+            text = result.text?.trim() || null;
         }
 
-        // Anthropic + Google path — standard AI SDK
-        const result = await generateText({
-            model: getModel(id),
-            prompt: fillerPrompt,
-            maxTokens: 80,
-            temperature: 0.85, // Slightly higher for natural variation between messages
+        llmLog.response('POLISH-FILLER', {
+            response: text,
+            durationMs: Date.now() - startMs
         });
-        return result.text?.trim() || null;
+        return text;
     } catch (e) {
+        llmLog.error('POLISH-FILLER', e);
         console.warn(`[PolishFiller] ${id} call failed (non-fatal):`, e.message);
         return null;
     }

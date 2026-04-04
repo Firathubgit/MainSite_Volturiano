@@ -1,5 +1,6 @@
 import { generateText } from 'ai';
 import { getModel } from '../lib/provider-helpers.js';
+import { llmLog } from '../lib/llm-logger.js';
 
 export default async function cinematicResponse(req, res) {
     try {
@@ -23,6 +24,14 @@ Narrative:
 Summarize the visual soul and the kinetic physics of the site build in a single, dense, sophisticated breath.`;
 
         console.log(`[cinematic-response] Synthesizing short architecture for: "${prompt}"`);
+        llmLog.request('CINEMATIC', {
+            model,
+            systemPrompt,
+            userPrompt: prompt,
+            temperature: 0.75
+        });
+
+        const startMs = Date.now();
         let text = '';
         if (model.includes('openai/')) {
             const { generateFast } = await import('../lib/provider-helpers.js');
@@ -40,6 +49,11 @@ Summarize the visual soul and the kinetic physics of the site build in a single,
             });
             text = result.text;
         }
+
+        llmLog.response('CINEMATIC', {
+            response: text,
+            durationMs: Date.now() - startMs
+        });
 
         const cleanedResponse = text.trim();
         console.log(`[cinematic-response] LLM returned (${cleanedResponse.length} chars / ${cleanedResponse.split(' ').length} words).`);

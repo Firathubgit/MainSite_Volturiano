@@ -3,6 +3,7 @@ import { generateObject } from 'ai';
 import { z } from 'zod';
 import { getModel } from './provider-helpers.js';
 import { supabaseAdmin } from './supabase-admin.js';
+import { llmLog } from './llm-logger.js';
 
 const sb = supabaseAdmin;
 
@@ -137,6 +138,15 @@ Important: A high confidence (>0.8) means the preset closely covers all the user
             const controller = new AbortController();
             const timeoutId = setTimeout(() => controller.abort(), 15000);
 
+            llmLog.request('WEBSITE-TYPE', {
+                model: aiModel,
+                systemPrompt,
+                userPrompt: prompt,
+                schema,
+                temperature: 0
+            });
+
+            const startMs = Date.now();
             const { object } = await generateObject({
                 model: getModel(aiModel),
                 schema,
@@ -146,8 +156,15 @@ Important: A high confidence (>0.8) means the preset closely covers all the user
                 abortSignal: controller.signal
             });
             clearTimeout(timeoutId);
+
+            llmLog.response('WEBSITE-TYPE', {
+                response: object,
+                durationMs: Date.now() - startMs
+            });
+
             return object;
         } catch (e) {
+            llmLog.error('WEBSITE-TYPE', e);
             console.warn('[Pipeline] LLM match failed, returning low confidence:', e.message);
             return { slug: '', confidence: 0 };
         }
@@ -181,6 +198,15 @@ ${list}`;
             const controller = new AbortController();
             const timeoutId = setTimeout(() => controller.abort(), 15000);
 
+            llmLog.request('CATEGORY-REFINE', {
+                model: aiModel,
+                systemPrompt,
+                userPrompt: prompt,
+                schema,
+                temperature: 0
+            });
+
+            const startMs = Date.now();
             const { object } = await generateObject({
                 model: getModel(aiModel),
                 schema,
@@ -190,8 +216,15 @@ ${list}`;
                 abortSignal: controller.signal
             });
             clearTimeout(timeoutId);
+
+            llmLog.response('CATEGORY-REFINE', {
+                response: object,
+                durationMs: Date.now() - startMs
+            });
+
             return object.refined_categories;
         } catch (e) {
+            llmLog.error('CATEGORY-REFINE', e);
             console.warn('[Pipeline] Refinement LLM failed, falling back to required categories:', e.message);
             return blueprint.required_categories;
         }
@@ -206,7 +239,7 @@ ${list}`;
             reasoning: z.string().describe('Explain why this particular mix of components was chosen')
         });
 
-        const list = candidates.map(c => `- ${c.component_id}: ${c.name} (${c.visual_description || c.description}). Style: ${c.color_mode}, Warmth: ${c.color_warmth}`).join('\n');
+        const list = candidates.map(c => `- [QUALITY: ${c.quality_score || 5}/10] ${c.component_id}: ${c.name} (${c.visual_description || c.description}). Style: ${c.color_mode}, Warmth: ${c.color_warmth}`).join('\n');
 
         const explicitInprompt = explicitComponents.length > 0
             ? `\n\n🎯 MANDATORY SELECTION:\nThe user has EXPLICITLY requested these components. You MUST include them in your selected_component_ids array if they appear in the candidate list below:\n${explicitComponents.join(', ')}`
@@ -219,15 +252,26 @@ CANDIDATES:
 ${list}
 
 RULES:
-1. Select exactly one component per requested category type whenever possible.
-2. Ensure visual consistency (try to pick components with matching color_mode and warmth if indicated).
-3. Do not select two "hero" components or two "footer" components unless they serve different pages (e.g. A massive homepage hero, and a smaller secondary hero).
-4. Return only the EXACT component_ids from the list above.`;
+1. QUALITY IS KING: A component with a high Quality Score (8, 9, 10) MUST heavily outweigh a theoretically "better fitting" component with a lower score. Always prioritize peak engineering and premium feel.
+2. SHADER & INTERACTIVE BIAS: Strongly prefer Hero sections that feature WebGL, shaders, particle effects, or 3D interactive physics. If available and high-quality, select these over basic static designs.
+3. Select exactly one component per requested category type whenever possible.
+4. Ensure visual consistency (try to pick components with matching color_mode and warmth if indicated).
+5. Do not select two "hero" components or two "footer" components unless they serve different pages (e.g. A massive homepage hero, and a smaller secondary hero).
+6. Return only the EXACT component_ids from the list above.`;
 
         try {
             const controller = new AbortController();
             const timeoutId = setTimeout(() => controller.abort(), 60000); // 60s instead of 15s to withstand load peaks
 
+            llmLog.request('FINAL-SELECT', {
+                model: aiModel,
+                systemPrompt,
+                userPrompt: prompt,
+                schema,
+                temperature: 0
+            });
+
+            const startMs = Date.now();
             const { object } = await generateObject({
                 model: getModel(aiModel),
                 schema,
@@ -237,8 +281,15 @@ RULES:
                 abortSignal: controller.signal
             });
             clearTimeout(timeoutId);
+
+            llmLog.response('FINAL-SELECT', {
+                response: object,
+                durationMs: Date.now() - startMs
+            });
+
             return object.selected_component_ids;
         } catch (e) {
+            llmLog.error('FINAL-SELECT', e);
             console.warn('[Pipeline] Final selection LLM failed, using structured fallback selector:', e.message);
             const fallbackIds = pickStructuredFallback(candidates, requestedCategories, explicitComponents);
             console.log('[Pipeline] Structured fallback selected IDs:', fallbackIds);
@@ -283,6 +334,15 @@ Rules:
             const controller = new AbortController();
             const timeoutId = setTimeout(() => controller.abort(), 60000); // 60s instead of 15s
 
+            llmLog.request('TEMPLATE-MATCH', {
+                model: aiModel,
+                systemPrompt,
+                userPrompt,
+                schema,
+                temperature: 0
+            });
+
+            const startMs = Date.now();
             console.time('[LLM matchTemplate] LLM call duration');
             const { object } = await generateObject({
                 model: getModel(aiModel),
@@ -294,11 +354,18 @@ Rules:
             });
             clearTimeout(timeoutId);
             console.timeEnd('[LLM matchTemplate] LLM call duration');
+
+            llmLog.response('TEMPLATE-MATCH', {
+                response: object,
+                durationMs: Date.now() - startMs
+            });
+
             console.log('[LLM matchTemplate] 📥 LLM returned:', JSON.stringify(object, null, 2));
             console.log('[LLM matchTemplate] ✅ LLM call succeeded');
             return object;
         } catch (e) {
             console.timeEnd('[LLM matchTemplate] LLM call duration');
+            llmLog.error('TEMPLATE-MATCH', e);
             console.error('[LLM matchTemplate] ❌ LLM CALL FAILED:', e.message);
             console.error('[LLM matchTemplate] Error name:', e.name);
             console.error('[LLM matchTemplate] Stack:', e.stack?.substring(0, 300));
@@ -402,6 +469,15 @@ REQUIREMENTS:
 
     let dynamicBlueprint;
     try {
+        llmLog.request('BLUEPRINT-GEN', {
+            model: aiModel,
+            systemPrompt,
+            userPrompt: `User Request requiring dynamic blueprint: "${prompt}"`,
+            schema,
+            temperature: 0
+        });
+
+        const startMs = Date.now();
         const { object } = await generateObject({
             model: getModel(aiModel),
             schema,
@@ -410,7 +486,13 @@ REQUIREMENTS:
             temperature: 0
         });
         dynamicBlueprint = object;
+
+        llmLog.response('BLUEPRINT-GEN', {
+            response: dynamicBlueprint,
+            durationMs: Date.now() - startMs
+        });
     } catch (e) {
+        llmLog.error('BLUEPRINT-GEN', e);
         console.warn('[Pipeline] AI blueprint generation failed', e.message);
         throw e;
     }
@@ -535,10 +617,18 @@ function enforceStructuralSelection(selectedComponents = [], candidatePool = [])
     for (const component of selectedComponents) {
         if (!component?.component_id || seen.has(component.component_id)) continue;
         const role = inferStructuralRole(component);
-        if ((role === 'header' || role === 'hero' || role === 'footer') && roleSeen[role]) continue;
+        
+        if ((role === 'header' || role === 'hero' || role === 'footer') && roleSeen[role]) {
+            console.log(`[Pipeline] 🚫 Dropping duplicate structural role "${role}": ${component.component_id} (already have ${Array.from(seen).find(id => inferStructuralRole({component_id: id}) === role)})`);
+            continue;
+        }
+        
         sanitized.push(component);
         seen.add(component.component_id);
-        if (roleSeen[role] !== undefined) roleSeen[role] = true;
+        if (roleSeen[role] !== undefined) {
+            roleSeen[role] = true;
+            console.log(`[Pipeline] ✅ Structural role confirmed: ${role} -> ${component.component_id}`);
+        }
     }
 
     for (const requiredRole of ['header', 'hero', 'footer']) {
@@ -552,6 +642,19 @@ function enforceStructuralSelection(selectedComponents = [], candidatePool = [])
         }
     }
 
+    try {
+        // Force strict architectural layout order so if polish fails, the baseline website isn't broken
+        const roleOrder = { 'header': 1, 'hero': 2, 'feature': 3, 'footer': 4 };
+        
+        sanitized.sort((a, b) => {
+            const roleA = (inferStructuralRole(a) || 'feature').toLowerCase();
+            const roleB = (inferStructuralRole(b) || 'feature').toLowerCase();
+            return (roleOrder[roleA] || 3) - (roleOrder[roleB] || 3);
+        });
+    } catch (err) {
+        console.warn('[Pipeline] ⚠️ Non-fatal: Failed to sort final layout structure:', err.message);
+    }
+
     return sanitized;
 }
 
@@ -563,7 +666,8 @@ async function scoreAndSelect(candidates, designSystem, prompt, explicitComponen
 
     // Score each candidate
     const scored = candidates.map(c => {
-        let score = (c.quality_score || 5) * 0.3;
+        // MASSIVELY weight quality score as per user request
+        let score = (c.quality_score || 5) * 1.5;
 
         // Color mode match
         if (designSystem.colorMode && c.color_mode === designSystem.colorMode) score += 2.0;
@@ -602,9 +706,13 @@ async function scoreAndSelect(candidates, designSystem, prompt, explicitComponen
     // LLM picks final 8-14 from top 50
     const selectedIds = await llm.selectFinalComponents(prompt, designSystem, top50, mappedExplicit, requiredCategories, aiModel);
 
-    // Map IDs back to full component objects
+    // Map IDs back to full component objects with robust case-insensitive matching
     const selectedComponents = selectedIds
-        .map(id => top50.find(c => c.component_id === id))
+        .map(id => {
+            const found = top50.find(c => c.component_id.toLowerCase() === id.toLowerCase());
+            if (!found) console.warn(`[Pipeline] ⚠️ LLM returned component_id "${id}" which was not in top 50 pool!`);
+            return found;
+        })
         .filter(Boolean); // remove any LLM hallucinations
 
     return enforceStructuralSelection(selectedComponents, top50);

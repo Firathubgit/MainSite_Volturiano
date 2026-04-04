@@ -3,6 +3,7 @@ import { z } from 'zod';
 import Anthropic from '@anthropic-ai/sdk';
 import { getModel } from '../lib/provider-helpers.js';
 import { buildSelectionCodeAsync, getCatalogForPromptAsync, getCategoriesAsync, getBundleAsync, preflightBundleAssets } from '../lib/registry/registry.js';
+import { llmLog } from '../lib/llm-logger.js';
 
 import appConfig from '../config/app.config.js';
 
@@ -79,7 +80,17 @@ export default async function selectComponents(req, res) {
             ? `\n\n🎯 MANDATORY SELECTION (CRITICAL):\nThe user has EXPLICITLY requested these components by name: ${explicitNames.join(', ')}.\nYou MUST find and include them in your selections if they exist in the catalog above. Search by name (case-insensitive). Their confidence should be 1.0.`
             : '';
 
-        console.log(`[select-components] Sending request to LLM (Model: ${model})...`);
+        llmLog.request('SELECT-V1', {
+            model: model,
+            systemPrompt: `You are a premium UI component selector.
+CATEGORIES: ${categories.length} categories
+CATALOG: ${catalog.components.length} components`,
+            userPrompt: `Build a website based on this request:\n\n${prompt}${imageContext}`,
+            schema: selectionResultSchema,
+            temperature: 0
+        });
+
+        const startMs = Date.now();
         const result = await generateObject({
             model: getModel(model),
             schema: selectionResultSchema,
@@ -103,16 +114,16 @@ For each component in the catalog, use these high-fidelity fields:
 
 YOUR DECISION PROCESS:
 1. IDENTIFY CATEGORIES: Based on the user prompt, determine which categories are required (e.g., Header, Hero, Features, Pricing, Footer).
-2. MATCH INDUSTRY/SUTIABILITY: Use 'suitableFor' to find components that align with the project's purpose.
-3. ALIGN AESTHETICS: Match 'moodTone' and 'visualDescription' to the user's intent.
-4. COORDINATE DESIGN: Ensure all selected components have a cohesive 'colorProfile' and 'design_personality'.
-5. SCORE CONFIDENCE: High confidence means a perfect match across functionality and aesthetics.
+2. QUALITY IS KING: Compare components. A component with high quality_score (e.g. 9 or 10) must heavily outweigh a theoretically better-fitting component with a low score.
+3. SHADER & INTERACTIVE BIAS: Strongly prefer Hero sections that feature WebGL, shaders, particle effects, or 3D interactive physics. If available and high-quality, select these over basic static designs.
+4. MATCH INDUSTRY/SUTIABILITY: Use 'suitableFor' to find components that align with the project's purpose.
+5. ALIGN AESTHETICS: Match 'moodTone' and 'visualDescription' to the user's intent.
+6. COORDINATE DESIGN: Ensure all selected components have a cohesive 'colorProfile' and 'design_personality'.
 
 ANTI-PATTERN WARNING:
 - Do NOT select a holographic glare grid for a bakery website
 - Do NOT select a smoke flame hero for a children's education site
-- Do NOT select a dark-mode component for a bright, cheerful brand
-- MATCH the component to the website's purpose, not just its category
+- MATCH the component to the website's purpose, unless an interactive shader hero is universally high-quality enough to adapt.
 
 AUTHOR PROVENANCE:
 - Each component has an 'authorType' field: 'official' (curated by Volturiano team) or 'community' (user-submitted).
@@ -130,6 +141,11 @@ RULES: Maximize premium components. Confidence >= ${adaptationThreshold}.`,
         });
 
         const selection = result.object;
+
+        llmLog.response('SELECT-V1', {
+            response: selection,
+            durationMs: Date.now() - startMs
+        });
         console.log(`[select-components] LLM selection complete. Selected ${selection.selections.length} components.`);
         selection.selections.forEach((s, i) => {
             console.log(`  ${i + 1}. [${s.componentId}] Confidence: ${s.confidence} | Reason: ${s.reason}`);

@@ -1,6 +1,7 @@
 import { generateObject } from 'ai';
 import { z } from 'zod';
 import { getModel } from '../lib/provider-helpers.js';
+import { llmLog } from '../lib/llm-logger.js';
 import { log } from '../lib/build-manifest.js';
 
 // ─── Design System Schema ──────────────────────────────────────

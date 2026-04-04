@@ -9,6 +9,7 @@ import path from 'node:path';
 import { selectComponentsV2 } from '../lib/select-components-v2.js';
 import { recordComponentSelections } from '../lib/retention-tracker.js';
 import { supabaseAdmin } from '../lib/supabase-admin.js';
+import { llmLog } from '../lib/llm-logger.js';
 
 const componentSchema = z.object({
   name: z.string(),
@@ -442,33 +443,50 @@ ${premiumMode === 'off' ? '<!-- Premium selection disabled -->' : `SELECTION CON
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 45000); 
 
+        const schema = z.object({
+          components: z.array(z.object({
+            name: z.string(),
+            keyContent: z.string(),
+            props: z.array(z.object({
+              key: z.string(),
+              value: z.string()
+            }))
+          })),
+          isMultiPage: z.boolean().describe("Default to true. Only false if user explicitly demands a single scrolling page."),
+          pages: z.array(z.object({
+            pagePath: z.string(),
+            pageLabel: z.string(),
+            pageComponent: z.string(),
+            navVisible: z.boolean(),
+            componentRefIds: z.array(z.string())
+          })).describe("Page definitions with routes. Required for OpenAI schema validation."),
+          sharedComponentRefIds: z.array(z.string()).describe("RefIds of components shared across ALL pages.")
+        });
+
+        llmLog.request('COPYWRITER', {
+          model,
+          systemPrompt: 'Senior Web Architect & Copywriter',
+          userPrompt: copyPrompt,
+          schema: schema,
+          temperature: 0.2
+        });
+
+        const startMs = Date.now();
         const { object } = await generateObject({
           model: getModel(model),
-          maxRetries: 3, // Lowered from 7 to prevent 502 Proxy timeout during high provider load
-          schema: z.object({
-            components: z.array(z.object({
-              name: z.string(),
-              keyContent: z.string(),
-              props: z.array(z.object({
-                key: z.string(),
-                value: z.string()
-              }))
-            })),
-            isMultiPage: z.boolean().describe("Default to true. Only false if user explicitly demands a single scrolling page."),
-            pages: z.array(z.object({
-              pagePath: z.string(),
-              pageLabel: z.string(),
-              pageComponent: z.string(),
-              navVisible: z.boolean(),
-              componentRefIds: z.array(z.string())
-            })).optional(),
-            sharedComponentRefIds: z.array(z.string()).optional()
-          }),
+          maxRetries: 3, 
+          schema,
           prompt: copyPrompt,
           temperature: 0.2,
           abortSignal: controller.signal
         });
         clearTimeout(timeoutId);
+
+        llmLog.response('COPYWRITER', {
+          response: object,
+          durationMs: Date.now() - startMs
+        });
+
         copyResult = object;
       } catch (copyErr) {
         console.warn('[plan-website-components] Copywriter/Architect failed, using single-page default:', copyErr);
@@ -626,20 +644,44 @@ ${premiumMode === 'off' ? '<!-- Premium selection disabled -->' : `SELECTION CON
       let result;
       try {
         console.log(`[plan-website-components] Attempting generation with model: ${model}`);
+        
+        llmLog.request('WEBSITE-PLAN-V1', {
+          model,
+          systemPrompt: SYSTEM_PROMPT,
+          userPrompt: prompt,
+          schema: planSchema,
+          temperature: 0
+        });
+
+        const startMs = Date.now();
         result = await generateObject({
           model: getModel(model),
-          maxRetries: 3, // Lowered from 7 to prevent 502 Proxy timeout
+          maxRetries: 3,
           schema: planSchema,
           messages: [{ role: 'system', content: SYSTEM_PROMPT }, { role: 'user', content }],
           temperature: 0,
         });
+
+        llmLog.response('WEBSITE-PLAN-V1', {
+          response: result.object,
+          durationMs: Date.now() - startMs
+        });
       } catch (err) {
+        llmLog.error('WEBSITE-PLAN-V1', err);
         console.warn(`[plan-website-components] Model ${model} failed, retrying with gpt-5.4. Error:`, err.message);
+        
+        const startMsRetry = Date.now();
         result = await generateObject({
           model: getModel('openai/gpt-5.4'),
           schema: planSchema,
           messages: [{ role: 'system', content: SYSTEM_PROMPT }, { role: 'user', content }],
           temperature: 0,
+        });
+
+        llmLog.response('WEBSITE-PLAN-V1', {
+          response: result.object,
+          durationMs: Date.now() - startMsRetry,
+          extra: 'Retry with gpt-5.4'
         });
       }
 

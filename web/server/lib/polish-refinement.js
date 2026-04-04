@@ -1,6 +1,50 @@
-import { generateText } from 'ai';
+import { generateText, generateObject } from 'ai';
+import { z } from 'zod';
 import { getModel } from './provider-helpers.js';
 import { parseFileBlocks } from './file-blocks.js';
+import { llmLog } from './llm-logger.js';
+
+const USE_PARALLEL_POLISH = true; // Toggle for 2-Step Async Parallel execution instead of slow monolithic runs
+
+async function asyncPool(poolLimit, array, iteratorFn) {
+    const ret = [];
+    const executing = [];
+    for (const item of array) {
+        const p = Promise.resolve().then(() => iteratorFn(item, array));
+        ret.push(p);
+        if (poolLimit <= array.length) {
+            const e = p.then(() => executing.splice(executing.indexOf(e), 1));
+            executing.push(e);
+            if (executing.length >= poolLimit) {
+                await Promise.race(executing);
+            }
+        }
+    }
+    return Promise.all(ret);
+}
+
+async function generateDesignSpec(prompt, fileContext, modelName) {
+    try {
+        console.log(' [process] Generating Global Design Spec for Parallel Policy...');
+        const result = await generateObject({
+            model: getModel(modelName),
+            schema: z.object({
+                brand_name: z.string(),
+                color_palette_hexes: z.array(z.string()),
+                typography_vibe: z.string(),
+                copywriting_tone: z.string(),
+                global_design_rules: z.string().describe("A summary of rules for all components to ensure cohesion")
+            }),
+            system: "You are an Executive Art Director. Create a cohesive design specification for a new website based on the vision.",
+            prompt: `Website Vision: "${prompt}"\n\nAnalyze the following available components and extract a unifying design language that ties them all together perfectly.\n\n${fileContext.substring(0, 15000)}`,
+            temperature: 0.1
+        });
+        return result.object;
+    } catch (e) {
+        console.warn(` [warning] Design spec failed: ${e.message}`);
+        return null; // fallback gracefully without breaking the build
+    }
+}
 
 /**
  * Runs a final polish on the generated code.
@@ -70,7 +114,7 @@ GOALS:
    GOOD: A pricing card with 3 sharp benefits and one bold CTA.
    BAD: Every section having a title, subtitle, AND a paragraph of explanation.
    GOOD: A section with just a powerful headline and whitespace.
-3. COLOR SOPHISTICATION: Never use typical basic red, blue, or green. Use rich, curated, harmonious palettes. Ensure the Tailwind color palette is consistent across ALL files. No page should feel like a different site.
+3. COLOR SOPHISTICATION & NO COLOR BOMBING: Never use typical basic red, blue, or green. Use rich, curated, harmonious palettes. Do NOT color-bomb the UI by drowning every element in loud brand colors. Use clean, sleek, neutral bases (like deep slates or luxurious blacks) and apply brand colors SPARINGLY as premium accents (e.g. glowing borders, primary buttons, or subtle text highlights). Ensure the overall distribution of color feels even and tasteful. No page should feel like a different site.
 4. ERROR CORRECTION: If build errors are provided below, fix them SURGICALLY.
 6. DO NOT OVERENGINEER (CRITICAL IDENTITY RULE):
    - You take great pride in keeping things simple and elegant.
@@ -131,30 +175,140 @@ ${buildErrors || 'None - perform aesthetic optimizations and copy specialization
 
     try {
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 120000); // 120s timeout for heavy polish pass
+        const timeoutId = setTimeout(() => controller.abort(), 300000); // 300s timeout for parallel heavy polish pass
 
         const startTime = Date.now();
         let text;
 
-        if (model.includes('openai/')) {
-            console.log(' [process] Using OpenAI Native Responses API for Quality Mode...');
-            const { generateWithQuality } = await import('./provider-helpers.js');
-            text = await generateWithQuality(
-                systemPrompt,
-                `Perform a Final Polish on the following website files to perfectly match the vision of "${prompt}". Focus on specialization and premium aesthetics.\n\n${fileContext}`
-            );
-        } else {
-            console.log(' [process] Using Standard AI SDK...');
-            const result = await generateText({
-                model: getModel(model),
-                system: systemPrompt,
-                prompt: `Perform a Final Polish on the following website files to perfectly match the vision of "${prompt}". Focus on specialization and premium aesthetics.\n\n${fileContext}`,
-                temperature: 0,
-                maxRetries: 7, // Highly resilient retry budget to combat Claude/anthropic '503 Overloaded'
-                abortSignal: controller.signal
+        llmLog.request('POLISH', {
+            model: model,
+            systemPrompt: systemPrompt,
+            userPrompt: visionPrompt,
+            temperature: 0
+        });
+
+        const isNativeOpenAI = model.includes('openai/');
+
+        if (USE_PARALLEL_POLISH) {
+            console.log(' [process] Using Parallel Asynchronous Polish Engine (Max 3 concurrent)');
+
+            // Step 1: Design Spec (Use mini model if possible to save latency, fallback to main model)
+            const specModel = isNativeOpenAI ? 'openai/gpt-5.4-mini' : model;
+            const designSpec = await generateDesignSpec(visionPrompt, fileContext, specModel);
+
+            console.log(' [process] Design Spec:', designSpec ? JSON.stringify(designSpec) : 'FAILED (Proceeding blindly)');
+
+            const customSystemPrompt = designSpec
+                ? `${systemPrompt}\n\nCRITICAL GLOBAL DESIGN SPEC (OBEY ACROSS ALL FILES):\n${JSON.stringify(designSpec, null, 2)}`
+                : systemPrompt;
+
+            const refinedFilesList = [];
+            let completed = 0;
+
+            const poolLimit = 3;
+            await asyncPool(poolLimit, files, async (file) => {
+                const start = Date.now();
+                console.log(` [parallel] Polishing ${file.path}...`);
+
+                let fileText = '';
+
+                let roleContext = "UI Section";
+                const lowerPath = file.path.toLowerCase();
+                if (lowerPath.includes('hero') || lowerPath.includes('splash') || lowerPath.includes('landing')) {
+                    roleContext = "Hero / Landing Section (Highest visual impact, biggest headline, first impression)";
+                } else if (lowerPath.includes('footer')) {
+                    roleContext = "Footer (Bottom of page, social links, auxiliary navigation)";
+                } else if (lowerPath.includes('header') || lowerPath.includes('nav')) {
+                    roleContext = "Header / Navigation (Top bar, main navigation routes)";
+                } else if (lowerPath.includes('cta') || lowerPath.includes('calltoaction') || lowerPath.includes('particle')) {
+                    roleContext = "Call To Action (Driving the user to sign up, buy, or act NOW)";
+                } else if (lowerPath.includes('review') || lowerPath.includes('testimonial')) {
+                    roleContext = "Social Proof / Reviews (Building trust via testimonials)";
+                } else if (lowerPath.includes('feature')) {
+                    roleContext = "Features / Services (Explaining what the product/service does in detail)";
+                } else if (lowerPath.includes('app.')) {
+                    roleContext = "Main Application Shell (Routing, layout stacking, global structure)";
+                } else if (lowerPath.includes('main.')) {
+                    roleContext = "React Entry Point";
+                }
+
+                const filePrompt = `YOUR TASK: Perform a Final Polish EXCLUSIVELY on this single file.
+FILE ROLE: ${roleContext}
+WEBSITE VISION: "${prompt}"
+
+INSTRUCTIONS (CRITICAL):
+1. MINIMALISM: "Less is more." Every word must feel intentional, punchy, and high-end. Let the premium design breathe.
+2. WHITESPACE IS LUXURY: Ensure generous spacing. Subtlety and whitespace define premium layouts.
+3. PRESERVE THE MAGIC: DO NOT alter core WebGL/Shader logic, framer-motion animations, or fundamental component structures. Only tune colors, arrays, images, and text.
+4. NO GENERIC FILLER: Erase all standard marketplace placeholder text (e.g. "Welcome to our platform"). Make the copy surgically specific to "${prompt}".
+5. NO COLOR BOMBING: Do not drown the UI in loud brand colors. Use a sleek, elegant neutral base (e.g., deep darks) and apply the Global Design Spec hex codes SPARINGLY as premium accents (buttons, subtle glows, active states). The goal is a tasteful, balanced distribution.
+6. ISOLATION: DO NOT wrap this file with an overarching <Layout> or <App> container if it's just a section component.
+7. FORMAT: You MUST provide the final output wrapped securely inside <file path="${file.path}">...code...</file>.
+
+--- FILE TO POLISH: ${file.path} ---
+${file.content}`;
+
+                try {
+                    if (isNativeOpenAI) {
+                        const { generateWithQuality } = await import('./provider-helpers.js');
+                        fileText = await generateWithQuality(customSystemPrompt, filePrompt);
+                    } else {
+                        const res = await generateText({
+                            model: getModel(model),
+                            system: customSystemPrompt,
+                            prompt: filePrompt,
+                            temperature: 0,
+                            maxRetries: 3,
+                            abortSignal: controller.signal
+                        });
+                        fileText = res.text;
+                    }
+
+                    completed++;
+                    console.log(` [parallel] Finished ${file.path} (${completed}/${files.length}) in ${((Date.now() - start) / 1000).toFixed(1)}s`);
+
+                    const parsed = parseFileBlocks(fileText);
+                    if (parsed.length > 0) {
+                        refinedFilesList.push(...parsed);
+                    } else {
+                        console.warn(` [parallel] ⚠️ No file block parsed for ${file.path}. Component bypassed.`);
+                    }
+                } catch (e) {
+                    console.error(` [parallel] 🚨 Failed on ${file.path}:`, e.message);
+                }
             });
-            text = result.text;
+
+            // Reconstruct text for llmLog formatting compatibility 
+            text = refinedFilesList.map(f => `<file path="${f.path}">\n${f.content}\n</file>`).join('\n\n');
+
+        } else {
+            // ORIGINAL MONOLITHIC IMPLEMENTATION
+            if (isNativeOpenAI) {
+                console.log(' [process] Using OpenAI Native Responses API for Quality Mode...');
+                const { generateWithQuality } = await import('./provider-helpers.js');
+                text = await generateWithQuality(
+                    systemPrompt,
+                    `Perform a Final Polish on the following website files to perfectly match the vision of "${prompt}". Focus on specialization and premium aesthetics.\n\n${fileContext}`
+                );
+            } else {
+                console.log(' [process] Using Standard AI SDK...');
+                const result = await generateText({
+                    model: getModel(model),
+                    system: systemPrompt,
+                    prompt: `Perform a Final Polish on the following website files to perfectly match the vision of "${prompt}". Focus on specialization and premium aesthetics.\n\n${fileContext}`,
+                    temperature: 0,
+                    maxRetries: 7, // Highly resilient retry budget
+                    abortSignal: controller.signal
+                });
+                text = result.text;
+            }
         }
+
+        llmLog.response('POLISH', {
+            response: text,
+            durationMs: Date.now() - startTime,
+            fileCount: parseFileBlocks(text).length
+        });
 
         clearTimeout(timeoutId);
 

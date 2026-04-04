@@ -1,6 +1,7 @@
 import { generateText } from 'ai';
 import { getModel } from '../lib/provider-helpers.js';
 import { log } from '../lib/build-manifest.js';
+import { llmLog } from '../lib/llm-logger.js';
 
 /**
  * Deterministically extract component names that look like named references.
@@ -120,6 +121,15 @@ CRITICAL CONTEXT RULES:
 
     let enhancedPrompt;
     try {
+      llmLog.request('ENHANCE', {
+        model: ENHANCE_MODEL,
+        systemPrompt,
+        userPrompt: typeof content[0] === 'object' ? content[0].text : String(content),
+        maxTokens: 800,
+        extraContext: images.length > 0 ? { imageCount: images.length } : undefined
+      });
+
+      const startMs = Date.now();
       const result = await generateText({
         model: getModel(ENHANCE_MODEL),
         system: systemPrompt,
@@ -128,6 +138,18 @@ CRITICAL CONTEXT RULES:
         abortSignal: controller.signal,
       });
       enhancedPrompt = result.text;
+
+      llmLog.response('ENHANCE', {
+        response: enhancedPrompt,
+        durationMs: Date.now() - startMs,
+        tokenUsage: result.usage || null
+      });
+    } catch (llmErr) {
+      llmLog.error('ENHANCE', llmErr, {
+        retryable: llmErr.isRetryable,
+        statusCode: llmErr.statusCode
+      });
+      throw llmErr; // Re-throw so outer catch handles fallback
     } finally {
       clearTimeout(timeout);
     }

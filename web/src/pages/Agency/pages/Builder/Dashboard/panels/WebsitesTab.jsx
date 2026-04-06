@@ -336,7 +336,7 @@ export default function WebsitesTab({ websites, loading, onDelete, onCreateNew, 
                     }
                 `}
             </style>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(360px, 1fr))', gap: '24px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(360px, 100%), 1fr))', gap: '24px' }}>
                 {websites.map((project) => (
                     <ProjectCard 
                         key={project.id} 

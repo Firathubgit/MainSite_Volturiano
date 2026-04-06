@@ -177,7 +177,7 @@ export default function ProfileSettings() {
     }
 
     return (
-        <div style={{ width: '100vw', minHeight: '100vh', position: 'relative', background: 'black', overflowX: 'hidden', padding: 'clamp(20px, 4vw, 40px)', boxSizing: 'border-box', display: 'flex', flexDirection: 'column' }}>
+        <div style={{ width: '100vw', minHeight: '100vh', position: 'relative', background: 'black', overflowX: 'hidden', padding: 'clamp(12px, 3vw, 40px)', boxSizing: 'border-box', display: 'flex', flexDirection: 'column' }}>
             {/* Background Image - Positioned to the right as decoration */}
             <div style={{
                 position: 'fixed',
@@ -221,10 +221,10 @@ export default function ProfileSettings() {
                 </div>
 
                 {/* Profile Split Layout */}
-                <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginTop: 'clamp(20px, 4vh, 40px)', flexShrink: 0 }}>
+                <div className={styles.profileTopSection}>
 
                     {/* Left Column: Avatar & Stats */}
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 'clamp(12px, 2vh, 20px)' }}>
+                    <div className={styles.leftColumn}>
                         {/* Avatar */}
                         <div
                             onMouseEnter={() => setIsHoveringAvatar(true)}
@@ -275,19 +275,14 @@ export default function ProfileSettings() {
                     </div>
 
                     {/* Right Side Navigation Menu */}
-                    <div style={{
-                        width: 'clamp(140px, 15vw, 187px)',
-                        background: '#1F1F1F', borderRadius: '16px', display: 'flex', flexDirection: 'column', overflow: 'hidden', flexShrink: 0
-                    }}>
+                    <div className={styles.rightNavMenu}>
                         {['Websites', 'Projects', 'Components', 'Billing', 'Profile', 'Settings'].map((item) => (
                             <button
                                 key={item}
                                 onClick={() => setActiveTab(item)}
+                                className={`${styles.navMenuBtn} ${activeTab === item ? styles.navMenuBtnActive : ''}`}
                                 style={{
-                                    background: activeTab === item ? '#2E2D2D' : 'transparent', border: 'none',
-                                    color: 'white', fontSize: 'clamp(15px, 2vh, 23px)', fontFamily: 'Inter', fontWeight: '400',
-                                    padding: 'clamp(10px, 1.5vh, 16px) clamp(16px, 2vw, 24px)', cursor: 'pointer', transition: 'background 0.2s',
-                                    textAlign: 'left'
+                                    background: activeTab === item ? '#2E2D2D' : 'transparent'
                                 }}
                                 onMouseEnter={(e) => { if (activeTab !== item) e.currentTarget.style.background = '#2E2D2D'; }}
                                 onMouseLeave={(e) => { if (activeTab !== item) e.currentTarget.style.background = 'transparent'; }}
@@ -299,14 +294,7 @@ export default function ProfileSettings() {
                 </div>
 
                 {/* Dynamic Content Area */}
-                <div style={{
-                    width: '100%',
-                    background: '#1F1F1F', borderRadius: '16px', display: 'flex', flexDirection: 'column',
-                    padding: 'clamp(16px, 2.5vh, 32px)', boxSizing: 'border-box',
-                    marginTop: 'clamp(12px, 2vh, 24px)',
-                    position: 'relative',
-                    marginBottom: '40px'
-                }}>
+                <div className={styles.dynamicContentArea}>
                     {activeTab === 'Profile' && (
                         <div>
                             <AccountSettings />

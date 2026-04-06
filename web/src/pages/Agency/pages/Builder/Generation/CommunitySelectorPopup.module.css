@@ -435,8 +435,8 @@
     transform: translateY(-1px);
 }
 
-/* ─── MOBILE VIEW (<500px) ─── */
-@media (max-width: 500px) {
+/* ─── MOBILE VIEW (<768px) ─── */
+@media (max-width: 768px) {
     .overlay {
         padding: 0;
     }

@@ -189,7 +189,7 @@ export default function CommunitySelectorPopup({ isOpen, onClose, onConfirm, max
     
     // Sync initial selected items
     useEffect(() => {
-        const isMobile = typeof window !== 'undefined' && window.innerWidth <= 500;
+        const isMobile = typeof window !== 'undefined' && window.innerWidth <= 768;
         if (isOpen && (initialSelectedItems.length > 0 || isMobile)) {
             const initialMap = {};
             initialSelectedItems.forEach(item => {

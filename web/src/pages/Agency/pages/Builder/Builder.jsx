@@ -124,7 +124,32 @@ const BuilderContent = () => {
 
     const [selectedModel, setSelectedModel] = useState('google/gemini-3.1-pro-preview');
     const [placeholderText, setPlaceholderText] = useState("");
-    const [isCommunityOpen, setIsCommunityOpen] = useState(false);
+    
+    // Phase S26: Initialize community popup state from URL to persist across reloads
+    const [isCommunityOpen, setIsCommunityOpen] = useState(() => {
+        if (typeof window !== 'undefined') {
+            const params = new URLSearchParams(window.location.search);
+            return params.get('community') === 'open';
+        }
+        return false;
+    });
+
+    // Sync community popup state to URL
+    useEffect(() => {
+        if (typeof window === 'undefined') return;
+        const params = new URLSearchParams(window.location.search);
+        const currentlyOpenInUrl = params.get('community') === 'open';
+        
+        if (isCommunityOpen && !currentlyOpenInUrl) {
+            params.set('community', 'open');
+            window.history.replaceState(null, '', window.location.pathname + '?' + params.toString());
+        } else if (!isCommunityOpen && currentlyOpenInUrl) {
+            params.delete('community');
+            const newSearch = params.toString();
+            window.history.replaceState(null, '', window.location.pathname + (newSearch ? `?${newSearch}` : ''));
+        }
+    }, [isCommunityOpen]);
+
     const [selectedComponents, setSelectedComponents] = useState([]);
     const [strictMode, setStrictMode] = useState(false);
     const [showAuthModal, setShowAuthModal] = useState(false);
@@ -518,8 +543,6 @@ const BuilderContent = () => {
     return (
         <>
             <div className={styles.outerWrapper}>
-
-
                 <div className={styles.pageContainer}>
                     {/* Background Video */}
                     <video
@@ -531,256 +554,7 @@ const BuilderContent = () => {
                     >
                         <source src={heroVideo} type="video/mp4" />
                     </video>
-
-
-                    {/* Main Content Overlay */}
-                    <div className={styles.mainContent}>
-
-                        {/* Title Section */}
-                        <div className={styles.titleWrapper}>
-                            <motion.div
-                                initial={{ opacity: 0, y: -18 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                transition={{ duration: 1 }}
-                            >
-                                <h1 className={styles.title1}>Volturiano</h1>
-                                <h2 className={styles.title2}>Builder</h2>
-                            </motion.div>
-                        </div>
-
-                        {/* Maestro Component (Marquee + Input) */}
-                        <motion.div
-                            className={styles.maestroWrapper}
-                            initial={{ opacity: 0, scale: 0.95 }}
-                            animate={{ opacity: 1, scale: 1 }}
-                            transition={{ duration: 1, delay: 0.3 }}
-                        >
-                            {/* Floating Input Centered over Marquee */}
-                            <div className={styles.floatingInputContainer}>
-                                <form
-                                    ref={inputFormRef}
-                                    onSubmit={handleSubmit}
-                                    className={`${styles.inputForm} ${(images.length > 0 || selectedComponents.length > 0) ? styles.extended : ''} ${isViewportDragging ? styles.isDragging : ''}`}
-                                    onPaste={handlePaste}
-                                >
-                                    <div className={styles.inputWithPreviews}>
-                                        {/* Community Component Previews */}
-                                        {selectedComponents.length > 0 && (
-                                            <div className={styles.communityPreviews}>
-                                                <div className={styles.communityItemsRow}>
-                                                    {selectedComponents.map((comp, index) => {
-                                                        const thumbPath = comp.thumbnail_url || comp.preview_image_url || comp.image_url || comp.image || (comp.metadata && comp.metadata.thumbnail_url);
-                                                        const thumb = getThumbnailUrl(thumbPath);
-                                                        return (
-                                                            <div
-                                                                key={`${comp.id}-${index}`}
-                                                                className={`${styles.communityPreviewItem} ${strictMode ? styles.communityPreviewItemActive : ''}`}
-                                                            >
-                                                                {thumb ? (
-                                                                    <img src={thumb} alt={comp.name} />
-                                                                ) : (
-                                                                    <div className={styles.compIconFallback}><FiLayers size={20} /></div>
-                                                                )}
-                                                                <div className={styles.compNameBadge}>{comp.name}</div>
-                                                                <button
-                                                                    type="button"
-                                                                    className={styles.removeComponentBtn}
-                                                                    onClick={() => removeComponent(comp.id)}
-                                                                    title="Remove component"
-                                                                >
-                                                                    ×
-                                                                </button>
-                                                            </div>
-                                                        );
-                                                    })}
-                                                </div>
-
-                                                <button
-                                                    type="button"
-                                                    className={`${styles.strictModeToggle} ${strictMode ? styles.strictModeToggleActive : ''}`}
-                                                    onClick={() => setStrictMode(!strictMode)}
-                                                    title="If active, AI will only use these components without adding new ones."
-                                                >
-                                                    <img src={weirdButtonGradient} alt="" className={styles.btnGradientOverlay} />
-                                                    <span>Only use these</span>
-                                                </button>
-                                            </div>
-                                        )}
-
-                                        {images.length > 0 && (
-                                            <div className={styles.imagePreviews} data-count={images.length}>
-                                                {images.map((img, idx) => (
-                                                    <div key={idx} className={styles.previewItem}>
-                                                        <img src={img} alt="preview" />
-                                                        <button
-                                                            type="button"
-                                                            className={styles.removeImgBtn}
-                                                            onClick={() => removeImage(idx)}
-                                                        >
-                                                            ×
-                                                        </button>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        )}
-                                        <textarea
-                                            ref={textareaRef}
-                                            value={inputValue}
-                                            onChange={handleInput}
-                                            onKeyDown={handleKeyDown}
-                                            placeholder={placeholderText}
-                                            className={styles.textInput}
-                                            disabled={isSubmitting}
-                                            rows={1}
-                                        />
-                                    </div>
-                                    <div className={styles.actionButtons}>
-                                        <input
-                                            type="file"
-                                            ref={fileInputRef}
-                                            style={{ display: 'none' }}
-                                            multiple
-                                            accept="image/*"
-                                            onChange={(e) => processFiles(e.target.files)}
-                                            disabled={isSubmitting}
-                                        />
-                                        <button
-                                            type="button"
-                                            className={styles.iconButton}
-                                            onClick={() => fileInputRef.current?.click()}
-                                            disabled={isSubmitting}
-                                        >
-                                            <svg xmlns="http://www.w3.org/2000/svg" width="25" height="25" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14" /><path d="M12 5v14" /></svg>
-                                        </button>
-
-                                        {/* Model Selector Dropdown */}
-                                        <div className={styles.modelSelectorContainer}>
-                                            <button
-                                                type="button"
-                                                className={styles.modelSelectorButton}
-                                                onClick={() => !isSubmitting && setIsModelDropdownOpen(!isModelDropdownOpen)}
-                                                data-active={isModelDropdownOpen}
-                                                title={`Select AI Model (Current: ${selectedModel})`}
-                                                disabled={isSubmitting}
-                                            >
-                                                <div className={styles.activeModelIconWrapper}>
-                                                    {currentModelIcon}
-                                                </div>
-                                            </button>
-
-                                            <AnimatePresence>
-                                                {isModelDropdownOpen && (
-                                                    <motion.div
-                                                        className={styles.modelDropdown}
-                                                        initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                                                        animate={{ opacity: 1, y: 0, scale: 1 }}
-                                                        exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                                                        transition={{ duration: 0.2, ease: "easeOut" }}
-                                                    >
-                                                        {models.map((model) => (
-                                                            <button
-                                                                key={model.id}
-                                                                type="button"
-                                                                className={`${styles.modelOption} ${selectedModel === model.id ? styles.modelOptionActive : ''}`}
-                                                                onClick={() => {
-                                                                    setSelectedModel(model.id);
-                                                                    setIsModelDropdownOpen(false);
-                                                                }}
-                                                            >
-                                                                <span className={styles.modelOptionLeft}>
-                                                                    <span className={styles.modelOptionIcon}>{model.icon}</span>
-                                                                    <span className={styles.modelOptionLabel}>{model.label}</span>
-                                                                </span>
-                                                                {selectedModel === model.id && (
-                                                                    <svg className={styles.modelCheck} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                                                                )}
-                                                            </button>
-                                                        ))}
-                                                    </motion.div>
-                                                )}
-                                            </AnimatePresence>
-                                        </div>
-
-                                        <div className={styles.supabaseIconWrapper}>
-                                            <button
-                                                type="button"
-                                                className={styles.iconButton}
-                                                onClick={() => setIsCommunityOpen(true)}
-                                                title="Browse Community Components"
-                                                disabled={isSubmitting}
-                                            >
-                                                <LayoutGrid size={18} />
-                                            </button>
-                                            <div className={styles.supabaseTooltip}>Select components</div>
-                                        </div>
-
-                                        {/* Premium Mode Logic (Disabled UI) */}
-                                        {/* 
-                                    <button
-                                        type="button"
-                                        className={`${styles.iconButton} ${premiumMode !== 'off' ? styles.iconBtnActive : ''}`}
-                                        onClick={() => {
-                                            const modes = ['off', 'hybrid', 'strict'];
-                                            const nextMode = modes[(modes.indexOf(premiumMode) + 1) % modes.length];
-                                            setPremiumMode(nextMode);
-                                            showNotification(`Premium Mode: ${nextMode === 'strict' ? 'ON' : nextMode.toUpperCase()}`);
-                                        }}
-                                        title={`Premium Mode: ${premiumMode === 'strict' ? 'ON' : premiumMode.toUpperCase()}`}
-                                        disabled={isSubmitting}
-                                    >
-                                        {premiumMode === 'off' && <FiSlash size={16} />}
-                                        {premiumMode === 'hybrid' && <FiLayers size={16} />}
-                                        {premiumMode === 'strict' && <FiZap size={16} />}
-                                    </button>
-                                    */}
-
-                                        {/* Supabase Icon - Stage 13 */}
-                                        <div className={styles.supabaseIconWrapper}>
-                                            <button
-                                                type="button"
-                                                className={styles.supabaseIconButton}
-                                                onClick={() => showNotification("Supabase Integration: Available soon")}
-                                            >
-                                                <svg xmlns="http://www.w3.org/2000/svg" xmlSpace="preserve" viewBox="0 0 512 512">
-                                                    <linearGradient id="supabase_new_a" x1="237.109" x2="419.106" y1="223.219" y2="146.89" gradientTransform="matrix(1 0 0 -1 0 513)" gradientUnits="userSpaceOnUse">
-                                                        <stop offset="0" style={{ stopColor: '#249361' }} />
-                                                        <stop offset="1" style={{ stopColor: '#3ecf8e' }} />
-                                                    </linearGradient>
-                                                    <path d="M297.6 501c-12.9 16.3-39.2 7.4-39.5-13.4L253.6 183h204.8c37.1 0 57.8 42.8 34.7 71.9z" style={{ fill: 'url(#supabase_new_a)' }} />
-                                                    <linearGradient id="supabase_new_b" x1="245.829" x2="328.829" y1="411.681" y2="255.438" gradientTransform="matrix(1 0 0 -1 0 513)" gradientUnits="userSpaceOnUse">
-                                                        <stop offset="0" style={{ stopColor: '#000' }} />
-                                                        <stop offset="1" style={{ stopColor: '#000', stopOpacity: 0 }} />
-                                                    </linearGradient>
-                                                    <path d="M297.6 501c-12.9 16.3-39.2 7.4-39.5-13.4L253.6 183h204.8c37.1 0 57.8 42.8 34.7 71.9z" style={{ fill: 'url(#supabase_new_b)', fillOpacity: 0.2 }} />
-                                                    <path d="M214.4 11c12.9-16.3 39.2-7.4 39.5 13.4l2 304.5H53.7c-37.1 0-57.8-42.8-34.7-71.9z" style={{ fill: '#3ecf8e' }} />
-                                                </svg>
-                                            </button>
-                                            <div className={styles.supabaseTooltip}>Available soon</div>
-                                        </div>
-
-                                        <div style={{ flex: 1 }} />
-
-                                        <button
-                                            type="submit"
-                                            className={`${styles.submitButton} ${inputValue.trim() ? styles.hasText : ''}`}
-                                            disabled={isSubmitting}
-                                        >
-                                            {isSubmitting ? (
-                                                <div className={styles.suspenseDot} />
-                                            ) : (
-                                                <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m18 15-6-6-6 6" /></svg>
-                                            )}
-                                        </button>
-                                    </div>
-                                </form>
-                            </div>
-                        </motion.div>
-
-
-                    </div>
                 </div>
-
-
 
                 {/* ─── Template Selector Section (outside hero) ─── */}
                 {templates.length > 0 && (
@@ -870,6 +644,255 @@ const BuilderContent = () => {
                         </div>
                     </motion.div>
                 </div>
+
+                {/* Title Section */}
+                <div className={styles.titleWrapper}>
+                    <motion.div
+                        initial={{ opacity: 0, y: -18 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 1 }}
+                    >
+                        <h1 className={styles.title1}>Volturiano</h1>
+                        <h2 className={styles.title2}>Builder</h2>
+                    </motion.div>
+                </div>
+
+                {/* Maestro Component (Marquee + Input) */}
+                <motion.div
+                    className={styles.maestroWrapper}
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ duration: 1, delay: 0.3 }}
+                >
+                    {/* Floating Input Centered over Marquee */}
+                    <div className={styles.floatingInputContainer}>
+                        <form
+                            ref={inputFormRef}
+                            onSubmit={handleSubmit}
+                            className={`${styles.inputForm} ${(images.length > 0 || selectedComponents.length > 0) ? styles.extended : ''} ${isViewportDragging ? styles.isDragging : ''}`}
+                            onPaste={handlePaste}
+                        >
+                            <div className={styles.inputWithPreviews}>
+                                {/* Community Component Previews */}
+                                {selectedComponents.length > 0 && (
+                                    <div className={styles.communityPreviews}>
+                                        <div className={styles.communityItemsRow}>
+                                            {selectedComponents.map((comp, index) => {
+                                                const thumbPath = comp.thumbnail_url || comp.preview_image_url || comp.image_url || comp.image || (comp.metadata && comp.metadata.thumbnail_url);
+                                                const thumb = getThumbnailUrl(thumbPath);
+                                                return (
+                                                    <div
+                                                        key={`${comp.id}-${index}`}
+                                                        className={`${styles.communityPreviewItem} ${strictMode ? styles.communityPreviewItemActive : ''}`}
+                                                    >
+                                                        {thumb ? (
+                                                            <img src={thumb} alt={comp.name} />
+                                                        ) : (
+                                                            <div className={styles.compIconFallback}><FiLayers size={20} /></div>
+                                                        )}
+                                                        <div className={styles.compNameBadge}>{comp.name}</div>
+                                                        <button
+                                                            type="button"
+                                                            className={styles.removeComponentBtn}
+                                                            onClick={() => removeComponent(comp.id)}
+                                                            title="Remove component"
+                                                        >
+                                                            ×
+                                                        </button>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+
+                                        <div className={styles.strictModeControl} onClick={() => setStrictMode(!strictMode)}>
+                                            <div className={`${styles.pixelSwitch} ${strictMode ? styles.pixelActive : ''}`}>
+                                                <input className={styles.pixelToggle} type="checkbox" checked={strictMode} readOnly />
+                                                <span className={styles.pixelSlider}></span>
+                                            </div>
+                                            <span className={styles.strictModeLabel}>ONLY USE THESE COMPONENTS</span>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {images.length > 0 && (
+                                    <div className={styles.imagePreviews} data-count={images.length}>
+                                        {images.map((img, idx) => (
+                                            <div key={idx} className={styles.previewItem}>
+                                                <img src={img} alt="preview" />
+                                                <button
+                                                    type="button"
+                                                    className={styles.removeImgBtn}
+                                                    onClick={() => removeImage(idx)}
+                                                >
+                                                    ×
+                                                </button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                                <textarea
+                                    ref={textareaRef}
+                                    value={inputValue}
+                                    onChange={handleInput}
+                                    onKeyDown={handleKeyDown}
+                                    placeholder={placeholderText}
+                                    className={styles.textInput}
+                                    disabled={isSubmitting}
+                                    rows={1}
+                                />
+                            </div>
+                            <div className={styles.actionButtons}>
+                                <input
+                                    type="file"
+                                    ref={fileInputRef}
+                                    style={{ display: 'none' }}
+                                    multiple
+                                    accept="image/*"
+                                    onChange={(e) => processFiles(e.target.files)}
+                                    disabled={isSubmitting}
+                                />
+                                <button
+                                    type="button"
+                                    className={styles.iconButton}
+                                    onClick={() => fileInputRef.current?.click()}
+                                    disabled={isSubmitting}
+                                >
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="25" height="25" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14" /><path d="M12 5v14" /></svg>
+                                </button>
+
+                                {/* Model Selector Dropdown */}
+                                <div className={styles.modelSelectorContainer}>
+                                    <button
+                                        type="button"
+                                        className={styles.modelSelectorButton}
+                                        onClick={() => !isSubmitting && setIsModelDropdownOpen(!isModelDropdownOpen)}
+                                        data-active={isModelDropdownOpen}
+                                        title={`Select AI Model (Current: ${selectedModel})`}
+                                        disabled={isSubmitting}
+                                    >
+                                        <div className={styles.activeModelIconWrapper}>
+                                            {currentModelIcon}
+                                        </div>
+                                    </button>
+
+                                    <AnimatePresence>
+                                        {isModelDropdownOpen && (
+                                            <motion.div
+                                                className={styles.modelDropdown}
+                                                initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                                                animate={{ opacity: 1, y: 0, scale: 1 }}
+                                                exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                                                transition={{ duration: 0.2, ease: "easeOut" }}
+                                            >
+                                                {models.map((model) => (
+                                                    <button
+                                                        key={model.id}
+                                                        type="button"
+                                                        className={`${styles.modelOption} ${selectedModel === model.id ? styles.modelOptionActive : ''}`}
+                                                        onClick={() => {
+                                                            setSelectedModel(model.id);
+                                                            setIsModelDropdownOpen(false);
+                                                        }}
+                                                    >
+                                                        <span className={styles.modelOptionLeft}>
+                                                            <span className={styles.modelOptionIcon}>{model.icon}</span>
+                                                            <span className={styles.modelOptionLabel}>{model.label}</span>
+                                                        </span>
+                                                        {selectedModel === model.id && (
+                                                            <svg className={styles.modelCheck} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                                                        )}
+                                                    </button>
+                                                ))}
+                                            </motion.div>
+                                        )}
+                                    </AnimatePresence>
+                                </div>
+
+                                <div className={styles.supabaseIconWrapper}>
+                                    <button
+                                        type="button"
+                                        className={styles.iconButton}
+                                        onClick={() => setIsCommunityOpen(true)}
+                                        title="Browse Community Components"
+                                        disabled={isSubmitting}
+                                    >
+                                        <LayoutGrid size={18} />
+                                    </button>
+                                    <div className={styles.supabaseTooltip}>Select components</div>
+                                </div>
+
+                                {/* Premium Mode Logic (Disabled UI) */}
+                                {/* 
+                            <button
+                                type="button"
+                                className={`${styles.iconButton} ${premiumMode !== 'off' ? styles.iconBtnActive : ''}`}
+                                onClick={() => {
+                                    const modes = ['off', 'hybrid', 'strict'];
+                                    const nextMode = modes[(modes.indexOf(premiumMode) + 1) % modes.length];
+                                    setPremiumMode(nextMode);
+                                    showNotification(`Premium Mode: ${nextMode === 'strict' ? 'ON' : nextMode.toUpperCase()}`);
+                                }}
+                                title={`Premium Mode: ${premiumMode === 'strict' ? 'ON' : premiumMode.toUpperCase()}`}
+                                disabled={isSubmitting}
+                            >
+                                {premiumMode === 'off' && <FiSlash size={16} />}
+                                {premiumMode === 'hybrid' && <FiLayers size={16} />}
+                                {premiumMode === 'strict' && <FiZap size={16} />}
+                            </button>
+                            */}
+
+                                {/* Supabase Icon - Stage 13 */}
+                                <div className={styles.supabaseIconWrapper}>
+                                    <button
+                                        type="button"
+                                        className={styles.supabaseIconButton}
+                                        onClick={() => showNotification("Supabase Integration: Available soon")}
+                                    >
+                                        <svg xmlns="http://www.w3.org/2000/svg" xmlSpace="preserve" viewBox="0 0 512 512">
+                                            <linearGradient id="supabase_new_a" x1="237.109" x2="419.106" y1="223.219" y2="146.89" gradientTransform="matrix(1 0 0 -1 0 513)" gradientUnits="userSpaceOnUse">
+                                                <stop offset="0" style={{ stopColor: '#249361' }} />
+                                                <stop offset="1" style={{ stopColor: '#3ecf8e' }} />
+                                            </linearGradient>
+                                            <path d="M297.6 501c-12.9 16.3-39.2 7.4-39.5-13.4L253.6 183h204.8c37.1 0 57.8 42.8 34.7 71.9z" style={{ fill: 'url(#supabase_new_a)' }} />
+                                            <linearGradient id="supabase_new_b" x1="245.829" x2="328.829" y1="411.681" y2="255.438" gradientTransform="matrix(1 0 0 -1 0 513)" gradientUnits="userSpaceOnUse">
+                                                <stop offset="0" style={{ stopColor: '#000' }} />
+                                                <stop offset="1" style={{ stopColor: '#000', stopOpacity: 0 }} />
+                                            </linearGradient>
+                                            <path d="M297.6 501c-12.9 16.3-39.2 7.4-39.5-13.4L253.6 183h204.8c37.1 0 57.8 42.8 34.7 71.9z" style={{ fill: 'url(#supabase_new_b)', fillOpacity: 0.2 }} />
+                                            <path d="M214.4 11c12.9-16.3 39.2-7.4 39.5 13.4l2 304.5H53.7c-37.1 0-57.8-42.8-34.7-71.9z" style={{ fill: '#3ecf8e' }} />
+                                        </svg>
+                                    </button>
+                                    <div className={styles.supabaseTooltip}>Available soon</div>
+                                </div>
+
+                                <div style={{ flex: 1 }} />
+
+                                <button
+                                    type="submit"
+                                    className={`${styles.submitButton} ${inputValue.trim() ? styles.hasText : ''}`}
+                                    disabled={isSubmitting}
+                                >
+                                    {isSubmitting ? (
+                                        <div className={styles.suspenseDot} />
+                                    ) : (
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m18 15-6-6-6 6" /></svg>
+                                    )}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </motion.div>
+
+                {/* Bottom Styling Blur Overlay - Ensures it covers the entire scrollable area but sits below the inputForm */}
+                <GradualBlur 
+                    preset="bottom" 
+                    strength={2.5} 
+                    divCount={3} 
+                    height="8rem" 
+                    opacity={0.8} 
+                    zIndex={90} 
+                    style={{ pointerEvents: 'none', position: 'fixed', bottom: 0, left: 0, right: 0 }} 
+                />
             </div>
 
             {/* ─── Fixed Overlays (Outside scaled wrapper for perfect centering) ─── */}
@@ -926,7 +949,6 @@ const BuilderContent = () => {
                 }}
             />
             {/* Fixed components that should NOT be scaled go here */}
-            <GradualBlur preset="bottom" strength={2.5} divCount={3} height="8rem" opacity={0.8} zIndex={100} style={{ pointerEvents: 'none', position: 'fixed', bottom: 0, left: 0, right: 0 }} />
         </>
     );
 };

@@ -3,7 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
-import { FiFile, FiChevronRight, FiChevronDown, FiPlus, FiDownload, FiMonitor, FiTablet, FiSmartphone, FiExternalLink, FiRotateCw, FiRotateCcw, FiRefreshCw, FiZap, FiSlash, FiLayers, FiGlobe, FiCheckCircle, FiCamera, FiEdit2 } from 'react-icons/fi';
+import { FiFile, FiChevronRight, FiChevronDown, FiPlus, FiDownload, FiMonitor, FiTablet, FiSmartphone, FiExternalLink, FiRotateCw, FiRotateCcw, FiRefreshCw, FiZap, FiSlash, FiLayers, FiGlobe, FiCheckCircle, FiCamera, FiEdit2, FiSettings, FiMessageSquare } from 'react-icons/fi';
 import { BsSend, BsCodeSlash, BsLayoutSidebarInset, BsPhone, BsLaptop, BsTablet, BsCheckLg, BsFileEarmarkCode, BsFolder2Open, BsFolderFill, BsTerminal } from 'react-icons/bs';
 import { SiJavascript, SiReact, SiCss3 } from 'react-icons/si';
 import { SparklesIcon } from 'lucide-react';
@@ -460,6 +460,8 @@ export default function Generation() {
   });
   const [aiChatInput, setAiChatInput] = useState('');
   const [aiModel, setAiModel] = useState(queryParams.get('model') || location.state?.model || 'google/gemini-3.1-pro-preview');
+  const [isMobilePreviewOpen, setIsMobilePreviewOpen] = useState(false);
+  const [showMobileSettingsModal, setShowMobileSettingsModal] = useState(false);
   const [aiThinking, setAiThinking] = useState(null);
   const [activeTab, setActiveTab] = useState('preview');
   const [previewMode, setPreviewMode] = useState('desktop');
@@ -2580,7 +2582,35 @@ Just position the new components in a logical order (e.g. after the Hero or befo
   }, [isRevealing, cinematicText, hasPlayedCinematic, chatMessages.length, addChatMessage]);
 
   return (
-    <div className={styles.page} style={{ cursor: isResizing ? 'col-resize' : 'default', userSelect: isResizing ? 'none' : 'auto', background: 'black' }}>
+    <div className={styles.page} data-mobile-preview={isMobilePreviewOpen} style={{ cursor: isResizing ? 'col-resize' : 'default', userSelect: isResizing ? 'none' : 'auto', background: 'black' }}>
+      <AnimatePresence>
+        {showMobileSettingsModal && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 20 }}
+            style={{
+              position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', zIndex: 100000,
+              display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px'
+            }}
+            onClick={() => setShowMobileSettingsModal(false)}
+          >
+            <div style={{
+              background: '#0a0a0a', border: '1px solid #333', borderRadius: '12px', padding: '24px',
+              textAlign: 'center', maxWidth: '300px'
+            }} onClick={e => e.stopPropagation()}>
+              <h3 style={{ margin: '0 0 12px 0', fontSize: '18px', color: 'white' }}>Desktop Required</h3>
+              <p style={{ margin: '0 0 20px 0', fontSize: '14px', color: '#a1a1aa' }}>
+                Publishing, downloading, viewing code, and advanced features are only available on desktop.
+              </p>
+              <button onClick={() => setShowMobileSettingsModal(false)} style={{
+                background: 'white', color: 'black', border: 'none', padding: '10px 20px', borderRadius: '8px',
+                fontWeight: '600', cursor: 'pointer', width: '100%'
+              }}>Dismiss</button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
       <AnimatePresence mode="wait">
         {!isRevealing ? (
           <motion.div
@@ -2772,6 +2802,14 @@ Just position the new components in a logical order (e.g. after the Hero or befo
                         </motion.div>
                       )}
                     </AnimatePresence>
+                  </div>
+                  <div className={styles.mobileHeaderIcons}>
+                    <button className={styles.mobileSettingsBtn} onClick={() => setShowMobileSettingsModal(true)}>
+                      <FiSettings size={16} />
+                    </button>
+                    <button className={styles.mobilePreviewBtn} onClick={() => setIsMobilePreviewOpen(true)}>
+                      <FiMonitor size={16} />
+                    </button>
                   </div>
                 </div>
               </div>
@@ -3068,6 +3106,13 @@ Just position the new components in a logical order (e.g. after the Hero or befo
                     >
                       <svg width="25" height="25" viewBox="0 0 24 24" fill="none" stroke="#ffffff" strokeWidth="2.5"><path d="M12 5v14M5 12h14" /></svg>
                     </button>
+                    <button
+                      className={styles.actionBtn}
+                      onClick={() => setIsCommunityPopupOpen(true)}
+                      title="Add community components"
+                    >
+                      <FiLayers size={18} />
+                    </button>
                     <div className={styles.geminiIcon} title={`Current Engine: ${aiModel}`} ref={modelDropdownRef}>
                       <div onClick={() => setModelDropdownOpen(!modelDropdownOpen)} style={{ cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
                         {aiModel.includes('gpt') ? (
@@ -3171,24 +3216,21 @@ Just position the new components in a logical order (e.g. after the Hero or befo
 
             {/* ─── MAIN AREA ─── */}
             <main className={styles.mainArea}>
-              {/* Tabs & Actions */}
-              <div className={styles.tabs}>
+              <div className={styles.mobilePreviewHeader}>
+                <button className={styles.mobileBackToChatBtn} onClick={() => setIsMobilePreviewOpen(false)}>
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#ffffff" strokeWidth="1.5"><path d="M19 12H5M12 19l-7-7 7-7" /></svg>
+                </button>
+              </div>
+
+              {/* Tabs & Actions (Hidden on mobile) */}
+              <div className={`${styles.tabs} ${styles.desktopTabs}`}>
                 <div className={styles.tabsGroup}>
                   <button className={`${styles.tab} ${activeTab === 'generation' ? styles.tabActive : ''}`} onClick={() => setActiveTab('generation')}>Code</button>
                   <button className={`${styles.tab} ${activeTab === 'preview' ? styles.tabActive : ''}`} onClick={() => setActiveTab('preview')}>Preview</button>
                 </div>
+
                 <TopBarLoadingIndicator generationProgress={generationProgress} />
                 <div className={styles.actionsGroup}>
-                  {/* Phase S11: Add Components Button */}
-                  <button
-                    className={styles.addComponentsBtn}
-                    onClick={() => setIsCommunityPopupOpen(true)}
-                    title="Browse and add community components"
-                  >
-                    <FiPlus size={16} className={styles.addComponentsBtnIcon} />
-                    <span>Add Components</span>
-                  </button>
-
                   <div className={styles.separatorSmall} />
 
                   {/* Viewport dropdown */}

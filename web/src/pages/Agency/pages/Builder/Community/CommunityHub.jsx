@@ -47,7 +47,7 @@ export default function CommunityHub() {
     const [totalPages, setTotalPages] = useState(1);
     const [isFeedbackOpen, setIsFeedbackOpen] = useState(false);
 
-    const isFetchingRef = useRef(false);
+    const abortControllerRef = useRef(null);
 
     // Selection & Preview
     const [selectedForBuild, setSelectedForBuild] = useState({});
@@ -61,9 +61,17 @@ export default function CommunityHub() {
 
     // Data fetching
     const fetchData = useCallback(async () => {
-        if (isFetchingRef.current || (page > 1 && page > totalPages)) return;
+        if (page > 1 && page > totalPages) return;
 
-        isFetchingRef.current = true;
+        // Abort any existing request to prevent race conditions on fast category switches
+        if (abortControllerRef.current) {
+            abortControllerRef.current.abort();
+        }
+        
+        const controller = new AbortController();
+        abortControllerRef.current = controller;
+        const signal = controller.signal;
+
         setLoading(true);
         if (page === 1) setError(null);
         try {
@@ -83,12 +91,17 @@ export default function CommunityHub() {
             const res = await fetch(url, {
                 headers: {
                     ...(token ? { 'Authorization': `Bearer ${token}` } : {})
-                }
+                },
+                signal // Attach the abort signal
             });
 
             if (!res.ok) throw new Error('Failed to fetch components');
 
             const data = await res.json();
+            
+            // Double check we haven't been aborted
+            if (signal.aborted) return;
+
             if (data.success) {
                 if (page === 1) {
                     setItems(data.items || []);
@@ -105,11 +118,13 @@ export default function CommunityHub() {
                 throw new Error(data.message);
             }
         } catch (err) {
+            if (err.name === 'AbortError') return; // Ignore abort errors quietly
             console.error('[CommunityHub] fetch error:', err);
             if (page === 1) setError(err.message);
         } finally {
-            setLoading(false);
-            isFetchingRef.current = false;
+            if (!signal.aborted) {
+                setLoading(false);
+            }
         }
     }, [page, activeTab, selectedCategory, debouncedSearch, totalPages, sidebarActiveItem, getAccessToken]);
 

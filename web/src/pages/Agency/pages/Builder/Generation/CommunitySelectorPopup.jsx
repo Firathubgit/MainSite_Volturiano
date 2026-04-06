@@ -25,8 +25,43 @@ export default function CommunitySelectorPopup({ isOpen, onClose, onConfirm, max
     const { getAccessToken } = useBuilderAuth();
     const [searchQuery, setSearchQuery] = useState('');
     const [debouncedSearch, setDebouncedSearch] = useState('');
-    const [selectedCategory, setSelectedCategory] = useState(null);
-    const [sidebarActiveItem, setSidebarActiveItem] = useState('Home');
+    
+    // Phase S26: Initialize category selection from URL params
+    const [sidebarActiveItem, setSidebarActiveItem] = useState(() => {
+        if (typeof window !== 'undefined') {
+            const params = new URLSearchParams(window.location.search);
+            return params.get('communityTab') || 'Home';
+        }
+        return 'Home';
+    });
+
+    const [selectedCategory, setSelectedCategory] = useState(() => {
+        if (typeof window !== 'undefined') {
+            const params = new URLSearchParams(window.location.search);
+            const tab = params.get('communityTab');
+            if (tab && !['Home', 'Liked components'].includes(tab)) {
+                return tab;
+            }
+        }
+        return null;
+    });
+
+    // Sync selected tab to URL to persist across reloads
+    useEffect(() => {
+        if (typeof window === 'undefined') return;
+        const params = new URLSearchParams(window.location.search);
+        const currentTabInUrl = params.get('communityTab');
+
+        if (sidebarActiveItem !== 'Home' && currentTabInUrl !== sidebarActiveItem) {
+            params.set('communityTab', sidebarActiveItem);
+            window.history.replaceState(null, '', window.location.pathname + '?' + params.toString());
+        } else if (sidebarActiveItem === 'Home' && currentTabInUrl) {
+            params.delete('communityTab');
+            const newSearch = params.toString();
+            window.history.replaceState(null, '', window.location.pathname + (newSearch ? `?${newSearch}` : ''));
+        }
+    }, [sidebarActiveItem]);
+
     const [activeTab] = useState('components');
     const [isSelectMode, setIsSelectMode] = useState(false);
     const [showAuthModal, setShowAuthModal] = useState(false);
@@ -43,7 +78,7 @@ export default function CommunitySelectorPopup({ isOpen, onClose, onConfirm, max
     const [page, setPage] = useState(1);
     const [totalPages, setTotalPages] = useState(1);
 
-    const isFetchingRef = useRef(false);
+    const abortControllerRef = useRef(null);
 
     // Selection & Preview
     const [selectedItemsMap, setSelectedItemsMap] = useState({});
@@ -57,9 +92,17 @@ export default function CommunitySelectorPopup({ isOpen, onClose, onConfirm, max
 
     // Data fetching
     const fetchData = useCallback(async () => {
-        if (!isOpen || isFetchingRef.current || (page > 1 && page > totalPages)) return;
+        if (!isOpen || (page > 1 && page > totalPages)) return;
 
-        isFetchingRef.current = true;
+        // Abort any existing request to prevent race conditions on fast category switches
+        if (abortControllerRef.current) {
+            abortControllerRef.current.abort();
+        }
+        
+        const controller = new AbortController();
+        abortControllerRef.current = controller;
+        const signal = controller.signal;
+
         setLoading(true);
         if (page === 1) setError(null);
         try {
@@ -77,12 +120,17 @@ export default function CommunitySelectorPopup({ isOpen, onClose, onConfirm, max
             const res = await fetch(url, {
                 headers: {
                     ...(token ? { 'Authorization': `Bearer ${token}` } : {})
-                }
+                },
+                signal // Attach the abort signal
             });
 
             if (!res.ok) throw new Error('Failed to fetch components');
 
             const data = await res.json();
+            
+            // Double check we haven't been aborted
+            if (signal.aborted) return;
+
             if (data.success) {
                 if (page === 1) {
                     setItems(data.items || []);
@@ -99,11 +147,13 @@ export default function CommunitySelectorPopup({ isOpen, onClose, onConfirm, max
                 throw new Error(data.message);
             }
         } catch (err) {
+            if (err.name === 'AbortError') return; // Ignore abort errors quietly
             console.error('[CommunitySelectorPopup] fetch error:', err);
             if (page === 1) setError(err.message);
         } finally {
-            setLoading(false);
-            isFetchingRef.current = false;
+            if (!signal.aborted) {
+                setLoading(false);
+            }
         }
     }, [page, activeTab, selectedCategory, debouncedSearch, totalPages, isOpen, sidebarActiveItem, getAccessToken]);
 
@@ -139,13 +189,14 @@ export default function CommunitySelectorPopup({ isOpen, onClose, onConfirm, max
     
     // Sync initial selected items
     useEffect(() => {
-        if (isOpen && initialSelectedItems.length > 0) {
+        const isMobile = typeof window !== 'undefined' && window.innerWidth <= 500;
+        if (isOpen && (initialSelectedItems.length > 0 || isMobile)) {
             const initialMap = {};
             initialSelectedItems.forEach(item => {
                 initialMap[item.id] = item;
             });
             setSelectedItemsMap(initialMap);
-            // If we have items from parent, auto-enable select mode for better UX
+            // If we have items from parent or on mobile, auto-enable select mode for better UX
             setIsSelectMode(true);
         } else if (isOpen) {
             setSelectedItemsMap({});
@@ -214,25 +265,7 @@ export default function CommunitySelectorPopup({ isOpen, onClose, onConfirm, max
     };
 
     const categoryMap = useMemo(() => {
-        const fallback = [
-            { id: '1', name: 'Announcements', count: 10 },
-            { id: '2', name: 'Backgrounds', count: 33 },
-            { id: '3', name: 'Borders', count: 12 },
-            { id: '4', name: 'Calls to Action', count: 34 },
-            { id: '5', name: 'Clients', count: 16 },
-            { id: '6', name: 'Features', count: 36 },
-            { id: '7', name: 'Heroes', count: 73 },
-            { id: '8', name: 'Hooks', count: 31 },
-            { id: '9', name: 'Images', count: 26 },
-            { id: '10', name: 'Navigation Menus', count: 11 },
-            { id: '11', name: 'Pricing Sections', count: 17 },
-            { id: '12', name: 'Accordions', count: 40 },
-            { id: '13', name: 'Buttons', count: 130 },
-            { id: '14', name: 'Cards', count: 79 },
-            { id: '15', name: 'Selects', count: 62 },
-            { id: '16', name: 'Texts', count: 58 }
-        ];
-        return categories.length > 0 ? categories : fallback;
+        return categories.length > 0 ? categories : [];
     }, [categories]);
 
     if (!isOpen) return null;
@@ -353,8 +386,8 @@ export default function CommunitySelectorPopup({ isOpen, onClose, onConfirm, max
                                             key={`trend-${item.id || idx}`}
                                             item={item}
                                             type={item.type || 'component'}
-                                            onCardClick={setPreviewItem}
-                                            isSelectMode={isSelectMode}
+                                            onCardClick={typeof window !== 'undefined' && window.innerWidth <= 500 ? () => handleToggleSelect(item.id, item) : setPreviewItem}
+                                            isSelectMode={typeof window !== 'undefined' && window.innerWidth <= 500 ? true : isSelectMode}
                                             isSelected={!!selectedItemsMap[item.id]}
                                             isLimitReached={isSelectMode && !selectedItemsMap[item.id] && Object.keys(selectedItemsMap).length >= maxItems}
                                             onToggleSelect={(id) => handleToggleSelect(id, item)}
@@ -370,8 +403,8 @@ export default function CommunitySelectorPopup({ isOpen, onClose, onConfirm, max
                                             key={`pop-${item.id || idx}`}
                                             item={item}
                                             type={item.type || 'component'}
-                                            onCardClick={setPreviewItem}
-                                            isSelectMode={true}
+                                            onCardClick={typeof window !== 'undefined' && window.innerWidth <= 500 ? () => handleToggleSelect(item.id, item) : setPreviewItem}
+                                            isSelectMode={typeof window !== 'undefined' && window.innerWidth <= 500 ? true : isSelectMode}
                                             isSelected={!!selectedItemsMap[item.id]}
                                             onToggleSelect={(id) => handleToggleSelect(id, item)}
                                         />
@@ -416,11 +449,11 @@ export default function CommunitySelectorPopup({ isOpen, onClose, onConfirm, max
                                                     key={item.id}
                                                     item={item}
                                                     type={item.type || 'component'}
-                                                    isSelectMode={isSelectMode}
+                                                    isSelectMode={typeof window !== 'undefined' && window.innerWidth <= 500 ? true : isSelectMode}
                                                     isSelected={!!selectedItemsMap[item.id]}
                                                     isLimitReached={isSelectMode && !selectedItemsMap[item.id] && Object.keys(selectedItemsMap).length >= maxItems}
                                                     onToggleSelect={(id) => handleToggleSelect(id, item)}
-                                                    onCardClick={setPreviewItem}
+                                                    onCardClick={typeof window !== 'undefined' && window.innerWidth <= 500 ? () => handleToggleSelect(item.id, item) : setPreviewItem}
                                                 />
                                             ))}
                                         </div>

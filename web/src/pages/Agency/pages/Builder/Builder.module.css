@@ -1,6 +1,7 @@
 /* Outer wrapper — handles scrolling */
 .outerWrapper {
-    width: 111.11%; /* 1 / 0.9 */
+    width: 111.11%;
+    /* 1 / 0.9 */
     height: 111.11vh;
     overflow-x: hidden;
     overflow-y: auto;
@@ -121,7 +122,7 @@
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    z-index: 10;
+    z-index: 100 !important;
 }
 
 /* ==============================================
@@ -200,49 +201,48 @@
     background-color: #0f0f0f;
     backdrop-filter: blur(20px);
     -webkit-backdrop-filter: blur(20px);
-    
+
     /* Near-invisible Gradient Border */
     border: 1px solid transparent;
-    background-image: 
-        linear-gradient(#0f0f0f, #0f0f0f), 
-        linear-gradient(135deg, 
-            rgba(255, 255, 255, 0.05), 
-            rgba(255, 255, 255, 0.08), 
-            rgba(255, 255, 255, 0.12), 
-            rgba(255, 255, 255, 0.15)
-        );
+    background-image:
+        linear-gradient(#0f0f0f, #0f0f0f),
+        linear-gradient(135deg,
+            rgba(255, 255, 255, 0.05),
+            rgba(255, 255, 255, 0.08),
+            rgba(255, 255, 255, 0.12),
+            rgba(255, 255, 255, 0.15));
     background-origin: border-box;
     background-clip: padding-box, border-box;
-    
+
     border-radius: 1.5rem;
     display: flex;
     flex-direction: column;
     padding: 24px 20px 22px 22px;
     gap: 14px;
-    box-shadow: 
+    box-shadow:
         0 30px 60px -12px rgba(0, 0, 0, 0.6),
         /* Very subtle ambient glows */
-        -10px -10px 25px -15px rgba(255, 255, 255, 0.08), 
+        -10px -10px 25px -15px rgba(255, 255, 255, 0.08),
         10px 10px 25px -15px rgba(255, 255, 255, 0.1);
     transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
     position: relative;
+    z-index: 10;
 }
 
 
 
 .inputForm:focus-within {
     transform: scale(1.02);
-    background-image: 
-        linear-gradient(#111111, #111111), 
-        linear-gradient(135deg, 
-            rgba(255, 255, 255, 0.15), 
-            rgba(255, 255, 255, 0.2), 
-            rgba(255, 255, 255, 0.25)
-        );
-    box-shadow: 
+    background-image:
+        linear-gradient(#111111, #111111),
+        linear-gradient(135deg,
+            rgba(255, 255, 255, 0.15),
+            rgba(255, 255, 255, 0.2),
+            rgba(255, 255, 255, 0.25));
+    box-shadow:
         0 40px 80px -15px rgba(0, 0, 0, 0.7),
         /* Focus glows also toned down but visible */
-        -12px -12px 35px -20px rgba(255, 255, 255, 0.15), 
+        -12px -12px 35px -20px rgba(255, 255, 255, 0.15),
         12px 12px 35px -20px rgba(255, 255, 255, 0.18);
     background-color: #111111;
 }
@@ -399,7 +399,8 @@
     width: 100%;
     overflow-x: auto;
     scrollbar-width: none;
-    padding: 10px 4px 4px; /* More top padding for overhanging buttons */
+    padding: 10px 4px 4px;
+    /* More top padding for overhanging buttons */
 }
 
 .communityItemsRow::-webkit-scrollbar {
@@ -412,7 +413,8 @@
     height: 48px;
     flex-shrink: 0;
     border-radius: 8px;
-    overflow: visible; /* Ensure delete button can overlap */
+    overflow: visible;
+    /* Ensure delete button can overlap */
     border: 1px solid rgba(255, 255, 255, 0.08);
     background: rgba(40, 40, 40, 0.4);
     transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
@@ -433,7 +435,8 @@
     width: 100%;
     height: 100%;
     object-fit: cover;
-    border-radius: 8px; /* Maintain shape with overflow: visible */
+    border-radius: 8px;
+    /* Maintain shape with overflow: visible */
 }
 
 .compIconFallback {
@@ -459,7 +462,8 @@
     overflow: hidden;
     text-overflow: ellipsis;
     backdrop-filter: blur(4px);
-    border-bottom-left-radius: 7px; /* Match parent minus border */
+    border-bottom-left-radius: 7px;
+    /* Match parent minus border */
     border-bottom-right-radius: 7px;
     pointer-events: none;
 }
@@ -486,47 +490,38 @@
 }
 
 .removeComponentBtn:hover {
-    background: #b91c1c; /* Darker red on hover */
+    background: #b91c1c;
+    /* Darker red on hover */
 }
 
-
-.strictModeToggle {
-    align-self: flex-start;
-    display: flex;
+.strictModeControl {
+    display: inline-flex;
     align-items: center;
-    justify-content: center;
-    gap: 8px;
-    padding: 0 16px;
-    border-radius: 9px;
-    background: #000;
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    color: rgba(255, 255, 255, 0.45);
+    gap: 12px;
+    cursor: pointer;
+    user-select: none;
+    margin: 8px 0;
+    transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.strictModeControl:hover {
+    /* Scaling removed */
+}
+
+.strictModeControl:active {
+    /* Scaling removed */
+}
+
+.strictModeLabel {
     font-size: 0.72rem;
     font-weight: 700;
-    cursor: pointer;
-    transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
-    user-select: none;
-    margin-top: 4px;
-    position: relative;
-    overflow: hidden;
-    height: 34px;
-    box-sizing: border-box;
+    color: rgba(255, 255, 255, 0.45);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    transition: color 0.3s ease;
 }
 
-.strictModeToggleActive {
-    border-color: #ffffff !important;
-    color: #ffffff !important;
-    box-shadow: 0 0 15px rgba(255, 255, 255, 0.1);
-}
-
-.strictModeToggle:hover {
-    border-color: rgba(255, 255, 255, 0.4);
-    color: rgba(255, 255, 255, 0.8);
-    background: #050505;
-}
-
-.strictModeToggleActive:hover {
-    border-color: #ffffff;
+.pixelActive + .strictModeLabel {
     color: #ffffff;
 }
 
@@ -1700,4 +1695,87 @@
 
 .ctaBtnPrimary:hover .ctaBtnArrow {
     transform: translateX(2px);
+}
+
+/* Pixelated Toggle Switch */
+.pixelSwitch {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    width: 60px;
+    height: 26px;
+}
+
+.pixelToggle {
+    opacity: 0;
+    width: 0;
+    height: 0;
+    position: absolute;
+}
+
+/* Base Track */
+.pixelSlider {
+    image-rendering: pixelated;
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAlgAAAEECAYAAAD0wkrNAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsEAAA7BAbiRa+0AAAGHaVRYdFhNTDpjb20uYWRvYmUueG1wAAAAAAA8P3hwYWNrZXQgYmVnaW49J++7vycgaWQ9J1c1TTBNcENlaGlIenJlU3pOVGN6a2M5ZCc/Pg0KPHg6eG1wbWV0YSB4bWxuczp4PSJhZG9iZTpuczptZXRhLyI+PHJkZjpSREYgeG1sbnM6cmRmPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5LzAyLzIyLXJkZi1zeW50YXgtbnMjIj48cmRmOkRlc2NyaXB0aW9uIHJkZjphYm91dD0idXVpZDpmYWY1YmRkNS1iYTNkLTExZGEtYWQzMS1kMzNkNzUxODJmMWIiIHhtbG5zOnRpZmY9Imh0dHA6Ly9ucy5hZG9iZS5jb20vdGlmZi8xLjAvIj48dGlmZjpPcmllbnRhdGlvbj4xPC90aWZmOk9yaWVudGF0aW9uPjwvcmRmOkRlc2NyaXB0aW9uPjwvcmRmOlJERj48L3g6eG1wbWV0YT4NCjw/eHBhY2tldCBlbmQ9J3cnPz4slJgLAAAFd0lEQVR4Xu3YMWpbQRhG0ZGdwqAVJqQzRsYIL8aoSUgppKUJvIaYl346+91Csc+Bab52msu/GWMsAwCAzM08AACwjsACAIgJLACAmMACAIgJLACAmMACAIgJLACAmMACAIgJLACAmMACAIgJLACAmMACAIgJLACAmMACAIgJLACAmMACAIgJLACAmMACAIgJLACA2GaMsczjGsfTeZ4AAK7azx/f52kVFywAgJjAAgCICSwAgJjAAgCICSwAgJjAAgCICSwAgJjAAgCICSwAgJjAAgCICSwAgJjAAgCICSwAgJjAAgCICSwAgJjAAgCICSwAgJjAAgCICSwAgJjAAgCICSwAgJjAAgCICSwAgJjAAgCICSwAgJjAAgCICSwAgJjAAgCICSwAgJjAAgCICSwAgJjAAgCICSwAgJjAAgCICSwAgJjAAgCICSwAgJjAAgCICSwAgNhmjLHM4xrH03mersrl8jpPAHzA4fAyT7zDfv88T5/adns3T1fl6XE3T6u4YAEAxAQWAEBMYAEAxAQWAEBMYAEAxAQWAEBMYAEAxAQWAEBMYAEAxAQWAEBMYAEAxAQWAEBMYAEAxAQWAEBMYAEAxAQWAEBMYAEAxAQWAEBMYAEAxDZjjGUe1ziezvN0VS6X13kC+BIOh5d5WmW/f54n3uGr/cd2ezdPq9zefpunVXYP9/O0igsWAEBMYAEAxAQWAEBMYAEAxAQWAEBMYAEAxAQWAEBMYAEAxAQWAEBMYAEAxAQWAEBMYAEAxAQWAEBMYAEAxAQWAEBMYAEAxAQWAEBMYAEAxAQWAEBMYAEAxAQWAEBMYAEAxAQWAEBMYAEAxAQWAEBMYAEAxAQWAEBMYAEAxAQWAEBMYAEAxAQWAEBMYAEAxAQWAEBMYAEAxAQWAEBMYAEAxAQWAEBMYAEAxAQWAEBMYAEA/523t7/pqwksAICYwAIAiAksAICYwAIAiAksAICYwAIAiAksAICYwAIAiAksAICYwAIAiAksAICYwAIAiAksAICYwAIAiAksAICYwAIAiAksAICYwAIAiAksAICYwAIAiAksAICYwAIAiAksAICYwAIAiAksAICYwAIAiAksAICYwAIAiAksAICYwAIAiAksAICYwAIAiAksAICYwAIAiAksAICYwAIAiAksAICYwAIAiAksAICYwAIAiAksAICYwAIAiAksAICYwAIAiAksAICYwAIAiAksAICYwAIAiAksAICYwAIAiAksAICYwAIAiAksAICYwAIAiAksAICYwAIAiAksAICYwAIAiAksAIDYZoyxzOMax9N5nq7K5fI6TwB8wOHwMk+8w37/PE+f2nZ7N09X5elxN0+ruGABAMQEFgBATGABAMQEFgBATGABAMQEFgBATGABAMQEFgBATGABAMQEFgBATGABAMQEFgBATGABAMQEFgBATGABAMQEFgBATGABAMQEFgBATGABAMQ2Y4xlHtf4/evPPAEApJabzTytsnu4n6dVXLAAAGICCwAgJrAAAGICCwAgJrAAAGICCwAgJrAAAGICCwAgJrAAAGICCwAgJrAAAGICCwAgJrAAAGICCwAgJrAAAGICCwAgJrAAAGICCwAgJrAAAGICCwAgJrAAAGICCwAgJrAAAGICCwAgJrAAAGICCwAgJrAAAGICCwAgJrAAAGICCwAgJrAAAGICCwAgJrAAAGICCwAgJrAAAGICCwAgJrAAAGICCwAgJrAAAGKbMcYyjwAAfJwLFgBATGABAMQEFgBATGABAMQEFgBATGABAMQEFgBATGABAMQEFgBATGABAMQEFgBATGABAMQEFgBATGABAMQEFgBATGABAMQEFgBATGABAMQEFgBA7B+FCmkzoT9HAAAAAABJRU5ErkJggg==);
+    background-size: 100% 100%;
+    transition: background 0.3s ease;
+    /* REMOVED: overflow: hidden; so the thumb doesn't get clipped! */
+}
+
+/* Teal Overlay + Active Line */
+.pixelSlider::after {
+    content: "";
+    position: absolute;
+    top: 4px;
+    left: 4px;
+    right: 4px;
+    bottom: 4px;
+    /* Teal gradient PLUS a white vertical line centered in the teal area */
+    background:
+        linear-gradient(90deg, transparent 40%, #ffffff 40%, #ffffff 60%, transparent 60%),
+        /* The Line */
+        linear-gradient(180deg, #b0f2ff 0%, #00ced1 100%);
+    /* The Teal Gradient */
+    background-size: 10px 12px, 100% 100%;
+    /* Line size vs Background size */
+    background-repeat: no-repeat;
+    background-position: 8px center, center;
+    /* Position the line specifically in the left "on" area */
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    z-index: 1;
+}
+
+/* Show teal overlay when checked */
+.pixelToggle:checked+.pixelSlider::after {
+    opacity: 1;
+}
+
+/* Swiper (Thumb) */
+.pixelSlider:before {
+    box-sizing: border-box;
+    position: absolute;
+    content: "";
+    height: 32px;
+    width: 28px;
+    bottom: -3px;
+    /* FIXED: Centers the 32px thumb vertically over the 26px track */
+    left: 0;
+    background: url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAARgAAAFACAYAAABnU2MWAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsEAAA7BAbiRa+0AAAGHaVRYdFhNTDpjb20uYWRvYmUueG1wAAAAAAA8P3hwYWNrZXQgYmVnaW49J++7vycgaWQ9J1c1TTBNcENlaGlIenJlU3pOVGN6a2M5ZCc/Pg0KPHg6eG1wbWV0YSB4bWxuczp4PSJhZG9iZTpuczptZXRhLyI+PHJkZjpSREYgeG1sbnM6cmRmPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5LzAyLzIyLXJkZi1zeW50YXgtbnMjIj48cmRmOkRlc2NyaXB0aW9uIHJkZjphYm91dD0idXVpZDpmYWY1YmRkNS1iYTNkLTExZGEtYWQzMS1kMzNkNzUxODJmMWIiIHhtbG5zOnRpZmY9Imh0dHA6Ly9ucy5hZG9iZS5jb20vdGlmZi8xLjAvIj48dGlmZjpPcmllbnRhdGlvbj4xPC90aWZmOk9yaWVudGF0aW9uPjwvcmRmOkRlc2NyaXB0aW9uPjwvcmRmOlJERj48L3g6eG1wbWV0YT4NCjw/eHBhY2tldCBlbmQ9J3cnPz4slJgLAAAEZElEQVR4Xu3cMWojURBF0WpHQpYXOxivYjBerGWhrCf/aesOFpwTvgVcKqptZvYBCLysA8CjCAyQERggIzBARmCAjMAAGYEBMgIDZAQGyAgMkBEYICMwQEZggIzAABmBATICA2QEBsgIDJARGCCzPfon7/V2XyfgSVzOp3U6xAUDZAQGyAgMkBEYICMwQEZggIzAABmBATICA2QEBsgIDJARGCAjMEBGYICMwAAZgQEyAgNkBAbICAyQERggIzBARmCAjMAAGYEBMgIDZAQGyAgMkBEYICMwQEZggIzAABmBATICA2QEBsgIDJARGCAjMEBGYICMwACZbWb2dTzieruv06/y/f2zTvDfvL29rtOvcjmf1ukQFwyQERggIzBARmCAjMAAGYEBMgIDZAQGyAgMkBEYICMwQEZggIzAABmBATICA2QEBsgIDJARGCAjMEBGYICMwAAZgQEyAgNkBAbICAyQERggIzBARmCAjMAAGYEBMgIDZAQGyAgMkBEYICMwQEZggIzAABmBATICA2QEBsgIDJARGCAjMEBGYICMwAAZgQEyAgNkBAbICAyQERggIzBARmCAjMAAGYEBMgIDZAQGyAgMkBEYICMwQEZggIzAABmBATICA2QEBsgIDJARGCAjMEBGYICMwAAZgQEyAgNkBAbICAyQERggIzBARmCAjMAAGYEBMgIDZAQGyAgMkBEYICMwQEZggIzAABmBATICA2QEBsgIDJARGCAjMEBGYICMwAAZgQEyAgNkBAbICAyQERggIzBARmCAjMAAGYEBMgIDZAQGyAgMkBEYICMwQEZggIzAABmBATICA2S2mdnX8Yjr7b5OwJO4nE/rdIgLBsgIDJARGCAjMEBGYICMwAAZgQEyAgNkBAbICAyQERggIzBARmCAjMAAGYEBMgIDZAQGyAgMkBEYICMwQEZggIzAABmBATICA2QEBsgIDJARGCAjMEBGYICMwAAZgQEyAgNkBAbICAyQERggIzBARmCAjMAAGYEBMtvM7Ot4xN/Pr3UCnsTH+591OsQFA2QEBsgIDJARGCAjMEBGYICMwAAZgQEyAgNkBAbICAyQERggIzBARmCAjMAAGYEBMgIDZAQGyAgMkBEYICMwQEZggIzAABmBATICA2QEBsgIDJARGCAjMEBGYICMwAAZgQEyAgNkBAbICAyQERggIzBARmCAjMAAmW1m9nUEeAQXDJARGCAjMEBGYICMwAAZgQEyAgNkBAbICAyQERggIzBARmCAjMAAGYEBMgIDZAQGyAgMkBEYICMwQOYfxHAXdb5V9+0AAAAASUVORK5CYII=);
+    background-size: 28px 32px;
+    transition: 0.3s;
+    z-index: 2;
+}
+
+/* Movement when checked */
+.pixelToggle:checked+.pixelSlider:before {
+    transform: translateX(32px);
 }

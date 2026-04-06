@@ -64,7 +64,16 @@ export function BuilderNavBar() {
   return (
     <header className={navStyles.header}>
       <div className={navStyles.container}>
-        <div className={navStyles.left} style={cinematicStyle}>
+        <div className={navStyles.left} style={{ ...cinematicStyle, position: 'relative' }}>
+          {/* Subtle contrast glow for left side */}
+          <div style={{
+            position: 'absolute',
+            inset: '-15px -20px',
+            background: 'radial-gradient(ellipse at center, rgba(0,0,0,0.25) 0%, rgba(0,0,0,0) 80%)',
+            pointerEvents: 'none',
+            zIndex: -1,
+            filter: 'blur(12px)'
+          }} />
           <button type="button" className={navStyles.menuButton} aria-label="Menu">
             <img src={hamburgerIcon} alt="" className={navStyles.menuIcon} />
           </button>
@@ -73,17 +82,36 @@ export function BuilderNavBar() {
         </div>
 
         {/* Center logo */}
-        <div className={navStyles.center} style={cinematicStyle}>
+        <div className={navStyles.center} style={{ ...cinematicStyle, position: 'relative' }}>
+          {/* Subconscious contrast for center logo */}
+          <div style={{
+            position: 'absolute',
+            inset: '-10px -20px',
+            background: 'radial-gradient(ellipse at center, rgba(0,0,0,0.3) 0%, rgba(0,0,0,0) 80%)',
+            pointerEvents: 'none',
+            zIndex: -1,
+            filter: 'blur(10px)'
+          }} />
           <Link to="/builder" className={navStyles.logo} aria-label="Builder Home">
             <img src={tornadoLogo} alt="Volturiano Builder" className={navStyles.logoImg} />
           </Link>
         </div>
 
-        <div className={navStyles.right}>
+        <div className={navStyles.right} style={{ ...cinematicStyle, position: 'relative' }}>
+          {/* Subtle contrast glow for better readability against light videos */}
+          <div style={{
+            position: 'absolute',
+            inset: '-20px -30px',
+            background: 'radial-gradient(ellipse at center, rgba(0,0,0,0.45) 0%, rgba(0,0,0,0) 75%)',
+            pointerEvents: 'none',
+            zIndex: -1,
+            filter: 'blur(15px)'
+          }} />
+
           {/* Credit Badge — only show when authenticated */}
           {isAuthenticated && !loading && <CreditBadge isCinematic={isCinematic} />}
-
-          <div className={navStyles.account} ref={dropdownRef} style={cinematicStyle}>
+          
+          <div className={navStyles.account} ref={dropdownRef}>
             {loading ? (
               /* Loading state placeholder */
               <div style={{
@@ -294,42 +322,7 @@ function CreditBadge({ isCinematic }) {
         }
       `}</style>
       
-      {/* Premium Upgrade CTA */}
-      <button
-        onClick={() => navigate("/builder/billing")}
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          padding: '5px 18px',
-          height: '28px',
-          background: 'black',
-          border: '1px solid #555',
-          borderRadius: '6px',
-          fontSize: '11px',
-          fontWeight: '500',
-          fontFamily: "'Inter', sans-serif",
-          cursor: 'pointer',
-          ...cinematicFadeOutStyle,
-        }}
-        onMouseEnter={(e) => {
-          e.currentTarget.style.background = '#222';
-          e.currentTarget.style.borderColor = '#777';
-        }}
-        onMouseLeave={(e) => {
-          e.currentTarget.style.background = 'black';
-          e.currentTarget.style.borderColor = '#555';
-        }}
-      >
-        <span style={{
-          background: 'linear-gradient(90deg, #ffffff, #888888)',
-          WebkitBackgroundClip: 'text',
-          WebkitTextFillColor: 'transparent',
-          backgroundClip: 'text',
-        }}>
-          {plan && plan !== 'free' ? (plan.charAt(0).toUpperCase() + plan.slice(1)) : 'Upgrade'}
-        </span>
-      </button>
+
 
       {/* Credit Counter Area */}
       <div
@@ -341,6 +334,7 @@ function CreditBadge({ isCinematic }) {
       <div
         id="credit-badge"
         className={isDeducting ? 'anim-deduct' : ''}
+        onClick={() => navigate("/builder/billing")}
         style={{
           display: 'flex',
           alignItems: 'center',
@@ -348,7 +342,11 @@ function CreditBadge({ isCinematic }) {
           padding: '4px 8px',
           gap: '6px', /* Added gap for icon */
           cursor: 'pointer',
-          transition: 'transform 0.2s',
+          transition: 'all 0.2s',
+          transform: showTooltip ? 'scale(1.05)' : 'scale(1)',
+          background: showTooltip ? 'rgba(255, 255, 255, 0.05)' : 'transparent',
+          borderRadius: '6px',
+          ...cinematicFadeOutStyle,
         }}
       >
         <img 

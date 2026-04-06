@@ -3025,7 +3025,7 @@ Just position the new components in a logical order (e.g. after the Hero or befo
                             {thumb ? (
                               <img src={thumb} alt={comp.name} className={styles.compThumbnail} />
                             ) : (
-                              <div className={styles.compIcon}><FiLayers size={14} /></div>
+                              <div className={styles.compIcon}><FiLayers size={16} /></div>
                             )}
                             <span className={styles.compName}>{comp.name}</span>
                             <button
@@ -3066,16 +3066,16 @@ Just position the new components in a logical order (e.g. after the Hero or befo
                       onClick={() => fileInputRef.current?.click()}
                       title="Upload images"
                     >
-                      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#ffffff" strokeWidth="1.5"><path d="M12 5v14M5 12h14" /></svg>
+                      <svg width="25" height="25" viewBox="0 0 24 24" fill="none" stroke="#ffffff" strokeWidth="2.5"><path d="M12 5v14M5 12h14" /></svg>
                     </button>
                     <div className={styles.geminiIcon} title={`Current Engine: ${aiModel}`} ref={modelDropdownRef}>
                       <div onClick={() => setModelDropdownOpen(!modelDropdownOpen)} style={{ cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
                         {aiModel.includes('gpt') ? (
-                          <OpenAIIcon width="22" height="22" style={{ color: 'white' }} />
+                          <OpenAIIcon width="24" height="24" style={{ color: 'white' }} />
                         ) : aiModel.includes('claude') ? (
-                          <AnthropicIcon width="20" height="20" />
+                          <AnthropicIcon width="22" height="22" />
                         ) : (
-                          <GeminiIcon width="20" height="20" />
+                          <GeminiIcon width="22" height="22" />
                         )}
                       </div>
 
@@ -3092,21 +3092,21 @@ Just position the new components in a logical order (e.g. after the Hero or befo
                               className={`${styles.modelOption} ${aiModel.includes('google/gemini-3.1-pro-preview') ? styles.modelOptionActive : ''}`}
                               onClick={() => { setAiModel('google/gemini-3.1-pro-preview'); setModelDropdownOpen(false); }}
                             >
-                              <GeminiIcon width="20" height="20" />
+                              <GeminiIcon width="22" height="22" />
                               <span>Gemini 3.1 Pro</span>
                             </button>
                             <button
                               className={`${styles.modelOption} ${aiModel.includes('openai/gpt-5.4') ? styles.modelOptionActive : ''}`}
                               onClick={() => { setAiModel('openai/gpt-5.4'); setModelDropdownOpen(false); }}
                             >
-                              <OpenAIIcon width="20" height="20" style={{ color: 'white' }} />
+                              <OpenAIIcon width="22" height="22" style={{ color: 'white' }} />
                               <span>GPT-5.4</span>
                             </button>
                             <button
                               className={`${styles.modelOption} ${aiModel.includes('anthropic/claude-sonnet-4-6') ? styles.modelOptionActive : ''}`}
                               onClick={() => { setAiModel('anthropic/claude-sonnet-4-6'); setModelDropdownOpen(false); }}
                             >
-                              <AnthropicIcon width="20" height="20" />
+                              <AnthropicIcon width="22" height="22" />
                               <span>Claude 4.6 Sonnet</span>
                             </button>
                           </motion.div>
@@ -3133,7 +3133,7 @@ Just position the new components in a logical order (e.g. after the Hero or befo
                       title="Manual Component Selection"
                       style={{ display: 'none' }}
                     >
-                      <FiZap size={14} />
+                      <FiZap size={16} />
                     </button>
                   </div>
                   <button onClick={sendChatMessage} disabled={loading || (!aiChatInput.trim() && pendingImages.length === 0)} className={styles.sendBtn}>
@@ -3185,7 +3185,7 @@ Just position the new components in a logical order (e.g. after the Hero or befo
                     onClick={() => setIsCommunityPopupOpen(true)}
                     title="Browse and add community components"
                   >
-                    <FiPlus size={14} className={styles.addComponentsBtnIcon} />
+                    <FiPlus size={16} className={styles.addComponentsBtnIcon} />
                     <span>Add Components</span>
                   </button>
 
@@ -3199,7 +3199,7 @@ Just position the new components in a logical order (e.g. after the Hero or befo
                       disabled={activeTab !== 'preview'}
                       title="Change preview viewport"
                     >
-                      {React.createElement(VIEWPORT_SIZES[previewMode].icon, { size: 14 })}
+                      {React.createElement(VIEWPORT_SIZES[previewMode].icon, { size: 16 })}
                       <FiChevronDown size={12} />
                     </button>
                     {viewportDropdownOpen && (
@@ -3210,7 +3210,7 @@ Just position the new components in a logical order (e.g. after the Hero or befo
                             className={`${styles.viewportOption} ${previewMode === key ? styles.viewportOptionActive : ''}`}
                             onClick={() => { setPreviewMode(key); setViewportRotated(false); setViewportDropdownOpen(false); }}
                           >
-                            <Icon size={14} />
+                            <Icon size={16} />
                             <span>{label}</span>
                           </button>
                         ))}
@@ -3226,7 +3226,7 @@ Just position the new components in a logical order (e.g. after the Hero or befo
                               }}
                               title="Rotate viewport orientation"
                             >
-                              <FiRotateCw size={14} />
+                              <FiRotateCw size={16} />
                               <span>Rotate</span>
                             </button>
                           </>
@@ -3246,7 +3246,7 @@ Just position the new components in a logical order (e.g. after the Hero or befo
                     disabled={activeTab !== 'preview' || !sandboxData}
                     title="Refresh preview"
                   >
-                    <FiRefreshCw size={14} />
+                    <FiRefreshCw size={16} />
                   </button>
 
                   {/* Open in new tab */}
@@ -3256,7 +3256,7 @@ Just position the new components in a logical order (e.g. after the Hero or befo
                     disabled={!sandboxData}
                     title="Open preview in new tab"
                   >
-                    <FiExternalLink size={14} />
+                    <FiExternalLink size={16} />
                   </button>
 
                   {/* Download */}
@@ -3266,7 +3266,7 @@ Just position the new components in a logical order (e.g. after the Hero or befo
                     disabled={!sandboxData || isDownloading}
                     title="Download project as ZIP"
                   >
-                    <FiDownload size={14} />
+                    <FiDownload size={16} />
                     <span className={styles.downloadBtnText}>
                       {isDownloading ? 'Preparing...' : 'Download'}
                     </span>

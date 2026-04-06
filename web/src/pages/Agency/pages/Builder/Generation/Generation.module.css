@@ -592,8 +592,8 @@ svg.shimmerText {
   cursor: pointer;
   transition: all 0.2s;
   padding: 0;
-  width: 28px;
-  height: 28px;
+  width: 32px;
+  height: 32px;
 }
 
 .actionBtn:hover {

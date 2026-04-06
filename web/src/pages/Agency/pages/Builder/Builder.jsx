@@ -16,6 +16,7 @@ import { useRouteTransition } from '../../../../contexts/RouteTransitionContext'
 import CommunitySelectorPopup from './Generation/CommunitySelectorPopup';
 import AuthGateModal from '../../../../components/Modals/AuthGateModal';
 import CongratsModal from './Dashboard/components/CongratsModal';
+import gradientCornerImage from './Dashboard/Assets/GradientCornerOne.png';
 
 // Import assets (Reference page thumbnails)
 import scaleIntelligenceThumbnail from '../../../../assets/ScaleIntelegenceMocup.png';
@@ -50,21 +51,6 @@ const TEMPLATE_METADATA = {
     },
 };
 
-const DemoCard = ({ src }) => (
-    <div className={styles.demoCard}>
-        <div className={styles.cardFallback}></div>
-        <img
-            src={src}
-            className={styles.cardImage}
-            alt="Interface Preview"
-            loading="lazy"
-        />
-        <div className={styles.cardOverlay}></div>
-    </div>
-);
-
-
-
 const BuilderContent = () => {
     const location = useLocation();
     const navigate = useNavigate();
@@ -73,7 +59,7 @@ const BuilderContent = () => {
     // Phase S11: Handle incoming selected components from Hub
     useEffect(() => {
         const params = new URLSearchParams(location.search);
-        
+
         // Handle project loading
         const projectId = params.get('project');
         if (projectId) {
@@ -104,7 +90,7 @@ const BuilderContent = () => {
                 name: `Component ${id.substring(0, 4)}`, // Fallback name
                 metadata: {}
             }));
-            
+
             setSelectedComponents(prev => {
                 const existingIds = new Set(prev.map(c => c.id));
                 const newComps = genericComps.filter(c => !existingIds.has(c.id));
@@ -115,7 +101,7 @@ const BuilderContent = () => {
             navigate('/builder', { replace: true, state: {} });
         }
     }, [location.search, navigate, location.state]);
-    
+
     const { isAuthenticated, profile, loading: authLoading, refreshProfile } = useBuilderAuth();
     const { startTransition } = useRouteTransition();
     const { refreshCredits } = useCredits();
@@ -126,7 +112,7 @@ const BuilderContent = () => {
     const [premiumMode, setPremiumMode] = useState(
         profile?.preferred_mode || localStorage.getItem('volturiano_builder_mode') || 'hybrid'
     );
-    
+
     useEffect(() => {
         if (profile?.preferred_mode) {
             setPremiumMode(profile.preferred_mode);
@@ -207,13 +193,13 @@ const BuilderContent = () => {
     const handleCloseCongrats = async () => {
         setShowCongrats(false);
         setPopupDismissed(true); // Immediate session guard
-        
+
         if (profile?.id) {
             const { error } = await builderSupabase
                 .from('profiles')
                 .update({ has_received_bonus_popup: true })
                 .eq('id', profile.id);
-            
+
             if (!error) {
                 // Force a profile refresh to sync the context state
                 refreshProfile();
@@ -288,23 +274,6 @@ const BuilderContent = () => {
             handleSubmit(e);
         }
     };
-
-    // Use specific reference thumbnails as requested
-    const mainImages = [
-        scaleIntelligenceThumbnail,
-        europaBageriThumbnail,
-        furgloveThumbnail,
-        euroTaxiThumbnail,
-        solarExampleThumbnail,
-        mathornanThumbnail,
-        chockladThumbnail,
-        platformThumbnail,
-        qyvoraClimateThumbnail,
-        rivelonThumbnail
-    ];
-
-    // Duplicate twice for smoother infinite loop since we have more content now
-    const allImages = [...mainImages, ...mainImages];
 
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isModelDropdownOpen, setIsModelDropdownOpen] = useState(false);
@@ -426,14 +395,14 @@ const BuilderContent = () => {
         if (billingStatus === 'success') {
             showNotification("✅ Payment successful! Your credits have been added.");
             refreshCredits();
-            
+
             params.delete('billing');
             params.delete('session_id');
             const newSearch = params.toString();
             window.history.replaceState(null, '', location.pathname + (newSearch ? `?${newSearch}` : ''));
         } else if (billingStatus === 'cancelled') {
             showNotification("Payment was cancelled. No charges were made.");
-            
+
             params.delete('billing');
             const newSearch = params.toString();
             window.history.replaceState(null, '', location.pathname + (newSearch ? `?${newSearch}` : ''));
@@ -527,7 +496,7 @@ const BuilderContent = () => {
             setShowAuthModal(true);
             return;
         }
-        
+
         if (isSubmitting) return;
         setIsSubmitting(true);
 
@@ -540,215 +509,213 @@ const BuilderContent = () => {
             builderRoot.style.filter = 'blur(20px)';
         }
 
-        startTransition('/builder/generation', { 
-            templateId, 
-            prompt: "I want to use this template" 
+        startTransition('/builder/generation', {
+            templateId,
+            prompt: "I want to use this template"
         });
     };
 
     return (
         <>
-        <div className={styles.outerWrapper}>
-            <div className={styles.pageContainer}>
-                {/* Background Video */}
-                <video
-                    className={styles.heroVideo}
-                    autoPlay
-                    loop
-                    muted
-                    playsInline
-                >
-                    <source src={heroVideo} type="video/mp4" />
-                </video>
+            <div className={styles.outerWrapper}>
 
-                {/* Main Content Overlay */}
-                <div className={styles.mainContent}>
 
-                    {/* Title Section */}
-                    <div className={styles.titleWrapper}>
-                        <motion.div
-                            initial={{ opacity: 0, y: -18 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ duration: 1 }}
-                        >
-                            <h1 className={styles.title1}>Volturiano</h1>
-                            <h2 className={styles.title2}>Builder</h2>
-                        </motion.div>
-                    </div>
-
-                    {/* Maestro Component (Marquee + Input) */}
-                    <motion.div
-                        className={styles.maestroWrapper}
-                        initial={{ opacity: 0, scale: 0.95 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        transition={{ duration: 1, delay: 0.3 }}
+                <div className={styles.pageContainer}>
+                    {/* Background Video */}
+                    <video
+                        className={styles.heroVideo}
+                        autoPlay
+                        loop
+                        muted
+                        playsInline
                     >
-                        <div className={styles.fadeUpdatesLeft}></div>
-                        <div className={styles.fadeUpdatesRight}></div>
+                        <source src={heroVideo} type="video/mp4" />
+                    </video>
 
-                        {/* Floating Input Centered over Marquee */}
-                        <div className={styles.floatingInputContainer}>
-                            <form
-                                ref={inputFormRef}
-                                onSubmit={handleSubmit}
-                                className={`${styles.inputForm} ${(images.length > 0 || selectedComponents.length > 0) ? styles.extended : ''} ${isViewportDragging ? styles.isDragging : ''}`}
-                                onPaste={handlePaste}
+
+                    {/* Main Content Overlay */}
+                    <div className={styles.mainContent}>
+
+                        {/* Title Section */}
+                        <div className={styles.titleWrapper}>
+                            <motion.div
+                                initial={{ opacity: 0, y: -18 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ duration: 1 }}
                             >
-                                <div className={styles.inputWithPreviews}>
-                                    {/* Community Component Previews */}
-                                    {selectedComponents.length > 0 && (
-                                        <div className={styles.communityPreviews}>
-                                            <div className={styles.communityItemsRow}>
-                                                {selectedComponents.map((comp, index) => {
-                                                    const thumbPath = comp.thumbnail_url || comp.preview_image_url || comp.image_url || comp.image || (comp.metadata && comp.metadata.thumbnail_url);
-                                                    const thumb = getThumbnailUrl(thumbPath);
-                                                    return (
-                                                        <div 
-                                                            key={`${comp.id}-${index}`} 
-                                                            className={`${styles.communityPreviewItem} ${strictMode ? styles.communityPreviewItemActive : ''}`}
-                                                        >
-                                                            {thumb ? (
-                                                                <img src={thumb} alt={comp.name} />
-                                                            ) : (
-                                                                <div className={styles.compIconFallback}><FiLayers size={20} /></div>
-                                                            )}
-                                                            <div className={styles.compNameBadge}>{comp.name}</div>
-                                                            <button
-                                                                type="button"
-                                                                className={styles.removeComponentBtn}
-                                                                onClick={() => removeComponent(comp.id)}
-                                                                title="Remove component"
+                                <h1 className={styles.title1}>Volturiano</h1>
+                                <h2 className={styles.title2}>Builder</h2>
+                            </motion.div>
+                        </div>
+
+                        {/* Maestro Component (Marquee + Input) */}
+                        <motion.div
+                            className={styles.maestroWrapper}
+                            initial={{ opacity: 0, scale: 0.95 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            transition={{ duration: 1, delay: 0.3 }}
+                        >
+                            {/* Floating Input Centered over Marquee */}
+                            <div className={styles.floatingInputContainer}>
+                                <form
+                                    ref={inputFormRef}
+                                    onSubmit={handleSubmit}
+                                    className={`${styles.inputForm} ${(images.length > 0 || selectedComponents.length > 0) ? styles.extended : ''} ${isViewportDragging ? styles.isDragging : ''}`}
+                                    onPaste={handlePaste}
+                                >
+                                    <div className={styles.inputWithPreviews}>
+                                        {/* Community Component Previews */}
+                                        {selectedComponents.length > 0 && (
+                                            <div className={styles.communityPreviews}>
+                                                <div className={styles.communityItemsRow}>
+                                                    {selectedComponents.map((comp, index) => {
+                                                        const thumbPath = comp.thumbnail_url || comp.preview_image_url || comp.image_url || comp.image || (comp.metadata && comp.metadata.thumbnail_url);
+                                                        const thumb = getThumbnailUrl(thumbPath);
+                                                        return (
+                                                            <div
+                                                                key={`${comp.id}-${index}`}
+                                                                className={`${styles.communityPreviewItem} ${strictMode ? styles.communityPreviewItemActive : ''}`}
                                                             >
-                                                                ×
-                                                            </button>
-                                                        </div>
-                                                    );
-                                                })}
-                                            </div>
-
-                                            <button
-                                                type="button"
-                                                className={`${styles.strictModeToggle} ${strictMode ? styles.strictModeToggleActive : ''}`}
-                                                onClick={() => setStrictMode(!strictMode)}
-                                                title="If active, AI will only use these components without adding new ones."
-                                            >
-                                                <img src={weirdButtonGradient} alt="" className={styles.btnGradientOverlay} />
-                                                <span>Only use these</span>
-                                            </button>
-                                        </div>
-                                    )}
-
-                                    {images.length > 0 && (
-                                        <div className={styles.imagePreviews} data-count={images.length}>
-                                            {images.map((img, idx) => (
-                                                <div key={idx} className={styles.previewItem}>
-                                                    <img src={img} alt="preview" />
-                                                    <button
-                                                        type="button"
-                                                        className={styles.removeImgBtn}
-                                                        onClick={() => removeImage(idx)}
-                                                    >
-                                                        ×
-                                                    </button>
+                                                                {thumb ? (
+                                                                    <img src={thumb} alt={comp.name} />
+                                                                ) : (
+                                                                    <div className={styles.compIconFallback}><FiLayers size={20} /></div>
+                                                                )}
+                                                                <div className={styles.compNameBadge}>{comp.name}</div>
+                                                                <button
+                                                                    type="button"
+                                                                    className={styles.removeComponentBtn}
+                                                                    onClick={() => removeComponent(comp.id)}
+                                                                    title="Remove component"
+                                                                >
+                                                                    ×
+                                                                </button>
+                                                            </div>
+                                                        );
+                                                    })}
                                                 </div>
-                                            ))}
-                                        </div>
-                                    )}
-                                    <textarea
-                                        ref={textareaRef}
-                                        value={inputValue}
-                                        onChange={handleInput}
-                                        onKeyDown={handleKeyDown}
-                                        placeholder={placeholderText}
-                                        className={styles.textInput}
-                                        disabled={isSubmitting}
-                                        rows={1}
-                                    />
-                                </div>
-                                <div className={styles.actionButtons}>
-                                    <div style={{ flex: 1 }} />
 
-                                    <input
-                                        type="file"
-                                        ref={fileInputRef}
-                                        style={{ display: 'none' }}
-                                        multiple
-                                        accept="image/*"
-                                        onChange={(e) => processFiles(e.target.files)}
-                                        disabled={isSubmitting}
-                                    />
-                                    <button
-                                        type="button"
-                                        className={styles.iconButton}
-                                        onClick={() => fileInputRef.current?.click()}
-                                        disabled={isSubmitting}
-                                    >
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14" /><path d="M12 5v14" /></svg>
-                                    </button>
-
-                                    {/* Model Selector Dropdown */}
-                                    <div className={styles.modelSelectorContainer}>
-                                        <button
-                                            type="button"
-                                            className={styles.modelSelectorButton}
-                                            onClick={() => !isSubmitting && setIsModelDropdownOpen(!isModelDropdownOpen)}
-                                            data-active={isModelDropdownOpen}
-                                            title={`Select AI Model (Current: ${selectedModel})`}
-                                            disabled={isSubmitting}
-                                        >
-                                            <div className={styles.activeModelIconWrapper}>
-                                                {currentModelIcon}
-                                            </div>
-                                        </button>
-
-                                        <AnimatePresence>
-                                            {isModelDropdownOpen && (
-                                                <motion.div
-                                                    className={styles.modelDropdown}
-                                                    initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                                                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                                                    exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                                                    transition={{ duration: 0.2, ease: "easeOut" }}
+                                                <button
+                                                    type="button"
+                                                    className={`${styles.strictModeToggle} ${strictMode ? styles.strictModeToggleActive : ''}`}
+                                                    onClick={() => setStrictMode(!strictMode)}
+                                                    title="If active, AI will only use these components without adding new ones."
                                                 >
-                                                    {models.map((model) => (
-                                                        <button
-                                                            key={model.id}
-                                                            type="button"
-                                                            className={`${styles.modelOption} ${selectedModel === model.id ? styles.modelOptionActive : ''}`}
-                                                            onClick={() => {
-                                                                setSelectedModel(model.id);
-                                                                setIsModelDropdownOpen(false);
-                                                            }}
-                                                        >
-                                                            <span className={styles.modelOptionLeft}>
-                                                                <span className={styles.modelOptionIcon}>{model.icon}</span>
-                                                                <span className={styles.modelOptionLabel}>{model.label}</span>
-                                                            </span>
-                                                            {selectedModel === model.id && (
-                                                                <svg className={styles.modelCheck} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                                                            )}
-                                                        </button>
-                                                    ))}
-                                                </motion.div>
-                                            )}
-                                        </AnimatePresence>
-                                    </div>
+                                                    <img src={weirdButtonGradient} alt="" className={styles.btnGradientOverlay} />
+                                                    <span>Only use these</span>
+                                                </button>
+                                            </div>
+                                        )}
 
-                                    <div className={styles.supabaseIconWrapper}>
+                                        {images.length > 0 && (
+                                            <div className={styles.imagePreviews} data-count={images.length}>
+                                                {images.map((img, idx) => (
+                                                    <div key={idx} className={styles.previewItem}>
+                                                        <img src={img} alt="preview" />
+                                                        <button
+                                                            type="button"
+                                                            className={styles.removeImgBtn}
+                                                            onClick={() => removeImage(idx)}
+                                                        >
+                                                            ×
+                                                        </button>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+                                        <textarea
+                                            ref={textareaRef}
+                                            value={inputValue}
+                                            onChange={handleInput}
+                                            onKeyDown={handleKeyDown}
+                                            placeholder={placeholderText}
+                                            className={styles.textInput}
+                                            disabled={isSubmitting}
+                                            rows={1}
+                                        />
+                                    </div>
+                                    <div className={styles.actionButtons}>
+                                        <input
+                                            type="file"
+                                            ref={fileInputRef}
+                                            style={{ display: 'none' }}
+                                            multiple
+                                            accept="image/*"
+                                            onChange={(e) => processFiles(e.target.files)}
+                                            disabled={isSubmitting}
+                                        />
                                         <button
                                             type="button"
                                             className={styles.iconButton}
-                                            onClick={() => setIsCommunityOpen(true)}
-                                            title="Browse Community Components"
+                                            onClick={() => fileInputRef.current?.click()}
                                             disabled={isSubmitting}
                                         >
-                                            <LayoutGrid size={16} />
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="25" height="25" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14" /><path d="M12 5v14" /></svg>
                                         </button>
-                                        <div className={styles.supabaseTooltip}>Select components</div>
-                                    </div>
 
-                                    {/* Premium Mode Logic (Disabled UI) */}
-                                    {/* 
+                                        {/* Model Selector Dropdown */}
+                                        <div className={styles.modelSelectorContainer}>
+                                            <button
+                                                type="button"
+                                                className={styles.modelSelectorButton}
+                                                onClick={() => !isSubmitting && setIsModelDropdownOpen(!isModelDropdownOpen)}
+                                                data-active={isModelDropdownOpen}
+                                                title={`Select AI Model (Current: ${selectedModel})`}
+                                                disabled={isSubmitting}
+                                            >
+                                                <div className={styles.activeModelIconWrapper}>
+                                                    {currentModelIcon}
+                                                </div>
+                                            </button>
+
+                                            <AnimatePresence>
+                                                {isModelDropdownOpen && (
+                                                    <motion.div
+                                                        className={styles.modelDropdown}
+                                                        initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                                                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                                                        exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                                                        transition={{ duration: 0.2, ease: "easeOut" }}
+                                                    >
+                                                        {models.map((model) => (
+                                                            <button
+                                                                key={model.id}
+                                                                type="button"
+                                                                className={`${styles.modelOption} ${selectedModel === model.id ? styles.modelOptionActive : ''}`}
+                                                                onClick={() => {
+                                                                    setSelectedModel(model.id);
+                                                                    setIsModelDropdownOpen(false);
+                                                                }}
+                                                            >
+                                                                <span className={styles.modelOptionLeft}>
+                                                                    <span className={styles.modelOptionIcon}>{model.icon}</span>
+                                                                    <span className={styles.modelOptionLabel}>{model.label}</span>
+                                                                </span>
+                                                                {selectedModel === model.id && (
+                                                                    <svg className={styles.modelCheck} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                                                                )}
+                                                            </button>
+                                                        ))}
+                                                    </motion.div>
+                                                )}
+                                            </AnimatePresence>
+                                        </div>
+
+                                        <div className={styles.supabaseIconWrapper}>
+                                            <button
+                                                type="button"
+                                                className={styles.iconButton}
+                                                onClick={() => setIsCommunityOpen(true)}
+                                                title="Browse Community Components"
+                                                disabled={isSubmitting}
+                                            >
+                                                <LayoutGrid size={18} />
+                                            </button>
+                                            <div className={styles.supabaseTooltip}>Select components</div>
+                                        </div>
+
+                                        {/* Premium Mode Logic (Disabled UI) */}
+                                        {/* 
                                     <button
                                         type="button"
                                         className={`${styles.iconButton} ${premiumMode !== 'off' ? styles.iconBtnActive : ''}`}
@@ -767,201 +734,199 @@ const BuilderContent = () => {
                                     </button>
                                     */}
 
-                                    {/* Supabase Icon - Stage 13 */}
-                                    <div className={styles.supabaseIconWrapper}>
-                                        <button 
-                                            type="button" 
-                                            className={styles.supabaseIconButton}
-                                            onClick={() => showNotification("Supabase Integration: Available soon")}
-                                        >
-                                            <svg xmlns="http://www.w3.org/2000/svg" xmlSpace="preserve" viewBox="0 0 512 512">
-                                                <linearGradient id="supabase_new_a" x1="237.109" x2="419.106" y1="223.219" y2="146.89" gradientTransform="matrix(1 0 0 -1 0 513)" gradientUnits="userSpaceOnUse">
-                                                    <stop offset="0" style={{ stopColor: '#249361' }} />
-                                                    <stop offset="1" style={{ stopColor: '#3ecf8e' }} />
-                                                </linearGradient>
-                                                <path d="M297.6 501c-12.9 16.3-39.2 7.4-39.5-13.4L253.6 183h204.8c37.1 0 57.8 42.8 34.7 71.9z" style={{ fill: 'url(#supabase_new_a)' }} />
-                                                <linearGradient id="supabase_new_b" x1="245.829" x2="328.829" y1="411.681" y2="255.438" gradientTransform="matrix(1 0 0 -1 0 513)" gradientUnits="userSpaceOnUse">
-                                                    <stop offset="0" style={{ stopColor: '#000' }} />
-                                                    <stop offset="1" style={{ stopColor: '#000', stopOpacity: 0 }} />
-                                                </linearGradient>
-                                                <path d="M297.6 501c-12.9 16.3-39.2 7.4-39.5-13.4L253.6 183h204.8c37.1 0 57.8 42.8 34.7 71.9z" style={{ fill: 'url(#supabase_new_b)', fillOpacity: 0.2 }} />
-                                                <path d="M214.4 11c12.9-16.3 39.2-7.4 39.5 13.4l2 304.5H53.7c-37.1 0-57.8-42.8-34.7-71.9z" style={{ fill: '#3ecf8e' }} />
-                                            </svg>
-                                        </button>
-                                        <div className={styles.supabaseTooltip}>Available soon</div>
-                                    </div>
+                                        {/* Supabase Icon - Stage 13 */}
+                                        <div className={styles.supabaseIconWrapper}>
+                                            <button
+                                                type="button"
+                                                className={styles.supabaseIconButton}
+                                                onClick={() => showNotification("Supabase Integration: Available soon")}
+                                            >
+                                                <svg xmlns="http://www.w3.org/2000/svg" xmlSpace="preserve" viewBox="0 0 512 512">
+                                                    <linearGradient id="supabase_new_a" x1="237.109" x2="419.106" y1="223.219" y2="146.89" gradientTransform="matrix(1 0 0 -1 0 513)" gradientUnits="userSpaceOnUse">
+                                                        <stop offset="0" style={{ stopColor: '#249361' }} />
+                                                        <stop offset="1" style={{ stopColor: '#3ecf8e' }} />
+                                                    </linearGradient>
+                                                    <path d="M297.6 501c-12.9 16.3-39.2 7.4-39.5-13.4L253.6 183h204.8c37.1 0 57.8 42.8 34.7 71.9z" style={{ fill: 'url(#supabase_new_a)' }} />
+                                                    <linearGradient id="supabase_new_b" x1="245.829" x2="328.829" y1="411.681" y2="255.438" gradientTransform="matrix(1 0 0 -1 0 513)" gradientUnits="userSpaceOnUse">
+                                                        <stop offset="0" style={{ stopColor: '#000' }} />
+                                                        <stop offset="1" style={{ stopColor: '#000', stopOpacity: 0 }} />
+                                                    </linearGradient>
+                                                    <path d="M297.6 501c-12.9 16.3-39.2 7.4-39.5-13.4L253.6 183h204.8c37.1 0 57.8 42.8 34.7 71.9z" style={{ fill: 'url(#supabase_new_b)', fillOpacity: 0.2 }} />
+                                                    <path d="M214.4 11c12.9-16.3 39.2-7.4 39.5 13.4l2 304.5H53.7c-37.1 0-57.8-42.8-34.7-71.9z" style={{ fill: '#3ecf8e' }} />
+                                                </svg>
+                                            </button>
+                                            <div className={styles.supabaseTooltip}>Available soon</div>
+                                        </div>
 
-                                    <button
-                                        type="submit"
-                                        className={styles.submitButton}
-                                        disabled={isSubmitting}
+                                        <div style={{ flex: 1 }} />
+
+                                        <button
+                                            type="submit"
+                                            className={`${styles.submitButton} ${inputValue.trim() ? styles.hasText : ''}`}
+                                            disabled={isSubmitting}
+                                        >
+                                            {isSubmitting ? (
+                                                <div className={styles.suspenseDot} />
+                                            ) : (
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m18 15-6-6-6 6" /></svg>
+                                            )}
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+                        </motion.div>
+
+
+                    </div>
+                </div>
+
+
+
+                {/* ─── Template Selector Section (outside hero) ─── */}
+                {templates.length > 0 && (
+                    <div className={styles.templateSection}>
+                        <div className={styles.templateSectionInner}>
+                            <motion.div
+                                initial={{ opacity: 0, y: 30 }}
+                                whileInView={{ opacity: 1, y: 0 }}
+                                transition={{ duration: 0.8 }}
+                                viewport={{ once: true }}
+                                className={styles.templateSectionHeader}
+                            >
+                                <h2 className={styles.templateSectionTitle}>Start with a Template</h2>
+                            </motion.div>
+
+                            <div className={styles.templateGrid}>
+                                {templates.map((tmpl, idx) => (
+                                    <motion.div
+                                        key={tmpl.templateId}
+                                        initial={{ opacity: 0, y: 40 }}
+                                        whileInView={{ opacity: 1, y: 0 }}
+                                        transition={{ duration: 0.6, delay: idx * 0.1 }}
+                                        viewport={{ once: true }}
+                                        className={styles.templateGridCard}
                                     >
-                                        {isSubmitting ? (
-                                            <div className={styles.suspenseDot} />
-                                        ) : (
-                                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M22 2L11 13" /><path d="M22 2L15 22L11 13L2 9L22 2Z" /></svg>
-                                        )}
-                                    </button>
-                                </div>
-                            </form>
+                                        <div className={styles.templateGridThumb}>
+                                            <img
+                                                src={TEMPLATE_METADATA[tmpl.templateId]?.thumbnail || platformThumbnail}
+                                                alt={tmpl.name}
+                                                className={styles.templateGridImage}
+                                            />
+                                            <div className={styles.templateGridOverlay} />
+
+                                            <div className={styles.templateCardActions}>
+                                                <button
+                                                    className={`${styles.templateActionBtn} ${styles.useTemplateBtn}`}
+                                                    onClick={() => handleTemplateSelect(tmpl.templateId)}
+                                                >
+                                                    Use Template
+                                                </button>
+                                                {TEMPLATE_METADATA[tmpl.templateId]?.url && (
+                                                    <button
+                                                        className={`${styles.templateActionBtn} ${styles.viewSiteBtn}`}
+                                                        onClick={() => window.open(TEMPLATE_METADATA[tmpl.templateId].url, '_blank')}
+                                                    >
+                                                        View Site
+                                                    </button>
+                                                )}
+                                            </div>
+                                        </div>
+                                        <div className={styles.templateGridInfo}>
+                                            <h3 className={styles.templateGridName}>{tmpl.name}</h3>
+                                            <span className={styles.templateGridDesc}>{tmpl.description}</span>
+                                        </div>
+                                    </motion.div>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                <div className={styles.ctaSection}>
+                    <motion.div
+                        className={styles.ctaCard}
+                        initial={{ opacity: 0, y: 20 }}
+                        whileInView={{ opacity: 1, y: 0 }}
+                        viewport={{ once: true }}
+                        transition={{ duration: 0.8, ease: 'easeOut' }}
+                    >
+                        <div className={styles.ctaContent}>
+                            <h2 className={styles.ctaTitle}>Explore what others have built</h2>
+                            <p className={styles.ctaDesc}>
+                                Browse community-submitted components, get inspired, and start your next project with a head-start.
+                            </p>
                         </div>
 
-                        {/* Marquee */}
-                        <div className={styles.marqueeContainer}>
-                            {allImages.map((src, idx) => (
-                                <DemoCard key={idx} src={src} />
-                            ))}
+                        <div className={styles.ctaButtons}>
+                            <button className={styles.ctaBtnOutline} onClick={() => navigate('/community/studio')}>
+                                Submit Component
+                            </button>
+                            <button className={styles.ctaBtnPrimary} onClick={() => navigate(`/community?returnTo=${encodeURIComponent(location.pathname)}`)}>
+                                Explore Community
+                                <span className={styles.ctaBtnArrow}>
+                                    <ArrowRight size={16} />
+                                </span>
+                            </button>
                         </div>
                     </motion.div>
-
                 </div>
             </div>
 
-            {/* ─── Template Selector Section (outside hero) ─── */}
-            {templates.length > 0 && (
-                <div className={styles.templateSection}>
-                    <div className={styles.templateSectionInner}>
-                        <motion.div
-                            initial={{ opacity: 0, y: 30 }}
-                            whileInView={{ opacity: 1, y: 0 }}
-                            transition={{ duration: 0.8 }}
-                            viewport={{ once: true }}
-                            className={styles.templateSectionHeader}
-                        >
-                            <h2 className={styles.templateSectionTitle}>Start with a Template</h2>
-                        </motion.div>
+            {/* ─── Fixed Overlays (Outside scaled wrapper for perfect centering) ─── */}
+            {((isAuthenticated && profile && profile.onboarding_completed === false) || showCongrats) && (
+                <div style={{ position: 'fixed', inset: 0, background: 'rgba(0, 0, 0, 0.5)', backdropFilter: 'blur(8px)', zIndex: 999999 }}>
+                    <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <div style={{ transform: 'scale(0.95)', transformOrigin: 'center center', width: '100%', display: 'flex', justifyContent: 'center' }}>
+                            {/* Onboarding Popup for First-Time Users */}
+                            {isAuthenticated && profile && profile.onboarding_completed === false && (
+                                <OnboardingPopup />
+                            )}
 
-                        <div className={styles.templateGrid}>
-                            {templates.map((tmpl, idx) => (
-                                <motion.div
-                                    key={tmpl.templateId}
-                                    initial={{ opacity: 0, y: 40 }}
-                                    whileInView={{ opacity: 1, y: 0 }}
-                                    transition={{ duration: 0.6, delay: idx * 0.1 }}
-                                    viewport={{ once: true }}
-                                    className={styles.templateGridCard}
-                                >
-                                    <div className={styles.templateGridThumb}>
-                                        <img
-                                            src={TEMPLATE_METADATA[tmpl.templateId]?.thumbnail || platformThumbnail}
-                                            alt={tmpl.name}
-                                            className={styles.templateGridImage}
-                                        />
-                                        <div className={styles.templateGridOverlay} />
-
-                                        <div className={styles.templateCardActions}>
-                                            <button
-                                                className={`${styles.templateActionBtn} ${styles.useTemplateBtn}`}
-                                                onClick={() => handleTemplateSelect(tmpl.templateId)}
-                                            >
-                                                Use Template
-                                            </button>
-                                            {TEMPLATE_METADATA[tmpl.templateId]?.url && (
-                                                <button
-                                                    className={`${styles.templateActionBtn} ${styles.viewSiteBtn}`}
-                                                    onClick={() => window.open(TEMPLATE_METADATA[tmpl.templateId].url, '_blank')}
-                                                >
-                                                    View Site
-                                                </button>
-                                            )}
-                                        </div>
-                                    </div>
-                                    <div className={styles.templateGridInfo}>
-                                        <h3 className={styles.templateGridName}>{tmpl.name}</h3>
-                                        <span className={styles.templateGridDesc}>{tmpl.description}</span>
-                                    </div>
-                                </motion.div>
-                            ))}
+                            <CongratsModal
+                                isOpen={showCongrats}
+                                onClose={handleCloseCongrats}
+                            />
                         </div>
                     </div>
                 </div>
             )}
 
-            <div className={styles.ctaSection}>
+            {/* Phase P7: Auth Gating */}
+            <AuthGateModal
+                isOpen={showAuthModal}
+                onClose={() => setShowAuthModal(false)}
+            />
+
+            {notification && (
                 <motion.div
-                    className={styles.ctaCard}
-                    initial={{ opacity: 0, y: 20 }}
-                    whileInView={{ opacity: 1, y: 0 }}
-                    viewport={{ once: true }}
-                    transition={{ duration: 0.8, ease: 'easeOut' }}
+                    initial={{ opacity: 0, y: 20, scale: 0.95 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.95 }}
+                    className={styles.notificationPopup}
                 >
-                    <div className={styles.ctaContent}>
-                        <h2 className={styles.ctaTitle}>Explore what others have built</h2>
-                        <p className={styles.ctaDesc}>
-                            Browse community-submitted components, get inspired, and start your next project with a head-start.
-                        </p>
-                    </div>
-
-                    <div className={styles.ctaButtons}>
-                        <button className={styles.ctaBtnOutline} onClick={() => navigate('/community/studio')}>
-                            Submit Component
-                        </button>
-                        <button className={styles.ctaBtnPrimary} onClick={() => navigate(`/community?returnTo=${encodeURIComponent(location.pathname)}`)}>
-                            Explore Community
-                            <span className={styles.ctaBtnArrow}>
-                                <ArrowRight size={16} />
-                            </span>
-                        </button>
-                    </div>
+                    {!notification.includes('✅') && (
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                            <circle cx="12" cy="12" r="10" />
+                            <line x1="12" y1="8" x2="12" y2="12" />
+                            <line x1="12" y1="16" x2="12.01" y2="16" />
+                        </svg>
+                    )}
+                    {notification}
                 </motion.div>
-            </div>
-        </div>
+            )}
 
-        {/* ─── Fixed Overlays (Outside scaled wrapper for perfect centering) ─── */}
-        {((isAuthenticated && profile && profile.onboarding_completed === false) || showCongrats) && (
-            <div style={{ position: 'fixed', inset: 0, background: 'rgba(0, 0, 0, 0.5)', backdropFilter: 'blur(8px)', zIndex: 999999 }}>
-                <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <div style={{ transform: 'scale(0.95)', transformOrigin: 'center center', width: '100%', display: 'flex', justifyContent: 'center' }}>
-                        {/* Onboarding Popup for First-Time Users */}
-                        {isAuthenticated && profile && profile.onboarding_completed === false && (
-                            <OnboardingPopup />
-                        )}
-
-                        <CongratsModal 
-                            isOpen={showCongrats}
-                            onClose={handleCloseCongrats}
-                        />
-                    </div>
-                </div>
-            </div>
-        )}
-
-        {/* Phase P7: Auth Gating */}
-        <AuthGateModal 
-            isOpen={showAuthModal} 
-            onClose={() => setShowAuthModal(false)} 
-        />
-
-        {notification && (
-            <motion.div
-                initial={{ opacity: 0, y: 20, scale: 0.95 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.95 }}
-                className={styles.notificationPopup}
-            >
-                {!notification.includes('✅') && (
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                        <circle cx="12" cy="12" r="10" />
-                        <line x1="12" y1="8" x2="12" y2="12" />
-                        <line x1="12" y1="16" x2="12.01" y2="16" />
-                    </svg>
-                )}
-                {notification}
-            </motion.div>
-        )}
-
-        <CommunitySelectorPopup
-            isOpen={isCommunityOpen}
-            onClose={() => setIsCommunityOpen(false)}
-            maxItems={10}
-            initialSelectedItems={selectedComponents}
-            onConfirm={(items) => {
-                setSelectedComponents(items);
-                setIsCommunityOpen(false);
-            }}
-        />
-        {/* Fixed components that should NOT be scaled go here */}
-        <GradualBlur preset="bottom" strength={2.5} divCount={3} height="8rem" opacity={0.8} zIndex={100} style={{ pointerEvents: 'none', position: 'fixed', bottom: 0, left: 0, right: 0 }} />
+            <CommunitySelectorPopup
+                isOpen={isCommunityOpen}
+                onClose={() => setIsCommunityOpen(false)}
+                maxItems={10}
+                initialSelectedItems={selectedComponents}
+                onConfirm={(items) => {
+                    setSelectedComponents(items);
+                    setIsCommunityOpen(false);
+                }}
+            />
+            {/* Fixed components that should NOT be scaled go here */}
+            <GradualBlur preset="bottom" strength={2.5} divCount={3} height="8rem" opacity={0.8} zIndex={100} style={{ pointerEvents: 'none', position: 'fixed', bottom: 0, left: 0, right: 0 }} />
         </>
     );
 };

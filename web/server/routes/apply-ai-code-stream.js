@@ -85,8 +85,10 @@ function sanitizeImports(code) {
     };
   };
   for (const line of lines) {
-    // Strip illegal ESM imports
-    const importMatch = line.match(/import\s+.*from\s+['"]([^'"]+)['"]/);
+    // Strip illegal ESM imports (both "import x from 'pkg'" and side-effect "import 'pkg'")
+    const importMatch =
+      line.match(/import\s+.*from\s+['"]([^'"]+)['"]/) ||
+      line.match(/^\s*import\s+['"]([^'"]+)['"]\s*;?\s*$/);
     if (importMatch) {
       const pkg = importMatch[1];
       if (!isAllowedPackage(pkg)) {

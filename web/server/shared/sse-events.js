@@ -3,6 +3,10 @@
  * Combines typed technical events with AI-narrated conversational updates
  */
 
+import { generateText } from 'ai';
+import { getModel, generateFast } from '../lib/provider-helpers.js';
+import { resolveLightweightModel } from '../lib/llm-lightweight.js';
+
 // ─── Technical Event Contracts ───────────────────────────────────────
 export const SSE_EVENTS = {
     // Build Lifecycle
@@ -181,18 +185,20 @@ export class SSEWriter {
  * Generates conversational AI messages for build stages
  */
 export class AIBuildNarrator {
-    constructor(llmClient) {
-        this.llm = llmClient;
+    constructor() {
+        // Narration uses the same lightweight routing as polish fillers (mini / flash / haiku),
+        // keyed off the user's selected build model — not a hardcoded OpenAI mini.
     }
 
     /**
      * Generate natural language explanation of what's happening
+     * @param {string} stage
+     * @param {object} context
+     * @param {{ buildModelId?: string }} [options] — e.g. anthropic/claude-sonnet-4-6 → Haiku narration
      */
-    async narrate(stage, context = {}) {
-        // If no LLM client is available, return fallback immediately
-        if (!this.llm) {
-            return this.getFallbackMessage(stage, context);
-        }
+    async narrate(stage, context = {}, options = {}) {
+        const buildModelId = options.buildModelId || 'google/gemini-3.1-pro-preview';
+        const lm = resolveLightweightModel(buildModelId);
 
         const prompts = {
             planning: `You're building a website. The user asked: "${context.prompt}". 
@@ -223,27 +229,34 @@ Write a brief, friendly 1-2 sentence message explaining what you're about to bui
         };
 
         try {
-            const systemPrompt = `You are the Volturiano Builder AI. You narrate the build process conversationally, like ChatGPT. Keep messages:
+            const systemPrompt = `You are the Volturiano Builder AI. You narrate the build process conversationally. Keep messages:
 - Brief (1-2 sentences max)
 - Casual and friendly
 - Specific (mention actual components/colors/features)
 - Enthusiastic but not over-the-top
 NO markdown, NO emojis unless it's the final celebration.`;
 
-            const response = await this.llm.chat.completions.create({
-                model: 'gpt-4o-mini',
-                messages: [
-                    { role: 'system', content: systemPrompt },
-                    { role: 'user', content: prompts[stage] || `Describe what you're doing: ${stage}` }
-                ],
-                max_tokens: 100,
-                temperature: 0.7
-            });
+            const userContent = prompts[stage] || `Describe what you're doing: ${stage}`;
+            let text = '';
 
-            return response.choices[0].message.content.trim();
+            if (lm.useFast) {
+                text = await generateFast(systemPrompt, userContent);
+            } else {
+                const res = await generateText({
+                    model: getModel(lm.id),
+                    system: systemPrompt,
+                    prompt: userContent,
+                    maxTokens: 120,
+                    temperature: 0.7
+                });
+                text = res.text || '';
+            }
+
+            const trimmed = (text || '').trim();
+            if (trimmed) return trimmed;
+            return this.getFallbackMessage(stage, context);
         } catch (e) {
             console.error('[AIBuildNarrator] Error:', e.message);
-            // Fallback to simple message
             return this.getFallbackMessage(stage, context);
         }
     }
@@ -262,6 +275,8 @@ NO markdown, NO emojis unless it's the final celebration.`;
             repairing: `Auto-repairing build issues...`,
             repair_success: `Repair successful!`,
             rollback: `Rolling back to valid state...`,
+            polishing: `Applying final polish to match your vision...`,
+            polish_success: `Polish complete — your preview is ready.`,
             complete: `Your project is ready with ${context.filesCreated} files!`
         };
         return fallbacks[stage] || `Working on ${stage}...`;

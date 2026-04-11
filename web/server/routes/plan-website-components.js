@@ -4,12 +4,17 @@ import { z } from 'zod';
 import { getModel } from '../lib/provider-helpers.js';
 import { createManifest, updateManifest, log } from '../lib/build-manifest.js';
 import { AIBuildNarrator } from '../shared/sse-events.js';
-import { getOpenAIClient } from '../lib/openai-client.js';
 import path from 'node:path';
 import { selectComponentsV2 } from '../lib/select-components-v2.js';
 import { recordComponentSelections } from '../lib/retention-tracker.js';
 import { supabaseAdmin } from '../lib/supabase-admin.js';
 import { llmLog } from '../lib/llm-logger.js';
+import { resolveCrossProviderFallback } from '../lib/llm-lightweight.js';
+import { inferLayoutTypeFromPrompt, LAYOUT_TYPES } from '../lib/layout-type.js';
+
+function normalizeComponentName(name = '') {
+  return String(name).toLowerCase().replace(/[-_\s]/g, '');
+}
 
 const componentSchema = z.object({
   name: z.string(),
@@ -35,6 +40,12 @@ const pageAssignment = z.object({
 
 const planSchema = z.object({
   complexity: z.enum(['simple', 'medium', 'complex']).describe('Complexity level of the request'),
+  layoutType: z
+    .enum(['marketing-landing', 'business-site', 'web-app', 'portfolio', 'e-commerce'])
+    .default('marketing-landing')
+    .describe(
+      'Layout archetype: marketing-landing / portfolio (5–8), business-site (7–12), web-app (8–20, no marketing hero required), e-commerce (10–18)'
+    ),
   components: z.array(componentSchema).min(1).max(30),
   globalStyle: z.string(),
   appImports: z.array(z.string()),
@@ -68,7 +79,7 @@ function inferRoleFromComponent(dbComp = {}) {
   return 'feature';
 }
 
-function enforcePlanStructure(components = []) {
+function enforcePlanStructure(components = [], layoutType = 'marketing-landing') {
   const roleOrder = { header: 0, hero: 1, feature: 2, footer: 3 };
   const unique = [];
   const roleSeen = { header: false, hero: false, footer: false };
@@ -84,6 +95,9 @@ function enforcePlanStructure(components = []) {
   }
 
   unique.sort((a, b) => (roleOrder[a.role] ?? 2) - (roleOrder[b.role] ?? 2));
+  if (layoutType === 'web-app') {
+    console.log('[BUILDER-VERIFY] enforcePlanStructure: layoutType=web-app (dedupe only; no hero/footer injection here)');
+  }
   return unique;
 }
 
@@ -146,7 +160,8 @@ export default async function planWebsiteComponents(req, res) {
     generateNarration = false,
     premiumMode = 'hybrid',
     manualSelectionIds = [],
-    strictMode = false
+    strictMode = false,
+    intentClassification = null
   } = req.body;
   console.log(`[plan-website-components] ROUTE HIT | BuildId: ${buildId} | Model: ${model} | PremiumMode: ${premiumMode}`);
 
@@ -180,21 +195,22 @@ export default async function planWebsiteComponents(req, res) {
     const SYSTEM_PROMPT = `You are a senior web architect planning a premium, production-quality website.
 You are an API. You MUST output ONLY raw JSON that matches the provided schema perfectly. NO conversation. NO preamble. NO markdown blocks.
 
-COMPLEXITY ANALYSIS & COMPONENT COUNTS(STRICT):
-  1. First, determine the complexity of the request:
-  - "Simple"(Landing page, Portfolio, Coming Soon, single product): 5 - 6 components
-    - "Medium"(Small business, Agency, Blog, Info site): 6 - 7 components
-      - "Complex"(SaaS Dashboard, E - commerce, Web App, Massive Platform): 8 - 9 components
-  2. Set the 'complexity' field to one of these values.
-3. GENERATE THE EXACT NUMBER OF COMPONENTS for that complexity level.
+LAYOUT TYPE & COMPONENT COUNTS (ADAPTIVE) — YOU MUST SET 'layoutType' IN JSON:
+  1. Classify the request into ONE layoutType:
+     - "marketing-landing": single landing, coming soon, one product → total 5–8 components; complexity usually simple/medium.
+     - "portfolio": portfolio / resume / showcase → 5–8 components.
+     - "business-site": agency, small business, blog, multi-section brochure → 7–12 components.
+     - "web-app": dashboard, admin, tool, money/finance tracker, SaaS workspace → 8–20 components. Use dashboard-style sections (widgets, tables, sidebars). Do NOT force a marketing "hero" unless the user wants one.
+     - "e-commerce": shop, marketplace, catalog → 10–18 components (product grids, cart, categories).
+  2. Set "complexity" to simple | medium | complex consistent with breadth (simple = fewer components, complex = more).
+  3. Generate component count WITHIN the band for that layoutType (not the old 5–9 cap).
 
-    COMPLETENESS & ORDERING RULES(STRICT):
-  1. ** HEADER(Mandatory, Role: 'header') **: Must be the VERY FIRST component.
-2. ** HERO(Mandatory, Role: 'hero') **: Must be the SECOND component.
-3. ** CONTENT(Variable, Role: 'feature') **: 3 - 6 sections between Hero and Footer.
-4. ** FOOTER(Mandatory, Role: 'footer') **: Must be the VERY LAST component.
-
-    NOTE: You MUST include a Header and Footer even if not explicitly asked.It is required for a complete website.
+  COMPLETENESS & ORDERING (DEPENDS ON layoutType):
+  - marketing-landing, portfolio, business-site, e-commerce:
+    HEADER (role header): first. HERO (role hero): second when a landing/marketing hero fits. FOOTER (role footer): last. FEATURE rows between.
+  - web-app:
+    HEADER or top NAV (role header) first. Prefer feature/dashboard widgets; hero is OPTIONAL (omit marketing hero if inappropriate). FOOTER optional. Focus on feature-role components (dashboards, charts, lists, settings panels).
+  - Always include a header/nav for any multi-section site unless the user explicitly asked for a single full-bleed canvas with no chrome.
 
       ${fairnessRule}
 
@@ -269,7 +285,8 @@ MULTI-PAGE PLANNING RULES:
 3. When isMultiPage is true:
    - Header and Footer components are ALWAYS shared (add their refIds to sharedComponentRefIds)
    - Each page gets its OWN set of content components via the pages array
-   - The Home page ("/") gets the primary hero and main content sections
+   - The Home page ("/") MUST list every primary landing section in componentRefIds: hero (including shader/WebGL heroes), features, reviews, CTAs, etc. Do not leave the home route with only one widget while other sections exist — that produces a broken one-section site.
+   - Every selected component MUST appear in exactly one page's componentRefIds OR in sharedComponentRefIds — never omit a component from the routing map
    - Secondary pages get focused content appropriate to their purpose
    - Every page referenced in the header nav MUST have a matching page entry
 4. When isMultiPage is false (single page mode):
@@ -321,7 +338,21 @@ ${premiumMode === 'off' ? '<!-- Premium selection disabled -->' : `SELECTION CON
         allMandatory = [...new Set([...explicitNames, ...manualSelectionIds])];
       }
 
-      const v2Result = await selectComponentsV2(prompt, v2Context, allMandatory, strictMode, model);
+      const intentLayoutType =
+        intentClassification?.layoutType && LAYOUT_TYPES.includes(intentClassification.layoutType)
+          ? intentClassification.layoutType
+          : undefined;
+      const v2Result = await selectComponentsV2(prompt, v2Context, allMandatory, strictMode, model, {
+        layoutType: intentLayoutType,
+        suggestedCategories: intentClassification?.suggestedCategories || [],
+        needsPremiumCatalog: intentClassification?.needsPremiumCatalog === true
+      });
+      let layoutType = v2Result.layoutType || inferLayoutTypeFromPrompt(prompt);
+      if (intentClassification?.layoutType && LAYOUT_TYPES.includes(intentClassification.layoutType)) {
+        layoutType = intentClassification.layoutType;
+        console.log('[BUILDER-VERIFY] plan layoutType override intentClassification=%s', layoutType);
+      }
+      console.log('[BUILDER-VERIFY] plan layoutType=%s (v2.payload=%s)', layoutType, v2Result.layoutType || 'inferred');
 
       // Map V2 components (DB rows) into the exact V1 shape the frontend expects
       const mappedComponents = v2Result.components.map((dbComp, idx) => {
@@ -356,11 +387,27 @@ ${premiumMode === 'off' ? '<!-- Premium selection disabled -->' : `SELECTION CON
       // ═══════════════════════════════════════════════════════════════════
       if (premiumMode === 'hybrid') {
         const coveredRoles = new Set(mappedComponents.map(c => c.role));
-        const customNeeded = selectionContext?.customComponentsNeeded || [];
+        const customNeeded = [...(selectionContext?.customComponentsNeeded || [])];
+        if (intentClassification?.needsSidebar === true) {
+          customNeeded.unshift('Sidebar navigation with grouped sections and active state');
+        }
         
-        // Determine which standard roles are missing
-        const standardRoles = ['header', 'hero', 'feature', 'footer'];
-        const missingRoles = standardRoles.filter(r => !coveredRoles.has(r));
+        // Determine which standard roles are missing (web-app: do not inject marketing hero/footer shells)
+        const standardRoles =
+          layoutType === 'web-app'
+            ? ['header', 'feature']
+            : ['header', 'hero', 'feature', 'footer'];
+        const ms = intentClassification?.mandatoryStructure;
+        let fillRoles = standardRoles;
+        if (ms) {
+          fillRoles = standardRoles.filter((r) => {
+            if (r === 'hero' && ms.needsHero === false) return false;
+            if (r === 'footer' && ms.needsFooter === false) return false;
+            if (r === 'header' && ms.needsHeader === false) return false;
+            return true;
+          });
+        }
+        const missingRoles = fillRoles.filter((r) => !coveredRoles.has(r));
         
         // Also add components for any custom needs identified by V1 selection
         const generatedAdditions = [];
@@ -413,7 +460,7 @@ ${premiumMode === 'off' ? '<!-- Premium selection disabled -->' : `SELECTION CON
         }
       }
 
-      const structuredComponents = enforcePlanStructure(mappedComponents);
+      const structuredComponents = enforcePlanStructure(mappedComponents, layoutType);
       if (structuredComponents.length !== mappedComponents.length) {
         console.log(`[plan-website-components] Structural dedupe removed ${mappedComponents.length - structuredComponents.length} duplicate role component(s).`);
       }
@@ -494,7 +541,18 @@ ${premiumMode === 'off' ? '<!-- Premium selection disabled -->' : `SELECTION CON
 
       // Merge copy back into mapped components
       const finalComponents = structuredComponents.map(c => {
-        const copy = copyResult.components?.find(cc => cc.name === c.name);
+        const copy = copyResult.components?.find(
+          (cc) =>
+            cc.name === c.name ||
+            normalizeComponentName(cc.name) === normalizeComponentName(c.name)
+        );
+        if (copy && copy.name !== c.name) {
+          console.log(
+            '[BUILDER-VERIFY] plan copy merge: fuzzyMatched planComponent="%s" copywriterRow="%s"',
+            c.name,
+            copy.name
+          );
+        }
         return {
           ...c,
           keyContent: copy?.keyContent || c.description,
@@ -505,7 +563,10 @@ ${premiumMode === 'off' ? '<!-- Premium selection disabled -->' : `SELECTION CON
       const deterministicMpa = buildDeterministicMultiPagePlan(finalComponents);
       planData = {
         components: finalComponents,
-        complexity: finalComponents.length <= 6 ? 'simple' : (finalComponents.length <= 9 ? 'medium' : 'complex'),
+        layoutType,
+        complexity:
+          intentClassification?.complexity ||
+          (finalComponents.length <= 6 ? 'simple' : finalComponents.length <= 9 ? 'medium' : 'complex'),
         globalStyle: `/* Design System Globals */
         :root {
           --primary: ${designSystem?.colorPalette?.primary || '#3b82f6'};
@@ -526,14 +587,14 @@ ${premiumMode === 'off' ? '<!-- Premium selection disabled -->' : `SELECTION CON
       // V2 Narration
       if (generateNarration) {
         try {
-          const narrator = new AIBuildNarrator(getOpenAIClient());
+          const narrator = new AIBuildNarrator();
           aiNarration = await narrator.narrate('planning', {
             prompt,
             componentCount: structuredComponents.length,
             premiumCount: structuredComponents.filter(c => c.source === 'premium').length,
             customCount: 0,
             premiumMode
-          });
+          }, { buildModelId: model });
         } catch (e) { }
       }
 
@@ -668,11 +729,12 @@ ${premiumMode === 'off' ? '<!-- Premium selection disabled -->' : `SELECTION CON
         });
       } catch (err) {
         llmLog.error('WEBSITE-PLAN-V1', err);
-        console.warn(`[plan-website-components] Model ${model} failed, retrying with gpt-5.4. Error:`, err.message);
-        
+        const fb = resolveCrossProviderFallback(model);
+        console.warn(`[plan-website-components] Model ${model} failed, retrying with ${fb}. Error:`, err.message);
+
         const startMsRetry = Date.now();
         result = await generateObject({
-          model: getModel('openai/gpt-5.4'),
+          model: getModel(fb),
           schema: planSchema,
           messages: [{ role: 'system', content: SYSTEM_PROMPT }, { role: 'user', content }],
           temperature: 0,
@@ -681,23 +743,36 @@ ${premiumMode === 'off' ? '<!-- Premium selection disabled -->' : `SELECTION CON
         llmLog.response('WEBSITE-PLAN-V1', {
           response: result.object,
           durationMs: Date.now() - startMsRetry,
-          extra: 'Retry with gpt-5.4'
+          extra: `Retry with ${fb}`
         });
       }
 
       planData = result.object;
+      if (intentClassification?.layoutType && LAYOUT_TYPES.includes(intentClassification.layoutType)) {
+        planData.layoutType = intentClassification.layoutType;
+      } else if (!planData.layoutType) {
+        planData.layoutType = inferLayoutTypeFromPrompt(prompt);
+      }
+      if (intentClassification?.complexity) {
+        planData.complexity = intentClassification.complexity;
+      }
+      console.log(
+        '[BUILDER-VERIFY] plan layoutType=%s (source=v1%s)',
+        planData.layoutType,
+        intentClassification?.layoutType ? '+intent' : ''
+      );
 
       // V1 Narration
       if (generateNarration) {
         try {
-          const narrator = new AIBuildNarrator(getOpenAIClient());
+          const narrator = new AIBuildNarrator();
           aiNarration = await narrator.narrate('planning', {
             prompt,
             componentCount: planData.components.length,
             premiumCount: planData.components.filter(c => c.source === 'premium').length,
             customCount: planData.components.filter(c => c.source === 'generated').length,
             premiumMode
-          });
+          }, { buildModelId: model });
         } catch (e) { }
       }
 
@@ -741,18 +816,31 @@ ${premiumMode === 'off' ? '<!-- Premium selection disabled -->' : `SELECTION CON
       return { ...c, path: flatPath };
     });
 
-    let flattenedComponents = enforcePlanStructure(flattenedComponentsRaw);
+    const layoutTypeResolved = planData.layoutType || inferLayoutTypeFromPrompt(prompt);
+    let flattenedComponents = enforcePlanStructure(flattenedComponentsRaw, layoutTypeResolved);
 
-    // Double-check mandatory components
+    // Double-check mandatory components (web-app: header only; hero/footer not injected)
     const hasHeader = flattenedComponents.some(c => c.role === 'header');
     const hasHero = flattenedComponents.some(c => c.role === 'hero');
     const hasFooter = flattenedComponents.some(c => c.role === 'footer');
 
-    // If mandatory roles are missing, inject generated placeholders so the UI skeleton stays valid.
-    if (!hasHeader || !hasHero || !hasFooter) {
-      console.warn('[plan-website-components] Warning: Component plan missing mandatory roles! Injecting safe placeholders.', { hasHeader, hasHero, hasFooter });
+    const msFlat = intentClassification?.mandatoryStructure;
+    const needHeader = !hasHeader && msFlat?.needsHeader !== false;
+    const needHero =
+      layoutTypeResolved !== 'web-app' && !hasHero && msFlat?.needsHero !== false;
+    const needFooter =
+      layoutTypeResolved !== 'web-app' && !hasFooter && msFlat?.needsFooter !== false;
+
+    if (needHeader || needHero || needFooter) {
+      console.warn('[plan-website-components] Warning: Component plan missing mandatory roles! Injecting safe placeholders.', {
+        layoutType: layoutTypeResolved,
+        hasHeader,
+        hasHero,
+        hasFooter,
+        willInject: { header: needHeader, hero: needHero, footer: needFooter }
+      });
       const additions = [];
-      if (!hasHeader) {
+      if (needHeader) {
         additions.push({
           name: 'HeaderSection',
           refId: 'gen_header_fallback',
@@ -767,7 +855,7 @@ ${premiumMode === 'off' ? '<!-- Premium selection disabled -->' : `SELECTION CON
           role: 'header'
         });
       }
-      if (!hasHero) {
+      if (needHero) {
         additions.push({
           name: 'HeroSection',
           refId: 'gen_hero_fallback',
@@ -782,7 +870,7 @@ ${premiumMode === 'off' ? '<!-- Premium selection disabled -->' : `SELECTION CON
           role: 'hero'
         });
       }
-      if (!hasFooter) {
+      if (needFooter) {
         additions.push({
           name: 'FooterSection',
           refId: 'gen_footer_fallback',
@@ -797,8 +885,10 @@ ${premiumMode === 'off' ? '<!-- Premium selection disabled -->' : `SELECTION CON
           role: 'footer'
         });
       }
-      flattenedComponents = enforcePlanStructure([...flattenedComponents, ...additions]);
+      flattenedComponents = enforcePlanStructure([...flattenedComponents, ...additions], layoutTypeResolved);
     }
+
+    planData.layoutType = layoutTypeResolved;
 
     // Calculate component counts and packages
     const premiumCount = flattenedComponents.filter(c => c.source === 'premium').length;
@@ -853,6 +943,7 @@ ${premiumMode === 'off' ? '<!-- Premium selection disabled -->' : `SELECTION CON
     console.log(`[plan-website-components] SUCCESS. Returning ${flattenedComponents.length} components.`);
     res.json({
       success: true,
+      layoutType: layoutTypeResolved,
       plan: { ...planData, components: flattenedComponents, appComposition: validAppComposition, pages: normalizedPages },
       components: flattenedComponents, // legacy support
       globalStyle: planData.globalStyle,

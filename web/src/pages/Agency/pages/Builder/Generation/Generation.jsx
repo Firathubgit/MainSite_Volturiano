@@ -92,6 +92,16 @@ function getLanguage(path) {
   return 'jsx';
 }
 
+/** Shorten very long generated filenames so chat lines stay readable (full path in title). */
+function truncateMiddle(str, maxLen = 52) {
+  if (str == null || str.length <= maxLen) return str;
+  const ellipsis = '…';
+  const inner = maxLen - ellipsis.length;
+  const head = Math.ceil(inner / 2);
+  const tail = Math.floor(inner / 2);
+  return `${str.slice(0, head)}${ellipsis}${str.slice(-tail)}`;
+}
+
 /** Safely parse JSON from a fetch Response. Throws with a clear message if response is not ok or body is invalid. */
 async function safeParseJson(res, context = 'response') {
   const text = await res.text();
@@ -546,12 +556,41 @@ export default function Generation() {
   const [revertModalData, setRevertModalData] = useState(null); // { snapshot, targetIndex, promptText, components }
   const [logoState, setLogoState] = useState(0); // Shared logo state (0=Resting, 1=Pulse, 2=TikiTaka, 3=Scanner)
   const [hasPlayedCinematic, setHasPlayedCinematic] = useState(false);
+  const PROJECT_UPDATE_DEDUPE_WINDOW_MS = 500;
+  const PROJECT_UPDATE_FLUSH_MS = 350;
+  const projectUpdateDedupRef = useRef({ inFlightByKey: new Map(), lastSentAtByKey: new Map() });
+  const projectUpdateQueueRef = useRef({ pendingByProject: new Map(), flushTimer: null, flushInFlight: false });
 
 
   const showNotification = useCallback((msg) => {
     setNotification(msg);
     setTimeout(() => setNotification(null), 3000);
   }, []);
+
+  const flushProjectUpdates = useCallback(async () => {
+    const queue = projectUpdateQueueRef.current;
+    if (queue.flushInFlight) return;
+    queue.flushInFlight = true;
+    try {
+      while (queue.pendingByProject.size > 0) {
+        const batch = Array.from(queue.pendingByProject.entries());
+        queue.pendingByProject.clear();
+        for (const [targetId, updates] of batch) {
+          try {
+            await authFetch('/api/projects/update', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ buildId: targetId, updates })
+            });
+          } catch (e) {
+            console.warn('[Persistence] Queued update failed:', e);
+          }
+        }
+      }
+    } finally {
+      queue.flushInFlight = false;
+    }
+  }, [session]);
 
   // Phase S13: Persistence Engine Helper
   const saveProjectUpdates = useCallback(async (updates) => {
@@ -561,16 +600,56 @@ export default function Generation() {
     try {
       // Small cleanup: exclude buildId from updates object itself
       const { buildId: _, ...cleanUpdates } = updates;
+      const canonicalize = (value) => {
+        if (Array.isArray(value)) return value.map(canonicalize);
+        if (value && typeof value === 'object' && !(value instanceof Date)) {
+          const sorted = Object.keys(value).sort().reduce((acc, key) => {
+            acc[key] = canonicalize(value[key]);
+            return acc;
+          }, {});
+          return sorted;
+        }
+        return value;
+      };
 
-      await authFetch('/api/projects/update', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ buildId: targetId, updates: cleanUpdates })
-      });
+      const payloadKey = `${targetId}|${JSON.stringify(canonicalize(cleanUpdates))}`;
+      const dedupeState = projectUpdateDedupRef.current;
+      const now = Date.now();
+      const lastSentAt = dedupeState.lastSentAtByKey.get(payloadKey);
+      if (lastSentAt && now - lastSentAt < PROJECT_UPDATE_DEDUPE_WINDOW_MS) {
+        return;
+      }
+
+      if (dedupeState.inFlightByKey.has(payloadKey)) {
+        return dedupeState.inFlightByKey.get(payloadKey);
+      }
+
+      const persistPromise = (async () => {
+        const queue = projectUpdateQueueRef.current;
+        const existing = queue.pendingByProject.get(targetId) || {};
+        queue.pendingByProject.set(targetId, { ...existing, ...cleanUpdates });
+        if (!queue.flushTimer) {
+          queue.flushTimer = setTimeout(async () => {
+            queue.flushTimer = null;
+            await flushProjectUpdates();
+          }, PROJECT_UPDATE_FLUSH_MS);
+        }
+        dedupeState.lastSentAtByKey.set(payloadKey, Date.now());
+      })()
+        .finally(() => {
+          dedupeState.inFlightByKey.delete(payloadKey);
+          const cutoff = Date.now() - 60000;
+          for (const [key, ts] of dedupeState.lastSentAtByKey.entries()) {
+            if (ts < cutoff) dedupeState.lastSentAtByKey.delete(key);
+          }
+        });
+
+      dedupeState.inFlightByKey.set(payloadKey, persistPromise);
+      await persistPromise;
     } catch (e) {
       console.warn('[Persistence] Passive update failed:', e);
     }
-  }, [currentProjectId, session]);
+  }, [currentProjectId, session, PROJECT_UPDATE_DEDUPE_WINDOW_MS, PROJECT_UPDATE_FLUSH_MS, flushProjectUpdates]);
 
   const addChatMessage = useCallback((content, type, metadata) => {
     setChatMessages(prev => {
@@ -654,7 +733,6 @@ export default function Generation() {
     return data?.publicUrl;
   }, []);
 
-  const [showThinking, setShowThinking] = useState(true);
   const [statusDots, setStatusDots] = useState('');
   const [previewLogs, setPreviewLogs] = useState([]);
   const [showConsole, setShowConsole] = useState(false);
@@ -734,30 +812,17 @@ export default function Generation() {
     }
   }, [currentProjectId, sandboxData?.sandboxId, sandboxFiles, chatMessages.length, session, fetchSnapshots, showNotification]);
   useEffect(() => {
-    if (!generationProgress.isGenerating) return;
-
-    let timer;
-    const tick = () => {
-      // 85% Thinking, 15% Status
-      setShowThinking(Math.random() < 0.85);
-
-      const duration = Math.random() < 0.85
-        ? Math.floor(Math.random() * 5000) + 4000 // Thinking stays longer (4-9s)
-        : Math.floor(Math.random() * 2000) + 1000; // Status shorter (1-3s)
-
-      timer = setTimeout(tick, duration);
-    };
+    const hasActiveWork = generationProgress.isGenerating || !!aiThinking || !!codeApplicationState.stage;
+    if (!hasActiveWork) return;
 
     const dotsInterval = setInterval(() => {
       setStatusDots(prev => prev.length >= 3 ? '' : prev + '.');
     }, 500);
 
-    tick();
     return () => {
-      clearTimeout(timer);
       clearInterval(dotsInterval);
     };
-  }, [generationProgress.isGenerating]);
+  }, [generationProgress.isGenerating, aiThinking, codeApplicationState.stage]);
 
   // Unified Serial Delivery: Ensures Wrote logs and AI messages follow correct order
   useEffect(() => {
@@ -979,7 +1044,7 @@ export default function Generation() {
   }, [session]);
 
   // ─── Apply Generated Code ──────────────
-  const applyGeneratedCode = useCallback(async (generatedCode, isEdit, buildId, explicitFiles = null, skipPolish = false, passedSandboxId = null, isResume = false, passedSandboxUrl = null) => {
+  const applyGeneratedCode = useCallback(async (generatedCode, isEdit, buildId, explicitFiles = null, skipPolish = false, passedSandboxId = null, isResume = false, passedSandboxUrl = null, options = {}) => {
     let activeSandboxId = passedSandboxId || sandboxData?.sandboxId;
     let activeSandboxUrl = passedSandboxUrl || sandboxData?.url;
 
@@ -1008,6 +1073,9 @@ export default function Generation() {
           content: f.content
         }));
       }
+      const polishSkipPaths = Array.isArray(options?.polishSkipPaths)
+        ? [...new Set(options.polishSkipPaths.filter((p) => typeof p === 'string' && p.trim()))]
+        : [];
 
       const response = await authFetch('/api/apply-ai-code-stream', {
         method: 'POST',
@@ -1019,10 +1087,12 @@ export default function Generation() {
           packages: [],
           sandboxId: activeSandboxId,
           model: aiModel,
+          premiumMode,
           buildId,
           prompt: lastPromptRef.current || lastPrompt || '',  // Ref avoids stale closure, state is fallback
           skipPolish,
-          isResume
+          isResume,
+          polishSkipPaths
         })
       });
 
@@ -1051,6 +1121,7 @@ export default function Generation() {
                 break;
 
               case 'ai_thinking':
+                setIsTextStreaming(false);
                 setAiThinking({ stage: data.stage || 'thinking' });
                 break;
 
@@ -1065,6 +1136,7 @@ export default function Generation() {
                 break;
 
               case 'step':
+                setIsTextStreaming(false);
                 if (data.message?.includes('Installing')) setCodeApplicationState(prev => ({ ...prev, stage: 'installing', packages: data.packages || prev.packages }));
                 else setCodeApplicationState(prev => ({ ...prev, stage: 'applying' }));
                 break;
@@ -1087,6 +1159,7 @@ export default function Generation() {
               // Build Verification Events
               case 'verify_started':
               case 'verify-start':
+                setIsTextStreaming(false);
                 setCodeApplicationState(prev => ({ ...prev, stage: 'verifying' }));
                 setAiThinking({ stage: 'verifying' });
                 setGenerationProgress(prev => ({ ...prev, status: 'Verifying...' }));
@@ -1094,6 +1167,7 @@ export default function Generation() {
 
               case 'verify_passed':
               case 'verify-passed':
+                setIsTextStreaming(false);
                 setCodeApplicationState(prev => ({ ...prev, stage: 'verified' }));
                 setAiThinking(null);
                 // AI Narrator handles the message, but we keep this for legacy correctness
@@ -1102,6 +1176,7 @@ export default function Generation() {
 
               case 'verify_failed':
               case 'verify-failed':
+                setIsTextStreaming(false);
                 setCodeApplicationState(prev => ({ ...prev, stage: 'verification_failed' }));
                 setAiThinking(null);
 
@@ -1119,6 +1194,7 @@ export default function Generation() {
                 break;
 
               case 'repair_started':
+                setIsTextStreaming(false);
                 // AI Narrator handles this visually
                 if (data.attempt) {
                   console.log(`[Generation] Starting repair attempt ${data.attempt} / ${data.maxAttempts}`);
@@ -1127,21 +1203,37 @@ export default function Generation() {
 
               case 'repair_done':
               case 'repair-done':
+                setIsTextStreaming(false);
                 // AI Narrator handles this
                 if (!data.event) setDeliveryQueue(prev => [...prev, { type: 'message', content: 'Auto-Repair successful! Fixed files: ' + data.changed?.join(', '), chatType: 'ai' }]);
                 break;
 
               case 'rollback_started':
+                setIsTextStreaming(false);
                 setCodeApplicationState(prev => ({ ...prev, stage: 'rollback' }));
                 break;
 
               case 'rollback_done':
               case 'rollback-done':
+                setIsTextStreaming(false);
                 setCodeApplicationState(prev => ({ ...prev, stage: 'rollback' }));
                 if (!data.event) addChatMessage('Rollback complete. Sandbox restored to previous valid state.', 'warning');
                 break;
 
+              case 'polish_started':
+                setIsTextStreaming(false);
+                setAiThinking({ stage: 'building' });
+                setGenerationProgress(prev => ({ ...prev, status: 'Polishing...' }));
+                break;
+
+              case 'polish_done':
+                setIsTextStreaming(false);
+                setAiThinking(null);
+                setGenerationProgress(prev => ({ ...prev, status: 'Finalizing...' }));
+                break;
+
               case 'complete':
+                setIsTextStreaming(false);
                 setCodeApplicationState({ stage: 'complete', packages: [], installedPackages: [], filesGenerated: data.results?.filesCreated || data.filesCreated || [] });
                 setAiThinking(null);
                 setGenerationProgress(prev => {
@@ -1229,6 +1321,7 @@ export default function Generation() {
                 setTimeout(() => setCodeApplicationState(prev => ({ ...prev, stage: null })), 4000);
                 break;
               case 'error':
+                setIsTextStreaming(false);
                 setAiThinking(null);
                 addChatMessage(`Error: ${data.message}`, 'error');
                 break;
@@ -1245,7 +1338,7 @@ export default function Generation() {
       saveProjectUpdates({ buildId: buildId, build_status: 'failed' });
 
     }
-  }, [sandboxData, addChatMessage, chatMessages.length, session, lastPrompt, saveProjectUpdates, currentProjectId, fetchSnapshots]);
+  }, [sandboxData, addChatMessage, chatMessages.length, session, lastPrompt, premiumMode, saveProjectUpdates, currentProjectId, fetchSnapshots]);
 
 
   // --- Helper for AI Edits (Shared between Chat and Community Integration) ---
@@ -1425,6 +1518,26 @@ export default function Generation() {
         }
       } catch (e) { console.warn('Enhance failed, using original:', e); }
 
+      let intentClassification = null;
+      setGenerationProgress(prev => ({ ...prev, status: 'Classifying intent...' }));
+      try {
+        const classifyRes = await authFetch('/api/classify-intent', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ prompt: finalPrompt, images: initialImages, model: aiModel, buildId })
+        });
+        const classifyData = await safeParseJson(classifyRes, 'classify-intent');
+        if (classifyData.success && classifyData.intentClassification) {
+          intentClassification = classifyData.intentClassification;
+          console.log(
+            '[BUILDER-VERIFY] generation: intentClassification layoutType=',
+            intentClassification.layoutType
+          );
+        }
+      } catch (e) {
+        console.warn('[Generation] classify-intent failed:', e);
+      }
+
       // 2b. Derive design system (NEW — contextual intelligence engine)
       let designSystem = null;
       setGenerationProgress(prev => ({ ...prev, status: 'Deriving design system...' }));
@@ -1595,7 +1708,8 @@ Just position the new components in a logical order (e.g. after the Hero or befo
             generateNarration: true,
             premiumMode,
             manualSelectionIds,
-            strictMode
+            strictMode,
+            intentClassification
           })
         });
         planData = await safeParseJson(planRes, 'plan-website-components');
@@ -1620,6 +1734,10 @@ Just position the new components in a logical order (e.g. after the Hero or befo
       }
 
       if (!planData.success) throw new Error(planData.error || 'Planning failed');
+
+      if (planData.layoutType) {
+        console.log('[BUILDER-VERIFY] generation: plan layoutType=', planData.layoutType);
+      }
 
       const { components: rawComponents, globalStyle, isMultiPage, pages, sharedComponentRefIds } = planData;
 
@@ -1716,6 +1834,59 @@ Just position the new components in a logical order (e.g. after the Hero or befo
             .catch(e => ({ success: false, error: e.message, path: comp.path }))
         )
       );
+
+      const joinFileBlocks = (files) =>
+        !files?.length ? '' : files.map((f) => `<file path="${f.path}">\n${f.content}\n</file>`).join('\n\n');
+
+      // Stage A.1: LLM hydration — replace baked-in JSX demo copy (prop regex alone cannot)
+      for (let i = 0; i < premiumResults.length; i++) {
+        const r = premiumResults[i];
+        if (!r.success || !r.fileContent) continue;
+        const comp = r.originalRef;
+        if (!comp) continue;
+        const hasKey = typeof comp.keyContent === 'string' && comp.keyContent.trim().length > 0;
+        const hasProps = comp.props && typeof comp.props === 'object' && Object.keys(comp.props).length > 0;
+        if (!hasKey && !hasProps) continue;
+
+        const parsedFiles = parseFilesFromCode(r.fileContent);
+        if (parsedFiles.length === 0) continue;
+
+        for (const file of parsedFiles) {
+          if (!/\.(jsx|tsx)$/i.test(file.path)) continue;
+          try {
+            console.log(
+              '[BUILDER-VERIFY] generation: hydrate request',
+              { bundle: comp.name || comp.refId, path: file.path, hasKey: hasKey, propCount: Object.keys(comp.props || {}).length }
+            );
+            const hydrateRes = await authFetch('/api/hydrate-premium-copy', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                fileContent: file.content,
+                fileName: file.path,
+                keyContent: comp.keyContent || '',
+                props: comp.props || {},
+                designSystem,
+                prompt: finalPrompt,
+                model: aiModel,
+                buildId
+              })
+            });
+            const hData = await safeParseJson(hydrateRes, 'hydrate-premium-copy');
+            if (hData?.success && typeof hData.hydratedContent === 'string' && hData.hydratedContent.length > 0) {
+              file.content = hData.hydratedContent;
+              console.log('[BUILDER-VERIFY] generation: hydrate applied', {
+                path: file.path,
+                skipped: hData.skipped === true,
+                outLen: hData.hydratedContent.length
+              });
+            }
+          } catch (e) {
+            console.warn('[Generation] hydrate-premium-copy failed for', file.path, e.message);
+          }
+        }
+        r.fileContent = joinFileBlocks(parsedFiles);
+      }
 
       // Get the successfully loaded premium components with their REAL paths and names
       const loadedPremiumComponents = premiumResults
@@ -1905,7 +2076,12 @@ Just position the new components in a logical order (e.g. after the Hero or befo
       setGenerationProgress(prev => ({ ...prev, status: 'Applying code...' }));
 
       // 7b. Apply with explicit files - Pass sandbox reference to ensure closure-safety
-      await applyGeneratedCode(generatedCode, false, buildId, allFiles, false, sandbox?.sandboxId, false, sandbox?.url);
+      const generatedSinglePaths = standardResults
+        .filter((r) => r?.success && typeof r.path === 'string' && r.path.trim())
+        .map((r) => r.path);
+      await applyGeneratedCode(generatedCode, false, buildId, allFiles, false, sandbox?.sandboxId, false, sandbox?.url, {
+        polishSkipPaths: generatedSinglePaths
+      });
       setDeliveryQueue(prev => [...prev, { type: 'message', content: 'Code generated and applied! Check the preview tab.', chatType: 'ai' }]);
       setActiveTab('preview');
 
@@ -1920,10 +2096,7 @@ Just position the new components in a logical order (e.g. after the Hero or befo
       if (isOverloaded) {
         addChatMessage('Generation failed: The AI Provider is currently experiencing high traffic or is overloaded. Please wait a few moments and try again.', 'error');
         // Phase S2: Sync failure state
-        authFetch('/api/projects/update', {
-          method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ buildId, updates: { build_status: 'failed' } })
-        }).catch(e => { });
+        saveProjectUpdates({ buildId, build_status: 'failed' });
       } else if (generationProgress.status.includes('Planning') || generationProgress.status.includes('Selecting')) {
         // Fallback: ONLY if we didn't finish planning and it's NOT a 503
         addChatMessage(`Generation failed: ${error.message}. Switching to streaming fallback...`, 'system');
@@ -1964,18 +2137,12 @@ Just position the new components in a logical order (e.g. after the Hero or befo
         } catch (fallbackError) {
           addChatMessage(`Fallback failed: ${fallbackError.message}`, 'error');
           // Phase S2: Sync failure state
-          authFetch('/api/projects/update', {
-            method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ buildId, updates: { build_status: 'failed' } })
-          }).catch(e => { });
+          saveProjectUpdates({ buildId, build_status: 'failed' });
         }
       } else {
         addChatMessage(`Partial success: ${error.message}. Attempting to proceed with available code.`, 'warning');
         // Phase S2: Sync failure state
-        authFetch('/api/projects/update', {
-          method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ buildId, updates: { build_status: 'failed' } })
-        }).catch(e => { });
+        saveProjectUpdates({ buildId, build_status: 'failed' });
       }
     } finally {
       refreshCredits(); // SYNC CREDITS: Refresh from DB to reflect deduction
@@ -2150,11 +2317,7 @@ Just position the new components in a logical order (e.g. after the Hero or befo
       setCurrentProjectId(projectId);
 
       // Touch updated_at so dashboard sorts by most recently opened
-      authFetch('/api/projects/update', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ buildId: projectId, updates: { updated_at: new Date().toISOString() } })
-      }).catch(() => { });
+      saveProjectUpdates({ buildId: projectId, updated_at: new Date().toISOString() });
 
       // 1. Restore Chat History
       if (project.chat_history && Array.isArray(project.chat_history)) {
@@ -2226,7 +2389,7 @@ Just position the new components in a logical order (e.g. after the Hero or befo
       // Final scroll — loading state just changed so DOM will re-render
       setTimeout(() => chatEndRef.current?.scrollIntoView({ behavior: 'instant' }), 200);
     }
-  }, [session, addChatMessage, applyGeneratedCode, setCurrentProjectId, setChatMessages, setGenerationProgress, setConversationContext]);
+  }, [session, addChatMessage, applyGeneratedCode, saveProjectUpdates, setCurrentProjectId, setChatMessages, setGenerationProgress, setConversationContext]);
 
   // --- Sandbox Keepalive Polling ---
   useEffect(() => {
@@ -2825,6 +2988,7 @@ Just position the new components in a logical order (e.g. after the Hero or befo
 
                   // File write logs
                   if (msg.type === 'log') {
+                    const fileBase = msg.content.split('/').pop() || msg.content;
                     return (
                       <motion.div
                         key={`log-${i}`}
@@ -2836,8 +3000,8 @@ Just position the new components in a logical order (e.g. after the Hero or befo
                         <div className={styles.chatBubble} style={{ border: 'none', background: 'transparent' }}>
                           <div className={styles.generationLogLine}>
                             <BsFileEarmarkCode className={`${styles.fileIcon} ${styles.shimmerText}`} />
-                            <span className={styles.shimmerText} style={{ opacity: 0.9, marginRight: '6px', fontWeight: 500 }}>Wrote</span>
-                            <span className={`${styles.fileName} ${styles.shimmerText}`}>{msg.content.split('/').pop()}</span>
+                            <span className={styles.shimmerText} style={{ opacity: 0.9, marginRight: '6px', fontWeight: 500, flexShrink: 0 }}>Wrote</span>
+                            <span className={`${styles.fileName} ${styles.shimmerText}`} title={fileBase}>{truncateMiddle(fileBase)}</span>
                           </div>
                         </div>
                       </motion.div>
@@ -3004,7 +3168,7 @@ Just position the new components in a logical order (e.g. after the Hero or befo
                 })}
 
                 {/* Active Status Indicator */}
-                {(aiThinking || generationProgress.isGenerating || codeApplicationState.stage === 'complete') && !isTextStreaming && (
+                {(aiThinking || generationProgress.isGenerating || codeApplicationState.stage === 'complete' || codeApplicationState.stage) && (
                   <div className={`${styles.chatMsg} ${styles.chatMsg_system}`}>
                     <div className={styles.chatBubble}>
                       <span className={`${styles.typingDots} ${styles.shimmerText}`} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -3026,7 +3190,7 @@ Just position the new components in a logical order (e.g. after the Hero or befo
                             color: 'initial'
                           }}
                         />
-                        {showThinking ? `Thinking${statusDots}` : `${getUnifiedStatus().replace(/\.\.\.$/, '')}${statusDots}`}
+                        {`${getUnifiedStatus().replace(/\.\.\.$/, '')}${statusDots}`}
                       </span>
                     </div>
                   </div>
@@ -3115,9 +3279,9 @@ Just position the new components in a logical order (e.g. after the Hero or befo
                     </button>
                     <div className={styles.geminiIcon} title={`Current Engine: ${aiModel}`} ref={modelDropdownRef}>
                       <div onClick={() => setModelDropdownOpen(!modelDropdownOpen)} style={{ cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
-                        {aiModel.includes('gpt') ? (
+                        {aiModel.startsWith('openai/') ? (
                           <OpenAIIcon width="24" height="24" style={{ color: 'white' }} />
-                        ) : aiModel.includes('claude') ? (
+                        ) : aiModel.startsWith('anthropic/') ? (
                           <AnthropicIcon width="22" height="22" />
                         ) : (
                           <GeminiIcon width="22" height="22" />
@@ -3134,25 +3298,46 @@ Just position the new components in a logical order (e.g. after the Hero or befo
                             transition={{ duration: 0.2, ease: "easeOut" }}
                           >
                             <button
-                              className={`${styles.modelOption} ${aiModel.includes('google/gemini-3.1-pro-preview') ? styles.modelOptionActive : ''}`}
+                              className={`${styles.modelOption} ${aiModel === 'google/gemini-3.1-pro-preview' ? styles.modelOptionActive : ''}`}
                               onClick={() => { setAiModel('google/gemini-3.1-pro-preview'); setModelDropdownOpen(false); }}
                             >
                               <GeminiIcon width="22" height="22" />
                               <span>Gemini 3.1 Pro</span>
                             </button>
                             <button
-                              className={`${styles.modelOption} ${aiModel.includes('openai/gpt-5.4') ? styles.modelOptionActive : ''}`}
+                              className={`${styles.modelOption} ${aiModel === 'google/gemini-2.5-flash' ? styles.modelOptionActive : ''}`}
+                              onClick={() => { setAiModel('google/gemini-2.5-flash'); setModelDropdownOpen(false); }}
+                            >
+                              <GeminiIcon width="22" height="22" />
+                              <span>Gemini 2.5 Flash</span>
+                            </button>
+                            <button
+                              className={`${styles.modelOption} ${aiModel === 'openai/gpt-5.4' ? styles.modelOptionActive : ''}`}
                               onClick={() => { setAiModel('openai/gpt-5.4'); setModelDropdownOpen(false); }}
                             >
                               <OpenAIIcon width="22" height="22" style={{ color: 'white' }} />
                               <span>GPT-5.4</span>
                             </button>
                             <button
-                              className={`${styles.modelOption} ${aiModel.includes('anthropic/claude-sonnet-4-6') ? styles.modelOptionActive : ''}`}
+                              className={`${styles.modelOption} ${aiModel === 'openai/gpt-5.4-mini' ? styles.modelOptionActive : ''}`}
+                              onClick={() => { setAiModel('openai/gpt-5.4-mini'); setModelDropdownOpen(false); }}
+                            >
+                              <OpenAIIcon width="22" height="22" style={{ color: 'white' }} />
+                              <span>GPT-5.4 mini</span>
+                            </button>
+                            <button
+                              className={`${styles.modelOption} ${aiModel === 'anthropic/claude-sonnet-4-6' ? styles.modelOptionActive : ''}`}
                               onClick={() => { setAiModel('anthropic/claude-sonnet-4-6'); setModelDropdownOpen(false); }}
                             >
                               <AnthropicIcon width="22" height="22" />
                               <span>Claude 4.6 Sonnet</span>
+                            </button>
+                            <button
+                              className={`${styles.modelOption} ${aiModel === 'anthropic/claude-haiku-4-5-20251001' ? styles.modelOptionActive : ''}`}
+                              onClick={() => { setAiModel('anthropic/claude-haiku-4-5-20251001'); setModelDropdownOpen(false); }}
+                            >
+                              <AnthropicIcon width="22" height="22" />
+                              <span>Claude Haiku 4.5</span>
                             </button>
                           </motion.div>
                         )}

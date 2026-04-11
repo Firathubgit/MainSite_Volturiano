@@ -20,6 +20,8 @@ import planWebsiteComponents from './routes/plan-website-components.js';
 import generateSingleComponent from './routes/generate-single-component.js';
 import generateAiCodeStream from './routes/generate-ai-code-stream.js';
 import applyAiCodeStream from './routes/apply-ai-code-stream.js';
+import hydratePremiumCopy from './routes/hydrate-premium-copy.js';
+import classifyIntent from './routes/classify-intent.js';
 import createAiSandboxV2 from './routes/create-ai-sandbox-v2.js';
 import sandboxStatus from './routes/sandbox-status.js';
 import getSandboxFiles from './routes/get-sandbox-files.js';
@@ -110,7 +112,7 @@ const standardLimiter = rateLimit({ windowMs: 60000, max: 30, message: { error: 
 const relaxedLimiter = rateLimit({ windowMs: 60000, max: 60, message: { error: 'Rate limit exceeded' } });
 
 // Apply AI Limiters
-app.use(['/api/enhance-prompt', '/api/derive-design-system', '/api/plan-website-components', '/api/generate-single-component', '/api/generate-ai-code-stream', '/api/apply-ai-code-stream', '/api/create-ai-sandbox-v2'], aiLimiter);
+app.use(['/api/enhance-prompt', '/api/classify-intent', '/api/derive-design-system', '/api/plan-website-components', '/api/generate-single-component', '/api/generate-ai-code-stream', '/api/apply-ai-code-stream', '/api/hydrate-premium-copy', '/api/create-ai-sandbox-v2'], aiLimiter);
 
 // Apply Standard Limiters
 app.use(['/api/projects', '/api/snapshots', '/api/publish-site'], standardLimiter);
@@ -137,11 +139,13 @@ const safeAiProtections = [aiLimiter, optionalAuth, requireUnrestricted, promptT
 // Routes
 app.post('/api/enhance-prompt', aiProtections, enhancePrompt);
 app.post('/api/cinematic-response', safeAiProtections, cinematicResponse);
+app.post('/api/classify-intent', aiProtections, classifyIntent);
 app.post('/api/derive-design-system', aiProtections, deriveDesignSystem);
 app.post('/api/plan-website-components', aiProtections, planWebsiteComponents);
 app.post('/api/generate-single-component', aiProtections, generateSingleComponent);
 app.post('/api/generate-ai-code-stream', aiProtections, generateAiCodeStream);
 app.post('/api/apply-ai-code-stream', aiProtections, applyAiCodeStream);
+app.post('/api/hydrate-premium-copy', aiProtections, hydratePremiumCopy);
 app.post('/api/create-ai-sandbox-v2', aiProtections, createAiSandboxV2);
 app.post('/api/sandbox/keepalive', requireAuth, sandboxKeepAlive);
 app.get('/api/sandbox-status', sandboxStatus);

@@ -1,18 +1,22 @@
 
 import { generateText } from 'ai';
 import { getModel } from './provider-helpers.js';
+import { resolveLightweightModel, resolveCrossProviderFallback } from './llm-lightweight.js';
 
 /**
- * Attempts to repair build errors using Gemini.
- * 
+ * Attempts to repair build errors using a fast model on the user's provider (then cross-provider fallback).
+ *
  * @param {object} context
  * @param {Array} context.files - Current list of files in the sandbox.
  * @param {string} context.buildErrors - Logs from the failed build.
  * @param {Array} context.repairLog - Previous repair attempts to avoid loops.
+ * @param {string} [context.buildModel] - User's selected heavy model (e.g. anthropic/claude-sonnet-4-6) — picks matching flash/mini/haiku.
  * @returns {Promise<{success: boolean, fixedFiles: Array, strategy: string}>}
  */
-export async function attemptRepair({ files, buildErrors, repairLog = [] }) {
-    console.log('[auto-repair] Analyzing build errors with Gemini...');
+export async function attemptRepair({ files, buildErrors, repairLog = [], buildModel = '' }) {
+    const primaryId = resolveLightweightModel(buildModel).id;
+    const fallbackId = resolveCrossProviderFallback(buildModel);
+    console.log(`[auto-repair] Analyzing build errors (primary: ${primaryId}, fallback: ${fallbackId})...`);
 
     // Don't send huge file contents to the LLM if they are not relevant, 
     // but for context, we send the file structure and code lengths. 
@@ -64,26 +68,35 @@ MULTI-PAGE SPECIFIC FIXES (if the project uses HashRouter/Routes):
 11. Page component imports Header/Footer directly: Remove those imports — Header and Footer render in App.jsx outside the Routes block as shared layout.
 12. "useLocation/useNavigate outside Router": Ensure all router hooks are used inside components rendered within the HashRouter tree.`;
 
-    try {
-        const model = getModel('google/gemini-2.5-flash');
-
+    async function runRepairWithModel(modelId) {
         const { text } = await generateText({
-            model,
+            model: getModel(modelId),
             system: systemPrompt,
             prompt: 'Analyze the build errors above and return the JSON fix object.',
             temperature: 0.2,
         });
-
-        // Strip markdown fences if Gemini wraps the JSON
         let jsonText = text.trim();
         if (jsonText.startsWith('```')) {
             jsonText = jsonText.replace(/^```(?:json)?\s*/, '').replace(/\s*```$/, '');
         }
+        return JSON.parse(jsonText);
+    }
 
-        const result = JSON.parse(jsonText);
+    try {
+        let result;
+        try {
+            result = await runRepairWithModel(primaryId);
+        } catch (primaryErr) {
+            if (fallbackId !== primaryId) {
+                console.warn(`[auto-repair] Primary repair model failed (${primaryErr.message}), trying fallback ${fallbackId}`);
+                result = await runRepairWithModel(fallbackId);
+            } else {
+                throw primaryErr;
+            }
+        }
 
         if (result.success && result.fixedFiles && result.fixedFiles.length > 0) {
-            console.log(`[auto-repair] Gemini proposed strategy: ${result.strategy}`);
+            console.log(`[auto-repair] Proposed strategy: ${result.strategy}`);
             return {
                 success: true,
                 fixedFiles: result.fixedFiles,
@@ -94,7 +107,7 @@ MULTI-PAGE SPECIFIC FIXES (if the project uses HashRouter/Routes):
         return { success: false, strategy: result.strategy || 'LLM could not resolve issue' };
 
     } catch (e) {
-        console.error('[auto-repair] Gemini repair failed:', e);
+        console.error('[auto-repair] Repair failed:', e);
         return { success: false, strategy: 'Repair engine failed' };
     }
 }

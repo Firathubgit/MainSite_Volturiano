@@ -2,6 +2,7 @@
 import { generateObject } from 'ai';
 import { z } from 'zod';
 import { getModel } from '../lib/provider-helpers.js';
+import { resolveCrossProviderFallback } from '../lib/llm-lightweight.js';
 import path from 'node:path';
 
 export default async function generateSingleComponent(req, res) {
@@ -94,10 +95,11 @@ FINAL REMINDER: The user's goal is "${prompt}". Ensure the code is complete with
       clearTimeout(timeoutId);
       object = resultObject;
     } catch (err) {
-      console.warn(`[generate-single-component] Model ${model} failed, retrying with gpt-4o. Error:`, err.message);
+      const fallbackModel = resolveCrossProviderFallback(model);
+      console.warn(`[generate-single-component] Model ${model} failed, retrying with ${fallbackModel}. Error:`, err.message);
       try {
         const { object: resultObject } = await generateObject({
-          model: getModel('openai/gpt-4o'),
+          model: getModel(fallbackModel),
           system: SYSTEM_PROMPT,
           prompt: `Create the ${name} component for the "${prompt}" website. Export it as ${finalExportName}.`,
           schema: schema,

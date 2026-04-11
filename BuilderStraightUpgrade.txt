@@ -1,0 +1,957 @@
+================================================================================
+VOLTURIANO BUILDER — STRAIGHT UPGRADE PLAN (V1.0)
+FROM "WORKS SOMETIMES" TO "WORKS EVERY TIME"
+================================================================================
+
+[V1.0 — Grounded in full codebase audit of MainSite_Volturiano, April 2026]
+[Philosophy: Smallest possible change, biggest possible impact. No academic
+ rewrites. Every phase ships independently. Toyota over Tesla.]
+
+Authored from deep audit of:
+  - web/server/routes/apply-ai-code-stream.js (772 lines)
+  - web/server/lib/polish-refinement.js (407 lines)
+  - web/server/lib/mini-polish-refinement.js (197 lines)
+  - web/server/routes/plan-website-components.js (886 lines)
+  - web/server/lib/select-components-v2.js (~1200 lines)
+  - web/server/routes/generate-single-component.js
+  - web/server/routes/component-bundle.js (49 lines)
+  - web/server/lib/registry/registry.js (bundleToFileBlocks)
+  - web/server/lib/auto-repair.js (113 lines)
+  - web/server/lib/verify-sandbox-build.js
+  - web/server/lib/llm-lightweight.js (25 lines)
+  - web/server/lib/screenshot.js
+  - web/src/pages/Agency/pages/Builder/Generation/Generation.jsx (~2300 lines)
+
+================================================================================
+TABLE OF CONTENTS
+================================================================================
+
+1.  THE FIVE REAL PROBLEMS (diagnosed from code, not theory)
+2.  THE CURRENT PIPELINE (what actually happens today, step by step)
+3.  PREMIUM COPY: WHY IT NEVER LANDS (the prop override illusion)
+4.  THE POLISH DEATH SPIRAL (why builds roll back to unpolished code)
+5.  THE COMPONENT COUNT CEILING (prompt text, not architecture)
+6.  THE INTENT GAP (coffee shop vs money management app)
+7.  THE BLIND BUILD (compile-only verification)
+8.  PHASE CHECKLIST (Phase 0–9, ordered by impact)
+9.  FILE IMPACT MAP (every file touched, per phase)
+10. RISK TABLE
+11. TIMELINE ESTIMATE
+12. VISION SUMMARY
+
+================================================================================
+
+# 1. THE FIVE REAL PROBLEMS
+
+These are not hypothetical. Each one is traced to exact lines of code.
+
+PROBLEM 1: Polish Destroys Premium Components
+  Location: `web/server/lib/polish-refinement.js` L9, L106
+  Evidence: Server logs show polish broke build TWICE, rolled back to
+            unpolished code. User gets zero copywriting on premium components.
+  Root:     NON_POLISHABLE_SHELL_FILES only excludes App.jsx and main.jsx.
+            Premium components under src/components/premium/ get FULL LLM
+            rewrites — shaders, WebGL, complex Framer Motion — all at risk.
+
+PROBLEM 2: Premium Copy Hydration is Broken
+  Location: `web/server/lib/registry/registry.js` L369-391 (bundleToFileBlocks)
+            `web/server/routes/plan-website-components.js` L496-504 (merge)
+  Evidence: propsOverrides does regex on `key = 'value'` patterns — this only
+            hits prop defaults, NOT hardcoded JSX strings like "Rivelon" or
+            "Welcome to Our Platform". Premium components have copy BAKED into
+            JSX body text, not as default prop values.
+  Root:     Master Copywriter produces keyContent + props, but merge matches
+            by `cc.name === c.name`. Name mismatch = empty props = no copy.
+
+PROBLEM 3: Hardcoded 5-9 Component Cap
+  Location: `web/server/routes/plan-website-components.js` L183-189
+            `web/server/lib/select-components-v2.js` L107-111, L248-249, L279
+  Evidence: Zod schema allows max(30) at L38. The limit is PURELY in prompt
+            text: "Simple: 5-6, Medium: 6-7, Complex: 8-9".
+  Root:     V2 also caps: "best 5-11 components" (L279), fallback targetSize
+            Math.min(9, ...) (L107-111). Both are just strings.
+
+PROBLEM 4: No Intent Classification for Initial Builds
+  Location: `web/server/routes/analyze-edit-intent.js` (edit-only)
+  Evidence: "Build me an app that manages money" gets the same
+            header-hero-features-footer layout as "Coffee shop landing page".
+  Root:     No pre-build classification exists. The enhance-prompt route
+            enriches text but does not extract layout type or app category.
+
+PROBLEM 5: No Visual Verification
+  Location: `web/server/lib/verify-sandbox-build.js` (vite build only)
+            `web/server/lib/screenshot.js` (thumbnails only, post-completion)
+  Evidence: Blue/blank screens pass verification because vite build succeeds.
+            Puppeteer exists but is only used for Supabase thumbnail uploads.
+  Root:     Compile-time check catches syntax errors but not runtime rendering
+            failures, z-index issues, or blank-screen regressions.
+
+================================================================================
+
+# 2. THE CURRENT PIPELINE (what actually happens today)
+
+  Client (Generation.jsx) orchestrates the full build:
+
+  Step 1: POST /api/enhance-prompt          — LLM enriches user text
+  Step 2: POST /api/derive-design-system    — LLM extracts palette/typography
+  Step 3: POST /api/select-components       — V1 catalog pick (if premium on)
+  Step 4: POST /api/plan-website-components — Produces flat component list +
+                                              MPA pages + copywriter pass (merge uses
+                                              fuzzy component name match for copy rows)
+  Step 5: POST /api/component-bundle (x N)  — Fetch premium component files
+          with propsOverrides from plan
+  Step 5b: POST /api/hydrate-premium-copy    — Per premium .jsx/.tsx: LLM replaces
+          baked-in demo/body copy using keyContent + props + vision (before apply) ✅
+  Step 6: POST /api/generate-single-component (x M) — Generate custom JSX
+  Step 7: POST /api/render-app              — Deterministic App.jsx shell
+  Step 8: POST /api/validate-imports        — Regex import validation
+  Step 9: POST /api/apply-ai-code-stream    — SSE pipeline:
+          9a. Parse files, sanitize imports, install packages
+          9b. Write files to E2B sandbox
+          9c. npx vite build (verify)
+          9d. Auto-repair loop (up to 5 attempts if build fails)
+          9e. Final Polish: full rewrite for non-premium src; copy-only for
+              src/components/premium/* (optional explicit premiumPolishPaths) ✅
+          9f. Verify again after polish
+          9g. If polish broke build: run polish AGAIN with error logs
+          9h. If still broken: ROLLBACK to pre-polish snapshot
+          9i. Mini-polish (non-premium src only; premium paths skipped) ✅
+          9j. Restart Vite, emit COMPLETE
+
+  REMAINING RISK (if hydrate or copy merge fails):
+  - Step 5: propsOverrides still does regex on defaults in bundle (hydrate fixes body)
+  - Step 9h: Rollback can still drop polish fixes — mitigated by hydrate + premium copy-only polish
+
+  EXPECTED OUTCOME: Copywriter keyContent/props + hydration land user text in premium JSX
+  before apply; polish refines without tearing down shaders.
+
+================================================================================
+
+# 3. PREMIUM COPY: WHY IT NEVER LANDS
+
+  THE PROP OVERRIDE ILLUSION
+  --------------------------
+  `bundleToFileBlocks()` in registry.js L369-391:
+
+    for (const [key, value] of Object.entries(propsOverrides)) {
+        const defaultPattern = new RegExp(
+            `(${key}\\s*=\\s*)(['"\`])([^'"\`]*)\\2`, 'g'
+        );
+        content = content.replace(defaultPattern, `$1'${safeValue}'`);
+    }
+
+  This regex targets: `propName = 'default value'` patterns.
+  It does NOT touch: <h1>Welcome to Rivelon</h1> or text inside JSX body.
+
+  A typical premium component has:
+    export default function HeroSplashCursor({ title = "Rivelon" }) {
+      return (
+        <div>
+          <h1>{title}</h1>
+          <p>Discover the future of innovation with Rivelon...</p>  // MISSED
+          <span>Trusted by 10,000+ Rivelon users</span>             // MISSED
+        </div>
+      );
+    }
+
+  The regex catches `title = "Rivelon"` but misses every hardcoded string
+  in the JSX body. The Master Copywriter step (plan-website-components.js
+  L425-504) generates replacement text, but it's passed as props that only
+  override DEFAULTS. The body text stays "Rivelon" until polish tries to
+  fix it — and polish often breaks the build trying.
+
+  THE NAME MISMATCH BUG
+  ---------------------
+  Plan merge at L496-504:
+
+    const copy = copyResult.components?.find(cc => cc.name === c.name);
+
+  If the copywriter returns "HeroSplash" but the DB component is named
+  "HeroSplashCursor", the find() returns undefined. Result: keyContent
+  falls back to c.description (generic), props becomes {} (empty).
+
+  FIX: Phase 0 + Phase 1 (below)
+
+================================================================================
+
+# 4. THE POLISH DEATH SPIRAL
+
+  WHAT THE LOGS SHOW (from the "skibidi sigma" build):
+
+  Timeline:
+    04:57:17 — Polish starts (15 files, Haiku, concurrency 1)
+    04:57:17 to 05:00:21 — 181 seconds polishing 15 files one at a time
+    05:00:21 — Polish done. 93,634 chars of output. vite build → EXIT CODE 1
+    05:00:21 — "Polish introduced errors, attempting ONE repair pass..."
+    05:00:21 to 05:03:21 — SECOND full polish pass (183 seconds)
+    05:03:21 — Still fails. ROLLBACK to pre-polish snapshot.
+    05:03:21 — Rollback build passes. Mini-polish says NO_CHANGES.
+    05:03:56 — Complete. Total duration: 447,461ms (7.4 minutes)
+
+  The user waited 7+ minutes. The result: ZERO copy changes on premium
+  components. The entire polish cycle was wasted because:
+
+  1. Polish rewrites ALL files at full depth (restructures, adds CSS, modifies
+     shader code) when it should only be fixing TEXT content
+  2. "Salvaged raw code response" (L305-310) accepts loose code-like text as
+     full file replacement — high risk of breaking imports/exports
+  3. Haiku at concurrency 1 serializes ALL 15 files — 12-25s each
+  4. The "repair" path is just running polish AGAIN with error logs appended
+     to the prompt — it's not a targeted fix, it's another full rewrite
+  5. Rollback restores the ORIGINAL files — no copy changes survive
+
+  WHY POLISH BREAKS BUILDS:
+  - Model rewrites shader/WebGL math despite instructions not to
+  - Model removes or reorganizes imports
+  - Model generates responses without <file> tags → "salvage" takes raw
+    output as full file content → broken exports
+  - Long file names (100+ chars) confuse the output formatter
+
+  FIX: Phase 0 (protect premium) + Phase 4 (targeted polish) + Phase 8
+       (efficiency)
+
+  STATUS (2026): Phase 0 + Phase 4 + Phase 8 implemented in code — triage + copy-only
+  for standard files, no salvage on repair passes, Haiku concurrency 2 / others 3,
+  skip files &lt;500 chars and optional polishSkipPaths, design spec pre-cached in
+  apply (repair reuses), mini-polish narrowed to paths changed by main polish.
+
+================================================================================
+
+# 5. THE COMPONENT COUNT CEILING
+
+  HISTORICAL ISSUE (pre–Phase 2):
+  - V1 planning used fixed simple/medium/complex bands (~5–9) in prose only.
+  - V2 selection used a low targetSize cap and "5–11" wording, limiting variety.
+
+  CURRENT STATE (Phase 2 — implemented):
+  - V1 (`plan-website-components.js`): `planSchema` includes `layoutType` with described
+    per-archetype bands (e.g. marketing-landing 5–8, web-app 8–20, e-commerce 10–18);
+    `SYSTEM_PROMPT` repeats adaptive LAYOUT TYPE & COMPONENT COUNTS; server fills missing
+    `layoutType` via `inferLayoutTypeFromPrompt` when needed. Zod still allows
+    `.min(1).max(30)` — the model is steered by bands, not by max(30) alone.
+  - V2 (`select-components-v2.js`): `targetSize = Math.min(18, Math.max(6, …))`; final
+    selection prompts say "6–20 components"; structural selection respects `layoutType`
+    (e.g. web-app does not inject hero/footer from the pool the same way as marketing).
+  - `enforcePlanStructure(components, layoutType)` dedupes header/hero/footer and orders
+    roles; web-app is dedupe-only (no hero/footer injection in that helper).
+
+  COST / QUALITY NOTE (unchanged):
+  - More components still mean more polish time and tokens — bands exist so the model
+    picks a sane count per layout type instead of racing to the schema max.
+
+  REMAINING IMPROVEMENT:
+  - Phase 3 (intent classification route): deterministic layout/complexity hints *before*
+    plan + selection, so routing does not rely only on the planner + heuristics.
+
+  STATUS (2026): §5 ceiling addressed by Phase 2 in code. Phase 3 is optional hardening.
+
+================================================================================
+
+# 6. THE INTENT GAP
+
+  HISTORICAL ISSUE (pre–Phase 2 / early prompts):
+  - Planning text treated every site like a marketing page: header → hero →
+    features → footer, with no first-class “app / dashboard” path.
+  - V2 structural enforcement injected header + hero + footer from the pool for all runs.
+
+  CURRENT STATE (partially mitigated — Phase 2 + structural guards):
+  - `layoutType` on the plan (`plan-website-components.js` / `planSchema`) and an
+    adaptive `SYSTEM_PROMPT`: for `web-app`, copy explicitly says dashboard-style
+    sections, hero optional, footer optional; marketing layouts still use header /
+    hero / footer when appropriate.
+  - `inferLayoutTypeFromPrompt` (`layout-type.js`) heuristically maps prompts such as
+    “money management”, “dashboard”, “expense tracker” → `web-app` when the model
+    omits `layoutType`.
+  - `enforcePlanStructure(…, layoutType)`: dedupe/sort only; `web-app` does not add
+    hero/footer in the flatten/mandatory fill — `needHero` / `needFooter` are false
+    for `web-app`.
+  - `enforceStructuralSelection(…, layoutType)` in `select-components-v2.js`: for
+    `web-app`, only **header** is required from the candidate pool; hero/footer are
+    not injected from the pool (see `[BUILDER-VERIFY] v2 structural inject`).
+
+  WHAT IS STILL MISSING (why Phase 7 remains on the roadmap):
+  - `enhance-prompt.js` does not embed structured intent (Phase 3 uses a dedicated
+    `/api/classify-intent` call before plan instead).
+  - `derive-design-system.js` still does not set layout type.
+  - Blueprint / category bias toward dashboard widgets vs marketing sections is not
+    fully encoded in DB presets — V2 selection still depends on catalog tags and LLM
+    scoring (`suggestedCategories` from Phase 3 is not wired into V2 yet).
+
+  FIX (roadmap): Phase 7 (stronger app-mode catalog / blueprint bias; optional use
+    of `suggestedCategories` / `needsPremiumCatalog` from classify-intent).
+
+  STATUS (2026): Phase 3 steers `layoutType` / `mandatoryStructure` into planning;
+  brochure-vs-app is further constrained. Remaining: catalog depth (Phase 7).
+
+================================================================================
+
+# 7. THE BLIND BUILD
+
+  STILL TRUE (compile-only verify):
+  `verify-sandbox-build.js` runs `npx vite build --base=./` and returns success,
+  logs, exit code — it cannot see runtime rendering.
+
+  WHAT THAT MISSES (unchanged):
+  - Blank or near-empty DOM, z-index traps, broken client-only errors, etc.
+
+  MITIGATION (Phase 6 — implemented):
+  - `captureForVerification(sandboxUrl)` in `screenshot.js` opens the live sandbox
+    URL (same Puppeteer stack as thumbnails), waits for load, and checks DOM heuristics:
+    scroll height, visible text length, and presence of img/canvas/svg/video.
+  - `apply-ai-code-stream.js` runs this after a **successful** vite verify (post-repair),
+    before polish. On likely blank: `SSE_EVENTS.WARNING` + `[BUILDER-VERIFY] visual verify`
+    logs. Does **not** fail the build (non-fatal); user still gets a preview.
+  - Thumbnail upload (`captureAndUploadScreenshot`) remains separate (Supabase).
+
+  NOT COVERED YET:
+  - No auto-repair loop from blank-screen detection (optional follow-up).
+  - No VLM aesthetic scoring (roadmap “optional future”).
+
+  STATUS (2026): Phase 6 baseline gate in place; compile-only path is no longer the
+  only signal before polish.
+
+================================================================================
+
+# 8. PHASE CHECKLIST
+
+Each phase ships independently. Phases 0-2 are critical. Phases 3-9 are
+incremental improvements that compound.
+
+================================================================================
+## Phase 0: PREMIUM POLISH PROTECTION
+================================================================================
+Priority: CRITICAL (fixes the immediate user-visible regression)
+Estimated effort: 2-3 hours
+Dependencies: None
+
+WHAT: Stop polish from rewriting premium component structure. Premium files
+get a copy-only pass instead of a full rewrite.
+
+WHERE:
+  `web/server/lib/polish-refinement.js`
+  `web/server/routes/apply-ai-code-stream.js`
+
+HOW:
+
+- [x] ✅ `PREMIUM_PATH_PREFIX` exported (`src/components/premium/`).
+
+- [x] ✅ `isPremiumFile(file, options)`: default = path under `PREMIUM_PATH_PREFIX`;
+      optional `options.premiumPaths` Set (from apply body `premiumPolishPaths`) marks
+      extra paths as premium copy-only.
+
+- [x] ✅ After shell/skip/tiny filters, `standardPolishFiles` vs `premiumPolishFiles`;
+      parallel polish queues premium as copy-only; triage (Phase 4) applies to **standard**
+      files only — premium is never full-rewrite polish.
+
+- [x] ✅ Copy-only prompts: `buildPremiumCopySystemPrompt` + `buildPremiumCopyFilePrompt`
+      (text literals only; preserve structure, shaders, motion, imports).
+
+- [x] ✅ No raw **salvage** when the model omits `<file>` blocks on premium (or triaged
+      copy-only standard) — avoids replacing a whole file with broken loose text.
+
+- [x] ✅ `apply-ai-code-stream.js`: passes `premiumPaths` into `runPolishStep`; mini-polish
+      skips paths under `PREMIUM_PATH_PREFIX`.
+
+- [x] ✅ Rollback: `prePolishSnapshot` covers all paths in `filesToPolish` (standard + premium).
+
+STATUS (2026): Phase 0 behaviors above are in `polish-refinement.js` + apply; later phases
+(4/8) add triage and efficiency **without** removing premium copy-only protection.
+
+TEST: Generate a hybrid/strict build. Premium components should retain their
+      shader/animation code but have demo text replaced with user-specific
+      copy. Build should not break from polish. Logs: `[BUILDER-VERIFY] polish split` and
+      `polish file mode=premiumCopyOnly path=…` for premium paths.
+
+================================================================================
+## Phase 1: COPY HYDRATION ROUTE
+================================================================================
+Priority: HIGH (fixes the core "propsOverrides doesn't work" problem)
+Estimated effort: 4-5 hours
+Dependencies: Phase 0 (polish protection prevents double-work)
+
+WHAT: Server route that takes a premium component file + plan copy (`keyContent`,
+`props`) and returns hydrated source — not just default-prop rewrites. Runs in
+**Generation.jsx** after each premium bundle resolves and **before** apply, so the
+sandbox receives files with plan-aligned copy first.
+
+WHERE:
+  `web/server/routes/hydrate-premium-copy.js`
+  `web/server/index.js` (POST + `aiLimiter`)
+  `web/src/pages/Agency/pages/Builder/Generation/Generation.jsx` (Stage A.1)
+  `web/server/routes/plan-website-components.js` (copywriter merge)
+
+HOW:
+
+- [x] ✅ `POST /api/hydrate-premium-copy` — body includes `fileContent`, optional
+      `fileName`, `keyContent`, `props`, `designSystem`, `prompt`, optional `model`
+      (maps through `resolveLightweightModel`), optional `buildId`. Max file size
+      guard (`MAX_FILE_CHARS`). If neither `keyContent` nor `props` is present,
+      returns original file with `skipped: true` (`[BUILDER-VERIFY] hydrate: skipped`).
+
+- [x] ✅ System prompt in code: replace demo/placeholder JSX text; preserve structure,
+      shaders, motion, imports; output **one** `<file path="…">…</file>` block.
+      Response: `parseFileBlocks` → match path → `{ success, hydratedContent }`; on
+      missing/empty block, keep original and log `hydrate: done … skipped=no_file_block|empty_block`.
+
+- [x] ✅ **Generation.jsx** — after `premiumResults` (component-bundle fetch), **Stage A.1**:
+      for each successful bundle with `keyContent` or `props`, `parseFilesFromCode`,
+      hydrate each `*.jsx` / `*.tsx` file via the API, then `joinFileBlocks` back into
+      `r.fileContent`. Passes `model: aiModel`, `buildId`, `designSystem`, `prompt: finalPrompt`.
+
+- [x] ✅ **plan-website-components.js** — `normalizeComponentName()`; copywriter row match
+      `cc.name === c.name || normalizeComponentName(cc.name) === normalizeComponentName(c.name)`;
+      fuzzy match logs `[BUILDER-VERIFY] plan copy merge: fuzzyMatched …`.
+
+STATUS (2026): Phase 1 is live; hydration + fuzzy merge are the source of truth for plan
+copy landing on premium files before apply/polish.
+
+TEST: Hybrid build with premium + plan copy — expect user-specific text before polish.
+      Server: `[BUILDER-VERIFY] hydrate: start|done …`; client: `generation: hydrate request|applied …`.
+
+================================================================================
+## Phase 2: DYNAMIC COMPONENT COUNTS
+================================================================================
+Priority: HIGH (breaks the 5-9 ceiling)
+Estimated effort: 2-3 hours
+Dependencies: None (can run in parallel with Phase 0-1)
+
+WHAT: Replace hardcoded component ranges with intent-driven dynamic ranges.
+Add layoutType field to the plan schema.
+
+WHERE:
+  `web/server/routes/plan-website-components.js`
+  `web/server/lib/select-components-v2.js`
+
+HOW:
+
+- [x] ✅ Add layoutType to planSchema (plan-website-components.js after L37):
+
+      layoutType: z.enum([
+        'marketing-landing',  // 5-8 components (header, hero, features, CTA, footer)
+        'business-site',      // 7-12 components (multi-page, about, services, contact)
+        'web-app',            // 8-20 components (dashboard, sidebar, widgets, no hero)
+        'portfolio',          // 5-8 components (gallery, projects, bio)
+        'e-commerce'          // 10-18 components (catalog, cart, product pages)
+      ]).describe('Layout archetype for component count and structure rules')
+
+- [x] ✅ Replace V1 SYSTEM_PROMPT L183-189 with:
+
+      LAYOUT TYPE & COMPONENT COUNTS (ADAPTIVE):
+      1. First, classify the layout type from the user's request:
+         - "marketing-landing": Landing page, Coming Soon, single product → 5-8
+         - "business-site": Small business, Agency, Blog → 7-12
+         - "web-app": SaaS Dashboard, Tool, Admin Panel → 8-20
+         - "portfolio": Portfolio, Resume, Showcase → 5-8
+         - "e-commerce": Shop, Marketplace, Product Catalog → 10-18
+      2. Set layoutType accordingly.
+      3. Generate components within that range.
+
+      STRUCTURAL RULES BY LAYOUT TYPE:
+      - marketing-landing & portfolio: Header + Hero mandatory, Footer mandatory
+      - business-site: Header mandatory, Hero recommended, Footer mandatory
+      - web-app: Header/Nav mandatory, Hero NOT needed, Footer optional.
+        Use dashboard-style layouts: sidebar, widget grids, data tables.
+      - e-commerce: Header mandatory, Hero optional, Footer mandatory.
+        Must include product grid, cart, and category components.
+
+- [x] ✅ In select-components-v2.js, replace caps:
+      L107-111: Change Math.min(9, ...) to Math.min(18, ...)
+      L248-249: Change "5-11" to "6-20"
+      L279: Change "5-11" to "6-20"
+      These are string changes in LLM prompts — zero logic risk.
+
+- [x] ✅ Update enforcePlanStructure (L71-88) to NOT force hero/footer when
+      layoutType is 'web-app'. Add parameter:
+
+      function enforcePlanStructure(components = [], layoutType = 'marketing-landing') {
+        // ... existing dedup logic ...
+        // Only force header/hero/footer for marketing layouts
+        if (layoutType === 'web-app') {
+          // Don't inject missing hero or footer
+          // Only ensure at most 1 header
+        }
+        // ... existing sort ...
+      }
+      Implemented: enforcePlanStructure(…, layoutType); hybrid missing-role fill;
+      mandatory fallback injection skips hero/footer for web-app; V2 enforceStructuralSelection
+      injects only header when layoutType is web-app.
+
+TEST: Prompt "Build me a money management dashboard". Should produce 10+
+      components with no hero section, dashboard-style widgets. Prompt
+      "Landing page for coffee" should still produce 5-7 with hero/footer.
+
+================================================================================
+## Phase 3: PRE-BUILD INTENT CLASSIFICATION
+================================================================================
+Priority: HIGH (enables Phase 2's dynamic ranges and Phase 7's app selection)
+Estimated effort: 3-4 hours
+Dependencies: Phase 2 (schema must have layoutType field)
+
+WHAT: Lightweight LLM call before selection/planning that classifies the
+user's intent into structured fields. Single generateObject call, fast
+model, ~1-2 second latency.
+
+WHERE:
+  NEW: `web/server/routes/classify-intent.js`
+  MODIFY: `web/src/pages/Agency/pages/Builder/Generation/Generation.jsx`
+  MODIFY: `web/server/routes/plan-website-components.js` (accept layoutType)
+
+HOW:
+
+- [x] ✅ `web/server/routes/classify-intent.js`: `POST /api/classify-intent`
+      Body: `{ prompt, images?, model?, buildId? }` — `resolveLightweightModel(model)` +
+      `generateObject` with schema: `layoutType`, `complexity`, `needsPremiumCatalog`,
+      `suggestedCategories`, `mandatoryStructure` (needsHeader/Hero/Footer/Sidebar).
+      Logs `[BUILDER-VERIFY] classify-intent: layoutType=…`.
+
+- [x] ✅ Registered in `web/server/index.js` (`aiLimiter` + `aiProtections`).
+
+- [x] ✅ `Generation.jsx`: after enhance-prompt, before derive-design-system, calls
+      classify-intent; passes `intentClassification` on `plan-website-components` body.
+      Client log: `[BUILDER-VERIFY] generation: intentClassification layoutType=`.
+
+- [x] ✅ `plan-website-components.js`: when `intentClassification.layoutType` is valid,
+      overrides V2/inferred `layoutType`; V1 plan JSON can be overridden the same way.
+      `complexity` from intent overrides V2 heuristic / can set V1. Hybrid missing-role
+      fillers respect `mandatoryStructure` (e.g. skip hero/footer when `needsHero` false).
+      Flatten-stage fallback injection uses `mandatoryStructure` so intent can suppress
+      hero/footer/header when false.
+
+- [ ] Follow-up (Phase 7): feed `suggestedCategories` / `needsPremiumCatalog` into V2
+      selection or blueprint bias.
+
+STATUS (2026): Phase 3 baseline shipped — intent precedes planning and steers layout type,
+      complexity, and structural defaults.
+
+TEST: Check server logs for `classify-intent` + `plan layoutType override` when the
+      classifier disagrees with V2. Dashboard prompts should favor `web-app`.
+
+================================================================================
+## Phase 4: SMART POLISH (TARGETED, NOT BLANKET)
+================================================================================
+Priority: MEDIUM-HIGH (fixes the 3-6 minute waste + build breakage)
+Estimated effort: 4-5 hours
+Dependencies: Phase 0 (premium protection must be in place first)
+
+WHAT: Replace the "rewrite every file" approach with a two-pass system:
+Pass 1 (triage) decides per standard file: skip | copy_only | full_polish.
+Pass 2 runs parallel polish only on the resulting work queue (premium always
+copy-only).
+
+WHERE:
+  `web/server/lib/polish-refinement.js`
+  `web/server/routes/apply-ai-code-stream.js` (design spec pre-cache, `polishSkipPaths` → `skipPaths`)
+
+HOW:
+
+- [x] ✅ `triageStandardFilesForPolish` before parallel polish — lightweight `generateObject`,
+      path + snippet; per standard file: `skip` | `copy_only` | `full_polish` (fallback full).
+      Premium files skip triage (copy-only queue only).
+
+- [x] ✅ Work items from triage + premium; `polishOneFile` uses copy-only prompts for triaged
+      copy_only and all premium; no raw salvage on copy-only or repair passes.
+
+- [x] ✅ `MIN_POLISH_CHAR_BYTES` (500) + optional `options.skipPaths` filter polishable set.
+
+- [x] ✅ Apply pre-caches `generateDesignSpec` once; passes into `runPolishStep` (initial + repair).
+
+- [x] ✅ `apply-ai-code-stream`: body `polishSkipPaths` (string array) → `skipPaths` Set for polish
+      (`[BUILDER-VERIFY] apply: polishSkipPaths count=N` when non-empty).
+
+- [ ] Optional client: `Generation.jsx` → `applyGeneratedCode` does not yet send `polishSkipPaths`
+      (e.g. paths from single-component generation); server API is ready.
+
+STATUS (2026): Phase 4 triage + skip paths + apply-side design spec are live; Phase 8 adds
+      concurrency and mini-polish narrowing (see Phase 8 block).
+
+TEST: Hybrid build — `[BUILDER-VERIFY] polish triage:`, `polish workItems=`, `polish filter:`,
+      `apply: designSpec pre-cached`, `polish designSpec=from_apply_cache`.
+
+================================================================================
+## Phase 5: PRE-BUILD IDENTIFIER VALIDATION
+================================================================================
+Priority: MEDIUM (prevents the "3dProduct" regression deterministically)
+Estimated effort: 1-2 hours
+Dependencies: None
+
+WHAT: After files are parsed and before vite build, scan declarations for
+invalid JS identifier names, rename them consistently across the file batch,
+and log fixes. No LLM.
+
+WHERE:
+  `web/server/lib/validate-identifiers.js`
+  `web/server/routes/apply-ai-code-stream.js` (after `sanitizeImports`, before SSE apply)
+
+HOW:
+
+- [x] ✅ `validateAndFixIdentifiers(files)` mutates `file.content` for `.js` / `.jsx` / `.ts` / `.tsx`.
+      Declarations scanned: `function` (incl. export default / async), `const`/`let`/`var`, `class`,
+      default `import … from`. Invalid names collected → `fixInvalidIdentifierName`: leading
+      `3d`+Pascal rest → suffix `3d` (e.g. `3dProductRotation` → `ProductRotation3d`); other
+      leading digits → rotate to end or `_` prefix; whole-token replace across all files so
+      imports/usages stay aligned.
+
+- [x] ✅ Apply calls it immediately after `sanitizeImports`; logs
+      `[BUILDER-VERIFY] validate-identifiers:` and per-file `from → to`.
+
+STATUS (2026): Shipped.
+
+TEST: Invalid export like `export default function 3dProductRotation` → `ProductRotation3d` in
+      code and JSX; logs show `[BUILDER-VERIFY] validate-identifiers:` before vite verify.
+
+================================================================================
+## Phase 6: SCREENSHOT VERIFICATION GATE
+================================================================================
+Priority: MEDIUM (catches blank/blue screens that compile-time misses)
+Estimated effort: 3-4 hours
+Dependencies: None
+
+WHAT: After `vite build` succeeds, load the sandbox preview URL in Puppeteer and
+run a **DOM heuristic** (`scrollHeight`, body text length, img/canvas/svg/video count).
+No VLM in production yet; optional JPEG base64 when `captureImage: true` for future use.
+
+WHERE:
+  `web/server/lib/screenshot.js` — `captureForVerification`
+  `web/server/routes/apply-ai-code-stream.js` — runs after verify/repair when `buildPassed`
+  `verify-sandbox-build.js` — unchanged (compile-only; visual gate is separate)
+
+HOW:
+
+- [x] ✅ `captureForVerification(sandboxUrl, { captureImage? })`: navigate with
+      `waitUntil: 'networkidle2'` (45s cap), 2.5s settle, viewport 1440×900. In-page:
+      `hasContent = scrollHeight > 80 && (trimmed textLen > 5 || mediaCount > 0)`.
+      Returns metrics + optional `screenshotBase64` if `captureImage`.
+
+- [x] ✅ Apply: only when `buildPassed && activeSandboxId`; resolves provider, `previewUrl =
+      getSandboxUrl()`; dynamic-import `captureForVerification`. If `skipped`, log
+      `[BUILDER-VERIFY] visual verify skipped:`; if `hasContent === false`, log
+      `[BUILDER-VERIFY] visual verify hasContent=false scrollHeight=… textLen=… media=…` and
+      `sse.send(SSE_EVENTS.WARNING, { message: … })` (suggests checking App.jsx / tree); if ok,
+      `[BUILDER-VERIFY] visual verify ok …`.
+
+- [ ] OPTIONAL: Auto-repair when `hasContent === false` (e.g. root render / App.jsx hint loop).
+
+- [ ] OPTIONAL FUTURE: VLM on stored screenshot for aesthetics / layout scoring.
+
+- [x] ✅ Outer `try/catch` around the block; failures are non-fatal (polish still runs).
+
+STATUS (2026): Core visual gate shipped; VLM / auto-repair remain optional.
+
+TEST: Near-empty preview → `[BUILDER-VERIFY] visual verify hasContent=false` and client
+      receives `WARNING` SSE; successful check → `visual verify ok`. No URL / Puppeteer error
+      → `visual verify skipped:` or caught warn, apply still completes.
+
+================================================================================
+## Phase 7: COMPONENT SELECTION FOR APPS
+================================================================================
+Priority: MEDIUM (enables "build me a dashboard" prompts)
+Estimated effort: 3-4 hours
+Dependencies: Phase 3 (intent classification for `layoutType` on the **plan** path)
+
+WHAT: When `layoutType === web-app`, avoid marketing-only shells (hero/footer) as
+required structure; bias planning toward dashboard-style sections; V2 selection only
+injects **header** from the structural pool. Deeper “app catalog” tuning can still
+use DB blueprints + optional `layoutType` wiring in V2.
+
+WHERE:
+  `web/server/routes/plan-website-components.js` — plan LLM, hybrid fillers, `enforcePlanStructure`
+  `web/server/lib/select-components-v2.js` — `enforceStructuralSelection`, blueprint flow
+  `website_type_blueprints` (Supabase) — optional keyword / category presets (data, not in repo)
+
+HOW:
+
+- [x] ✅ `plan-website-components.js`: Zod `layoutType` includes `web-app`; `SYSTEM_PROMPT` bands
+      (8–20) and COMPLETENESS rules (header/nav first; hero optional; feature widgets). Intent
+      from Phase 3 can override model `layoutType` (`[BUILDER-VERIFY] plan layoutType override`).
+      `enforcePlanStructure`: for `web-app`, dedupe only (`[BUILDER-VERIFY] enforcePlanStructure:
+      layoutType=web-app`). Hybrid mode: missing “standard” roles use `header` + `feature` only
+      (not hero/footer shells) when `layoutType === web-app`; `mandatoryStructure` can trim further.
+
+- [x] ✅ `select-components-v2.js` `enforceStructuralSelection`: for `web-app`, `requiredStructural`
+      is only `header`; hero/footer not pulled from pool (`[BUILDER-VERIFY] v2 structural inject:
+      layoutType=web-app`). Final pass uses `inferLayoutTypeFromPrompt(prompt)` for this — not the
+      plan’s `intentClassification` payload.
+
+- [ ] Optional **data**: Seed or tune `website_type_blueprints` (keywords, `required_categories`)
+      toward dashboard / admin / tool patterns so template match + dynamic blueprint favor app
+      categories more often.
+
+- [ ] Optional **code**: Pass explicit `layoutType` (or intent) into V2 so structural enforcement
+      matches Phase 3 when the prompt alone would not infer `web-app`.
+
+- [ ] Optional: guarantee sidebar / secondary nav from pool when `web-app` (catalog + LLM only today).
+
+STATUS (2026): Plan + hybrid fillers + V2 structural rules for `web-app` are shipped; DB blueprint
+      tuning and V2 `layoutType` wiring remain optional.
+
+TEST: Dashboard-style prompt → `[BUILDER-VERIFY] plan layoutType=web-app` (or intent override);
+      `enforcePlanStructure: layoutType=web-app`; after selection, `v2 structural inject: layoutType=web-app`
+      when inference matches. Hybrid web-app should not add generated hero/footer shells for missing
+      marketing roles. Final UI layout (sidebar vs header-only) still depends on selected components
+      and generation — not fully deterministic from this phase alone.
+
+================================================================================
+## Phase 8: POLISH EFFICIENCY
+================================================================================
+Priority: MEDIUM (reduces build time from 7+ min to under 3 min)
+Estimated effort: 2-3 hours
+Dependencies: Phase 0 (premium protection), Phase 4 (smart polish / triage)
+
+WHAT: Cut polish wall-clock via higher concurrency, smaller polish sets, one design-spec
+LLM call per apply, and a narrowed mini-polish pass.
+
+WHERE:
+  `web/server/lib/polish-refinement.js`
+  `web/server/lib/mini-polish-refinement.js`
+  `web/server/routes/apply-ai-code-stream.js`
+
+HOW:
+
+- [x] ✅ Parallel pool: `poolLimit = model.includes('anthropic') ? 2 : 3` in polish-refinement.
+
+- [x] ✅ `MIN_POLISH_CHAR_BYTES` (500): files shorter than this are excluded from polish (logged in
+      polish filter line as `skipped ≤500b=…`).
+
+- [x] ✅ Apply pre-calls `generateDesignSpec` once → `cachedDesignSpec`; `runPolishStep` receives
+      `designSpec: cachedDesignSpec` (initial + repair). Logs `[BUILDER-VERIFY] apply: designSpec
+      pre-cached for polish (repair pass reuses)`; polish logs `[BUILDER-VERIFY] polish
+      designSpec=from_apply_cache` when passed through.
+
+- [x] ✅ `polishSkipPaths` on apply body → `skipPaths` Set → `runPolishStep({ skipPaths })`; log
+      `[BUILDER-VERIFY] apply: polishSkipPaths count=N` when non-empty.
+
+- [ ] Optional client: `Generation.jsx` (or other callers) does not yet send `polishSkipPaths` for
+      freshly single-generated paths — API ready.
+
+- [x] ✅ Mini-polish: when main polish changed at least one non-premium path vs pre-polish snapshot,
+      candidates narrow to those paths; log `[BUILDER-VERIFY] mini-polish: narrowed X → Y file(s)
+      (only paths changed by main polish)`; otherwise `mini-polish: candidateFiles=…` fallback.
+
+STATUS (2026): Shipped except optional client wiring for `polishSkipPaths`.
+
+TEST: Hybrid build with polish — `apply: designSpec pre-cached for polish`, `polish
+      designSpec=from_apply_cache`, polish filter / triage lines from Phase 4; after main polish,
+      `mini-polish: narrowed …` when applicable. With `polishSkipPaths` in the request body,
+      `apply: polishSkipPaths count=…`.
+
+================================================================================
+## Phase 9: DUPLICATE /projects/update DEBOUNCE
+================================================================================
+Priority: LOW (UX polish, reduces server noise)
+Estimated effort: 1 hour
+Dependencies: None
+
+WHAT: Server logs can show `[API] /projects/update called` in quick pairs for the same
+logical save — often React StrictMode (dev), overlapping effects, or back-to-back calls from
+both `saveProjectUpdates` and **direct** `authFetch('/api/projects/update', …)` in the same
+flow.
+
+WHERE:
+  `web/src/pages/Agency/pages/Builder/Generation/Generation.jsx` — `saveProjectUpdates` (~567+)
+      plus several raw `authFetch` POSTs to the same endpoint (~2021, ~2065, ~2073, ~2251)
+  `web/server/routes/update-project.js` — no idempotency; every request hits `updateProject`
+
+HOW:
+
+- [ ] Client: debounce or ref-guard **shared** project persistence (same `buildId` + stable
+      serialized `updates` within ~500ms, or skip if in-flight for identical payload). Prefer
+      routing **all** updates through one helper so direct `authFetch` duplicates are not missed.
+
+- [ ] Server (optional): idempotency in `update-project.js` — e.g. same `buildId` + body hash
+      within 1s → short-circuit DB (return 200).
+
+STATUS (2026): **Not implemented** — `saveProjectUpdates` posts immediately; `update-project.js`
+      logs once per HTTP request with no dedupe.
+
+TEST: After fix, `[API] /projects/update called` should not appear twice for the same logical
+      save (DevTools Network or server log count). Baseline today: pairs still possible.
+
+================================================================================
+
+# 9. FILE IMPACT MAP
+
+Primary files created or modified by Phases 0–8 (plus Phase 9 target). Other routes
+(e.g. generate-*, auto-repair, Builder UI) may change alongside builds but are not listed here.
+
+  Phase 0 (Premium Polish Protection):
+    MODIFY  web/server/lib/polish-refinement.js
+    MODIFY  web/server/routes/apply-ai-code-stream.js
+
+  Phase 1 (Copy Hydration Route):
+    CREATE  web/server/routes/hydrate-premium-copy.js
+    MODIFY  web/server/index.js (register route)
+    MODIFY  web/src/pages/Agency/pages/Builder/Generation/Generation.jsx
+    MODIFY  web/server/routes/plan-website-components.js (name match fix)
+
+  Phase 2 (Dynamic Component Counts):
+    MODIFY  web/server/routes/plan-website-components.js
+    MODIFY  web/server/lib/select-components-v2.js
+
+  Phase 3 (Intent Classification):
+    CREATE  web/server/routes/classify-intent.js
+    MODIFY  web/server/index.js (register route)
+    MODIFY  web/src/pages/Agency/pages/Builder/Generation/Generation.jsx
+    MODIFY  web/server/routes/plan-website-components.js
+
+  Phase 4 (Smart Polish):
+    CREATE  web/server/lib/llm-lightweight.js (lightweight / triage / design-spec model routing)
+    MODIFY  web/server/lib/polish-refinement.js
+    MODIFY  web/server/routes/apply-ai-code-stream.js
+
+  Phase 5 (Identifier Validation):
+    CREATE  web/server/lib/validate-identifiers.js
+    MODIFY  web/server/routes/apply-ai-code-stream.js
+
+  Phase 6 (Screenshot Verification):
+    MODIFY  web/server/lib/screenshot.js
+    MODIFY  web/server/routes/apply-ai-code-stream.js
+
+  Phase 7 (App-Mode Selection):
+    MODIFY  web/server/lib/select-components-v2.js
+    MODIFY  web/server/routes/plan-website-components.js
+
+  Phase 8 (Polish Efficiency):
+    CREATE  web/server/lib/mini-polish-refinement.js
+    MODIFY  web/server/lib/polish-refinement.js
+    MODIFY  web/server/routes/apply-ai-code-stream.js
+
+  Phase 9 (Debounce) — NOT IMPLEMENTED (planned touch):
+    PLANNED  web/src/pages/Agency/pages/Builder/Generation/Generation.jsx
+    PLANNED  web/server/routes/update-project.js (optional idempotency)
+
+  SUMMARY:
+    Files CREATED: 5 — hydrate-premium-copy.js, classify-intent.js, llm-lightweight.js,
+      validate-identifiers.js, mini-polish-refinement.js
+    Files MODIFIED (distinct): 7 — polish-refinement.js, apply-ai-code-stream.js, index.js,
+      Generation.jsx, plan-website-components.js, select-components-v2.js, screenshot.js
+    Total unique paths (Phases 0–8): 12
+    Phase 9: not counted above until shipped.
+
+================================================================================
+
+# 10. RISK TABLE
+
+  Phase | Risk                                  | Mitigation
+  ------|---------------------------------------|--------------------------------------------
+  0     | Premium copy-only prompt still breaks | Rollback safety net already exists.
+        | complex components                    | Prompt is very constrained — text only.
+  ------|---------------------------------------|--------------------------------------------
+  1     | Hydration route adds ~1-2s per        | Use lightweight model. Parallelize
+        | premium component to build time       | hydration calls across components.
+  ------|---------------------------------------|--------------------------------------------
+  2     | Higher component counts increase      | Phase 4/8 reduce polish cost. Dynamic
+        | polish time and token cost            | ranges cap max per layout type.
+  ------|---------------------------------------|--------------------------------------------
+  3     | Intent misclassification sends plan   | Lightweight model + small schema; invalid
+        | down a wrong layoutType               | layoutType values ignored; planner still
+        |                                       | merges V2 + `inferLayoutTypeFromPrompt`.
+  ------|---------------------------------------|--------------------------------------------
+  4     | Triage incorrectly skips files that   | Triage can default to full_polish on
+        | need polish                           | ambiguity; premium paths skip triage.
+  ------|---------------------------------------|--------------------------------------------
+  5     | Identifier rename misses edge cases   | Whole-token replace per file; same rename
+        | (strings, cross-file imports)         | map across the apply batch for consistent
+        |                                       | names; only invalid declaration names drive
+        |                                       | renames.
+  ------|---------------------------------------|--------------------------------------------
+  6     | Puppeteer visual check adds wall-     | Runs only after `vite build` succeeds;
+        | clock (nav + 2.5s settle; optional    | failures are non-fatal; JPEG capture is
+        | JPEG if `captureImage`)               | off unless needed for future VLM.
+  ------|---------------------------------------|--------------------------------------------
+  7     | Dashboard-style pieces missing from   | Hybrid fillers + generated sections;
+        | catalog; plan vs V2 layout mismatch   | plan uses intent override; V2 structural
+        |                                       | pass still uses prompt inference — optional
+        |                                       | future: pass `layoutType` into V2.
+  ------|---------------------------------------|--------------------------------------------
+  8     | Higher concurrency hits rate limits   | `poolLimit` is 2 (Anthropic) / 3 (others);
+        | (Anthropic + others)                 | monitor 429s; reduce pool or serialize if
+        |                                       | needed.
+  ------|---------------------------------------|--------------------------------------------
+  9     | (Planned) Dedup swallows legitimate   | Prefer stable payload hash + short window;
+        | back-to-back saves                    | optional server idempotency; not shipped yet.
+
+================================================================================
+
+# 11. TIMELINE ESTIMATE
+
+STATUS (2026)
+  Delivered in code: Phases 0 through 8, and Phase 6 (visual verify after build).
+  Not delivered yet: Phase 9 (duplicate /projects/update debounce).
+  The sprint bundles below are the original planning sequence and hour bands; real
+  rollout order may have differed.
+
+  Sprint 1 (Week 1): Phase 0 + Phase 5
+    - Premium polish protection (2-3h)
+    - Identifier validation (1-2h)
+    - Immediate impact: builds stop breaking from polish + identifier errors
+    - Ship and validate on production builds
+    - Status: shipped
+
+  Sprint 2 (Week 1-2): Phase 1 + Phase 2
+    - Copy hydration route (4-5h)
+    - Dynamic component counts (2-3h)
+    - Impact: premium copy actually works + more than 9 components possible
+    - Requires testing across all three premiumMode paths
+    - Status: shipped
+
+  Sprint 3 (Week 2-3): Phase 3 + Phase 7
+    - Intent classification (3-4h)
+    - App-mode selection (3-4h)
+    - Impact: "build me a dashboard" produces dashboard-style layouts
+    - Optional follow-up: Supabase blueprint tuning, V2 layoutType wiring (see Phase 7)
+    - Status: shipped (core); optional items remain
+
+  Sprint 4 (Week 3-4): Phase 4 + Phase 8
+    - Smart polish triage (4-5h)
+    - Polish efficiency improvements (2-3h)
+    - Impact: build time drops from 7+ min to under 3 min
+    - Phase 4 depends on Phase 0 being stable
+    - Status: shipped (optional client `polishSkipPaths` still open)
+
+  Sprint 5 (Week 4): Phase 6 + Phase 9
+    - Phase 6 — Screenshot / DOM verification gate (3-4h): shipped
+    - Phase 9 — Debounce fix (~1h): not shipped
+    - Impact when Phase 6 is on: blank / near-empty preview warned via SSE; build still completes
+    - Impact when Phase 9 lands: cleaner server logs for /projects/update
+
+  REFERENCE EFFORT (original plan, Phases 0–9 scope): ~30-38 hours over ~4-5 weeks
+  FILE FOOTPRINT (Phases 0–8 only): new files 5; distinct modified files 7 (see # 9 above)
+
+================================================================================
+
+# 12. VISION SUMMARY
+
+The Volturiano builder already has the hardest part figured out: a living
+community catalog of premium components, a working E2B sandbox pipeline,
+cross-provider LLM fallback, deterministic App.jsx rendering, and a multi-
+page routing system. These are real, production-grade pieces that competitors
+like Lovable do not have.
+
+The gap was never a recursive agent topology or an AST transformation
+engine. The gap was reliability — and the Straight Upgrade phases are the
+surgical answers, shipped in code for Phases 0–8 and Phase 6:
+
+  - Premium components should arrive in the sandbox with correct copy
+    (not "Rivelon") — Phase 0 + Phase 1
+  - The system should understand "dashboard app" vs "landing page" and
+    plan accordingly — Phase 2 + Phase 3 + Phase 7 (optional catalog / V2
+    wiring follow-ups remain where noted in Phase 7)
+  - Polish should improve the site, not break it — Phase 0 + Phase 4 + Phase 8
+    (optional client `polishSkipPaths` remains)
+  - Build verification should catch what users actually see — Phase 6
+  - Common LLM mistakes should be caught deterministically — Phase 5
+
+Incremental work still on the roadmap: Phase 9 (duplicate /projects/update
+debounce) and the optional items above — quality-of-life, not a different
+architecture.
+
+Every phase is a surgical fix to a specific, code-traced problem. No
+rewrites. No new frameworks. No academic patterns. Just making the existing
+Toyota engine actually run on all cylinders.
+
+The goal is simple: one prompt, one build, one result that looks right
+and reads right. Every time.
+
+================================================================================
+END OF BUILDER STRAIGHT UPGRADE PLAN V1.0
+================================================================================

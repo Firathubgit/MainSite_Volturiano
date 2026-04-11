@@ -26,7 +26,7 @@ const selectionResultSchema = z.object({
  * POST /api/select-components
  */
 export default async function selectComponents(req, res) {
-    const { prompt, model = 'openai/gpt-4o', overrides = {}, imageDescriptions = [], designSystem = null, buildId, premiumMode = 'hybrid' } = req.body;
+    const { prompt, model = 'google/gemini-3.1-pro-preview', overrides = {}, imageDescriptions = [], designSystem = null, buildId, premiumMode = 'hybrid' } = req.body;
     console.log(`[select-components] ROUTE HIT | BuildId: ${buildId} | Model: ${model} | PremiumMode: ${premiumMode}`);
 
     // STRICTURE: If premium mode is OFF, do not even touch the Supabase components table

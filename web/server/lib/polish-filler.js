@@ -14,13 +14,7 @@
 import { generateText } from 'ai';
 import { getModel, generateFast } from './provider-helpers.js';
 import { llmLog } from './llm-logger.js';
-
-// ─── Lightweight model resolver (mirrors enhance-prompt.js exactly) ──
-function getLightweightModel(model) {
-    if (model.includes('openai/')) return { id: 'openai/gpt-5.4-mini', useFast: true };
-    if (model.includes('anthropic/')) return { id: 'anthropic/claude-haiku-4-5-20251001', useFast: false };
-    return { id: 'google/gemini-2.5-flash', useFast: false }; // Default: gemini flash
-}
+import { resolveLightweightModel } from './llm-lightweight.js';
 
 // ─── 4 rotating message angles ──────────────────────────────────────────
 // Each fires contextually in sequence so messages feel like a natural
@@ -119,7 +113,7 @@ async function generateFillerMessage(modelInfo, fillerPrompt) {
  * @param {Object}   options.cancelToken - Mutable ref: { cancelled: false }
  */
 export async function runPolishFillers({ model, prompt, onMessage, cancelToken }) {
-    const modelInfo = getLightweightModel(model);
+    const modelInfo = resolveLightweightModel(model);
     const sentMessages = [];
     let angleIndex = 0;
 

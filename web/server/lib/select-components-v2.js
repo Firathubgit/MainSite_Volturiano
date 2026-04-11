@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { getModel } from './provider-helpers.js';
 import { supabaseAdmin } from './supabase-admin.js';
 import { llmLog } from './llm-logger.js';
+import { inferLayoutTypeFromPrompt } from './layout-type.js';
 
 const sb = supabaseAdmin;
 
@@ -104,7 +105,7 @@ function pickStructuredFallback(candidates = [], requiredCategories = [], explic
         if (hit) tryAdd(hit);
     }
 
-    const targetSize = Math.min(9, Math.max(6, requiredCategories.length + 1));
+    const targetSize = Math.min(18, Math.max(6, requiredCategories.length + 1));
     for (const c of sorted) {
         if (selected.length >= targetSize) break;
         tryAdd(c);
@@ -245,7 +246,7 @@ ${list}`;
             ? `\n\n🎯 MANDATORY SELECTION:\nThe user has EXPLICITLY requested these components. You MUST include them in your selected_component_ids array if they appear in the candidate list below:\n${explicitComponents.join(', ')}`
             : '';
 
-        const systemPrompt = `You are a Master Website Architect. Pick the absolute best 5-11 components to construct a cohesive, multi-page website experience.
+        const systemPrompt = `You are a Master Website Architect. Pick the absolute best 6-20 components to construct a cohesive, multi-page website experience.
 You have been provided with up to 50 highly-scored candidates that have already been vetted for quality and industry fit.${explicitInprompt}
 
 CANDIDATES:
@@ -276,7 +277,7 @@ RULES:
                 model: getModel(aiModel),
                 schema,
                 system: systemPrompt,
-                prompt: `User Request: "${prompt}"\nDesign Context: ${JSON.stringify(designSystem)}\n\nSelect the best 5-11 components to build out all requested pages.`,
+                prompt: `User Request: "${prompt}"\nDesign Context: ${JSON.stringify(designSystem)}\n\nSelect the best 6-20 components to build out all requested pages.`,
                 temperature: 0,
                 abortSignal: controller.signal
             });
@@ -435,7 +436,7 @@ async function generateDynamicBlueprint(prompt, designSystem, aiModel = 'google/
         description: z.string().describe('Brief description'),
         required_categories: z.array(z.string()).describe('Required category slugs'),
         optional_categories: z.array(z.string()).describe('Optional category slugs'),
-        recommended_component_count: z.number().describe('Ideal number of components (4-12)'),
+        recommended_component_count: z.number().describe('Ideal number of components (6-18)'),
         default_color_mode: z.enum(['dark', 'light', 'mixed']),
         default_color_theme: z.string().describe('A color theme slug'),
         default_typography: z.enum(['modern-sans', 'serif', 'mono-tech']),
@@ -462,7 +463,7 @@ ${themeList}
 
 REQUIREMENTS:
 1. required_categories MUST include "header" and "footer".
-2. Pick 4-12 categories total.
+2. Pick 6-18 categories total.
 3. layout order should put header first, footer last.
 4. Pick the perfect color theme & mode.
 5. Slug MUST start with "ai-generated-".`;
@@ -609,7 +610,7 @@ async function filterByIndustry(categories, industrySlug) {
     }
 }
 
-function enforceStructuralSelection(selectedComponents = [], candidatePool = []) {
+function enforceStructuralSelection(selectedComponents = [], candidatePool = [], layoutType = 'marketing-landing') {
     const sanitized = [];
     const seen = new Set();
     const roleSeen = { header: false, hero: false, footer: false };
@@ -631,7 +632,15 @@ function enforceStructuralSelection(selectedComponents = [], candidatePool = [])
         }
     }
 
-    for (const requiredRole of ['header', 'hero', 'footer']) {
+    const requiredStructural =
+        layoutType === 'web-app'
+            ? ['header']
+            : ['header', 'hero', 'footer'];
+    if (layoutType === 'web-app') {
+        console.log('[BUILDER-VERIFY] v2 structural inject: layoutType=web-app (only header required from pool; hero/footer not injected)');
+    }
+
+    for (const requiredRole of requiredStructural) {
         if (roleSeen[requiredRole]) continue;
         const fallback = candidatePool.find(c => !seen.has(c.component_id) && inferStructuralRole(c) === requiredRole);
         if (fallback) {
@@ -715,7 +724,8 @@ async function scoreAndSelect(candidates, designSystem, prompt, explicitComponen
         })
         .filter(Boolean); // remove any LLM hallucinations
 
-    return enforceStructuralSelection(selectedComponents, top50);
+    const lt = inferLayoutTypeFromPrompt(prompt);
+    return enforceStructuralSelection(selectedComponents, top50, lt);
 }
 
 /**
@@ -932,13 +942,39 @@ async function getTemplateBlueprint(templateId) {
  * MAIN PIPELINE ORCHESTRATOR
  * Orchestrates the full 7-step process (with Step 0: Template Matching).
  */
-export async function selectComponentsV2(prompt, designSystem = {}, explicitNames = [], strictMode = false, aiModel = 'google/gemini-3.1-pro-preview') {
+export async function selectComponentsV2(
+    prompt,
+    designSystem = {},
+    explicitNames = [],
+    strictMode = false,
+    aiModel = 'google/gemini-3.1-pro-preview',
+    options = {}
+) {
     console.log('\n======================================================');
     console.log('🚀 ULTRA PIPELINE V2: STARTED');
     console.log('======================================================');
     console.time('[Pipeline] Total execution time');
 
     try {
+        const validLayoutTypes = ['marketing-landing', 'business-site', 'web-app', 'portfolio', 'e-commerce'];
+        const layoutTypeHint =
+            typeof options.layoutType === 'string' && validLayoutTypes.includes(options.layoutType)
+                ? options.layoutType
+                : null;
+        const suggestedCategories = Array.isArray(options.suggestedCategories)
+            ? options.suggestedCategories.filter((c) => typeof c === 'string' && c.trim())
+            : [];
+        const needsPremiumCatalog = options.needsPremiumCatalog === true;
+        if (layoutTypeHint) {
+            console.log('[BUILDER-VERIFY] v2 layoutType hint=%s', layoutTypeHint);
+        }
+        if (suggestedCategories.length > 0) {
+            console.log('[BUILDER-VERIFY] v2 suggestedCategories=%s', suggestedCategories.join(','));
+        }
+        if (needsPremiumCatalog) {
+            console.log('[BUILDER-VERIFY] v2 needsPremiumCatalog=true');
+        }
+
         // -----------------------------------------------------------------
         // STEP 0: Community Template Matching (NEW — Phase S10)
         // Before individual component selection, check if a high-quality
@@ -1011,6 +1047,7 @@ export async function selectComponentsV2(prompt, designSystem = {}, explicitName
 
             const returnPayload = {
                 components: enrichedComponents,
+                layoutType: layoutTypeHint || inferLayoutTypeFromPrompt(prompt),
                 websiteType: 'template-based',
                 blueprint: `Template: ${templateMatch.template_id}`,
                 templateUsed: {
@@ -1072,6 +1109,7 @@ export async function selectComponentsV2(prompt, designSystem = {}, explicitName
 
             return {
                 components: enriched,
+                layoutType: layoutTypeHint || inferLayoutTypeFromPrompt(prompt),
                 websiteType: 'strict-selection',
                 blueprint: 'Strict User Selection',
                 stats: {
@@ -1124,6 +1162,9 @@ export async function selectComponentsV2(prompt, designSystem = {}, explicitName
             finalCategories = await refineCategories(blueprint, prompt, designSystem, aiModel);
         } catch (e) {
             console.warn(`[Pipeline] Step 3 Failed. Using blueprint categories directly.`, e.message);
+        }
+        if (suggestedCategories.length > 0) {
+            finalCategories = [...new Set([...finalCategories, ...suggestedCategories])];
         }
 
         console.log(`\n[Step 3] AI Category Refinement ✅`);
@@ -1276,12 +1317,13 @@ export async function selectComponentsV2(prompt, designSystem = {}, explicitName
         // STEP 6: Compatibility Graph Validation
         // -----------------------------------------------------------------
         let validatedComponents = selectedComponents;
+        const layoutTypeForStructure = layoutTypeHint || inferLayoutTypeFromPrompt(prompt);
         try {
             validatedComponents = await validateCompatibility(selectedComponents);
-            validatedComponents = enforceStructuralSelection(validatedComponents, candidates);
+            validatedComponents = enforceStructuralSelection(validatedComponents, candidates, layoutTypeForStructure);
         } catch (e) {
             console.warn(`[Pipeline] Step 6 Failed. Skipping graph validation.`, e.message);
-            validatedComponents = enforceStructuralSelection(selectedComponents, candidates);
+            validatedComponents = enforceStructuralSelection(selectedComponents, candidates, layoutTypeForStructure);
         }
 
         console.log(`\n[Step 6] Compatibility Validation ✅`);
@@ -1311,6 +1353,7 @@ export async function selectComponentsV2(prompt, designSystem = {}, explicitName
 
         return {
             components: enrichedComponents,
+            layoutType: layoutTypeForStructure,
             websiteType: websiteType.slug,
             blueprint: blueprint.name,
             stats: {

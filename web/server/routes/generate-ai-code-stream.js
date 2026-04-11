@@ -246,19 +246,26 @@ APP.JSX PRESERVATION (CRITICAL):
       }
 
       // App.jsx Strict Render Order - PRE-CALCULATED GOLDEN COPY
-      // We use the deterministic render to ensure the AI follows the plan exactly.
-      const plannedComponents = context.plan?.components;
+      const plan = context.plan;
+      const plannedComponents = plan?.components;
 
       if (plannedComponents && Array.isArray(plannedComponents) && plannedComponents.length > 0) {
         try {
-          // renderAppTemplate is imported at top level (added via previous edit or implicit)
-          // WAIT: I need to make sure I imported it. 
-          // actually I can't easily add import at top with replace_file_content if I am editing middle...
-          // I will add the import in a separate tool call if needed or assume I did it?
-          // The previous tool call attempted to add import at top AND this logic? 
-          // No, previous tool call targeted line 1.
+          const sharedIds = plan.sharedComponentRefIds || [];
+          const sharedComponents = sharedIds
+            .map((refId) =>
+              plannedComponents.find(
+                (c) => c.refId === refId || c.exportName === refId || c.name === refId
+              )
+            )
+            .filter(Boolean);
 
-          const goldenAppJsx = renderAppTemplate({ components: plannedComponents });
+          const goldenAppJsx = renderAppTemplate({
+            components: plannedComponents,
+            isMultiPage: plan.isMultiPage || false,
+            pages: plan.pages || [],
+            sharedComponents,
+          });
 
           systemPrompt += `\n\nAPP.JSX CONTENT (MANDATORY):
 You MUST output the following code for src/App.jsx EXACTLY as written below. 

@@ -1685,6 +1685,9 @@ svg.shimmerText {
   align-items: center;
   font-size: 13px;
   line-height: 1.2;
+  min-width: 0;
+  max-width: 100%;
+  word-break: normal;
 }
 
 .fileIcon {
@@ -1696,6 +1699,9 @@ svg.shimmerText {
 .fileName {
   color: #e2e8f0;
   font-weight: 500;
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
 }
 
 /* ─── Publish Modal ─── */

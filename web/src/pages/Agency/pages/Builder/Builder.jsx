@@ -242,13 +242,28 @@ const BuilderContent = () => {
             icon: <GeminiIcon />
         },
         {
+            id: 'google/gemini-2.5-flash',
+            label: 'Gemini 2.5 Flash',
+            icon: <GeminiIcon />
+        },
+        {
             id: 'openai/gpt-5.4',
             label: 'GPT-5.4',
             icon: <OpenAIIcon />
         },
         {
+            id: 'openai/gpt-5.4-mini',
+            label: 'GPT-5.4 mini',
+            icon: <OpenAIIcon />
+        },
+        {
             id: 'anthropic/claude-sonnet-4-6',
-            label: 'Claude 4.6',
+            label: 'Claude 4.6 Sonnet',
+            icon: <AnthropicIcon />
+        },
+        {
+            id: 'anthropic/claude-haiku-4-5-20251001',
+            label: 'Claude Haiku 4.5',
             icon: <AnthropicIcon />
         },
     ];

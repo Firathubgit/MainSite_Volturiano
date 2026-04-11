@@ -4,10 +4,12 @@ import { parseFileBlocks } from '../lib/file-blocks.js';
 import { verifySandboxBuild } from '../lib/verify-sandbox-build.js';
 import { attemptRepair } from '../lib/auto-repair.js';
 import { SSEWriter, SSE_EVENTS, AIBuildNarrator } from '../shared/sse-events.js';
-import { runPolishStep } from '../lib/polish-refinement.js';
+import { runPolishStep, PREMIUM_PATH_PREFIX, generateDesignSpec } from '../lib/polish-refinement.js';
+import { resolveDesignSpecModelId } from '../lib/llm-lightweight.js';
 import { runPolishFillers } from '../lib/polish-filler.js';
-import { getOpenAIClient } from '../lib/openai-client.js';
+import { runMiniPolishStep } from '../lib/mini-polish-refinement.js';
 import { supabaseAdmin } from '../lib/supabase-admin.js';
+import { validateAndFixIdentifiers } from '../lib/validate-identifiers.js';
 
 // ═══════════════════════════════════════════════════════════
 // AI_STABILITY_FIX_V4: WHITELIST-ONLY IMPORT ARCHITECTURE
@@ -73,6 +75,15 @@ function sanitizeImports(code) {
   const lines = code.split('\n');
   const sanitized = [];
   let stripped = 0;
+  const parseLucideSpecifier = (raw) => {
+    const m = raw.trim().match(/^([A-Za-z_$][\w$]*)(?:\s+as\s+([A-Za-z_$][\w$]*))?$/);
+    if (!m) return null;
+    return {
+      imported: m[1],
+      local: m[2] || m[1],
+      raw: raw.trim()
+    };
+  };
   for (const line of lines) {
     // Strip illegal ESM imports
     const importMatch = line.match(/import\s+.*from\s+['"]([^'"]+)['"]/);
@@ -88,19 +99,32 @@ function sanitizeImports(code) {
       if (pkg === 'lucide-react') {
         const namedMatch = line.match(/import\s*\{([^}]+)\}\s*from/);
         if (namedMatch) {
-          const names = namedMatch[1].split(',').map(n => n.trim()).filter(Boolean);
-          const validNames = names.filter(n => !NOT_LUCIDE_ICONS.has(n));
-          const invalidNames = names.filter(n => NOT_LUCIDE_ICONS.has(n));
-          if (invalidNames.length > 0) {
-            console.warn(`[sanitizeImports] STRIPPED invalid lucide-react exports: ${invalidNames.join(', ')}`);
-            stripped++;
-            if (validNames.length === 0) {
-              sanitized.push(`// [STRIPPED] All lucide-react imports were invalid: ${invalidNames.join(', ')}`);
-              continue;
-            } else {
-              sanitized.push(`import { ${validNames.join(', ')} } from 'lucide-react';`);
+          const specs = namedMatch[1].split(',').map(n => n.trim()).filter(Boolean);
+          const parsed = specs.map(parseLucideSpecifier);
+          const validNames = [];
+          const invalidSpecs = [];
+          for (let i = 0; i < specs.length; i++) {
+            const p = parsed[i];
+            if (!p) {
+              validNames.push(specs[i]);
               continue;
             }
+            if (NOT_LUCIDE_ICONS.has(p.imported)) invalidSpecs.push(p);
+            else validNames.push(p.raw);
+          }
+          const invalidNames = invalidSpecs.map((s) => s.imported);
+          if (invalidNames.length > 0) {
+            console.warn(`[sanitizeImports] INVALID lucide-react exports: ${invalidNames.join(', ')}`);
+            stripped++;
+            const fallbackAliases = invalidSpecs.map((spec) => `Sparkles as ${spec.local}`);
+            const mergedSpecs = [...validNames, ...fallbackAliases];
+            if (mergedSpecs.length === 0) {
+              sanitized.push(`// [STRIPPED] All lucide-react imports were invalid: ${invalidNames.join(', ')}`);
+            } else {
+              sanitized.push(`import { ${mergedSpecs.join(', ')} } from 'lucide-react';`);
+              sanitized.push(`// [sanitizeImports] Replaced invalid lucide imports (${invalidNames.join(', ')}) with Sparkles aliases to prevent runtime crashes.`);
+            }
+            continue;
           }
         }
       }
@@ -144,8 +168,6 @@ export default async function applyAiCodeStream(req, res) {
       activeProviderRef.keepAlive();
     }
   });
-  const narrator = new AIBuildNarrator(getOpenAIClient());
-
   try {
     const {
       response: generatedCode,
@@ -155,8 +177,32 @@ export default async function applyAiCodeStream(req, res) {
       buildId,
       prompt = '', // Get original prompt if available
       skipPolish = false,
-      isResume = false
+      isResume = false,
+      premiumMode = 'hybrid'
     } = req.body;
+
+    const buildModelId = req.body.model || 'google/gemini-3.1-pro-preview';
+    /** Optional explicit paths treated as premium (copy-only polish). Defaults to `src/components/premium/` in polish-refinement. */
+    const premiumPolishPathsRaw = req.body.premiumPolishPaths;
+    const premiumPaths =
+      Array.isArray(premiumPolishPathsRaw) && premiumPolishPathsRaw.length > 0
+        ? new Set(premiumPolishPathsRaw.filter((p) => typeof p === 'string' && p.trim()))
+        : undefined;
+
+    const polishSkipPaths = new Set(
+      Array.isArray(req.body.polishSkipPaths)
+        ? req.body.polishSkipPaths.filter((p) => typeof p === 'string' && p.trim())
+        : []
+    );
+    if (polishSkipPaths.size) {
+      console.log('[BUILDER-VERIFY] apply: polishSkipPaths count=%d', polishSkipPaths.size);
+    }
+
+    if (premiumPaths?.size) {
+      console.log('[BUILDER-VERIFY] apply: premiumPolishPaths override count=%d', premiumPaths.size);
+    }
+
+    const narrator = new AIBuildNarrator();
 
     log(buildId, `[apply] Start: ${generatedCode?.length || 0} bytes code, isEdit=${isEdit}`);
 
@@ -226,6 +272,14 @@ export default async function applyAiCodeStream(req, res) {
       ...f,
       content: sanitizeImports(f.content || '')
     }));
+
+    const identifierFixes = validateAndFixIdentifiers(files);
+    if (identifierFixes.length > 0) {
+      console.log('[BUILDER-VERIFY] validate-identifiers: %d fix(es)', identifierFixes.length);
+      for (const f of identifierFixes) {
+        console.log('[BUILDER-VERIFY]   %s: %s → %s', f.file, f.from, f.to);
+      }
+    }
 
     sse.send(SSE_EVENTS.APPLY_STARTED, {
       buildId,
@@ -400,7 +454,7 @@ export default async function applyAiCodeStream(req, res) {
             const failMessage = await narrator.narrate('verifying', {
               passed: false,
               excerpt: buildLogs?.substring(0, 200)
-            });
+            }, { buildModelId });
             sse.aiMessage(failMessage, {}, 'concerned');
 
             try {
@@ -439,7 +493,8 @@ export default async function applyAiCodeStream(req, res) {
               const repairRes = await attemptRepair({
                 files: repairFiles,
                 buildErrors: buildLogs,
-                repairLog: repairLog
+                repairLog: repairLog,
+                buildModel: buildModelId
               });
 
               if (repairRes.success) {
@@ -458,7 +513,7 @@ export default async function applyAiCodeStream(req, res) {
                   filesFixed: repairRes.fixedFiles.length,
                   attempt: repairAttempts,
                   maxAttempts: MAX_REPAIR_ATTEMPTS
-                });
+                }, { buildModelId });
                 sse.aiMessage(repairMessage);
 
                 // Apply fixes directly
@@ -482,7 +537,7 @@ export default async function applyAiCodeStream(req, res) {
                   sse.send(SSE_EVENTS.VERIFY_PASSED, { durationMs: Date.now() - verifyStartTime });
                   sse.send(SSE_EVENTS.REPAIR_DONE, { changed: repairRes.fixedFiles.map(f => f.path) });
 
-                  const successMessage = await narrator.narrate('repair_success', {});
+                  const successMessage = await narrator.narrate('repair_success', {}, { buildModelId });
                   sse.aiMessage(successMessage, {}, 'excited');
                   break; // Exit the loop, repair was successful!
                 } else {
@@ -515,13 +570,54 @@ export default async function applyAiCodeStream(req, res) {
       }
     }
 
+    // ── Visual sanity check (Phase 6): build can pass while the preview is blank ──
+    if (buildPassed && activeSandboxId) {
+      try {
+        const visProvider = sandboxManager.getProvider(activeSandboxId) || global.activeSandboxProvider;
+        const previewUrl = visProvider?.getSandboxUrl?.() || null;
+        if (previewUrl) {
+          const { captureForVerification } = await import('../lib/screenshot.js');
+          const visual = await captureForVerification(previewUrl);
+          if (visual.skipped) {
+            console.log('[BUILDER-VERIFY] visual verify skipped:', visual.reason || 'unknown');
+          } else if (visual.hasContent === false) {
+            console.warn('[apply] Visual check: page looks blank or near-empty.', {
+              scrollHeight: visual.scrollHeight,
+              textLen: visual.textLen,
+              bodyChildCount: visual.bodyChildCount
+            });
+            console.log(
+              '[BUILDER-VERIFY] visual verify hasContent=false scrollHeight=%s textLen=%s media=%s',
+              visual.scrollHeight,
+              visual.textLen,
+              visual.mediaCount
+            );
+            sse.send(SSE_EVENTS.WARNING, {
+              message:
+                'Build succeeded, but the live preview may show little or no content. Check App.jsx and the component tree if the screen looks empty.'
+            });
+          } else {
+            console.log(
+              '[BUILDER-VERIFY] visual verify ok scrollHeight=%s textLen=%s media=%s',
+              visual.scrollHeight,
+              visual.textLen,
+              visual.mediaCount
+            );
+          }
+        }
+      } catch (visErr) {
+        console.warn('[apply] Visual verification error (non-fatal):', visErr.message);
+      }
+    }
+
     // ═══════════════════════════════════════════════════════════
     // STAGE 6: Final Polish (Hidden Refinement)
     // ═══════════════════════════════════════════════════════════
-    if (!isEdit && !skipPolish) {
+    const shouldRunAsyncPolish = !skipPolish && (!isEdit || premiumMode === 'hybrid' || premiumMode === 'strict');
+    if (shouldRunAsyncPolish) {
       console.log('[apply] Starting Final Polish pass...');
       sse.send(SSE_EVENTS.POLISH_STARTED);
-      const polishMessage = await narrator.narrate('polishing', { prompt });
+      const polishMessage = await narrator.narrate('polishing', { prompt }, { buildModelId });
       sse.aiMessage(polishMessage);
 
       try {
@@ -542,14 +638,29 @@ export default async function applyAiCodeStream(req, res) {
           if (currentFiles.length > 0) filesToPolish = currentFiles;
         }
 
-        const modelId = req.body.model || 'google/gemini-3.1-pro-preview';
+        const modelId = buildModelId;
+
+        const fileContextForSpec = filesToPolish
+          .map((f) => `--- FILE: ${f.path} ---\n${f.content}`)
+          .join('\n\n');
+        let cachedDesignSpec;
+        try {
+          cachedDesignSpec = await generateDesignSpec(prompt, fileContextForSpec, resolveDesignSpecModelId(modelId));
+          console.log('[BUILDER-VERIFY] apply: designSpec pre-cached for polish (repair pass reuses)');
+        } catch (e) {
+          console.warn('[apply] design spec pre-cache failed:', e.message);
+          cachedDesignSpec = undefined;
+        }
 
         const runAndApplyPolish = async (targetFiles, errors = '') => {
           const result = await runPolishStep(targetFiles, prompt, errors, {
             model: modelId,
             fileTree,
             isEdit,
-            sandboxId: activeSandboxId
+            sandboxId: activeSandboxId,
+            premiumPaths,
+            designSpec: cachedDesignSpec,
+            skipPaths: polishSkipPaths
           });
 
           if (!result) {
@@ -570,6 +681,9 @@ export default async function applyAiCodeStream(req, res) {
           }
           return result;
         };
+
+        // Keep pre-polish snapshot for safe rollback if polish introduces hard failures.
+        const prePolishSnapshot = new Map(filesToPolish.map((f) => [f.path, f.content]));
 
         // Pass 1: Polish — run alongside filler messages
         const polishCancelToken = { cancelled: false };
@@ -614,22 +728,141 @@ export default async function applyAiCodeStream(req, res) {
             console.log('[apply] Polish repair successful.');
             buildPassed = true;
           } else {
-            console.error('[apply] Polish repair failed. Proceeding with warning.');
-            buildPassed = false;
+            console.error('[apply] Polish repair failed. Reverting to pre-polish snapshot.');
+            console.log('[BUILDER-VERIFY] apply: polish rollback — pre-polish snapshot restored (copy/polish attempts dropped)');
+            sse.send(SSE_EVENTS.WARNING, { message: 'Polish could not be verified and was reverted to keep build stable.' });
+
+            for (const [path, content] of prePolishSnapshot.entries()) {
+              await provider.writeFile(path, content);
+              if (global.sandboxState?.fileCache) {
+                global.sandboxState.fileCache.files[path] = { content, lastModified: Date.now() };
+              }
+            }
+
+            const rollbackVerify = await verifySandboxBuild(activeSandboxId);
+            buildPassed = rollbackVerify.success;
+            if (!rollbackVerify.success) {
+              console.error('[apply] Build still failing after pre-polish rollback.');
+            } else {
+              console.log('[apply] Pre-polish rollback restored a clean build.');
+            }
           }
         } else {
           console.log('[apply] Polish pass verified clean.');
           buildPassed = true;
         }
 
+        const polishedPathsTouched = new Set();
+        if (polishedFiles) {
+          for (const f of polishedFiles) {
+            const prev = prePolishSnapshot.get(f.path);
+            if (prev !== undefined && prev !== f.content) polishedPathsTouched.add(f.path);
+          }
+        }
+
+        // --- Mini Polish: single fast-model reliability pass (routes, nav, UX sanity) ---
+        if (buildPassed) {
+          try {
+            const miniProvider = sandboxManager.getProvider(activeSandboxId) || global.activeSandboxProvider;
+            let filesForMini = [];
+            let miniFileTree = fileTree;
+            const isMiniPremiumPath = (path) =>
+              path.startsWith(PREMIUM_PATH_PREFIX) || Boolean(premiumPaths?.has(path));
+            if (miniProvider) {
+              const allMini = await miniProvider.listFiles('/home/user/app');
+              miniFileTree = allMini;
+              for (const fp of allMini) {
+                if (
+                  fp.startsWith('src/') &&
+                  ['jsx', 'js', 'css'].some((ext) => fp.endsWith(ext)) &&
+                  !isMiniPremiumPath(fp)
+                ) {
+                  filesForMini.push({ path: fp, content: await miniProvider.readFile(fp) });
+                }
+              }
+            } else {
+              filesForMini = filesToPolish.filter((f) => !isMiniPremiumPath(f.path));
+            }
+
+            if (polishedPathsTouched.size > 0) {
+              const before = filesForMini.length;
+              filesForMini = filesForMini.filter((f) => polishedPathsTouched.has(f.path));
+              console.log(
+                '[BUILDER-VERIFY] mini-polish: narrowed %d → %d file(s) (only paths changed by main polish)',
+                before,
+                filesForMini.length
+              );
+            }
+
+            console.log(
+              '[BUILDER-VERIFY] mini-polish: candidateFiles=%d (premium prefix %s + overridePaths=%d excluded)',
+              filesForMini.length,
+              PREMIUM_PATH_PREFIX,
+              premiumPaths?.size || 0
+            );
+
+            if (filesForMini.length > 0) {
+              sse.aiMessage('Mini polishing...', {}, 'casual');
+              const miniResult = await runMiniPolishStep(filesForMini, prompt, {
+                model: modelId,
+                fileTree: miniFileTree,
+                sandboxId: activeSandboxId
+              });
+
+              if (miniResult && miniResult.length > 0) {
+                const preMini = new Map(
+                  miniResult.map((f) => [f.path, filesForMini.find((x) => x.path === f.path)?.content])
+                );
+                for (const file of miniResult) {
+                  await provider.writeFile(file.path, file.content);
+                  if (global.sandboxState?.fileCache) {
+                    global.sandboxState.fileCache.files[file.path] = {
+                      content: file.content,
+                      lastModified: Date.now()
+                    };
+                  }
+                }
+                const miniVerify = await verifySandboxBuild(activeSandboxId);
+                if (!miniVerify.success) {
+                  console.warn('[apply] Mini polish broke build; reverting mini-polish files.');
+                  sse.send(SSE_EVENTS.WARNING, { message: 'Quick quality pass was reverted to keep the preview working.' });
+                  for (const file of miniResult) {
+                    const prev = preMini.get(file.path);
+                    if (prev !== undefined) {
+                      await provider.writeFile(file.path, prev);
+                      if (global.sandboxState?.fileCache) {
+                        global.sandboxState.fileCache.files[file.path] = {
+                          content: prev,
+                          lastModified: Date.now()
+                        };
+                      }
+                    }
+                  }
+                  const reVerify = await verifySandboxBuild(activeSandboxId);
+                  buildPassed = reVerify.success;
+                  if (!reVerify.success) {
+                    console.error('[apply] Build still failing after mini-polish revert.');
+                  }
+                } else {
+                  console.log('[apply] Mini polish applied and verified.');
+                }
+              }
+            }
+          } catch (miniErr) {
+            console.warn('[apply] Mini polish error (non-fatal):', miniErr.message);
+          }
+        } else {
+          console.log('[apply] Skipping Mini Polish (build not green after polish).');
+        }
+
         sse.send(SSE_EVENTS.POLISH_DONE);
-        const polishSuccessMsg = await narrator.narrate('polish_success', {});
+        const polishSuccessMsg = await narrator.narrate('polish_success', {}, { buildModelId });
         sse.aiMessage(polishSuccessMsg);
       } catch (polishErr) {
         console.error('[apply] Polish error:', polishErr);
       }
     } else {
-      console.log(`[apply] Skipping Final Polish (isEdit=${isEdit}, skipPolish=${skipPolish})`);
+      console.log(`[apply] Skipping Final Polish (isEdit=${isEdit}, skipPolish=${skipPolish}, premiumMode=${premiumMode})`);
     }
 
     // ═══════════════════════════════════════════════════════════
@@ -659,7 +892,7 @@ export default async function applyAiCodeStream(req, res) {
       filesCreated: filesCreated.length,
       verified: buildPassed,
       components: files.map(f => f.path.split('/').pop().replace(/\.(jsx|tsx)$/, ''))
-    });
+    }, { buildModelId });
     sse.aiMessage(completeMessage, { filesCreated, verified: buildPassed }, 'excited');
 
     log(buildId, `[apply] Complete. Files: ${filesCreated.length}, Verified: ${buildPassed}, Duration: ${totalDuration}ms`);

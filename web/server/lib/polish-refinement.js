@@ -3,8 +3,56 @@ import { z } from 'zod';
 import { getModel } from './provider-helpers.js';
 import { parseFileBlocks } from './file-blocks.js';
 import { llmLog } from './llm-logger.js';
+import { resolveDesignSpecModelId } from './llm-lightweight.js';
 
 const USE_PARALLEL_POLISH = true; // Toggle for 2-Step Async Parallel execution instead of slow monolithic runs
+const NON_POLISHABLE_SHELL_FILES = new Set(['src/App.jsx', 'src/main.jsx']);
+/** Skip polish for tiny wrappers — not enough text to justify an LLM call (Phase 8). */
+export const MIN_POLISH_CHAR_BYTES = 500;
+
+/** Premium catalog components: full-rewrite polish breaks shaders/WebGL; use copy-only pass instead. */
+export const PREMIUM_PATH_PREFIX = 'src/components/premium/';
+
+/**
+ * @param {{ path: string }} file
+ * @param {{ premiumPaths?: Set<string> }} [options]
+ */
+function isPremiumFile(file, options = {}) {
+    if (options.premiumPaths instanceof Set && options.premiumPaths.has(file.path)) {
+        return true;
+    }
+    return file.path.startsWith(PREMIUM_PATH_PREFIX);
+}
+
+function buildPremiumCopySystemPrompt(visionPrompt, buildErrors = '') {
+    return `You are editing a premium marketplace React component. Your ONLY job is to replace placeholder/demo text (company names, taglines, descriptions, CTAs, button labels, testimonial names, navigation labels where they are visible strings, and image alt text where it is literal in JSX) with real copy that serves this website vision:
+
+"${visionPrompt}"
+
+DO NOT modify: imports, exports, default exports, function or component names, prop names, TypeScript types, CSS class names, Tailwind class strings as a whole, inline style objects, animation variants, shaders, WebGL, Three.js, canvas code, Framer Motion props (except string literals inside them if purely textual), or structural JSX/layout.
+
+Preserve every animation, shader, and interaction exactly; change only user-visible text content.
+
+Wrap the full updated file in <file path="EXACT_PATH_FROM_PROMPT">...</file>. No markdown fences. No explanations.
+
+If build errors are shown below, do NOT "fix" them by refactoring code—only adjust literal strings if an error clearly points at a string. Otherwise leave code unchanged.
+BUILD ERRORS/LOGS:
+${buildErrors || 'None.'}`;
+}
+
+function buildPremiumCopyFilePrompt(file, visionPrompt) {
+    return `FILE: ${file.path}
+
+Replace demo/placeholder text so it matches the vision: "${visionPrompt}"
+
+Output the complete file in one block:
+<file path="${file.path}">
+...full source...
+</file>
+
+--- SOURCE ---
+${file.content}`;
+}
 
 async function asyncPool(poolLimit, array, iteratorFn) {
     const ret = [];
@@ -23,7 +71,7 @@ async function asyncPool(poolLimit, array, iteratorFn) {
     return Promise.all(ret);
 }
 
-async function generateDesignSpec(prompt, fileContext, modelName) {
+export async function generateDesignSpec(prompt, fileContext, modelName) {
     try {
         console.log(' [process] Generating Global Design Spec for Parallel Policy...');
         const result = await generateObject({
@@ -46,17 +94,101 @@ async function generateDesignSpec(prompt, fileContext, modelName) {
     }
 }
 
+const triageSchema = z.object({
+    decisions: z.array(
+        z.object({
+            path: z.string(),
+            action: z.enum(['skip', 'copy_only', 'full_polish']),
+            reason: z.string().optional()
+        })
+    )
+});
+
+/**
+ * One lightweight call: which standard (non-premium) files need full polish vs copy-only vs skip.
+ * @returns {Map<string, 'skip'|'copy_only'|'full_polish'>}
+ */
+async function triageStandardFilesForPolish(standardFiles, visionPrompt, model, designSpec) {
+    if (!standardFiles.length) return new Map();
+    const triageModel = resolveDesignSpecModelId(model);
+    const snippets = standardFiles.slice(0, 45).map((f) => ({
+        path: f.path,
+        bytes: (f.content || '').length,
+        head: (f.content || '').slice(0, 220).replace(/\s+/g, ' ')
+    }));
+    const specHint = designSpec
+        ? `Brand: ${designSpec.brand_name || ''}. Tone: ${designSpec.copywriting_tone || ''}.`
+        : '';
+    try {
+        const result = await generateObject({
+            model: getModel(triageModel),
+            schema: triageSchema,
+            system: `You triage React/Vite source files for a final polish pass. User vision (truncated): "${String(visionPrompt).slice(0, 1800)}"
+${specHint}
+For each file choose:
+- skip: already on-brand, no demo placeholders, or negligible user-visible text; OR config-only.
+- copy_only: only literal text/labels/alt need changing; preserve structure, Tailwind classes, shaders, motion.
+- full_polish: needs broader layout/color/spacing/copy work beyond string swaps.
+Bias toward skip when the file looks freshly generated with coherent copy.`,
+            prompt: `Return one decision per path (same paths as input, same order):\n${JSON.stringify(snippets)}`,
+            temperature: 0
+        });
+        const m = new Map();
+        for (const d of result.object.decisions) {
+            m.set(d.path, d.action);
+        }
+        for (const f of standardFiles) {
+            if (!m.has(f.path)) m.set(f.path, 'full_polish');
+        }
+        return m;
+    } catch (e) {
+        console.warn('[polish] triage failed, defaulting standard files to full_polish:', e.message);
+        return new Map();
+    }
+}
+
+function salvageSingleFileCode(raw = '') {
+    if (!raw || typeof raw !== 'string') return null;
+    const trimmed = raw.trim();
+    if (!trimmed) return null;
+    // Reject obvious non-code / meta replies
+    if (/^no_changes$/i.test(trimmed)) return null;
+    if (/^i (can't|cannot|won't)|^sorry\b/i.test(trimmed)) return null;
+
+    // Strip markdown fences when model forgot XML wrapper.
+    if (trimmed.startsWith('```')) {
+        return trimmed
+            .replace(/^```[a-z]*\n/i, '')
+            .replace(/\n```$/i, '')
+            .trim();
+    }
+
+    // Accept only when it looks like source code.
+    if (/(import\s.+from|export\s+default|function\s+\w+|const\s+\w+\s*=|class\s+\w+)/.test(trimmed)) {
+        return trimmed;
+    }
+    return null;
+}
+
 /**
  * Runs a final polish on the generated code.
  * 
  * @param {Array} files - [{path, content}]
  * @param {string} prompt - Original user prompt
  * @param {string} buildErrors - (Optional) Logs from a failed build
- * @param {Object} options - { model, fileTree, isEdit, sandboxId }
+ * @param {Object} options - { model, fileTree, isEdit, sandboxId, premiumPaths?, skipPaths?, designSpec?, disableTriage? }
  * @returns {Promise<Array>} - Refined files
  */
 export async function runPolishStep(files, prompt, buildErrors = '', options = {}) {
-    const { model = 'google/gemini-3.1-pro-preview', fileTree = [], isEdit = false, sandboxId = '' } = options;
+    const {
+        model = 'google/gemini-3.1-pro-preview',
+        fileTree = [],
+        isEdit = false,
+        sandboxId = '',
+        premiumPaths,
+        designSpec: designSpecOption,
+        disableTriage = false
+    } = options;
 
     // Strip EXPLICIT_COMPONENTS tag from prompt as it's metadata, not vision context
     const visionPrompt = prompt.replace(/\[EXPLICIT_COMPONENTS:[^\]]*\]/g, '').trim();
@@ -68,7 +200,38 @@ export async function runPolishStep(files, prompt, buildErrors = '', options = {
     console.log(' ✨  VOLTURIANO AI POLISH DASHBOARD  ✨ ');
     console.log('═'.repeat(60));
     console.log(` 🤖 MODEL   : ${model}`);
-    console.log(` 📂 FILES   : ${files.length} (Context: ${fileTree.length} total files)`);
+    const skipPathSet = options.skipPaths instanceof Set ? options.skipPaths : new Set();
+    let skippedTiny = 0;
+    let skippedSkipPaths = 0;
+    const polishableFiles = files.filter((f) => {
+        if (NON_POLISHABLE_SHELL_FILES.has(f.path)) return false;
+        if (skipPathSet.has(f.path)) {
+            skippedSkipPaths++;
+            return false;
+        }
+        if ((f.content || '').length < MIN_POLISH_CHAR_BYTES) {
+            skippedTiny++;
+            return false;
+        }
+        return true;
+    });
+    const standardPolishFiles = polishableFiles.filter((f) => !isPremiumFile(f, options));
+    const premiumPolishFiles = polishableFiles.filter((f) => isPremiumFile(f, options));
+    console.log(
+        ` 📂 FILES   : ${files.length} total → polish ${polishableFiles.length} (standard ${standardPolishFiles.length}, premium copy-only ${premiumPolishFiles.length}; skipped ≤${MIN_POLISH_CHAR_BYTES}b=${skippedTiny} skipPaths=${skippedSkipPaths}; tree ${fileTree.length})`
+    );
+    console.log(
+        '[BUILDER-VERIFY] polish filter: skippedTiny=%d skippedSkipPaths=%d polishable=%d',
+        skippedTiny,
+        skippedSkipPaths,
+        polishableFiles.length
+    );
+    console.log(
+        '[BUILDER-VERIFY] polish split: standard=%d premiumCopyOnly=%d premiumPathsOverride=%s',
+        standardPolishFiles.length,
+        premiumPolishFiles.length,
+        options.premiumPaths instanceof Set ? options.premiumPaths.size : 0
+    );
     console.log(` 🎯 PROMPT  : "${visionPrompt ? visionPrompt.substring(0, 120) : '⚠️ EMPTY - VISION WILL BE LOST'}"`);
     if (!visionPrompt || visionPrompt.trim().length === 0) {
         console.warn('⚠️⚠️⚠️ [POLISH] CRITICAL WARNING: Prompt is EMPTY. The polish step will have NO context about the user vision!');
@@ -79,7 +242,7 @@ export async function runPolishStep(files, prompt, buildErrors = '', options = {
     console.log(' [process] Analyzing codebase structure...');
 
     // Prepare context: list of files and their summary
-    const fileContext = files.map(f => `--- FILE: ${f.path} ---\n${f.content}`).join('\n\n');
+    const fileContext = polishableFiles.map(f => `--- FILE: ${f.path} ---\n${f.content}`).join('\n\n');
     const fileTreeContext = fileTree.length > 0
         ? `CURRENT SANDBOX FILE TREE:\n${fileTree.map(p => `  - ${p}`).join('\n')}`
         : 'File tree unavailable.';
@@ -189,50 +352,102 @@ ${buildErrors || 'None - perform aesthetic optimizations and copy specialization
 
         const isNativeOpenAI = model.includes('openai/');
 
-        if (USE_PARALLEL_POLISH) {
-            console.log(' [process] Using Parallel Asynchronous Polish Engine (Max 3 concurrent)');
+        let refinedFilesList = [];
 
-            // Step 1: Design Spec (Use mini model if possible to save latency, fallback to main model)
-            const specModel = isNativeOpenAI ? 'openai/gpt-5.4-mini' : model;
-            const designSpec = await generateDesignSpec(visionPrompt, fileContext, specModel);
+        if (USE_PARALLEL_POLISH) {
+            const poolLimit = model.includes('anthropic') ? 2 : 3;
+            console.log(` [process] Using Parallel Polish Engine (concurrency ${poolLimit})`);
+            console.log('[BUILDER-VERIFY] polish concurrency poolLimit=%d', poolLimit);
+
+            const specModel = resolveDesignSpecModelId(model);
+            let designSpec =
+                designSpecOption !== undefined ? designSpecOption : await generateDesignSpec(visionPrompt, fileContext, specModel);
 
             console.log(' [process] Design Spec:', designSpec ? JSON.stringify(designSpec) : 'FAILED (Proceeding blindly)');
+            if (designSpecOption !== undefined) {
+                console.log('[BUILDER-VERIFY] polish designSpec=from_apply_cache');
+            }
 
             const customSystemPrompt = designSpec
                 ? `${systemPrompt}\n\nCRITICAL GLOBAL DESIGN SPEC (OBEY ACROSS ALL FILES):\n${JSON.stringify(designSpec, null, 2)}`
                 : systemPrompt;
 
-            const refinedFilesList = [];
-            let completed = 0;
+            let triageMap = new Map();
+            if (!disableTriage && standardPolishFiles.length > 0) {
+                triageMap = await triageStandardFilesForPolish(standardPolishFiles, visionPrompt, model, designSpec);
+                let skipN = 0;
+                let copyN = 0;
+                let fullN = 0;
+                for (const f of standardPolishFiles) {
+                    const a = triageMap.get(f.path) || 'full_polish';
+                    if (a === 'skip') skipN++;
+                    else if (a === 'copy_only') copyN++;
+                    else fullN++;
+                }
+                console.log(
+                    '[BUILDER-VERIFY] polish triage: standard=%d skip=%d copy_only=%d full_polish=%d',
+                    standardPolishFiles.length,
+                    skipN,
+                    copyN,
+                    fullN
+                );
+            }
 
-            const poolLimit = 3;
-            await asyncPool(poolLimit, files, async (file) => {
+            const workItems = [];
+            for (const f of premiumPolishFiles) {
+                workItems.push({ file: f, mode: 'copy-only' });
+            }
+            for (const f of standardPolishFiles) {
+                const action = triageMap.get(f.path) || 'full_polish';
+                if (action === 'skip') continue;
+                workItems.push({
+                    file: f,
+                    mode: action === 'copy_only' ? 'copy-only' : 'full'
+                });
+            }
+
+            const polishOneFile = async (workItem) => {
                 const start = Date.now();
-                console.log(` [parallel] Polishing ${file.path}...`);
-
-                let fileText = '';
-
-                let roleContext = "UI Section";
-                const lowerPath = file.path.toLowerCase();
-                if (lowerPath.includes('hero') || lowerPath.includes('splash') || lowerPath.includes('landing')) {
-                    roleContext = "Hero / Landing Section (Highest visual impact, biggest headline, first impression)";
-                } else if (lowerPath.includes('footer')) {
-                    roleContext = "Footer (Bottom of page, social links, auxiliary navigation)";
-                } else if (lowerPath.includes('header') || lowerPath.includes('nav')) {
-                    roleContext = "Header / Navigation (Top bar, main navigation routes)";
-                } else if (lowerPath.includes('cta') || lowerPath.includes('calltoaction') || lowerPath.includes('particle')) {
-                    roleContext = "Call To Action (Driving the user to sign up, buy, or act NOW)";
-                } else if (lowerPath.includes('review') || lowerPath.includes('testimonial')) {
-                    roleContext = "Social Proof / Reviews (Building trust via testimonials)";
-                } else if (lowerPath.includes('feature')) {
-                    roleContext = "Features / Services (Explaining what the product/service does in detail)";
-                } else if (lowerPath.includes('app.')) {
-                    roleContext = "Main Application Shell (Routing, layout stacking, global structure)";
-                } else if (lowerPath.includes('main.')) {
-                    roleContext = "React Entry Point";
+                const file = workItem.file;
+                const isPremium = isPremiumFile(file, options);
+                const isCopyOnly = isPremium || workItem.mode === 'copy-only';
+                const tag = isPremium ? ' (premium copy-only)' : isCopyOnly ? ' (copy-only)' : '';
+                console.log(` [parallel] Polishing ${file.path}${tag}...`);
+                if (isPremium) {
+                    console.log('[BUILDER-VERIFY] polish file mode=premiumCopyOnly path=%s', file.path);
+                } else if (isCopyOnly) {
+                    console.log('[BUILDER-VERIFY] polish file mode=copyOnly path=%s', file.path);
                 }
 
-                const filePrompt = `YOUR TASK: Perform a Final Polish EXCLUSIVELY on this single file.
+                let systemForFile;
+                let filePrompt;
+
+                if (isCopyOnly) {
+                    systemForFile = buildPremiumCopySystemPrompt(visionPrompt, buildErrors);
+                    filePrompt = buildPremiumCopyFilePrompt(file, visionPrompt);
+                } else {
+                    systemForFile = customSystemPrompt;
+                    let roleContext = 'UI Section';
+                    const lowerPath = file.path.toLowerCase();
+                    if (lowerPath.includes('hero') || lowerPath.includes('splash') || lowerPath.includes('landing')) {
+                        roleContext = 'Hero / Landing Section (Highest visual impact, biggest headline, first impression)';
+                    } else if (lowerPath.includes('footer')) {
+                        roleContext = 'Footer (Bottom of page, social links, auxiliary navigation)';
+                    } else if (lowerPath.includes('header') || lowerPath.includes('nav')) {
+                        roleContext = 'Header / Navigation (Top bar, main navigation routes)';
+                    } else if (lowerPath.includes('cta') || lowerPath.includes('calltoaction') || lowerPath.includes('particle')) {
+                        roleContext = 'Call To Action (Driving the user to sign up, buy, or act NOW)';
+                    } else if (lowerPath.includes('review') || lowerPath.includes('testimonial')) {
+                        roleContext = 'Social Proof / Reviews (Building trust via testimonials)';
+                    } else if (lowerPath.includes('feature')) {
+                        roleContext = 'Features / Services (Explaining what the product/service does in detail)';
+                    } else if (lowerPath.includes('app.')) {
+                        roleContext = 'Main Application Shell (Routing, layout stacking, global structure)';
+                    } else if (lowerPath.includes('main.')) {
+                        roleContext = 'React Entry Point';
+                    }
+
+                    filePrompt = `YOUR TASK: Perform a Final Polish EXCLUSIVELY on this single file.
 FILE ROLE: ${roleContext}
 WEBSITE VISION: "${prompt}"
 
@@ -247,61 +462,150 @@ INSTRUCTIONS (CRITICAL):
 
 --- FILE TO POLISH: ${file.path} ---
 ${file.content}`;
-
-                try {
-                    if (isNativeOpenAI) {
-                        const { generateWithQuality } = await import('./provider-helpers.js');
-                        fileText = await generateWithQuality(customSystemPrompt, filePrompt);
-                    } else {
-                        const res = await generateText({
-                            model: getModel(model),
-                            system: customSystemPrompt,
-                            prompt: filePrompt,
-                            temperature: 0,
-                            maxRetries: 3,
-                            abortSignal: controller.signal
-                        });
-                        fileText = res.text;
-                    }
-
-                    completed++;
-                    console.log(` [parallel] Finished ${file.path} (${completed}/${files.length}) in ${((Date.now() - start) / 1000).toFixed(1)}s`);
-
-                    const parsed = parseFileBlocks(fileText);
-                    if (parsed.length > 0) {
-                        refinedFilesList.push(...parsed);
-                    } else {
-                        console.warn(` [parallel] ⚠️ No file block parsed for ${file.path}. Component bypassed.`);
-                    }
-                } catch (e) {
-                    console.error(` [parallel] 🚨 Failed on ${file.path}:`, e.message);
                 }
-            });
 
-            // Reconstruct text for llmLog formatting compatibility 
-            text = refinedFilesList.map(f => `<file path="${f.path}">\n${f.content}\n</file>`).join('\n\n');
+                let fileText = '';
+                if (isNativeOpenAI) {
+                    const { generateWithQuality } = await import('./provider-helpers.js');
+                    fileText = await generateWithQuality(systemForFile, filePrompt);
+                } else {
+                    const res = await generateText({
+                        model: getModel(model),
+                        system: systemForFile,
+                        prompt: filePrompt,
+                        temperature: 0,
+                        maxRetries: model.includes('anthropic') ? 6 : 3,
+                        abortSignal: controller.signal
+                    });
+                    fileText = res.text;
+                }
+
+                console.log(` [parallel] Finished ${file.path} in ${((Date.now() - start) / 1000).toFixed(1)}s`);
+
+                const parsed = parseFileBlocks(fileText);
+                if (parsed.length > 0) {
+                    const exact = parsed.find((p) => p.path === file.path) || parsed[0];
+                    if (exact.path !== file.path) {
+                        console.warn(` [parallel] Normalized model path "${exact.path}" -> "${file.path}"`);
+                    }
+                    return { ok: true, blocks: [{ path: file.path, content: exact.content }] };
+                }
+
+                const allowSalvage = !isCopyOnly && !buildErrors;
+                if (allowSalvage) {
+                    const salvaged = salvageSingleFileCode(fileText);
+                    if (salvaged) {
+                        console.warn(` [parallel] Salvaged raw code response for ${file.path} (missing <file> block).`);
+                        return { ok: true, blocks: [{ path: file.path, content: salvaged }] };
+                    }
+                } else if (buildErrors) {
+                    console.warn(` [parallel] Salvage disabled for ${file.path} (repair pass — avoid broken full-file salvage).`);
+                } else if (isCopyOnly) {
+                    console.warn(` [parallel] Copy-only polish: no <file> block for ${file.path} — skipping salvage (keeping original).`);
+                }
+
+                console.warn(` [parallel] ⚠️ No file block parsed for ${file.path}. Component bypassed.`);
+                return { ok: false };
+            };
+
+            if (workItems.length === 0) {
+                console.log('[BUILDER-VERIFY] polish triage: workItems=0 (nothing to polish)');
+                refinedFilesList = [];
+                text = '';
+            } else {
+                console.log('[BUILDER-VERIFY] polish workItems=%d (parallel batch)', workItems.length);
+                await asyncPool(poolLimit, workItems, async (workItem) => {
+                    try {
+                        const result = await polishOneFile(workItem);
+                        if (result.ok && result.blocks) {
+                            refinedFilesList.push(...result.blocks);
+                        }
+                    } catch (e) {
+                        console.error(` [parallel] 🚨 Failed on ${workItem.file.path}:`, e.message);
+                    }
+                });
+
+                const donePaths = new Set(refinedFilesList.map((f) => f.path));
+                const missed = workItems.filter((w) => !donePaths.has(w.file.path));
+                if (missed.length > 0) {
+                    console.log(` [parallel] Sequential retry for ${missed.length} file(s) without valid polish output...`);
+                    const delay = (ms) => new Promise((r) => setTimeout(r, ms));
+                    for (const workItem of missed) {
+                        await delay(400);
+                        try {
+                            const result = await polishOneFile(workItem);
+                            if (result.ok && result.blocks) {
+                                refinedFilesList.push(...result.blocks);
+                                console.log(` [parallel] ✅ Retry succeeded for ${workItem.file.path}`);
+                            }
+                        } catch (e) {
+                            console.error(` [parallel] 🚨 Retry failed for ${workItem.file.path}:`, e.message);
+                        }
+                    }
+                }
+
+                text = refinedFilesList.map((f) => `<file path="${f.path}">\n${f.content}\n</file>`).join('\n\n');
+            }
 
         } else {
-            // ORIGINAL MONOLITHIC IMPLEMENTATION
-            if (isNativeOpenAI) {
-                console.log(' [process] Using OpenAI Native Responses API for Quality Mode...');
-                const { generateWithQuality } = await import('./provider-helpers.js');
-                text = await generateWithQuality(
-                    systemPrompt,
-                    `Perform a Final Polish on the following website files to perfectly match the vision of "${prompt}". Focus on specialization and premium aesthetics.\n\n${fileContext}`
-                );
-            } else {
-                console.log(' [process] Using Standard AI SDK...');
-                const result = await generateText({
-                    model: getModel(model),
-                    system: systemPrompt,
-                    prompt: `Perform a Final Polish on the following website files to perfectly match the vision of "${prompt}". Focus on specialization and premium aesthetics.\n\n${fileContext}`,
-                    temperature: 0,
-                    maxRetries: 7, // Highly resilient retry budget
-                    abortSignal: controller.signal
-                });
-                text = result.text;
+            // Monolithic path: full polish for non-premium files only; premium files get copy-only per-file passes.
+            const standardFileContext = standardPolishFiles
+                .map((f) => `--- FILE: ${f.path} ---\n${f.content}`)
+                .join('\n\n');
+
+            refinedFilesList = [];
+
+            if (standardPolishFiles.length > 0) {
+                if (isNativeOpenAI) {
+                    console.log(' [process] Using OpenAI Native Responses API for Quality Mode...');
+                    const { generateWithQuality } = await import('./provider-helpers.js');
+                    text = await generateWithQuality(
+                        systemPrompt,
+                        `Perform a Final Polish on the following website files to perfectly match the vision of "${prompt}". Focus on specialization and premium aesthetics.\n\n${standardFileContext}`
+                    );
+                } else {
+                    console.log(' [process] Using Standard AI SDK...');
+                    const result = await generateText({
+                        model: getModel(model),
+                        system: systemPrompt,
+                        prompt: `Perform a Final Polish on the following website files to perfectly match the vision of "${prompt}". Focus on specialization and premium aesthetics.\n\n${standardFileContext}`,
+                        temperature: 0,
+                        maxRetries: 7, // Highly resilient retry budget
+                        abortSignal: controller.signal
+                    });
+                    text = result.text;
+                }
+                refinedFilesList.push(...parseFileBlocks(text));
             }
+
+            for (const file of premiumPolishFiles) {
+                const systemForFile = buildPremiumCopySystemPrompt(visionPrompt, buildErrors);
+                const fp = buildPremiumCopyFilePrompt(file, visionPrompt);
+                let fileText = '';
+                if (isNativeOpenAI) {
+                    const { generateWithQuality } = await import('./provider-helpers.js');
+                    fileText = await generateWithQuality(systemForFile, fp);
+                } else {
+                    const res = await generateText({
+                        model: getModel(model),
+                        system: systemForFile,
+                        prompt: fp,
+                        temperature: 0,
+                        maxRetries: model.includes('anthropic') ? 6 : 3,
+                        abortSignal: controller.signal
+                    });
+                    fileText = res.text;
+                }
+                const parsed = parseFileBlocks(fileText);
+                if (parsed.length > 0) {
+                    const exact = parsed.find((p) => p.path === file.path) || parsed[0];
+                    refinedFilesList.push({ path: file.path, content: exact.content });
+                } else {
+                    console.warn(` [polish] Premium monolithic: no <file> for ${file.path} — skipped (no salvage).`);
+                }
+            }
+
+            text = refinedFilesList.map((f) => `<file path="${f.path}">\n${f.content}\n</file>`).join('\n\n');
         }
 
         llmLog.response('POLISH', {
@@ -315,7 +619,7 @@ ${file.content}`;
         const duration = ((Date.now() - startTime) / 1000).toFixed(1);
         console.log(` [success] LLM response received in ${duration}s`);
 
-        const refinedFiles = parseFileBlocks(text);
+        const refinedFiles = refinedFilesList;
 
         if (refinedFiles.length === 0) {
             console.log(' [warning] No files were modified during polish pass.');

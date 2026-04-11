@@ -11,7 +11,7 @@ const searchPlanSchema = z.object({
 
 export default async function analyzeEditIntent(req, res) {
   try {
-    const { prompt, manifest, model = 'openai/gpt-4o' } = req.body;
+    const { prompt, manifest, model = 'google/gemini-3.1-pro-preview' } = req.body;
 
     if (!prompt) {
       return res.status(400).json({ success: false, error: 'prompt is required' });

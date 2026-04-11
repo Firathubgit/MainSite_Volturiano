@@ -8,7 +8,14 @@ export const appConfig = {
   },
   ai: {
     defaultModel: 'google/gemini-3.1-pro-preview',
-    availableModels: ['openai/gpt-4o', 'google/gemini-2.0-flash', 'google/gemini-2.0-pro', 'google/gemini-3.1-pro-preview', 'anthropic/claude-sonnet-4-6'],
+    availableModels: [
+      'google/gemini-3.1-pro-preview',
+      'google/gemini-2.5-flash',
+      'openai/gpt-5.4',
+      'openai/gpt-5.4-mini',
+      'anthropic/claude-sonnet-4-6',
+      'anthropic/claude-haiku-4-5-20251001',
+    ],
     defaultTemperature: 0.7,
     maxTokens: 8000,
   },

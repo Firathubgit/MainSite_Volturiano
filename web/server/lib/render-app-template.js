@@ -26,10 +26,28 @@ export function renderAppTemplate({ components, isMultiPage = false, pages = [],
 }
 
 function inferComponentRole(component) {
-    const text = `${component?.role || ''} ${component?.exportName || ''} ${component?.path || ''}`.toLowerCase();
+    const name = (component?.exportName || '').toLowerCase();
+    const path = (component?.path || '').toLowerCase();
+    const explicitRole = (component?.role || '').toLowerCase();
+    const text = `${explicitRole} ${name} ${path}`;
+
+    if (explicitRole === 'header' || explicitRole === 'hero' || explicitRole === 'footer') return explicitRole;
+
     if (/(^|\b)(header|navbar|navigation|topbar|menu)(\b|$)/.test(text)) return 'header';
-    if (/(^|\b)(hero|masthead|splash|landing|banner)(\b|$)/.test(text)) return 'hero';
-    if (/(^|\b)(footer|copyright|site-footer)(\b|$)/.test(text)) return 'footer';
+
+    // Hero: masthead/banner OR substring "hero"/"splash" (HeroSplashCursor, VideoHeroBackground break \bhero\b)
+    if (
+        /(^|\b)(masthead|landing|banner)(\b|$)/.test(text) ||
+        name.includes('hero') ||
+        name.includes('splash') ||
+        /herosplash|videohero/i.test(name)
+    ) {
+        return 'hero';
+    }
+
+    // Footer: whole-word OR FooterRetroGrid-style compounds
+    if (name.includes('footer') || /(^|\b)(copyright|site-footer)(\b|$)/.test(text)) return 'footer';
+
     return 'feature';
 }
 
@@ -91,6 +109,16 @@ ${renderedNodes}
 // ═══════════════════════════════════════════════════════════
 
 function renderMPATemplate(components, pages, sharedComponents) {
+    const dedupeByExportName = (list) => {
+        const seen = new Set();
+        return (list || []).filter((item) => {
+            const key = item?.exportName;
+            if (!key || seen.has(key)) return false;
+            seen.add(key);
+            return true;
+        });
+    };
+
     // 1. Identify shared components (Header, Footer)
     const sharedRefIds = new Set(sharedComponents.map(c => c.refId || c.exportName));
     const shared = components.filter(c => sharedRefIds.has(c.refId) || sharedRefIds.has(c.exportName));
@@ -122,15 +150,57 @@ function renderMPATemplate(components, pages, sharedComponents) {
         normalizedPages[0] = { ...normalizedPages[0], routePath: '/' };
     }
 
+    // Components explicitly assigned to any page OR shared layout (not orphan)
+    const assignedNames = new Set();
+    for (const p of normalizedPages) {
+        for (const refId of (p.componentRefIds || [])) {
+            const c = components.find(x => x.refId === refId || x.exportName === refId);
+            if (c) assignedNames.add(c.exportName);
+        }
+    }
+    for (const c of shared) {
+        assignedNames.add(c.exportName);
+    }
+    // Anything in the plan but never mounted in a Route or shell — merge into "/" so imports are not dead
+    const orphanSections = uniqueComponents.filter(c => !assignedNames.has(c.exportName));
+
+    /** Sort by role (header → hero → body → footer). Within the same role, keep planner order. */
+    const sortByRole = (comps) => {
+        const order = { header: 0, hero: 1, feature: 2, footer: 3 };
+        const origIndex = new Map(comps.map((c, i) => [c.exportName, i]));
+        return [...comps].sort((a, b) => {
+            const ra = order[inferComponentRole(a)] ?? 2;
+            const rb = order[inferComponentRole(b)] ?? 2;
+            if (ra !== rb) return ra - rb;
+            return (origIndex.get(a.exportName) ?? 0) - (origIndex.get(b.exportName) ?? 0);
+        });
+    };
+
     const routes = normalizedPages.map(p => {
         // Find components mapped to this page
-        let pageComps = (p.componentRefIds || []).map(refId => 
+        let pageComps = (p.componentRefIds || []).map(refId =>
             components.find(c => c.refId === refId || c.exportName === refId)
         ).filter(Boolean);
-        
+        pageComps = dedupeByExportName(pageComps);
+
         // Fallback: If no components matched via refId (maybe legacy string match), just dump everything non-shared into the first page
         if (pageComps.length === 0 && p.routePath === '/') {
-            pageComps = components.filter(c => !sharedRefIds.has(c.refId) && !sharedRefIds.has(c.exportName));
+            pageComps = dedupeByExportName(
+                components.filter(c => !sharedRefIds.has(c.refId) && !sharedRefIds.has(c.exportName))
+            );
+        }
+
+        // Home route must show the full landing stack: attach any sections the planner forgot to assign
+        if (p.routePath === '/' && orphanSections.length > 0) {
+            const seen = new Set(pageComps.map(c => c.exportName));
+            for (const o of orphanSections) {
+                if (!seen.has(o.exportName)) {
+                    pageComps.push(o);
+                    seen.add(o.exportName);
+                }
+            }
+            pageComps = dedupeByExportName(pageComps);
+            pageComps = sortByRole(pageComps);
         }
 
         const inlineElements = pageComps.map(c => `            <${c.exportName} />`).join('\n');

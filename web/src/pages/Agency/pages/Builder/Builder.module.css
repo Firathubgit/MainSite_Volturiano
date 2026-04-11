@@ -505,11 +505,11 @@
 }
 
 .strictModeControl:hover {
-    /* Scaling removed */
+    transform: scale(1.01);
 }
 
 .strictModeControl:active {
-    /* Scaling removed */
+    transform: scale(0.98);
 }
 
 .strictModeLabel {

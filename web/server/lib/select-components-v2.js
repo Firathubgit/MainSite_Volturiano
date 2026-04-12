@@ -621,13 +621,14 @@ function enforceStructuralSelection(selectedComponents = [], candidatePool = [],
         const role = inferStructuralRole(component);
         
         if ((role === 'header' || role === 'hero' || role === 'footer') && roleSeen[role]) {
-            console.log(`[Pipeline] 🚫 Dropping duplicate structural role "${role}": ${component.component_id} (already have ${Array.from(seen).find(id => inferStructuralRole({component_id: id}) === role)})`);
-            continue;
+            // Keep duplicate structural picks (often explicit user selections),
+            // then let downstream planner downgrade extras to feature.
+            console.log(`[Pipeline] ⚠️ Keeping duplicate structural role "${role}": ${component.component_id} (downstream planner will rebalance role priority)`);
         }
         
         sanitized.push(component);
         seen.add(component.component_id);
-        if (roleSeen[role] !== undefined) {
+        if (roleSeen[role] !== undefined && !roleSeen[role]) {
             roleSeen[role] = true;
             console.log(`[Pipeline] ✅ Structural role confirmed: ${role} -> ${component.component_id}`);
         }
@@ -1309,7 +1310,22 @@ export async function selectComponentsV2(
         // -----------------------------------------------------------------
         // STEP 5: Theme & Style Scoring + AI Selection
         // -----------------------------------------------------------------
-        const selectedComponents = await scoreAndSelect(candidates, designSystem, prompt, currentExplicit, finalCategories, aiModel);
+        let selectedComponents = await scoreAndSelect(candidates, designSystem, prompt, currentExplicit, finalCategories, aiModel);
+        if (currentExplicit.length > 0) {
+            const explicitMatched = candidates.filter((c) =>
+                currentExplicit.some((name) =>
+                    c.name?.toLowerCase() === String(name).toLowerCase() ||
+                    c.component_id?.toLowerCase() === String(name).toLowerCase() ||
+                    c.id?.toLowerCase() === String(name).toLowerCase()
+                )
+            );
+            const selectedIds = new Set(selectedComponents.map((c) => c.component_id));
+            const missingExplicit = explicitMatched.filter((c) => !selectedIds.has(c.component_id));
+            if (missingExplicit.length > 0) {
+                console.log(`[Pipeline] ✅ Enforcing explicit selections after AI pass: +${missingExplicit.length} component(s)`);
+                selectedComponents = [...selectedComponents, ...missingExplicit];
+            }
+        }
         console.log(`\n[Step 5] Theme & Style Scoring + AI Final Selection ✅`);
         console.log(`  └─ AI Selected: ${selectedComponents.length} components`);
         selectedComponents.forEach(c => console.log(`     - ${c.component_id} (Score: ${c.computed_score?.toFixed(2)})`));

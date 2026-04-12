@@ -80,15 +80,22 @@ function isBackgroundLikeComponent(comp = {}) {
   return isBackgroundLikeHaystack(haystack);
 }
 
-function promoteBackgroundToHero(components = [], layoutType = 'marketing-landing') {
+function promoteBackgroundToHero(components = [], layoutType = 'marketing-landing', promptText = '') {
   if (!Array.isArray(components) || components.length === 0) return components;
   if (layoutType === 'web-app') return components;
-  if (components.some((c) => c?.role === 'hero')) return components;
 
   const idx = components.findIndex((c) => isBackgroundLikeComponent(c));
   if (idx === -1) return components;
+  const wantsBackgroundLanding = /(^|\b)(background|shader|veil|hero background|landing background)(\b|$)/i.test(promptText || '');
 
   const next = [...components];
+  const existingHeroIdx = next.findIndex((c, i) => i !== idx && c?.role === 'hero');
+  if (existingHeroIdx !== -1 && wantsBackgroundLanding) {
+    next[existingHeroIdx] = { ...next[existingHeroIdx], role: 'feature' };
+    console.log('[BUILDER-VERIFY] plan hero promotion: demoted existing hero to feature refId=%s', next[existingHeroIdx].refId);
+  } else if (existingHeroIdx !== -1 && !wantsBackgroundLanding) {
+    return components;
+  }
   next[idx] = { ...next[idx], role: 'hero' };
   console.log('[BUILDER-VERIFY] plan hero promotion: promoted background component to hero refId=%s', next[idx].refId);
   return next;
@@ -134,7 +141,6 @@ function inferRoleFromComponent(dbComp = {}) {
 
   if (/(^|\b)(header|navbar|navigation|topbar|menu)(\b|$)/.test(haystack)) return 'header';
   if (/(^|\b)(hero|masthead|splash|landing|banner)(\b|$)/.test(haystack)) return 'hero';
-  if (isBackgroundLikeHaystack(haystack)) return 'hero';
   if (/(^|\b)(footer|copyright|site-footer)(\b|$)/.test(haystack)) return 'footer';
   return 'feature';
 }
@@ -148,7 +154,12 @@ function enforcePlanStructure(components = [], layoutType = 'marketing-landing')
   for (const comp of components) {
     if (!comp?.refId || idSeen.has(comp.refId)) continue;
     const role = comp.role || 'feature';
-    if ((role === 'header' || role === 'hero' || role === 'footer') && roleSeen[role]) continue;
+    if ((role === 'header' || role === 'hero' || role === 'footer') && roleSeen[role]) {
+      unique.push({ ...comp, role: 'feature' });
+      idSeen.add(comp.refId);
+      console.log('[BUILDER-VERIFY] enforcePlanStructure: demoted duplicate %s to feature refId=%s', role, comp.refId);
+      continue;
+    }
     unique.push({ ...comp, role });
     idSeen.add(comp.refId);
     if (roleSeen[role] !== undefined) roleSeen[role] = true;
@@ -520,7 +531,7 @@ ${premiumMode === 'off' ? '<!-- Premium selection disabled -->' : `SELECTION CON
         }
       }
 
-      const roleAdjusted = promoteBackgroundToHero(mappedComponents, layoutType);
+      const roleAdjusted = promoteBackgroundToHero(mappedComponents, layoutType, prompt);
       const structuredComponents = enforcePlanStructure(roleAdjusted, layoutType);
       if (structuredComponents.length !== mappedComponents.length) {
         console.log(`[plan-website-components] Structural dedupe removed ${mappedComponents.length - structuredComponents.length} duplicate role component(s).`);

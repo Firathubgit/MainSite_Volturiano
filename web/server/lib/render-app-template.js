@@ -51,6 +51,45 @@ function inferComponentRole(component) {
     return 'feature';
 }
 
+function isBackgroundLikeComponent(component) {
+    const name = (component?.exportName || '').toLowerCase();
+    const path = (component?.path || '').toLowerCase();
+    const role = (component?.role || '').toLowerCase();
+    const text = `${name} ${path} ${role}`;
+    return /(^|\b)(background|shader|veil|backdrop|canvas|parallax|ambient|overlay)(\b|$)/.test(text);
+}
+
+function renderComponentSequenceWithOverlay(components = [], baseIndent = '      ') {
+    const lines = [];
+    for (let i = 0; i < components.length; i++) {
+        const current = components[i];
+        const next = components[i + 1];
+        const currentRole = inferComponentRole(current);
+        const nextRole = next ? inferComponentRole(next) : null;
+        const canOverlay =
+            isBackgroundLikeComponent(current) &&
+            currentRole !== 'header' &&
+            currentRole !== 'footer' &&
+            next &&
+            nextRole !== 'header' &&
+            nextRole !== 'footer';
+
+        if (canOverlay) {
+            lines.push(`${baseIndent}<section className="relative min-h-screen overflow-hidden">`);
+            lines.push(`${baseIndent}  <${current.exportName} />`);
+            lines.push(`${baseIndent}  <div className="relative z-10">`);
+            lines.push(`${baseIndent}    <${next.exportName} />`);
+            lines.push(`${baseIndent}  </div>`);
+            lines.push(`${baseIndent}</section>`);
+            i += 1;
+            continue;
+        }
+
+        lines.push(`${baseIndent}<${current.exportName} />`);
+    }
+    return lines.join('\n');
+}
+
 // ═══════════════════════════════════════════════════════════
 // SPA MODE — Existing behavior, unchanged
 // ═══════════════════════════════════════════════════════════
@@ -88,7 +127,7 @@ function renderSPATemplate(components) {
         return `import ${c.exportName} from '${importPath}'`;
     }).join('\n');
 
-    const renderedNodes = uniqueComponents.map(c => `      <${c.exportName} />`).join('\n');
+    const renderedNodes = renderComponentSequenceWithOverlay(uniqueComponents, '      ');
 
     return `import React from 'react'
 import './index.css'
@@ -203,7 +242,7 @@ function renderMPATemplate(components, pages, sharedComponents) {
             pageComps = sortByRole(pageComps);
         }
 
-        const inlineElements = pageComps.map(c => `            <${c.exportName} />`).join('\n');
+        const inlineElements = renderComponentSequenceWithOverlay(pageComps, '            ');
         return `          <Route path="${p.routePath}" element={<main>\n${inlineElements}\n          </main>} />`;
     }).join('\n');
 

@@ -7,22 +7,26 @@ import { log } from '../lib/build-manifest.js';
 
 const MAX_FILE_CHARS = 200_000;
 
-const SYSTEM_PROMPT = `You receive a React component file and replacement copy data from the site plan (keyContent, props, design system, user vision).
+const SYSTEM_PROMPT = `You are a senior copy editor for production React sites. You receive one component file plus PLAN DATA: keyContent, props, designSystem, and siteVision (the user's full brief).
 
-Replace ALL placeholder/demo text — company names (e.g. Rivelon, Qyvora), "Jane Doe", "Example Brand", taglines, descriptions, feature lists, testimonials, CTAs, button labels, and literal image alt text in JSX — so it matches the plan and the user's vision.
+Your job is to make every user-visible string in this file appropriate for THAT client and THAT brief — not merely to strip "demo" names. Ground headlines, body copy, buttons, nav labels, quotes, stats, and image alt text in siteVision and keyContent; apply props as literal overrides where they map to visible text. Match tone to designSystem (mood, industry) when relevant.
 
-Preserve ALL code structure: imports, exports, function signatures, TypeScript types, CSS class names, Tailwind tokens, animations, shaders, WebGL, Three.js, Framer Motion props, and layout.
+Rewrite baked-in catalog examples (any fictional brand, "Acme", generic testimonials, placeholder emails, or template-specific names) into coherent, on-brief copy. Do not leave obvious template filler if the brief gives you enough to say something specific.
 
-Return the COMPLETE file in exactly one XML block:
+Preserve ALL code structure: imports, exports, function signatures, TypeScript types, CSS class names, Tailwind tokens, animations, shaders, WebGL, Three.js, Framer Motion props, and layout. Do not rename components or change file structure.
+
+Output format (required — downstream parsing depends on this exact shape):
+Return the COMPLETE file in exactly ONE block, using double quotes around the path attribute:
 <file path="USE_THE_FILE_NAME_FROM_THE_REQUEST">
 ...full file source...
 </file>
 
-No markdown fences. No text before or after the block.`;
+No markdown fences. No commentary before or after the block.`;
 
 /**
  * POST /api/hydrate-premium-copy
- * Body: { fileContent, fileName?, keyContent?, props?, designSystem?, prompt?, model?, buildId? }
+ * Body: { fileContent, fileName?, keyContent?, props?, designSystem?, prompt? (siteVision), model?, buildId? }
+ * Runs when keyContent, props, or prompt (non-empty) — prompt alone can drive client-specific JSX copy.
  */
 export default async function hydratePremiumCopy(req, res) {
   try {
@@ -47,8 +51,9 @@ export default async function hydratePremiumCopy(req, res) {
     const propsObj = props && typeof props === 'object' && !Array.isArray(props) ? props : {};
     const hasKey = typeof keyContent === 'string' && keyContent.trim().length > 0;
     const hasProps = Object.keys(propsObj).length > 0;
-    if (!hasKey && !hasProps) {
-      console.log('[BUILDER-VERIFY] hydrate: skipped no keyContent/props file=%s', fileName || '?');
+    const hasVision = typeof prompt === 'string' && prompt.trim().length > 0;
+    if (!hasKey && !hasProps && !hasVision) {
+      console.log('[BUILDER-VERIFY] hydrate: skipped no keyContent/props/siteVision file=%s', fileName || '?');
       return res.json({ success: true, hydratedContent: fileContent, skipped: true });
     }
 

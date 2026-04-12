@@ -1846,7 +1846,9 @@ Just position the new components in a logical order (e.g. after the Hero or befo
         if (!comp) continue;
         const hasKey = typeof comp.keyContent === 'string' && comp.keyContent.trim().length > 0;
         const hasProps = comp.props && typeof comp.props === 'object' && Object.keys(comp.props).length > 0;
-        if (!hasKey && !hasProps) continue;
+        const hasVision =
+          typeof finalPrompt === 'string' && finalPrompt.trim().length > 0;
+        if (!hasKey && !hasProps && !hasVision) continue;
 
         const parsedFiles = parseFilesFromCode(r.fileContent);
         if (parsedFiles.length === 0) continue;

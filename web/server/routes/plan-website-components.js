@@ -563,7 +563,7 @@ ${premiumMode === 'off' ? '<!-- Premium selection disabled -->' : `SELECTION CON
         I have selected ${structuredComponents.length} components for this site. 
         Your job is TWO-FOLD:
         PART A - ARCHITECTURE: The user STRONGLY PREFERS MULTI-PAGE WEBSITES (isMultiPage: true). You must distribute the components below across multiple logical pages (e.g., Home, About, Pricing, etc). Share the header/navbar and footer via 'sharedComponentRefIds'.
-        PART B - COPYWRITING: Generate high-converting, contextually perfect copy (TEXT) for each component.
+        PART B - COPYWRITING: Generate copy for each component that fits the user's actual business and brief — not generic filler. Prefer specific, client-appropriate headlines, CTAs, and feature text (high-converting where it fits).
         
         COMPONENTS REQUIRING ATTENTION:
         ${structuredComponents.map(c => `- NAME: ${c.name} | REF_ID: ${c.refId} | ROLE: ${c.role} | DESC: ${c.description}`).join('\n')}

@@ -62,68 +62,48 @@ function isBackgroundLikeComponent(component) {
 
 function renderComponentSequenceWithOverlay(components = [], baseIndent = '      ', prompt = '') {
     const lines = [];
-    const consumed = new Set();
+
     for (let i = 0; i < components.length; i++) {
-        if (consumed.has(i)) continue;
         const current = components[i];
         const currentRole = inferComponentRole(current);
         const currentIsBackground = isBackgroundLikeComponent(current);
 
-        if (currentIsBackground && currentRole !== 'header' && currentRole !== 'footer') {
-            let overlayIndex = -1;
-            for (let j = i + 1; j < components.length; j++) {
-                if (consumed.has(j)) continue;
-                const candidate = components[j];
-                const candidateRole = inferComponentRole(candidate);
-                if (candidateRole === 'header' || candidateRole === 'footer') continue;
-                if (isBackgroundLikeComponent(candidate)) continue;
-                overlayIndex = j;
-                break;
-            }
-            // Also check earlier unconsumed non-background components
-            if (overlayIndex === -1) {
-                for (let j = 0; j < i; j++) {
-                    if (consumed.has(j)) continue;
-                    const candidate = components[j];
-                    const candidateRole = inferComponentRole(candidate);
-                    if (candidateRole === 'header' || candidateRole === 'footer') continue;
-                    if (isBackgroundLikeComponent(candidate)) continue;
-                    overlayIndex = j;
-                    break;
-                }
-            }
+        if (!currentIsBackground || currentRole === 'header' || currentRole === 'footer') {
+            lines.push(`${baseIndent}<${current.exportName} />`);
+            continue;
+        }
 
-            if (overlayIndex !== -1) {
-                const overlay = components[overlayIndex];
-                lines.push(`${baseIndent}<section className="relative min-h-screen overflow-hidden">`);
-                lines.push(`${baseIndent}  <div className="absolute inset-0">`);
-                lines.push(`${baseIndent}    <${current.exportName} />`);
-                lines.push(`${baseIndent}  </div>`);
-                lines.push(`${baseIndent}  <div className="relative z-10">`);
-                lines.push(`${baseIndent}    <${overlay.exportName} />`);
-                lines.push(`${baseIndent}  </div>`);
-                lines.push(`${baseIndent}</section>`);
-                consumed.add(overlayIndex);
-                continue;
-            }
+        const next = components[i + 1];
+        const nextIsUsable = next
+            && inferComponentRole(next) !== 'header'
+            && inferComponentRole(next) !== 'footer'
+            && !isBackgroundLikeComponent(next);
 
-            // No partner found — render inline fallback hero content on top
+        if (nextIsUsable) {
             lines.push(`${baseIndent}<section className="relative min-h-screen overflow-hidden">`);
             lines.push(`${baseIndent}  <div className="absolute inset-0">`);
             lines.push(`${baseIndent}    <${current.exportName} />`);
             lines.push(`${baseIndent}  </div>`);
-            lines.push(`${baseIndent}  <div className="relative z-10 flex items-center justify-center min-h-screen px-4">`);
-            lines.push(`${baseIndent}    <div className="text-center max-w-3xl mx-auto">`);
-            lines.push(`${baseIndent}      <h1 className="text-5xl sm:text-7xl font-bold text-white mb-6 drop-shadow-lg">Welcome</h1>`);
-            lines.push(`${baseIndent}      <p className="text-lg sm:text-xl text-white/80 mb-8 drop-shadow-md max-w-xl mx-auto">Explore what we have to offer</p>`);
-            lines.push(`${baseIndent}      <a href="#content" className="inline-block px-8 py-3 bg-white text-black font-semibold rounded-full hover:bg-white/90 transition-colors shadow-lg">Get Started</a>`);
-            lines.push(`${baseIndent}    </div>`);
+            lines.push(`${baseIndent}  <div className="relative z-10">`);
+            lines.push(`${baseIndent}    <${next.exportName} />`);
             lines.push(`${baseIndent}  </div>`);
             lines.push(`${baseIndent}</section>`);
+            i += 1;
             continue;
         }
 
-        lines.push(`${baseIndent}<${current.exportName} />`);
+        lines.push(`${baseIndent}<section className="relative min-h-screen overflow-hidden">`);
+        lines.push(`${baseIndent}  <div className="absolute inset-0">`);
+        lines.push(`${baseIndent}    <${current.exportName} />`);
+        lines.push(`${baseIndent}  </div>`);
+        lines.push(`${baseIndent}  <div className="relative z-10 flex items-center justify-center min-h-screen px-4">`);
+        lines.push(`${baseIndent}    <div className="text-center max-w-3xl mx-auto">`);
+        lines.push(`${baseIndent}      <h1 className="text-5xl sm:text-7xl font-bold text-white mb-6 drop-shadow-lg">Welcome</h1>`);
+        lines.push(`${baseIndent}      <p className="text-lg sm:text-xl text-white/80 mb-8 drop-shadow-md max-w-xl mx-auto">Explore what we have to offer</p>`);
+        lines.push(`${baseIndent}      <a href="#content" className="inline-block px-8 py-3 bg-white text-black font-semibold rounded-full hover:bg-white/90 transition-colors shadow-lg">Get Started</a>`);
+        lines.push(`${baseIndent}    </div>`);
+        lines.push(`${baseIndent}  </div>`);
+        lines.push(`${baseIndent}</section>`);
     }
     return lines.join('\n');
 }

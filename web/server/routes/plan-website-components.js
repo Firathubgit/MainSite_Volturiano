@@ -457,7 +457,15 @@ ${premiumMode === 'off' ? '<!-- Premium selection disabled -->' : `SELECTION CON
       // downstream generate-single-component step will create them from scratch.
       // ═══════════════════════════════════════════════════════════════════
       if (premiumMode === 'hybrid') {
-        const coveredRoles = new Set(mappedComponents.map(c => c.role));
+        const coveredRoles = new Set(
+          mappedComponents
+            .filter((c) => !isBackgroundLikeComponent(c))
+            .map((c) => c.role)
+        );
+        const backgroundCount = mappedComponents.filter((c) => isBackgroundLikeComponent(c)).length;
+        if (backgroundCount > 0) {
+          console.log('[BUILDER-VERIFY] plan hybrid: %d background component(s) excluded from coveredRoles — they need foreground content', backgroundCount);
+        }
         const customNeeded = [...(selectionContext?.customComponentsNeeded || [])];
         if (intentClassification?.needsSidebar === true) {
           customNeeded.unshift('Sidebar navigation with grouped sections and active state');
@@ -483,23 +491,31 @@ ${premiumMode === 'off' ? '<!-- Premium selection disabled -->' : `SELECTION CON
         // Also add components for any custom needs identified by V1 selection
         const generatedAdditions = [];
         
-        // Add missing standard roles as generated components
+        const hasBackgroundHero = backgroundCount > 0 && !coveredRoles.has('hero');
         missingRoles.forEach(role => {
           const roleNames = { header: 'HeaderSection', hero: 'HeroSection', feature: 'FeaturesSection', footer: 'FooterSection' };
           const name = roleNames[role] || `${role.charAt(0).toUpperCase() + role.slice(1)}Section`;
+          const isOverlayHero = role === 'hero' && hasBackgroundHero;
           generatedAdditions.push({
             name,
             refId: `gen_${role}_01`,
             exportName: name,
             path: `src/components/${name}.jsx`,
-            description: `AI-generated ${role} section tailored to the user's specific request`,
-            designFocus: 'modern, responsive, visually cohesive with premium components',
+            description: isOverlayHero
+              ? 'AI-generated hero CONTENT section (headline, subtitle, CTA) designed to be displayed ON TOP of a visual background layer. Use transparent/no background, large bold white text with drop-shadow, and a clear call-to-action button. Do NOT add its own background color or image — it will be overlaid on a shader/visual background component.'
+              : `AI-generated ${role} section tailored to the user's specific request`,
+            designFocus: isOverlayHero
+              ? 'transparent hero content overlay with bold white typography, drop-shadows, and prominent CTA — no background color'
+              : 'modern, responsive, visually cohesive with premium components',
             keyContent: '',
             source: 'generated',
             bundleId: null,
             props: null,
             role
           });
+          if (isOverlayHero) {
+            console.log('[BUILDER-VERIFY] plan hybrid: injected overlay hero content component (backgrounds need foreground content)');
+          }
         });
 
         // Add extra AI-generated sections for custom needs (e.g. "Testimonials", "Specs Table")

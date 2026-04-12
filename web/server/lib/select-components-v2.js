@@ -42,6 +42,7 @@ function inferStructuralRole(component = {}) {
 
     if (/(^|\b)(header|navbar|navigation|topbar|menu)(\b|$)/.test(haystack)) return 'header';
     if (/(^|\b)(hero|masthead|splash|landing|banner)(\b|$)/.test(haystack)) return 'hero';
+    if (/(^|\b)(background|shader|veil|canvas|parallax|ambient|backdrop|overlay)(\b|$)/.test(haystack)) return 'hero';
     if (/(^|\b)(footer|copyright|site-footer)(\b|$)/.test(haystack)) return 'footer';
     return 'feature';
 }

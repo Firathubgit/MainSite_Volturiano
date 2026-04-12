@@ -64,6 +64,65 @@ function normalizeToken(value = '') {
   return String(value || '').trim().toLowerCase();
 }
 
+function isBackgroundLikeHaystack(haystack = '') {
+  return /(^|\b)(background|shader|veil|canvas|parallax|ambient|backdrop|overlay)(\b|$)/.test(haystack);
+}
+
+function isBackgroundLikeComponent(comp = {}) {
+  const haystack = [
+    comp?.category,
+    comp?.component_id,
+    comp?.name,
+    comp?.description,
+    comp?.visual_description,
+    comp?.designFocus
+  ].map(normalizeToken).join(' ');
+  return isBackgroundLikeHaystack(haystack);
+}
+
+function promoteBackgroundToHero(components = [], layoutType = 'marketing-landing') {
+  if (!Array.isArray(components) || components.length === 0) return components;
+  if (layoutType === 'web-app') return components;
+  if (components.some((c) => c?.role === 'hero')) return components;
+
+  const idx = components.findIndex((c) => isBackgroundLikeComponent(c));
+  if (idx === -1) return components;
+
+  const next = [...components];
+  next[idx] = { ...next[idx], role: 'hero' };
+  console.log('[BUILDER-VERIFY] plan hero promotion: promoted background component to hero refId=%s', next[idx].refId);
+  return next;
+}
+
+function enforceHomeHeroPlacement(pages = [], components = []) {
+  if (!Array.isArray(pages) || pages.length === 0) return pages;
+  const heroIds = components.filter((c) => c?.role === 'hero').map((c) => c.refId).filter(Boolean);
+  if (heroIds.length === 0) return pages;
+
+  const result = pages.map((p) => ({
+    ...p,
+    componentRefIds: Array.isArray(p.componentRefIds) ? [...p.componentRefIds] : []
+  }));
+  const homeIndex = result.findIndex((p) => (p.pagePath || p.path || '').trim() === '/');
+  if (homeIndex === -1) return result;
+
+  const primaryHeroId = heroIds[0];
+  for (let i = 0; i < result.length; i++) {
+    if (i === homeIndex) continue;
+    result[i].componentRefIds = result[i].componentRefIds.filter((id) => id !== primaryHeroId);
+  }
+
+  const home = result[homeIndex];
+  home.componentRefIds = [
+    primaryHeroId,
+    ...home.componentRefIds.filter((id) => id !== primaryHeroId)
+  ];
+  home.componentRefIds = [...new Set(home.componentRefIds)];
+
+  console.log('[BUILDER-VERIFY] plan hero placement: home page starts with hero refId=%s', primaryHeroId);
+  return result;
+}
+
 function inferRoleFromComponent(dbComp = {}) {
   const haystack = [
     dbComp.category,
@@ -75,6 +134,7 @@ function inferRoleFromComponent(dbComp = {}) {
 
   if (/(^|\b)(header|navbar|navigation|topbar|menu)(\b|$)/.test(haystack)) return 'header';
   if (/(^|\b)(hero|masthead|splash|landing|banner)(\b|$)/.test(haystack)) return 'hero';
+  if (isBackgroundLikeHaystack(haystack)) return 'hero';
   if (/(^|\b)(footer|copyright|site-footer)(\b|$)/.test(haystack)) return 'footer';
   return 'feature';
 }
@@ -460,7 +520,8 @@ ${premiumMode === 'off' ? '<!-- Premium selection disabled -->' : `SELECTION CON
         }
       }
 
-      const structuredComponents = enforcePlanStructure(mappedComponents, layoutType);
+      const roleAdjusted = promoteBackgroundToHero(mappedComponents, layoutType);
+      const structuredComponents = enforcePlanStructure(roleAdjusted, layoutType);
       if (structuredComponents.length !== mappedComponents.length) {
         console.log(`[plan-website-components] Structural dedupe removed ${mappedComponents.length - structuredComponents.length} duplicate role component(s).`);
       }
@@ -485,7 +546,8 @@ ${premiumMode === 'off' ? '<!-- Premium selection disabled -->' : `SELECTION CON
         2. Keep 'header' and 'footer' role components in 'sharedComponentRefIds' so they render on all pages.
         3. Assign EVERY single one of the remaining refIds to at least one page.
         4. For each component, generate 'keyContent' and 'props' (array of {key, value} strings) matching the tone: ${designSystem?.mood || 'professional'}.
-        5. Common props: 'title', 'subtitle', 'description', 'primaryBtnText', 'features'.`;
+        5. Common props: 'title', 'subtitle', 'description', 'primaryBtnText', 'features'.
+        6. If a selected component is a visual background/shader/veil type, place it as the hero/landing layer on Home ("/"), not mid-page.`;
 
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 45000); 
@@ -561,6 +623,8 @@ ${premiumMode === 'off' ? '<!-- Premium selection disabled -->' : `SELECTION CON
       });
 
       const deterministicMpa = buildDeterministicMultiPagePlan(finalComponents);
+      const copyPagesWithHero = enforceHomeHeroPlacement(copyResult.pages || [], finalComponents);
+      const fallbackPagesWithHero = enforceHomeHeroPlacement(deterministicMpa.pages || [], finalComponents);
       planData = {
         components: finalComponents,
         layoutType,
@@ -578,7 +642,7 @@ ${premiumMode === 'off' ? '<!-- Premium selection disabled -->' : `SELECTION CON
           order: finalComponents.map(c => ({ refId: c.refId }))
         },
         isMultiPage: true,
-        pages: (copyResult.pages && copyResult.pages.length > 0) ? copyResult.pages : deterministicMpa.pages,
+        pages: (copyPagesWithHero && copyPagesWithHero.length > 0) ? copyPagesWithHero : fallbackPagesWithHero,
         sharedComponentRefIds: (copyResult.sharedComponentRefIds && copyResult.sharedComponentRefIds.length > 0)
           ? copyResult.sharedComponentRefIds
           : deterministicMpa.sharedComponentRefIds

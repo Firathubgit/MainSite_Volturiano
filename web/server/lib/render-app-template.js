@@ -12,17 +12,18 @@
  * @param {boolean} [params.isMultiPage=false] - Whether to render as MPA
  * @param {Array<{path: string, label: string, component: string, navVisible: boolean}>} [params.pages=[]]
  * @param {Array<{exportName: string, path: string, role?: string, refId?: string}>} [params.sharedComponents=[]]
+ * @param {string} [params.prompt=''] - Original user prompt (used for fallback hero content)
  * @returns {string} - The complete App.jsx code.
  */
-export function renderAppTemplate({ components, isMultiPage = false, pages = [], sharedComponents = [] }) {
+export function renderAppTemplate({ components, isMultiPage = false, pages = [], sharedComponents = [], prompt = '' }) {
     if (!components || !Array.isArray(components)) {
         throw new Error('Invalid components list');
     }
 
     if (!isMultiPage) {
-        return renderSPATemplate(components);
+        return renderSPATemplate(components, prompt);
     }
-    return renderMPATemplate(components, pages, sharedComponents);
+    return renderMPATemplate(components, pages, sharedComponents, prompt);
 }
 
 function inferComponentRole(component) {
@@ -59,29 +60,66 @@ function isBackgroundLikeComponent(component) {
     return /(^|\b)(background|shader|veil|backdrop|canvas|parallax|ambient|overlay)(\b|$)/.test(text);
 }
 
-function renderComponentSequenceWithOverlay(components = [], baseIndent = '      ') {
+function renderComponentSequenceWithOverlay(components = [], baseIndent = '      ', prompt = '') {
     const lines = [];
+    const consumed = new Set();
     for (let i = 0; i < components.length; i++) {
+        if (consumed.has(i)) continue;
         const current = components[i];
-        const next = components[i + 1];
         const currentRole = inferComponentRole(current);
-        const nextRole = next ? inferComponentRole(next) : null;
-        const canOverlay =
-            isBackgroundLikeComponent(current) &&
-            currentRole !== 'header' &&
-            currentRole !== 'footer' &&
-            next &&
-            nextRole !== 'header' &&
-            nextRole !== 'footer';
+        const currentIsBackground = isBackgroundLikeComponent(current);
 
-        if (canOverlay) {
+        if (currentIsBackground && currentRole !== 'header' && currentRole !== 'footer') {
+            let overlayIndex = -1;
+            for (let j = i + 1; j < components.length; j++) {
+                if (consumed.has(j)) continue;
+                const candidate = components[j];
+                const candidateRole = inferComponentRole(candidate);
+                if (candidateRole === 'header' || candidateRole === 'footer') continue;
+                if (isBackgroundLikeComponent(candidate)) continue;
+                overlayIndex = j;
+                break;
+            }
+            // Also check earlier unconsumed non-background components
+            if (overlayIndex === -1) {
+                for (let j = 0; j < i; j++) {
+                    if (consumed.has(j)) continue;
+                    const candidate = components[j];
+                    const candidateRole = inferComponentRole(candidate);
+                    if (candidateRole === 'header' || candidateRole === 'footer') continue;
+                    if (isBackgroundLikeComponent(candidate)) continue;
+                    overlayIndex = j;
+                    break;
+                }
+            }
+
+            if (overlayIndex !== -1) {
+                const overlay = components[overlayIndex];
+                lines.push(`${baseIndent}<section className="relative min-h-screen overflow-hidden">`);
+                lines.push(`${baseIndent}  <div className="absolute inset-0">`);
+                lines.push(`${baseIndent}    <${current.exportName} />`);
+                lines.push(`${baseIndent}  </div>`);
+                lines.push(`${baseIndent}  <div className="relative z-10">`);
+                lines.push(`${baseIndent}    <${overlay.exportName} />`);
+                lines.push(`${baseIndent}  </div>`);
+                lines.push(`${baseIndent}</section>`);
+                consumed.add(overlayIndex);
+                continue;
+            }
+
+            // No partner found — render inline fallback hero content on top
             lines.push(`${baseIndent}<section className="relative min-h-screen overflow-hidden">`);
-            lines.push(`${baseIndent}  <${current.exportName} />`);
-            lines.push(`${baseIndent}  <div className="relative z-10">`);
-            lines.push(`${baseIndent}    <${next.exportName} />`);
+            lines.push(`${baseIndent}  <div className="absolute inset-0">`);
+            lines.push(`${baseIndent}    <${current.exportName} />`);
+            lines.push(`${baseIndent}  </div>`);
+            lines.push(`${baseIndent}  <div className="relative z-10 flex items-center justify-center min-h-screen px-4">`);
+            lines.push(`${baseIndent}    <div className="text-center max-w-3xl mx-auto">`);
+            lines.push(`${baseIndent}      <h1 className="text-5xl sm:text-7xl font-bold text-white mb-6 drop-shadow-lg">Welcome</h1>`);
+            lines.push(`${baseIndent}      <p className="text-lg sm:text-xl text-white/80 mb-8 drop-shadow-md max-w-xl mx-auto">Explore what we have to offer</p>`);
+            lines.push(`${baseIndent}      <a href="#content" className="inline-block px-8 py-3 bg-white text-black font-semibold rounded-full hover:bg-white/90 transition-colors shadow-lg">Get Started</a>`);
+            lines.push(`${baseIndent}    </div>`);
             lines.push(`${baseIndent}  </div>`);
             lines.push(`${baseIndent}</section>`);
-            i += 1;
             continue;
         }
 
@@ -94,7 +132,7 @@ function renderComponentSequenceWithOverlay(components = [], baseIndent = '     
 // SPA MODE — Existing behavior, unchanged
 // ═══════════════════════════════════════════════════════════
 
-function renderSPATemplate(components) {
+function renderSPATemplate(components, prompt = '') {
     // de-duplicate by exportName
     const uniqueComponents = [];
     const names = new Set();
@@ -127,7 +165,7 @@ function renderSPATemplate(components) {
         return `import ${c.exportName} from '${importPath}'`;
     }).join('\n');
 
-    const renderedNodes = renderComponentSequenceWithOverlay(uniqueComponents, '      ');
+    const renderedNodes = renderComponentSequenceWithOverlay(uniqueComponents, '      ', prompt);
 
     return `import React from 'react'
 import './index.css'
@@ -147,7 +185,7 @@ ${renderedNodes}
 // MPA MODE — HashRouter shell with Routes and shared layout
 // ═══════════════════════════════════════════════════════════
 
-function renderMPATemplate(components, pages, sharedComponents) {
+function renderMPATemplate(components, pages, sharedComponents, prompt = '') {
     const dedupeByExportName = (list) => {
         const seen = new Set();
         return (list || []).filter((item) => {
@@ -242,7 +280,7 @@ function renderMPATemplate(components, pages, sharedComponents) {
             pageComps = sortByRole(pageComps);
         }
 
-        const inlineElements = renderComponentSequenceWithOverlay(pageComps, '            ');
+        const inlineElements = renderComponentSequenceWithOverlay(pageComps, '            ', prompt);
         return `          <Route path="${p.routePath}" element={<main>\n${inlineElements}\n          </main>} />`;
     }).join('\n');
 

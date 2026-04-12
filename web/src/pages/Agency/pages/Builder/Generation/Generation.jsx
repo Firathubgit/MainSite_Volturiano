@@ -1990,7 +1990,8 @@ Just position the new components in a logical order (e.g. after the Hero or befo
             buildId,
             isMultiPage: planData?.isMultiPage || isMultiPageProject,
             pages: planData?.pages?.length > 0 ? planData.pages : projectPages,
-            sharedComponents: planData?.isMultiPage ? planData.components.filter(c => (planData.sharedComponentRefIds || []).includes(c.refId || c.name)) : projectSharedComponents
+            sharedComponents: planData?.isMultiPage ? planData.components.filter(c => (planData.sharedComponentRefIds || []).includes(c.refId || c.name)) : projectSharedComponents,
+            prompt: finalPrompt || ''
           })
         });
 

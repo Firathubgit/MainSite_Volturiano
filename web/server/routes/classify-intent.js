@@ -58,11 +58,9 @@ function applyDeterministicOverrides(prompt = '', intent = {}) {
   const explicitNoCommunity = /\b(no community|without community|no templates|from scratch|fully custom)\b/.test(p);
   const explicitSingleSection = /\b(single component|one component|single widget|one widget|single section)\b/.test(p);
   const explicitSinglePage = /\b(single page|one page|one-page|single-page|landing page)\b/.test(p);
-  const explicitMultiPage = /\b(multi page|multipage|multiple pages|docs site|documentation site)\b/.test(p);
+  const explicitMultiPage = /\b(multi page|multipage|multiple pages|docs site|documentation site|documentation|routes)\b/.test(p);
   const explicitAppShell =
-    /\b(dashboard|todo app|to-do app|calendar app|tracker app|manager app|management app|internal tool|admin panel|relationship manager|girlfriend manager|boyfriend manager)\b/.test(p) ||
-    /\bbuild\s+a\s+app\b/.test(p) ||
-    /\bmanage\b[\s\w]{0,50}\b(girlfriends?|boyfriends?|relationships?|relationship|todo|tasks|calendar)\b/.test(p);
+    /\b(app shell|dashboard|admin panel|backoffice|workspace|kanban|crm|internal tool|control panel|sidebar layout)\b/.test(p);
 
   const next = { ...intent };
 
@@ -86,6 +84,14 @@ function applyDeterministicOverrides(prompt = '', intent = {}) {
     next.chromeProfile = 'app';
     if (!explicitMultiPage) next.routingMode = 'none';
     if (!next.layoutType || next.layoutType === 'marketing-landing') next.layoutType = 'web-app';
+  } else {
+    // Single-page-first default for normal prompts.
+    next.buildMode = 'single_page_multi_section';
+    next.routingMode = 'anchors';
+    next.chromeProfile = 'marketing';
+    if (!next.layoutType || next.layoutType === 'experimental-widget' || next.layoutType === 'web-app') {
+      next.layoutType = 'marketing-landing';
+    }
   }
 
   return next;

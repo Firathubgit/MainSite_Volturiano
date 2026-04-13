@@ -57,7 +57,15 @@ function inferComponentRole(component) {
 
     if (explicitRole === 'header' || explicitRole === 'hero' || explicitRole === 'footer') return explicitRole;
 
-    if (/(^|\b)(header|navbar|navigation|topbar|menu)(\b|$)/.test(text)) return 'header';
+    if (
+        /(^|\b)(header|navbar|navigation|topbar|menu)(\b|$)/.test(text) ||
+        name.includes('header') ||
+        name.includes('navbar') ||
+        name.includes('topnav') ||
+        name.includes('sitenav')
+    ) {
+        return 'header';
+    }
 
     // Hero: masthead/banner OR substring "hero"/"splash" (HeroSplashCursor, VideoHeroBackground break \bhero\b)
     if (
@@ -150,7 +158,12 @@ function renderSPATemplate(components, prompt = '') {
     // AI_STABILITY_FIX: deterministic structure ordering
     uniqueComponents.sort((a, b) => {
         const order = { header: 0, hero: 1, feature: 2, footer: 3 };
-        return (order[inferComponentRole(a)] ?? 2) - (order[inferComponentRole(b)] ?? 2);
+        const ra = order[inferComponentRole(a)] ?? 2;
+        const rb = order[inferComponentRole(b)] ?? 2;
+        if (ra !== rb) return ra - rb;
+        const oa = Number.isFinite(a?.orderIndex) ? a.orderIndex : Number.MAX_SAFE_INTEGER;
+        const ob = Number.isFinite(b?.orderIndex) ? b.orderIndex : Number.MAX_SAFE_INTEGER;
+        return oa - ob;
     });
 
     const imports = uniqueComponents.map(c => {

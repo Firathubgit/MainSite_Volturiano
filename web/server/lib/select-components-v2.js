@@ -33,6 +33,81 @@ function normalizeToken(value = '') {
     return String(value || '').trim().toLowerCase();
 }
 
+function tokenizeText(value = '') {
+    return normalizeToken(value)
+        .split(/[^a-z0-9]+/)
+        .filter((t) => t.length >= 4);
+}
+
+function parseSuitableFor(raw) {
+    if (Array.isArray(raw)) return raw.map((v) => normalizeToken(v)).filter(Boolean);
+    if (typeof raw !== 'string') return [];
+    const text = raw.trim();
+    if (!text) return [];
+    try {
+        if (text.startsWith('[')) {
+            const parsed = JSON.parse(text);
+            return Array.isArray(parsed) ? parsed.map((v) => normalizeToken(v)).filter(Boolean) : [];
+        }
+    } catch {
+        return [];
+    }
+    return text
+        .split(',')
+        .map((v) => normalizeToken(v))
+        .filter(Boolean);
+}
+
+function promptRequestsImmersiveVisuals(prompt = '', designSystem = {}) {
+    const text = `${normalizeToken(prompt)} ${normalizeToken(designSystem?.styleDirection)} ${normalizeToken(designSystem?.tone)}`;
+    return /(shader|webgl|3d|particle|immersive|futuristic|cinematic|experimental|neon|glow|holographic|abstract)/.test(text);
+}
+
+const INDUSTRY_SYNONYMS = {
+    dental: ['dentist', 'clinic', 'healthcare', 'medical'],
+    healthcare: ['medical', 'clinic', 'wellness'],
+    accounting: ['finance', 'financial', 'bookkeeping', 'cpa'],
+    legal: ['law', 'attorney', 'compliance'],
+    education: ['learning', 'course', 'academy', 'training', 'school'],
+    language: ['education', 'course', 'learning'],
+    saas: ['software', 'b2b', 'platform', 'startup'],
+    ecommerce: ['retail', 'shop', 'store', 'product'],
+};
+
+function getIndustryTokens(industry = '') {
+    const primary = normalizeToken(industry);
+    if (!primary) return [];
+    const synonyms = INDUSTRY_SYNONYMS[primary] || [];
+    return [...new Set([primary, ...synonyms])];
+}
+
+function componentLooksImmersive(component = {}) {
+    const text = normalizeToken(
+        `${component.name || ''} ${component.description || ''} ${component.visual_description || ''} ${component.mood_tone || ''}`
+    );
+    return /(shader|webgl|3d|particle|immersive|cinematic|holographic|parallax|canvas|glow|ambient)/.test(text);
+}
+
+function industrySuitabilityScore(component = {}, prompt = '', industry = '') {
+    const promptTokens = new Set(tokenizeText(prompt).slice(0, 28));
+    const componentTextTokens = new Set(
+        tokenizeText(
+            `${component.name || ''} ${component.description || ''} ${component.visual_description || ''} ${component.mood_tone || ''}`
+        )
+    );
+    let overlap = 0;
+    for (const token of promptTokens) {
+        if (componentTextTokens.has(token)) overlap += 1;
+    }
+    const tokenScore = Math.min(1.5, overlap * 0.25);
+    const suitable = parseSuitableFor(component.suitable_for);
+    const industryToken = normalizeToken(industry);
+    const suitableScore = industryToken && suitable.some((s) => s.includes(industryToken) || industryToken.includes(s))
+        ? 1.5
+        : 0;
+    return tokenScore + suitableScore;
+}
+
 function inferStructuralRole(component = {}) {
     const category = normalizeToken(component.category);
     const componentId = normalizeToken(component.component_id || component.id);
@@ -283,6 +358,10 @@ ${list}`;
             buildMode === 'single_section' || layoutType === 'experimental-widget'
                 ? 2
                 : 8;
+        const immersiveIntent = promptRequestsImmersiveVisuals(prompt, designSystem);
+        const visualBiasRule = immersiveIntent
+            ? '2. VISUAL AMBITION: The user intent supports immersive visuals. You may prefer high-quality interactive/shader heroes when they also match the business context.'
+            : '2. VISUAL FIT OVER NOVELTY: Prefer clear, trustworthy, readable components for real business contexts. Avoid shader/WebGL-heavy heroes unless explicitly requested by the prompt/design context.';
         const systemPrompt = `You are a Master Website Architect. Pick the absolute best ${minComponents}-${maxComponents} components to construct a cohesive website/app experience.
 You have been provided with up to 50 highly-scored candidates that have already been vetted for quality and industry fit.${explicitInprompt}
 Catalog posture for this run: ${catalogPosture}.
@@ -294,7 +373,7 @@ ${list}
 
 RULES:
 1. QUALITY IS KING: A component with a high Quality Score (8, 9, 10) MUST heavily outweigh a theoretically "better fitting" component with a lower score. Always prioritize peak engineering and premium feel.
-2. SHADER & INTERACTIVE BIAS: Strongly prefer Hero sections that feature WebGL, shaders, particle effects, or 3D interactive physics. If available and high-quality, select these over basic static designs.
+${visualBiasRule}
 3. Select exactly one component per requested category type whenever possible.
 4. Ensure visual consistency (try to pick components with matching color_mode and warmth if indicated).
 5. Do not select two "hero" components or two "footer" components unless they serve different pages (e.g. A massive homepage hero, and a smaller secondary hero).
@@ -646,12 +725,13 @@ async function filterByIndustry(categories, industrySlug) {
         // Apply industry filtering in Javascript if slug provided, 
         // to avoid "invalid input syntax for type json" DB errors
         if (industrySlug) {
-            const slugLower = industrySlug.toLowerCase();
+            const industryTokens = getIndustryTokens(industrySlug);
             return data.filter(c => {
-                const suitable = typeof c.suitable_for === 'string'
-                    ? (c.suitable_for.startsWith('[') ? JSON.parse(c.suitable_for) : [])
-                    : (c.suitable_for || []);
-                return suitable.some(s => s.toLowerCase().includes(slugLower));
+                const suitable = parseSuitableFor(c.suitable_for);
+                if (suitable.length === 0) return true;
+                return suitable.some(s =>
+                    industryTokens.some((token) => s.includes(token) || token.includes(s))
+                );
             });
         }
 
@@ -666,7 +746,8 @@ function enforceStructuralSelection(
     selectedComponents = [],
     candidatePool = [],
     layoutType = 'marketing-landing',
-    buildMode = 'single_page_multi_section'
+    buildMode = 'single_page_multi_section',
+    context = {}
 ) {
     const sanitized = [];
     const seen = new Set();
@@ -706,8 +787,18 @@ function enforceStructuralSelection(
 
     for (const requiredRole of requiredStructural) {
         if (roleSeen[requiredRole]) continue;
-        const fallback = candidatePool.find(c => !seen.has(c.component_id) && inferStructuralRole(c) === requiredRole);
-        if (fallback) {
+        const fallbackCandidates = candidatePool
+            .filter(c => !seen.has(c.component_id) && inferStructuralRole(c) === requiredRole)
+            .map((c) => ({
+                ...c,
+                __fallbackScore:
+                    (c.computed_score || (c.quality_score || 5)) +
+                    industrySuitabilityScore(c, context.prompt || '', context.industry || '')
+            }))
+            .sort((a, b) => (b.__fallbackScore || 0) - (a.__fallbackScore || 0));
+        const fallbackPick = fallbackCandidates[0];
+        if (fallbackPick) {
+            const { __fallbackScore, ...fallback } = fallbackPick;
             sanitized.push(fallback);
             seen.add(fallback.component_id);
             roleSeen[requiredRole] = true;
@@ -746,6 +837,8 @@ async function scoreAndSelect(
     catalogPosture = 'hybrid'
 ) {
     if (!candidates || candidates.length === 0) return [];
+    const immersiveIntent = promptRequestsImmersiveVisuals(prompt, designSystem);
+    const industry = designSystem?.industry || designSystem?.industryCategory || '';
 
     // Score each candidate
     const scored = candidates.map(c => {
@@ -760,6 +853,13 @@ async function scoreAndSelect(
 
         // Usage popularity (normalize to max 1.5)
         score += Math.min((c.usage_count || 0) / 100, 1.5);
+
+        // Bounded semantic/industry fit bonus to reduce irrelevant premium picks.
+        score += industrySuitabilityScore(c, prompt, industry);
+
+        if (componentLooksImmersive(c)) {
+            score += immersiveIntent ? 0.75 : -0.6;
+        }
 
         // EXTRA BOOST for explicit components to ensure they stay in top 30
         const isExplicit = explicitComponents.some(name =>
@@ -808,7 +908,18 @@ async function scoreAndSelect(
         })
         .filter(Boolean); // remove any LLM hallucinations
 
-    return enforceStructuralSelection(selectedComponents, top50, layoutType, buildMode);
+    const needsSinglePageGuardrail =
+        buildMode === 'single_page_multi_section' && layoutType !== 'experimental-widget';
+    if (needsSinglePageGuardrail && selectedComponents.length === 0) {
+        const fallbackIds = pickStructuredFallback(top50, requiredCategories, explicitComponents, layoutType, buildMode);
+        const fallbackComponents = fallbackIds
+            .map(id => top50.find(c => c.component_id.toLowerCase() === id.toLowerCase()))
+            .filter(Boolean);
+        console.warn('[Pipeline] ⚠️ Empty LLM selection for single-page mode, enforcing structured fallback.');
+        return enforceStructuralSelection(fallbackComponents, top50, layoutType, buildMode, { prompt, industry });
+    }
+
+    return enforceStructuralSelection(selectedComponents, top50, layoutType, buildMode, { prompt, industry });
 }
 
 /**
@@ -1354,6 +1465,7 @@ export async function selectComponentsV2(
 
         if (!candidates || candidates.length < 15) {
             console.warn(`\n[Step 4] ⚠️ Only ${candidates?.length || 0} candidates available. Backfilling with universal components to expand options...`);
+            const industryTokens = getIndustryTokens(industry);
             const fallbackQuery = await sb.from('components')
                 .select('component_id, id, name, description, visual_description, mood_tone, color_mode, color_warmth, suitable_for, quality_score, usage_count, variant_of, variant_label, category')
                 .eq('status', 'active')
@@ -1363,12 +1475,27 @@ export async function selectComponentsV2(
 
             const fallbackComps = fallbackQuery.data || [];
             const existingIds = new Set((candidates || []).map(c => c.component_id));
+            const requiredCategorySet = new Set((finalCategories || []).map((cat) => normalizeToken(cat)));
 
             candidates = candidates || [];
-            fallbackComps.forEach(fc => {
-                if (!existingIds.has(fc.component_id)) {
-                    candidates.push(fc);
-                }
+            const rankedFallback = fallbackComps
+                .filter((fc) => !existingIds.has(fc.component_id))
+                .map((fc) => {
+                    const suitable = parseSuitableFor(fc.suitable_for);
+                    const categoryMatch = requiredCategorySet.has(normalizeToken(fc.category)) ? 1.25 : 0;
+                    const industryMatch =
+                        suitable.length === 0
+                            ? 0.4
+                            : suitable.some((s) => industryTokens.some((token) => s.includes(token) || token.includes(s)))
+                                ? 1.6
+                                : 0;
+                    const rank = (fc.quality_score || 5) + categoryMatch + industryMatch;
+                    return { fc, rank };
+                })
+                .sort((a, b) => b.rank - a.rank)
+                .map((item) => item.fc);
+            rankedFallback.forEach((fc) => {
+                candidates.push(fc);
             });
         }
 

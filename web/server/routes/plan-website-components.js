@@ -240,11 +240,9 @@ function promptRequestsSinglePage(promptText = '') {
 function promptLooksLikeFocusedApp(promptText = '') {
   const text = promptText || '';
   return (
-    /(^|\b)(todo app|to-do app|task manager app|calendar app|schedule app|habit tracker app|budget tracker app|calculator app|girlfriend app|boyfriend app|girlfriend manager|boyfriend manager|relationship manager|micro app|widget app)(\b|$)/i.test(
+    /(^|\b)(app shell|dashboard|admin panel|workspace|kanban|crm|control panel|internal tool|backoffice|sidebar layout)(\b|$)/i.test(
       text
-    ) ||
-    /\bbuild\s+a\s+app\b/i.test(text) ||
-    /\bmanage\b[\s\w]{0,50}\b(girlfriends?|boyfriends?|relationships?|relationship|todo|tasks|calendar)\b/i.test(text)
+    )
   );
 }
 
@@ -576,51 +574,63 @@ export default async function planWebsiteComponents(req, res) {
     const intentConfidence =
       typeof intentClassification?.intentConfidence === 'number'
         ? Math.max(0, Math.min(1, intentClassification.intentConfidence))
-        : 0.6;
-    const effectiveBuildMode =
-      buildModeFromRequest ||
-      buildModeFromIntent ||
-      inferBuildModeFromPrompt(primaryPrompt, inferredLayoutForMode);
-    const effectiveRoutingMode = inferRoutingModeForBuildMode(
-      effectiveBuildMode,
-      normalizeRoutingMode(requestedRoutingMode) || normalizeRoutingMode(intentClassification?.routingMode)
-    );
-    const effectiveChromeProfile = inferChromeProfileForBuildMode(
-      effectiveBuildMode,
-      normalizeChromeProfile(requestedChromeProfile) || normalizeChromeProfile(intentClassification?.chromeProfile)
-    );
+        : 0.7;
     const effectiveCatalogPosture = inferCatalogPosture({
       requestedPosture: normalizeCatalogPosture(requestedCatalogPosture),
       intentPosture: normalizeCatalogPosture(intentClassification?.catalogPosture),
       disableCommunity,
       promptText: primaryPrompt
     });
+
+    const explicitMultiPagePrompt = /(^|\b)(multi page|multipage|multiple pages|docs|documentation|routes)(\b|$)/i.test(
+      primaryPrompt || ''
+    );
+    const explicitSingleSectionPrompt = /(^|\b)(single component|one component|single widget|one widget|single section)(\b|$)/i.test(
+      primaryPrompt || ''
+    );
+    const explicitAppShellPrompt = promptLooksLikeFocusedApp(primaryPrompt);
     const confidenceTier =
       intentConfidence >= INTENT_CONFIDENCE_HIGH
         ? 'high'
         : intentConfidence < INTENT_CONFIDENCE_LOW
           ? 'low'
           : 'medium';
-    const confidenceModeFallback = inferBuildModeFromPrompt(primaryPrompt, inferredLayoutForMode);
-    const confidenceRoutingFallback = inferRoutingModeForBuildMode(confidenceModeFallback, null);
-    const confidenceCatalogPosture =
-      confidenceTier === 'low' ? (disableCommunity ? 'codegen_first' : 'hybrid') : effectiveCatalogPosture;
-    const finalBuildMode = confidenceTier === 'low' ? confidenceModeFallback : effectiveBuildMode;
-    let finalRoutingMode = confidenceTier === 'low' ? confidenceRoutingFallback : effectiveRoutingMode;
-    const explicitMultiPagePrompt = /(^|\b)(multi page|multipage|multiple pages|docs|documentation)(\b|$)/i.test(
-      primaryPrompt || ''
-    );
-    if (finalBuildMode === 'app_shell' && promptLooksLikeFocusedApp(primaryPrompt) && !explicitMultiPagePrompt) {
-      finalRoutingMode = 'none';
+
+    // Single-page-first contract:
+    // explicit request > trusted request override > deterministic single-page default.
+    let finalBuildMode = 'single_page_multi_section';
+    if (buildModeFromRequest && buildModeFromRequest !== 'single_page_multi_section') {
+      finalBuildMode = buildModeFromRequest;
+    } else if (explicitMultiPagePrompt) {
+      finalBuildMode = 'multi_page';
+    } else if (explicitSingleSectionPrompt) {
+      finalBuildMode = 'single_section';
+    } else if (explicitAppShellPrompt) {
+      finalBuildMode = 'app_shell';
+    } else if (buildModeFromIntent === 'single_section') {
+      finalBuildMode = 'single_section';
     }
-    const finalChromeProfile =
-      confidenceTier === 'low'
-        ? inferChromeProfileForBuildMode(finalBuildMode, null)
-        : effectiveChromeProfile;
+
+    let finalRoutingMode = inferRoutingModeForBuildMode(
+      finalBuildMode,
+      normalizeRoutingMode(requestedRoutingMode) || normalizeRoutingMode(intentClassification?.routingMode)
+    );
+    if (finalBuildMode === 'single_page_multi_section') {
+      finalRoutingMode = 'anchors';
+    } else if (finalBuildMode === 'app_shell' && !explicitMultiPagePrompt) {
+      finalRoutingMode = 'none';
+    } else if (finalBuildMode === 'multi_page') {
+      finalRoutingMode = 'router';
+    }
+    const finalChromeProfile = inferChromeProfileForBuildMode(
+      finalBuildMode,
+      normalizeChromeProfile(requestedChromeProfile) || normalizeChromeProfile(intentClassification?.chromeProfile)
+    );
+    const confidenceCatalogPosture = effectiveCatalogPosture;
     const forcePremiumOff = confidenceCatalogPosture === 'codegen_first';
     const effectivePremiumMode =
       disableCommunity || confidenceCatalogPosture === 'codegen_first' || forcePremiumOff ? 'off' : premiumMode;
-    const forceExperimentalFromPrompt = promptLooksLikeFocusedApp(primaryPrompt);
+    const forceExperimentalFromPrompt = explicitAppShellPrompt;
     const forceSinglePage =
       forceExperimentalFromPrompt ||
       promptRequestsSinglePage(primaryPrompt) ||
@@ -677,7 +687,19 @@ export default async function planWebsiteComponents(req, res) {
       const v2Context = {
         industry: designSystem?.industryCategory || '',
         colorMode: designSystem?.colorPalette?.mode || 'dark',
-        warmth: 'neutral', // default, could derive from ds
+        warmth:
+          designSystem?.imagery?.mood === 'warm'
+            ? 'warm'
+            : designSystem?.imagery?.mood === 'cool'
+              ? 'cool'
+              : 'neutral',
+        tone: designSystem?.mood || '',
+        designPersonality: Array.isArray(designSystem?.designPersonality) ? designSystem.designPersonality : [],
+        imageryStyle: designSystem?.imagery?.style || '',
+        imagerySubjects: Array.isArray(designSystem?.imagery?.subjects) ? designSystem.imagery.subjects : [],
+        imageryKeywords: Array.isArray(designSystem?.imagery?.unsplashKeywords) ? designSystem.imagery.unsplashKeywords : [],
+        cardStyle: designSystem?.layoutPreferences?.cardStyle || '',
+        spacing: designSystem?.layoutPreferences?.spacing || ''
       };
 
       // Propagation of EXPLICIT_COMPONENTS from enhance-prompt

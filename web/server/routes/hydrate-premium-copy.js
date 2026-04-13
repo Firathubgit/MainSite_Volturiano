@@ -14,12 +14,23 @@ const PLACEHOLDER_PATTERNS = [
   /\bacme\b/i,
   /\blorem ipsum\b/i
 ];
+const URL_PATTERN = /https?:\/\/[^\s"'`)<]+/gi;
+const STOCK_URL_PATTERN = /(example\.com|images\.unsplash\.com|pexels\.com|placehold|dummyimage|picsum)/i;
+
+function extractUrls(text = '') {
+  return new Set(String(text || '').match(URL_PATTERN) || []);
+}
 
 const SYSTEM_PROMPT = `You are a senior copy editor for production React sites. You receive one component file plus PLAN DATA: keyContent, props, designSystem, and siteVision (the user's full brief).
 
 Your job is to make every user-visible string in this file appropriate for THAT client and THAT brief — not merely to strip "demo" names. Ground headlines, body copy, buttons, nav labels, quotes, stats, and image alt text in siteVision and keyContent; apply props as literal overrides where they map to visible text. Match tone to designSystem (mood, industry) when relevant.
 
 Rewrite baked-in catalog examples (any fictional brand, "Acme", generic testimonials, placeholder emails, or template-specific names) into coherent, on-brief copy. Do not leave obvious template filler if the brief gives you enough to say something specific.
+
+IMAGE ADAPTATION RULE:
+- You MAY replace literal image/video URL strings (e.g. src="", image: "https://...") when they are stock/demo/placeholder and the section is media-heavy (portfolio/gallery/showcase/product/hero backgrounds).
+- Keep the same data shape and JSX structure. Only swap URL string values and related alt/caption text. Do not introduce new libraries or runtime fetch logic.
+- Use designSystem imagery cues (keywords/style/subjects) and siteVision for replacements.
 
 CRITICAL: If PLAN DATA props include complex data like arrays or objects (even if they appear as stringified JSON in the prompt), DO NOT add \`JSON.parse()\` or any runtime parsing logic to the component. Instead, you MUST hardcode the literal array/object data directly into the component (e.g., as the default export prop value or a local constant variable) so the component renders safely without crashing if props are missing.
 
@@ -83,6 +94,11 @@ export default async function hydratePremiumCopy(req, res) {
       designSystem,
       siteVision: typeof prompt === 'string' ? prompt : ''
     };
+    const sourceUrls = extractUrls(fileContent);
+    const imagerySensitive =
+      /(portfolio|gallery|showcase|photographer|wedding|product|lookbook|catalog|hero)/i.test(
+        `${fileName} ${keyContent} ${prompt}`
+      ) || Array.from(sourceUrls).some((url) => STOCK_URL_PATTERN.test(url));
 
     const userMessage = `PLAN DATA (JSON):
 ${JSON.stringify(payload, null, 2)}
@@ -104,7 +120,7 @@ ${fileContent}`;
 
     const runHydration = async (strictRetry = false) => {
       const retrySuffix = strictRetry
-        ? `\n\nSTRICT RETRY MODE: You MUST remove remaining template filler and align every visible string to siteVision.`
+        ? `\n\nSTRICT RETRY MODE: You MUST remove remaining template filler and align every visible string to siteVision. For imagery-sensitive files, refresh at least one stock/demo media URL literal if present.`
         : '';
       if (lm.useFast) {
         return generateFast(SYSTEM_PROMPT, `${userMessage}${retrySuffix}`);
@@ -124,6 +140,15 @@ ${fileContent}`;
       const text = String(candidate || '');
       if (!text.trim()) return false;
       if (PLACEHOLDER_PATTERNS.some((re) => re.test(text))) return false;
+      if (imagerySensitive && sourceUrls.size > 0) {
+        const nextUrls = extractUrls(text);
+        const changedUrlCount = Array.from(nextUrls).filter((url) => !sourceUrls.has(url)).length;
+        if (changedUrlCount === 0) {
+          // Allow pass only if original had no obvious stock/demo assets to refresh.
+          const hasStockSource = Array.from(sourceUrls).some((url) => STOCK_URL_PATTERN.test(url));
+          if (hasStockSource) return false;
+        }
+      }
       const promptTerms = String(prompt || '')
         .toLowerCase()
         .split(/[^a-z0-9]+/)

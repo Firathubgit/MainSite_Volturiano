@@ -7,7 +7,14 @@ import path from 'node:path';
 
 export default async function generateSingleComponent(req, res) {
   try {
-    const { component, designSystem = null, prompt, overallContext, model = 'google/gemini-3.1-pro-preview' } = req.body;
+    const {
+      component,
+      designSystem = null,
+      prompt,
+      overallContext,
+      buildMode = 'single_page_multi_section',
+      model = 'google/gemini-3.1-pro-preview'
+    } = req.body;
     console.log(`[generate-single-component] ROUTE HIT | Component: ${component?.name} | Model: ${model}`);
 
     if (!component?.path || !component?.name) {
@@ -57,6 +64,14 @@ export default async function generateSingleComponent(req, res) {
     const propsInstructions = propsDefaults
       ? `\nPLAN PROPS — copywriter supplied these keys. Destructure with defaults (e.g. const { appName = 'App', ...rest } = props || {}) so the UI never shows the word "undefined":\n${propsDefaults}\n`
       : `\nIf you use dynamic title text, give props default values (e.g. appName = 'App') so the UI never shows the word "undefined".\n`;
+    const modeHints =
+      buildMode === 'single_page_multi_section'
+        ? `\nBUILD MODE CONTRACT: single_page_multi_section. Generate a clean, vertically stackable section that can live in a normal landing page flow. Avoid app-shell-only chrome.`
+        : buildMode === 'multi_page'
+          ? `\nBUILD MODE CONTRACT: multi_page. This component can be used in routed pages; keep structure reusable and avoid assuming global layout wrappers in this file.`
+          : buildMode === 'app_shell'
+            ? `\nBUILD MODE CONTRACT: app_shell. Respect app shell constraints and keep layout flush with parent shell containers.`
+            : `\nBUILD MODE CONTRACT: single_section. Keep this component focused and self-contained as a standalone section/widget.`;
 
     const SYSTEM_PROMPT = `You are a senior React developer who builds award-winning, visually stunning components.
 You are an API. You MUST output ONLY raw JSON that matches the provided schema perfectly. NO conversation. NO preamble. NO markdown fences.
@@ -66,6 +81,7 @@ You are building the component "${name}" for the website about: "${visionPrompt}
 ${pageInstructions}
 ${appShellHints}
 ${propsInstructions}
+${modeHints}
 
 CRITICAL RULES:
 1. EXPORT DEFAULT (MANDATORY): You MUST include \`export default function ${finalExportName}(props = {}) { ... }\` (defaults required if using text from props) at the end of the file. NEVER skip the export statement.

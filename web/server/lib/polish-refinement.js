@@ -29,9 +29,11 @@ function buildPremiumCopySystemPrompt(visionPrompt, buildErrors = '') {
 
 "${visionPrompt}"
 
+ALLOWED MEDIA UPDATE (SAFE): You may replace literal stock/demo media URL strings in JSX/data arrays (e.g. src="https://...", image: "https://...") when they conflict with the vision. Keep the same object/array/JSX shape and do not add runtime parsing/fetch logic.
+
 DO NOT modify: imports, exports, default exports, function or component names, prop names, TypeScript types, CSS class names, Tailwind class strings as a whole, inline style objects, animation variants, shaders, WebGL, Three.js, canvas code, Framer Motion props (except string literals inside them if purely textual), or structural JSX/layout.
 
-Preserve every animation, shader, and interaction exactly; change only user-visible text content.
+Preserve every animation, shader, and interaction exactly; change only user-visible text content plus safe literal media URL replacements.
 
 Wrap the full updated file in <file path="EXACT_PATH_FROM_PROMPT">...</file>. No markdown fences. No explanations.
 

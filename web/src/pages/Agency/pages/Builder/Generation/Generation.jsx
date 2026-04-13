@@ -1771,6 +1771,38 @@ Just position the new components in a logical order (e.g. after the Hero or befo
       setGenerationProgress(prev => ({ ...prev, status: 'Planning components...' }));
       let planData;
       try {
+        const planningPrompt = `${finalPrompt || ''} ${prompt || ''}`;
+        const explicitMultiPagePrompt = /(^|\b)(multi page|multipage|multiple pages|docs|documentation|routes)(\b|$)/i.test(
+          planningPrompt
+        );
+        const explicitSingleSectionPrompt = /(^|\b)(single component|one component|single widget|one widget|single section)(\b|$)/i.test(
+          planningPrompt
+        );
+        const explicitAppShellPrompt = /(^|\b)(app shell|dashboard|admin panel|workspace|kanban|crm|control panel|internal tool|backoffice|sidebar layout)(\b|$)/i.test(
+          planningPrompt
+        );
+        const userSelectedAdvancedMode = ['multi_page', 'app_shell', 'single_section'].includes(projectBuildMode)
+          ? projectBuildMode
+          : null;
+        let contractBuildMode = 'single_page_multi_section';
+        if (explicitMultiPagePrompt) contractBuildMode = 'multi_page';
+        else if (explicitSingleSectionPrompt) contractBuildMode = 'single_section';
+        else if (explicitAppShellPrompt) contractBuildMode = 'app_shell';
+        else if (userSelectedAdvancedMode) contractBuildMode = userSelectedAdvancedMode;
+
+        const contractRoutingMode =
+          contractBuildMode === 'multi_page'
+            ? 'router'
+            : contractBuildMode === 'single_page_multi_section'
+              ? 'anchors'
+              : 'none';
+        const contractChromeProfile =
+          contractBuildMode === 'app_shell'
+            ? 'app'
+            : contractBuildMode === 'single_section'
+              ? 'none'
+              : 'marketing';
+
         const planRes = await authFetch('/api/plan-website-components', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -1785,9 +1817,9 @@ Just position the new components in a logical order (e.g. after the Hero or befo
             generateNarration: true,
             premiumMode,
             allowCommunityComponents,
-            buildMode: intentClassification?.buildMode || projectBuildMode,
-            routingMode: intentClassification?.routingMode || projectRoutingMode,
-            chromeProfile: intentClassification?.chromeProfile || projectChromeProfile,
+            buildMode: contractBuildMode,
+            routingMode: contractRoutingMode,
+            chromeProfile: contractChromeProfile,
             catalogPosture: intentClassification?.catalogPosture,
             manualSelectionIds,
             strictMode,
@@ -1992,7 +2024,7 @@ Just position the new components in a logical order (e.g. after the Hero or befo
       // Get the successfully loaded premium components with their REAL paths and names
       const loadedPremiumComponents = premiumResults
         .filter(r => r.success)
-        .map(r => ({ name: r.name, path: r.path, description: r.description }));
+        .map(r => ({ name: r.name, path: r.path, description: r.description, originalRef: r.originalRef }));
 
       // Find App.jsx (or App) to generate LAST (Stage C)
       const appComponent = generatedComponents.find(c => c.path.endsWith('App.jsx') || c.name === 'App');
@@ -2031,6 +2063,7 @@ Just position the new components in a logical order (e.g. after the Hero or befo
                 globalStyle,
                 prompt: finalPrompt,
                 overallContext: finalPrompt,
+                buildMode: planData?.buildMode || projectBuildMode,
                 model: aiModel,
                 componentIndex: premiumComponents.length + i + 1,
                 totalComponents: components.length,
@@ -2075,10 +2108,54 @@ Just position the new components in a logical order (e.g. after the Hero or befo
 
       // appComponent is already defined above
 
+      const plannerComponents = Array.isArray(planData?.components) ? planData.components : [];
+      const plannerByRefId = new Map(
+        plannerComponents
+          .filter(c => c?.refId)
+          .map(c => [String(c.refId).toLowerCase(), c])
+      );
+      const plannerByName = new Map(
+        plannerComponents
+          .filter(c => c?.name)
+          .map(c => [String(c.name).toLowerCase(), c])
+      );
+      const plannerByPath = new Map(
+        plannerComponents
+          .filter(c => c?.path)
+          .map(c => [String(c.path).toLowerCase(), c])
+      );
+      const orderMap = new Map(
+        (planData?.appComposition?.order || [])
+          .map((entry, idx) => [String(entry?.refId || '').toLowerCase(), idx])
+          .filter(([id]) => Boolean(id))
+      );
+      const resolvePlannerMeta = ({ refId, name, path }) => {
+        const byRef = refId ? plannerByRefId.get(String(refId).toLowerCase()) : null;
+        const byName = name ? plannerByName.get(String(name).toLowerCase()) : null;
+        const byPath = path ? plannerByPath.get(String(path).toLowerCase()) : null;
+        const planned = byRef || byName || byPath || null;
+        const plannedRef = planned?.refId || refId || name || path || '';
+        const orderIndex = orderMap.has(String(plannedRef).toLowerCase())
+          ? orderMap.get(String(plannedRef).toLowerCase())
+          : Number.MAX_SAFE_INTEGER;
+        return {
+          role: planned?.role || undefined,
+          orderIndex
+        };
+      };
+
       // Prepare list of ALL valid components for App.jsx
       const validComponents = [
-        ...loadedPremiumComponents.map(c => ({ exportName: c.name, path: c.path, refId: c.originalRef?.refId || c.originalRef?.name })),
-        ...standardResults.filter(r => r.success).map(r => ({ exportName: r.name, path: r.path, refId: r.originalRef?.refId || r.originalRef?.name }))
+        ...loadedPremiumComponents.map(c => {
+          const refId = c.originalRef?.refId || c.originalRef?.name || c.name;
+          const meta = resolvePlannerMeta({ refId, name: c.name, path: c.path });
+          return { exportName: c.name, path: c.path, refId, role: meta.role, orderIndex: meta.orderIndex };
+        }),
+        ...standardResults.filter(r => r.success).map(r => {
+          const refId = r.originalRef?.refId || r.originalRef?.name || r.name;
+          const meta = resolvePlannerMeta({ refId, name: r.name, path: r.path });
+          return { exportName: r.name, path: r.path, refId, role: meta.role, orderIndex: meta.orderIndex };
+        })
       ];
 
       let appJsxCode = '';

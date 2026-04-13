@@ -79,6 +79,12 @@ export default async function selectComponents(req, res) {
         const mandatoryRule = explicitNames.length > 0
             ? `\n\n🎯 MANDATORY SELECTION (CRITICAL):\nThe user has EXPLICITLY requested these components by name: ${explicitNames.join(', ')}.\nYou MUST find and include them in your selections if they exist in the catalog above. Search by name (case-insensitive). Their confidence should be 1.0.`
             : '';
+        const immersiveIntent = /(shader|webgl|3d|particle|immersive|futuristic|cinematic|experimental|holographic|abstract)/i.test(
+            `${prompt || ''} ${JSON.stringify(designSystem || {})}`
+        );
+        const visualBiasInstruction = immersiveIntent
+            ? '3. VISUAL AMBITION: Because the request supports immersive/experimental visuals, you may prefer high-quality interactive shader heroes when still context-appropriate.'
+            : '3. VISUAL FIT OVER NOVELTY: For business/service sites, prioritize clear and trustworthy components; do not pick shader/WebGL-heavy heroes unless explicitly requested.';
 
         llmLog.request('SELECT-V1', {
             model: model,
@@ -115,7 +121,7 @@ For each component in the catalog, use these high-fidelity fields:
 YOUR DECISION PROCESS:
 1. IDENTIFY CATEGORIES: Based on the user prompt, determine which categories are required (e.g., Header, Hero, Features, Pricing, Footer).
 2. QUALITY IS KING: Compare components. A component with high quality_score (e.g. 9 or 10) must heavily outweigh a theoretically better-fitting component with a low score.
-3. SHADER & INTERACTIVE BIAS: Strongly prefer Hero sections that feature WebGL, shaders, particle effects, or 3D interactive physics. If available and high-quality, select these over basic static designs.
+${visualBiasInstruction}
 4. MATCH INDUSTRY/SUTIABILITY: Use 'suitableFor' to find components that align with the project's purpose.
 5. ALIGN AESTHETICS: Match 'moodTone' and 'visualDescription' to the user's intent.
 6. COORDINATE DESIGN: Ensure all selected components have a cohesive 'colorProfile' and 'design_personality'.

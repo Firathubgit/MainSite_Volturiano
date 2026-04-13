@@ -2,7 +2,16 @@ import { renderAppTemplate } from '../lib/render-app-template.js';
 
 export default async function renderApp(req, res) {
     try {
-        const { components, isMultiPage, pages, sharedComponents, prompt } = req.body;
+        const {
+            components,
+            isMultiPage,
+            pages,
+            sharedComponents,
+            prompt,
+            buildMode,
+            routingMode,
+            chromeProfile
+        } = req.body;
 
         if (!components || !Array.isArray(components)) {
             return res.status(400).json({ error: 'Invalid components array' });
@@ -14,6 +23,9 @@ export default async function renderApp(req, res) {
             pages: pages || [],
             sharedComponents: sharedComponents || [],
             prompt: prompt || '',
+            buildMode: buildMode || 'single_page_multi_section',
+            routingMode: routingMode || (isMultiPage ? 'router' : 'none'),
+            chromeProfile: chromeProfile || 'marketing'
         });
 
         res.json({ success: true, appJsx });

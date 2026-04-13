@@ -6,12 +6,22 @@ import { resolveLightweightModel } from '../lib/llm-lightweight.js';
 import { log } from '../lib/build-manifest.js';
 
 const MAX_FILE_CHARS = 200_000;
+const PLACEHOLDER_PATTERNS = [
+  /\bvolturiano\b/i,
+  /\bjohn doe\b/i,
+  /\breplacement ?text\b/i,
+  /\bexample brand\b/i,
+  /\bacme\b/i,
+  /\blorem ipsum\b/i
+];
 
 const SYSTEM_PROMPT = `You are a senior copy editor for production React sites. You receive one component file plus PLAN DATA: keyContent, props, designSystem, and siteVision (the user's full brief).
 
 Your job is to make every user-visible string in this file appropriate for THAT client and THAT brief — not merely to strip "demo" names. Ground headlines, body copy, buttons, nav labels, quotes, stats, and image alt text in siteVision and keyContent; apply props as literal overrides where they map to visible text. Match tone to designSystem (mood, industry) when relevant.
 
 Rewrite baked-in catalog examples (any fictional brand, "Acme", generic testimonials, placeholder emails, or template-specific names) into coherent, on-brief copy. Do not leave obvious template filler if the brief gives you enough to say something specific.
+
+CRITICAL: If PLAN DATA props include complex data like arrays or objects (even if they appear as stringified JSON in the prompt), DO NOT add \`JSON.parse()\` or any runtime parsing logic to the component. Instead, you MUST hardcode the literal array/object data directly into the component (e.g., as the default export prop value or a local constant variable) so the component renders safely without crashing if props are missing.
 
 Preserve ALL code structure: imports, exports, function signatures, TypeScript types, CSS class names, Tailwind tokens, animations, shaders, WebGL, Three.js, Framer Motion props, and layout. Do not rename components or change file structure.
 
@@ -92,20 +102,38 @@ ${fileContent}`;
       temperature: 0
     });
 
-    let text = '';
-    if (lm.useFast) {
-      text = await generateFast(SYSTEM_PROMPT, userMessage);
-    } else {
+    const runHydration = async (strictRetry = false) => {
+      const retrySuffix = strictRetry
+        ? `\n\nSTRICT RETRY MODE: You MUST remove remaining template filler and align every visible string to siteVision.`
+        : '';
+      if (lm.useFast) {
+        return generateFast(SYSTEM_PROMPT, `${userMessage}${retrySuffix}`);
+      }
       const out = await generateText({
         model: getModel(lm.id),
         system: SYSTEM_PROMPT,
-        prompt: userMessage,
+        prompt: `${userMessage}${retrySuffix}`,
         temperature: 0,
         maxRetries: 2,
-        maxTokens: 65536
+        maxTokens: 64000
       });
-      text = out.text || '';
-    }
+      return out.text || '';
+    };
+
+    const semanticAccepts = (candidate) => {
+      const text = String(candidate || '');
+      if (!text.trim()) return false;
+      if (PLACEHOLDER_PATTERNS.some((re) => re.test(text))) return false;
+      const promptTerms = String(prompt || '')
+        .toLowerCase()
+        .split(/[^a-z0-9]+/)
+        .filter((w) => w.length >= 5)
+        .slice(0, 25);
+      if (promptTerms.length === 0) return true;
+      return promptTerms.some((t) => text.toLowerCase().includes(t));
+    };
+
+    let text = await runHydration(false);
 
     llmLog.response('HYDRATE-PREMIUM-COPY', {
       response: (text || '').slice(0, 4000),
@@ -136,12 +164,34 @@ ${fileContent}`;
       return res.json({ success: true, hydratedContent: fileContent, skipped: true, reason: 'empty_block' });
     }
 
+    let acceptedContent = block.content;
+    if (!semanticAccepts(acceptedContent)) {
+      console.warn('[hydrate-premium-copy] Semantic acceptance failed for %s; retrying once.', fileName || '?');
+      const retryText = await runHydration(true);
+      const retryParsed = parseFileBlocks(retryText);
+      const retryBlock =
+        (want && retryParsed.find((p) => p.path === want)) ||
+        retryParsed.find((p) => want && (want.endsWith(p.path) || p.path.endsWith(want))) ||
+        retryParsed[0];
+      if (retryBlock?.content?.length && semanticAccepts(retryBlock.content)) {
+        acceptedContent = retryBlock.content;
+      } else {
+        console.warn('[hydrate-premium-copy] Retry also failed semantic acceptance; keeping original file.');
+        return res.json({
+          success: true,
+          hydratedContent: fileContent,
+          skipped: true,
+          reason: 'semantic_acceptance_failed'
+        });
+      }
+    }
+
     console.log(
       '[BUILDER-VERIFY] hydrate: done file=%s outChars=%d skipped=false',
       fileName || '?',
-      block.content.length
+      acceptedContent.length
     );
-    return res.json({ success: true, hydratedContent: block.content });
+    return res.json({ success: true, hydratedContent: acceptedContent });
   } catch (e) {
     console.error('[hydrate-premium-copy]', e);
     return res.status(500).json({ success: false, error: e.message || 'hydrate failed' });

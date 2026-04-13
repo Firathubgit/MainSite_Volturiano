@@ -241,8 +241,6 @@ APP.JSX PRESERVATION (CRITICAL):
       // Inject file structure
       if (sandboxFileList.length > 0) {
         systemPrompt += `\n\nCurrent file structure:\n${sandboxFileList.map(f => `  ${f}`).join('\n')}`;
-      } else if (context.structure) {
-        systemPrompt += `\n\nCurrent file structure: \n${context.structure} `;
       }
 
       // App.jsx Strict Render Order - PRE-CALCULATED GOLDEN COPY
@@ -265,6 +263,9 @@ APP.JSX PRESERVATION (CRITICAL):
             isMultiPage: plan.isMultiPage || false,
             pages: plan.pages || [],
             sharedComponents,
+            buildMode: plan.buildMode || 'single_page_multi_section',
+            routingMode: plan.routingMode || (plan.isMultiPage ? 'router' : 'none'),
+            chromeProfile: plan.chromeProfile || 'marketing',
           });
 
           systemPrompt += `\n\nAPP.JSX CONTENT (MANDATORY):

@@ -6,59 +6,49 @@ import { createManifest, updateManifest, log } from '../lib/build-manifest.js';
 import { AIBuildNarrator } from '../shared/sse-events.js';
 import path from 'node:path';
 import { selectComponentsV2 } from '../lib/select-components-v2.js';
+import { resolvePrimaryPlanningPrompt } from '../lib/prompt-truth.js';
 import { recordComponentSelections } from '../lib/retention-tracker.js';
 import { supabaseAdmin } from '../lib/supabase-admin.js';
 import { llmLog } from '../lib/llm-logger.js';
-import { resolveCrossProviderFallback } from '../lib/llm-lightweight.js';
 import { inferLayoutTypeFromPrompt, LAYOUT_TYPES } from '../lib/layout-type.js';
 
 function normalizeComponentName(name = '') {
   return String(name).toLowerCase().replace(/[-_\s]/g, '');
 }
 
-const componentSchema = z.object({
-  name: z.string(),
-  refId: z.string().describe('Unique reference ID for this component (e.g. "cmp_hero_01")'),
-  exportName: z.string().describe('PascalCase export name (e.g. "HeroSection")'),
-  path: z.string().describe('The file path. MUST be flat: "src/components/Name.jsx"'),
-  description: z.string(),
-  designFocus: z.string(),
-  keyContent: z.string().nullable().describe('Key copy/content for this component. Required but can be null if none.'),
-  source: z.enum(['premium', 'generated']).describe('Whether this component comes from the premium catalog or is LLM-generated'),
-  bundleId: z.string().nullable().describe('If source is "premium", the exact component ID from the catalog. Null otherwise.'),
-  props: z.record(z.string()).nullable().describe('If source is "premium", simple key-value prop overrides (strings only).'),
-  role: z.enum(['header', 'hero', 'feature', 'footer']).describe('Strict functional role of this component'),
-});
+const BUILD_MODES = ['single_section', 'single_page_multi_section', 'multi_page', 'app_shell'];
+const ROUTING_MODES = ['none', 'anchors', 'router'];
+const CHROME_PROFILES = ['none', 'minimal', 'marketing', 'app'];
+const CATALOG_POSTURES = ['catalog_first', 'hybrid', 'codegen_first'];
+const LOVABLE_CANONICAL_FALLBACK = String(process.env.LOVABLE_CANONICAL_FALLBACK || 'true').toLowerCase() === 'true';
+const LOVABLE_FORCE_LEGACY_PLANNER_FALLBACK =
+  String(process.env.LOVABLE_FORCE_LEGACY_PLANNER_FALLBACK || 'false').toLowerCase() === 'true';
+const INTENT_CONFIDENCE_HIGH = 0.75;
+const INTENT_CONFIDENCE_LOW = 0.45;
 
-const pageAssignment = z.object({
-  pagePath: z.string().describe('URL path like "/" or "/about"'),
-  pageLabel: z.string().describe('Navigation label like "Home" or "About Us"'),
-  pageComponent: z.string().describe('PascalCase component name like "Home" or "About"'),
-  navVisible: z.boolean().describe('Whether this page appears in the main navigation'),
-  componentRefIds: z.array(z.string()).describe('Ordered list of component refIds assigned to this page'),
-});
+function isReplayCutoverReady() {
+  const modeAccuracy = Number(process.env.LOVABLE_REPLAY_MODE_ACCURACY || 0);
+  const semanticCoverage = Number(process.env.LOVABLE_REPLAY_SEMANTIC_COVERAGE || 0);
+  const singlePageDrift = Number(process.env.LOVABLE_REPLAY_SINGLE_PAGE_DRIFT || 100);
+  const stableDays = Number(process.env.LOVABLE_REPLAY_STABLE_DAYS || 0);
+  return modeAccuracy >= 0.9 && semanticCoverage >= 0.85 && singlePageDrift <= 0.05 && stableDays >= 7;
+}
 
-const planSchema = z.object({
-  complexity: z.enum(['simple', 'medium', 'complex']).describe('Complexity level of the request'),
-  layoutType: z
-    .enum(['marketing-landing', 'business-site', 'web-app', 'portfolio', 'e-commerce'])
-    .default('marketing-landing')
-    .describe(
-      'Layout archetype: marketing-landing / portfolio (5–8), business-site (7–12), web-app (8–20, no marketing hero required), e-commerce (10–18)'
-    ),
-  components: z.array(componentSchema).min(1).max(30),
-  globalStyle: z.string(),
-  appImports: z.array(z.string()),
-  requiredPackages: z.array(z.string()).describe('List of NPM packages needed for these components (e.g. ["react-router-dom", "framer-motion"])'),
-  appComposition: z.object({
-    order: z.array(z.object({
-      refId: z.string(),
-    })),
-  }),
-  isMultiPage: z.boolean().default(false).describe('Whether this site needs multi-page routing. Only true if user explicitly requests multiple pages.'),
-  pages: z.array(pageAssignment).optional().describe('Page definitions with routes. Only present when isMultiPage is true.'),
-  sharedComponentRefIds: z.array(z.string()).optional().describe('RefIds of components shared across ALL pages (e.g. header, footer). Only present when isMultiPage is true.'),
-});
+function normalizeBuildMode(mode = '') {
+  return BUILD_MODES.includes(mode) ? mode : null;
+}
+
+function normalizeRoutingMode(mode = '') {
+  return ROUTING_MODES.includes(mode) ? mode : null;
+}
+
+function normalizeChromeProfile(profile = '') {
+  return CHROME_PROFILES.includes(profile) ? profile : null;
+}
+
+function normalizeCatalogPosture(posture = '') {
+  return CATALOG_POSTURES.includes(posture) ? posture : null;
+}
 
 function normalizeToken(value = '') {
   return String(value || '').trim().toLowerCase();
@@ -69,6 +59,13 @@ function isBackgroundLikeHaystack(haystack = '') {
 }
 
 function isBackgroundLikeComponent(comp = {}) {
+  const nameId = `${comp?.name || ''} ${comp?.component_id || ''}`.toLowerCase();
+  
+  // If the component is explicitly a hero, nav, or footer, it is a structural component with its own text, NOT a pure background shell!
+  if (/(hero|nav|header|footer|pricing|features|cta|team)/.test(nameId)) {
+    return false;
+  }
+
   const haystack = [
     comp?.category,
     comp?.component_id,
@@ -103,30 +100,36 @@ function promoteBackgroundToHero(components = [], layoutType = 'marketing-landin
 
 function enforceHomeHeroPlacement(pages = [], components = []) {
   if (!Array.isArray(pages) || pages.length === 0) return pages;
-  const heroIds = components.filter((c) => c?.role === 'hero').map((c) => c.refId).filter(Boolean);
-  if (heroIds.length === 0) return pages;
 
-  const result = pages.map((p) => ({
-    ...p,
-    componentRefIds: Array.isArray(p.componentRefIds) ? [...p.componentRefIds] : []
-  }));
+  const roleSort = (aId, bId) => {
+    const roleOrder = { header: 0, hero: 1, feature: 2, footer: 3 };
+    const getRole = (id) => components.find(c => c.refId === id)?.role || 'feature';
+    return (roleOrder[getRole(aId)] ?? 2) - (roleOrder[getRole(bId)] ?? 2);
+  };
+
+  const result = pages.map((p) => {
+    const ids = Array.isArray(p.componentRefIds) ? [...p.componentRefIds] : [];
+    return {
+      ...p,
+      componentRefIds: [...new Set(ids)].sort(roleSort)
+    };
+  });
+
+  const heroIds = components.filter((c) => c?.role === 'hero').map((c) => c.refId).filter(Boolean);
+  if (heroIds.length === 0) return result;
+
   const homeIndex = result.findIndex((p) => (p.pagePath || p.path || '').trim() === '/');
   if (homeIndex === -1) return result;
 
   const primaryHeroId = heroIds[0];
+  // Ensure primary hero is NOT on other pages if it's a landing hero
   for (let i = 0; i < result.length; i++) {
     if (i === homeIndex) continue;
     result[i].componentRefIds = result[i].componentRefIds.filter((id) => id !== primaryHeroId);
   }
 
-  const home = result[homeIndex];
-  home.componentRefIds = [
-    primaryHeroId,
-    ...home.componentRefIds.filter((id) => id !== primaryHeroId)
-  ];
-  home.componentRefIds = [...new Set(home.componentRefIds)];
-
-  console.log('[BUILDER-VERIFY] plan hero placement: home page starts with hero refId=%s', primaryHeroId);
+  // Home page already sorted by roleSort, so header (0) should be before hero (1)
+  console.log('[BUILDER-VERIFY] plan hero placement: ensured role-based order for all pages');
   return result;
 }
 
@@ -155,6 +158,10 @@ function enforcePlanStructure(components = [], layoutType = 'marketing-landing')
     if (!comp?.refId || idSeen.has(comp.refId)) continue;
     const role = comp.role || 'feature';
     if ((role === 'header' || role === 'hero' || role === 'footer') && roleSeen[role]) {
+      if (role === 'header' || role === 'footer') {
+        console.log('[BUILDER-VERIFY] enforcePlanStructure: DELETED duplicate %s refId=%s to prevent multiple navs/footers', role, comp.refId);
+        continue; // Completely remove duplicate headers and footers!
+      }
       unique.push({ ...comp, role: 'feature' });
       idSeen.add(comp.refId);
       console.log('[BUILDER-VERIFY] enforcePlanStructure: demoted duplicate %s to feature refId=%s', role, comp.refId);
@@ -218,6 +225,317 @@ function buildDeterministicMultiPagePlan(components = []) {
   return { isMultiPage: true, pages, sharedComponentRefIds: headerFooter };
 }
 
+function promptRequestsNoCommunity(promptText = '') {
+  return /(^|\b)(no community|without community|do not use community|don't use community|no templates|without templates|from scratch|fully custom|custom app only)(\b|$)/i.test(
+    promptText || ''
+  );
+}
+
+function promptRequestsSinglePage(promptText = '') {
+  return /(^|\b)(single page|one page|one-page|single-page|single component|one component|single widget|one widget)(\b|$)/i.test(
+    promptText || ''
+  );
+}
+
+function promptLooksLikeFocusedApp(promptText = '') {
+  const text = promptText || '';
+  return (
+    /(^|\b)(todo app|to-do app|task manager app|calendar app|schedule app|habit tracker app|budget tracker app|calculator app|girlfriend app|boyfriend app|girlfriend manager|boyfriend manager|relationship manager|micro app|widget app)(\b|$)/i.test(
+      text
+    ) ||
+    /\bbuild\s+a\s+app\b/i.test(text) ||
+    /\bmanage\b[\s\w]{0,50}\b(girlfriends?|boyfriends?|relationships?|relationship|todo|tasks|calendar)\b/i.test(text)
+  );
+}
+
+function resolveComponentBudget(layoutType = 'marketing-landing', promptText = '') {
+  const singleComponentIntent = promptRequestsSinglePage(promptText);
+  if (layoutType === 'experimental-widget') {
+    return { max: singleComponentIntent ? 1 : 3 };
+  }
+  if (layoutType === 'web-app') {
+    return { max: 8 };
+  }
+  if (layoutType === 'business-site' || layoutType === 'e-commerce') {
+    return { max: 8 };
+  }
+  return { max: 7 };
+}
+
+function trimComponentsToBudget(components = [], layoutType = 'marketing-landing', promptText = '') {
+  const { max } = resolveComponentBudget(layoutType, promptText);
+  if (!Array.isArray(components) || components.length <= max) return components;
+
+  // For experimental-widget, prefer pure feature/widget pieces and avoid website chrome.
+  if (layoutType === 'experimental-widget') {
+    const featureFirst = components
+      .filter((c) => c.role === 'feature' || c.role === 'hero')
+      .concat(components.filter((c) => c.role !== 'feature' && c.role !== 'hero'));
+    return featureFirst.slice(0, max);
+  }
+
+  // Keep one structural shell, then cap features.
+  const firstHeader = components.find((c) => c.role === 'header');
+  const firstHero = components.find((c) => c.role === 'hero');
+  const firstFooter = components.find((c) => c.role === 'footer');
+  const features = components.filter((c) => c.role === 'feature');
+
+  const kept = [];
+  if (firstHeader) kept.push(firstHeader);
+  if (firstHero) kept.push(firstHero);
+  for (const feat of features) {
+    if (kept.length >= max - (firstFooter ? 1 : 0)) break;
+    kept.push(feat);
+  }
+  if (firstFooter && kept.length < max) kept.push(firstFooter);
+
+  const keepIds = new Set(kept.map((c) => c.refId));
+  const fill = components.filter((c) => !keepIds.has(c.refId));
+  for (const c of fill) {
+    if (kept.length >= max) break;
+    kept.push(c);
+  }
+  return kept;
+}
+
+function buildCodegenFirstScaffold({
+  promptText = '',
+  buildMode = 'single_page_multi_section',
+  layoutType = 'marketing-landing',
+  needsSidebar = false
+} = {}) {
+  // App shell: always plan TWO generated components so render-app-template can fill <aside> + <main>.
+  // A single "SidebarWorkspace" component leaves <main> empty because the shell splits nav vs body.
+  if (buildMode === 'app_shell') {
+    const brief = promptText || 'App workspace';
+    return [
+      {
+        name: 'SidebarWorkspaceSection',
+        refId: 'gen_sidebar_01',
+        exportName: 'SidebarWorkspaceSection',
+        path: 'src/components/SidebarWorkspaceSection.jsx',
+        description:
+          'LEFT COLUMN ONLY (~256–320px), flush to viewport: app title, tagline, vertical nav, profile/footer. Root layout must fill the aside (h-full flex flex-col) — no outer margin or floating card chrome. Do NOT put the primary dashboard grid here.',
+        designFocus: 'compact sidebar, nav states, icons, branding strip',
+        keyContent: brief.slice(0, 220),
+        source: 'generated',
+        bundleId: null,
+        props: {},
+        role: 'feature'
+      },
+      {
+        name: 'WorkspaceMainPanel',
+        refId: 'gen_mainpanel_01',
+        exportName: 'WorkspaceMainPanel',
+        path: 'src/components/WorkspaceMainPanel.jsx',
+        description:
+          'MAIN WORKSPACE (flex-1 right column), edge-to-edge beside sidebar: dashboard summary cards, list/grid, empty state, CTAs. Root must be h-full flex flex-col with no outer mx-auto/max-w that detaches the panel from the shell.',
+        designFocus: 'dashboard density, cards, tables or kanban hints, motion, empty states',
+        keyContent: brief.slice(0, 220),
+        source: 'generated',
+        bundleId: null,
+        props: {},
+        role: 'feature'
+      }
+    ];
+  }
+
+  const focusedApp = promptLooksLikeFocusedApp(promptText);
+  if (focusedApp || layoutType === 'experimental-widget' || buildMode === 'single_section') {
+    const name = needsSidebar || buildMode === 'app_shell' ? 'SidebarWorkspaceSection' : 'WorkspaceSection';
+    return [
+      {
+        name,
+        refId: 'gen_workspace_01',
+        exportName: name,
+        path: `src/components/${name}.jsx`,
+        description:
+          'Single viewport app workspace. Left sidebar navigation and draggable relationship cards in the main panel. No landing-page hero, no marketing sections, no extra vertical scroll.',
+        designFocus:
+          'dense app shell UI, left sidebar, interactive cards, compact spacing, one-screen composition',
+        keyContent: promptText || 'Focused relationship management workspace.',
+        source: 'generated',
+        bundleId: null,
+        props: {},
+        role: 'feature'
+      }
+    ];
+  }
+
+  return [
+    {
+      name: 'MainSection',
+      refId: 'gen_main_01',
+      exportName: 'MainSection',
+      path: 'src/components/MainSection.jsx',
+      description: 'Primary generated content section tailored to user intent.',
+      designFocus: 'clean layout',
+      keyContent: promptText || '',
+      source: 'generated',
+      bundleId: null,
+      props: {},
+      role: 'feature'
+    }
+  ];
+}
+
+function inferBuildModeFromPrompt(promptText = '', layoutType = 'marketing-landing') {
+  if (promptLooksLikeFocusedApp(promptText)) return 'app_shell';
+  if (promptRequestsSinglePage(promptText)) {
+    if (/(^|\b)(single component|one component|single widget|one widget)(\b|$)/i.test(promptText || '')) {
+      return 'single_section';
+    }
+    return 'single_page_multi_section';
+  }
+  if (layoutType === 'experimental-widget') return 'single_section';
+  if (/(^|\b)(multi page|multipage|multiple pages|docs|documentation)(\b|$)/i.test(promptText || '')) return 'multi_page';
+  return 'single_page_multi_section';
+}
+
+function inferRoutingModeForBuildMode(buildMode = 'single_page_multi_section', explicitRouting = null) {
+  if (explicitRouting) return explicitRouting;
+  if (buildMode === 'multi_page') return 'router';
+  if (buildMode === 'single_page_multi_section') return 'anchors';
+  return 'none';
+}
+
+function inferChromeProfileForBuildMode(buildMode = 'single_page_multi_section', explicitProfile = null) {
+  if (explicitProfile) return explicitProfile;
+  if (buildMode === 'app_shell') return 'app';
+  if (buildMode === 'single_section') return 'none';
+  return 'marketing';
+}
+
+function inferCatalogPosture({ requestedPosture = null, intentPosture = null, disableCommunity = false, promptText = '' } = {}) {
+  if (disableCommunity) return 'codegen_first';
+  if (requestedPosture) return requestedPosture;
+  if (intentPosture) return intentPosture;
+  if (/(^|\b)(no community|no templates|from scratch|fully custom)(\b|$)/i.test(promptText || '')) return 'codegen_first';
+  return 'hybrid';
+}
+
+function extractIntentTerms(promptText = '') {
+  return Array.from(
+    new Set(
+      String(promptText || '')
+        .toLowerCase()
+        .split(/[^a-z0-9]+/)
+        .filter((w) => w.length >= 4)
+    )
+  );
+}
+
+function validateSemanticFidelity(components = [], promptText = '') {
+  const genericResiduePatterns = [
+    /\bwelcome to our website\b/i,
+    /\byour trusted partner\b/i,
+    /\blorem ipsum\b/i,
+    /\bexample brand\b/i,
+    /\bjane doe\b/i
+  ];
+  const terms = extractIntentTerms(promptText).slice(0, 40);
+  let covered = 0;
+  let genericHits = 0;
+
+  for (const c of components) {
+    const text = `${c?.name || ''} ${c?.description || ''} ${c?.keyContent || ''} ${JSON.stringify(c?.props || {})}`.toLowerCase();
+    if (terms.some((t) => text.includes(t))) covered += 1;
+    if (genericResiduePatterns.some((r) => r.test(text))) genericHits += 1;
+  }
+
+  const componentCount = Math.max(1, components.length);
+  const coverage = covered / componentCount;
+  const genericPenalty = genericHits / componentCount;
+  const score = Math.max(0, Math.min(1, coverage - genericPenalty * 0.6));
+  return {
+    score,
+    coverage,
+    genericPenalty,
+    needsRepair: score < 0.55
+  };
+}
+
+function validatePlanAgainstMode(
+  {
+    components = [],
+    isMultiPage = false,
+    pages = [],
+    sharedComponentRefIds = [],
+    layoutType = 'marketing-landing'
+  },
+  { buildMode = 'single_page_multi_section', routingMode = 'anchors', promptText = '' } = {}
+) {
+  let nextComponents = Array.isArray(components) ? [...components] : [];
+  let nextPages = Array.isArray(pages) ? [...pages] : [];
+  let nextShared = Array.isArray(sharedComponentRefIds) ? [...sharedComponentRefIds] : [];
+  let nextIsMultiPage = !!isMultiPage;
+
+  if (buildMode === 'single_section') {
+    nextIsMultiPage = false;
+    nextPages = [];
+    nextShared = [];
+    const maxSingle = promptRequestsSinglePage(promptText) ? 1 : 2;
+    nextComponents = nextComponents.slice(0, maxSingle);
+  } else if (buildMode === 'single_page_multi_section') {
+    nextIsMultiPage = false;
+    nextPages = [];
+    nextShared = [];
+    nextComponents = nextComponents.slice(0, 8);
+  } else if (buildMode === 'app_shell') {
+    const explicitMultiPagePrompt = /(^|\b)(multi page|multipage|multiple pages|docs|documentation)(\b|$)/i.test(promptText || '');
+    const routerAppShell = routingMode === 'router' && explicitMultiPagePrompt;
+    nextIsMultiPage = routerAppShell;
+    // De-emphasize marketing scaffolding for app-shell mode.
+    nextComponents = nextComponents.map((c) => {
+      if (c.role === 'hero' || c.role === 'footer') return { ...c, role: 'feature' };
+      return c;
+    });
+    if (!routerAppShell) {
+      nextPages = [];
+      nextShared = [];
+    }
+  } else if (buildMode === 'multi_page') {
+    nextIsMultiPage = true;
+    if (nextPages.length === 0) {
+      const fallback = buildDeterministicMultiPagePlan(nextComponents);
+      nextPages = fallback.pages || [];
+      nextShared = fallback.sharedComponentRefIds || [];
+    }
+  }
+
+  if (nextIsMultiPage) {
+    // Ensure each component is mapped once across pages/shared.
+    const seen = new Set(nextShared);
+    nextPages = nextPages.map((p) => ({
+      ...p,
+      componentRefIds: (p.componentRefIds || []).filter((id) => {
+        if (seen.has(id)) return false;
+        seen.add(id);
+        return true;
+      })
+    }));
+
+    const missing = nextComponents
+      .map((c) => c.refId)
+      .filter(Boolean)
+      .filter((id) => !seen.has(id));
+    if (missing.length > 0) {
+      if (!nextPages.length) {
+        nextPages = [{ pagePath: '/', path: '/', pageLabel: 'Home', pageComponent: 'Home', navVisible: true, componentRefIds: [] }];
+      }
+      nextPages[0].componentRefIds = [...(nextPages[0].componentRefIds || []), ...missing];
+    }
+  }
+
+  nextComponents = trimComponentsToBudget(nextComponents, layoutType, promptText);
+  return {
+    components: nextComponents,
+    isMultiPage: nextIsMultiPage,
+    pages: nextPages,
+    sharedComponentRefIds: nextShared
+  };
+}
+
 export default async function planWebsiteComponents(req, res) {
   // premiumMode: 'off' | 'hybrid' | 'strict' (default: 'hybrid')
   // If 'off', the frontend shouldn't have sent selectionContext, but we handle it anyway.
@@ -230,29 +548,100 @@ export default async function planWebsiteComponents(req, res) {
     buildId,
     generateNarration = false,
     premiumMode = 'hybrid',
+    allowCommunityComponents = true,
+    buildMode: requestedBuildMode,
+    routingMode: requestedRoutingMode,
+    chromeProfile: requestedChromeProfile,
+    catalogPosture: requestedCatalogPosture,
     manualSelectionIds = [],
     strictMode = false,
-    intentClassification = null
+    intentClassification = null,
+    rawPrompt = ''
   } = req.body;
   console.log(`[plan-website-components] ROUTE HIT | BuildId: ${buildId} | Model: ${model} | PremiumMode: ${premiumMode}`);
 
   try {
     if (!prompt) return res.status(400).json({ success: false, error: 'prompt is required' });
+    const primaryPrompt = resolvePrimaryPlanningPrompt(rawPrompt, prompt);
+    const disableCommunityByPrompt =
+      promptRequestsNoCommunity(prompt) || promptRequestsNoCommunity(primaryPrompt);
+    const disableCommunity = allowCommunityComponents === false || disableCommunityByPrompt;
+    const intentLayoutTypeRaw =
+      intentClassification?.layoutType && LAYOUT_TYPES.includes(intentClassification.layoutType)
+        ? intentClassification.layoutType
+        : undefined;
+    const inferredLayoutForMode = intentLayoutTypeRaw || inferLayoutTypeFromPrompt(primaryPrompt);
+    const buildModeFromIntent = normalizeBuildMode(intentClassification?.buildMode);
+    const buildModeFromRequest = normalizeBuildMode(requestedBuildMode);
+    const intentConfidence =
+      typeof intentClassification?.intentConfidence === 'number'
+        ? Math.max(0, Math.min(1, intentClassification.intentConfidence))
+        : 0.6;
+    const effectiveBuildMode =
+      buildModeFromRequest ||
+      buildModeFromIntent ||
+      inferBuildModeFromPrompt(primaryPrompt, inferredLayoutForMode);
+    const effectiveRoutingMode = inferRoutingModeForBuildMode(
+      effectiveBuildMode,
+      normalizeRoutingMode(requestedRoutingMode) || normalizeRoutingMode(intentClassification?.routingMode)
+    );
+    const effectiveChromeProfile = inferChromeProfileForBuildMode(
+      effectiveBuildMode,
+      normalizeChromeProfile(requestedChromeProfile) || normalizeChromeProfile(intentClassification?.chromeProfile)
+    );
+    const effectiveCatalogPosture = inferCatalogPosture({
+      requestedPosture: normalizeCatalogPosture(requestedCatalogPosture),
+      intentPosture: normalizeCatalogPosture(intentClassification?.catalogPosture),
+      disableCommunity,
+      promptText: primaryPrompt
+    });
+    const confidenceTier =
+      intentConfidence >= INTENT_CONFIDENCE_HIGH
+        ? 'high'
+        : intentConfidence < INTENT_CONFIDENCE_LOW
+          ? 'low'
+          : 'medium';
+    const confidenceModeFallback = inferBuildModeFromPrompt(primaryPrompt, inferredLayoutForMode);
+    const confidenceRoutingFallback = inferRoutingModeForBuildMode(confidenceModeFallback, null);
+    const confidenceCatalogPosture =
+      confidenceTier === 'low' ? (disableCommunity ? 'codegen_first' : 'hybrid') : effectiveCatalogPosture;
+    const finalBuildMode = confidenceTier === 'low' ? confidenceModeFallback : effectiveBuildMode;
+    let finalRoutingMode = confidenceTier === 'low' ? confidenceRoutingFallback : effectiveRoutingMode;
+    const explicitMultiPagePrompt = /(^|\b)(multi page|multipage|multiple pages|docs|documentation)(\b|$)/i.test(
+      primaryPrompt || ''
+    );
+    if (finalBuildMode === 'app_shell' && promptLooksLikeFocusedApp(primaryPrompt) && !explicitMultiPagePrompt) {
+      finalRoutingMode = 'none';
+    }
+    const finalChromeProfile =
+      confidenceTier === 'low'
+        ? inferChromeProfileForBuildMode(finalBuildMode, null)
+        : effectiveChromeProfile;
+    const forcePremiumOff = confidenceCatalogPosture === 'codegen_first';
+    const effectivePremiumMode =
+      disableCommunity || confidenceCatalogPosture === 'codegen_first' || forcePremiumOff ? 'off' : premiumMode;
+    const forceExperimentalFromPrompt = promptLooksLikeFocusedApp(primaryPrompt);
+    const forceSinglePage =
+      forceExperimentalFromPrompt ||
+      promptRequestsSinglePage(primaryPrompt) ||
+      finalBuildMode === 'single_section' ||
+      finalBuildMode === 'single_page_multi_section';
 
     createManifest(buildId, 'initial');
-    log(buildId, `[plan-website-components] Planning for: ${prompt.substring(0, 80)}...`);
-
-    const content = [{ type: 'text', text: prompt }];
+    log(
+      buildId,
+      `[plan-website-components] Planning for: ${primaryPrompt.substring(0, 80)}... mode=${effectivePremiumMode} buildMode=${finalBuildMode} routing=${finalRoutingMode} catalogPosture=${confidenceCatalogPosture} confidenceTier=${confidenceTier} disableCommunity=${disableCommunity}`
+    );
 
     // Dynamic fairness rule based on mode
     let fairnessRule = '';
-    if (premiumMode === 'strict') {
+    if (effectivePremiumMode === 'strict') {
       fairnessRule = `CRITICAL ASSIGNMENT RULE (STRICT MODE):
       1. You are FORBIDDEN from generating a custom component if a Premium Component is available in the selection context.
       2. You MUST use the 'bundleId' and set 'source': 'premium' for any component where a Premium option exists in the context.
       3. VIOLATION: Generating a component when a premium one exists will cause a system failure.
       4. Only use 'source': 'generated' if explicitly NO premium component exists for that specific role in the provided context.`;
-    } else if (premiumMode === 'off') {
+    } else if (effectivePremiumMode === 'off') {
       fairnessRule = `STRICT GENERATION RULE (PREMIUM MODE OFF):
       1. You are FORBIDDEN from using any premium components.
       2. Set 'source': 'generated' and 'bundleId': null for ALL components.
@@ -263,108 +652,10 @@ export default async function planWebsiteComponents(req, res) {
       fairnessRule = `fairness_rule: "Treat 'premium' and 'generated' choices equally based on fit. A generated footer is just as valid as a premium one if it fits the prompt better."`;
     }
 
-    const SYSTEM_PROMPT = `You are a senior web architect planning a premium, production-quality website.
-You are an API. You MUST output ONLY raw JSON that matches the provided schema perfectly. NO conversation. NO preamble. NO markdown blocks.
-
-LAYOUT TYPE & COMPONENT COUNTS (ADAPTIVE) — YOU MUST SET 'layoutType' IN JSON:
-  1. Classify the request into ONE layoutType:
-     - "marketing-landing": single landing, coming soon, one product → total 5–8 components; complexity usually simple/medium.
-     - "portfolio": portfolio / resume / showcase → 5–8 components.
-     - "business-site": agency, small business, blog, multi-section brochure → 7–12 components.
-     - "web-app": dashboard, admin, tool, money/finance tracker, SaaS workspace → 8–20 components. Use dashboard-style sections (widgets, tables, sidebars). Do NOT force a marketing "hero" unless the user wants one.
-     - "e-commerce": shop, marketplace, catalog → 10–18 components (product grids, cart, categories).
-  2. Set "complexity" to simple | medium | complex consistent with breadth (simple = fewer components, complex = more).
-  3. Generate component count WITHIN the band for that layoutType (not the old 5–9 cap).
-
-  COMPLETENESS & ORDERING (DEPENDS ON layoutType):
-  - marketing-landing, portfolio, business-site, e-commerce:
-    HEADER (role header): first. HERO (role hero): second when a landing/marketing hero fits. FOOTER (role footer): last. FEATURE rows between.
-  - web-app:
-    HEADER or top NAV (role header) first. Prefer feature/dashboard widgets; hero is OPTIONAL (omit marketing hero if inappropriate). FOOTER optional. Focus on feature-role components (dashboards, charts, lists, settings panels).
-  - Always include a header/nav for any multi-section site unless the user explicitly asked for a single full-bleed canvas with no chrome.
-
-      ${fairnessRule}
-
-COMPONENT NAMING — use FUNCTIONAL names, not thematic names:
-  - GOOD: HeroSection, FeaturesGrid, TestimonialsCarousel, PricingTable, FooterSection, CTABanner
-    - BAD: BrainrotPage, CognitiveLoadMeter, SpiralModal, NoiseConsentToggle, DetoxChapter
-      - The component name should describe WHAT IT DOES for the user, not the topic of the website
-
-FORBIDDEN COMPONENT TYPES:
-  - No joke / meme components(e.g. "CognitiveLoadMeter", "NoiseConsentToggle")
-    - No meta - commentary components that break the 4th wall
-      - No experimental UX that serves the theme over usability
-        - No audio / noise generators, no "chaos" components
-          - No duplicate functionality(don't plan a "BrainrotPage" AND a "HeroSection" — just plan HeroSection)
-
-PER - COMPONENT REQUIREMENTS:
-            - description: must describe the visual layout, not just the topic(e.g. "3-column card grid with gradient borders and icon headers" not "shows features")
-          - designFocus: must reference real design patterns(e.g. "glassmorphism cards with blur-20 backdrop", "bento grid layout", "alternating image-text rows")
-          - keyContent: must contain REAL sample copy, not placeholders.Write "Reclaim Your Attention" not "Headline goes here"
-
-TECHNICAL RULES:
-            - All paths MUST be flat: "src/components/Name.jsx"(NO subfolders)
-          - All files MUST have.jsx extension
-          - NEVER plan imports from './cn', './utils', './hooks', './Modal', './Button'
-          - Every component MUST be self - contained or import ONLY from this planned list
-            - UI LIBS BANNED: @headlessui/react, @chakra-ui/react, @radix - ui, shadcn, react - intersection - observer, class- variance - authority
-              - Use ONLY: Vanilla React + Tailwind CSS + Framer Motion
-                - TAILWIND: No escaped quotes in classNames.Use font - ['Font_Name'] with single quotes
-                  - ICONS: Use 'lucide-react' only.NEVER 'react-icons/lucide'.Use correct names: Plus(not Add), Trash2(not Delete), ExternalLink(not Link)
-                    - Dependencies: ONLY framer - motion, lucide - react, react - router - dom, react - icons, clsx, tailwind - merge
-
-CONTENT FIDELITY(CRITICAL):
-  - ALL component descriptions, keyContent, and designFocus MUST relate to the user's ACTUAL TOPIC
-  - If the user wants a "brainrot" site, features must be about brainrot(e.g. "screen time tracking", "dopamine detox") — NOT about "AI Revolution", "Cybersecurity", "Quantum Computing"
-  - Do NOT pad components with generic tech / business buzzwords from unrelated industries
-  - Every mock data entry must feel like it belongs on THIS specific website
-
-PREMIUM COMPONENT CUSTOMIZATION (TOYOTA PHILOSOPHY):
-When you include a premium component (source: 'premium'), treat it as a powerful, immutable infrastructure shell.
-Your goal is to seamlessly inject the user's vision into this shell WITHOUT breaking the engine.
-You MUST customize its props/payload with REAL content relevant to the user's website:
-- title: Industry-specific headline (NOT "Welcome to Our Website")
-- subtitle: Specific supporting copy
-- features: Real feature list based on the business type
-- mechanics: Assume the component's interactive logic (WebGL, scroll, layouts) will run perfectly. ONLY plan content adaptation, NOT structural rewrites.
-
-DESIGN COHERENCE — "LESS IS MORE":
-  - ALL components must use the SAME color palette from the design system below
-    - Do NOT invent new colors per component.Use ONLY the provided palette.
-- Prefer clean, minimal layouts.One visual motif per section, not five competing effects.
-- Consistent typography: same heading font, same body font throughout${designSystem ? `
-
-DESIGN SYSTEM (USE THESE EXACT COLORS AND FONTS):
-- Background: ${designSystem.colorPalette?.background || 'dark'}
-- Surface/Cards: ${designSystem.colorPalette?.surface || 'inherit'}
-- Primary: ${designSystem.colorPalette?.primary || '#000'}
-- Accent: ${designSystem.colorPalette?.accent || '#000'}
-- Text: ${designSystem.colorPalette?.text || '#fff'}
-- Text Muted: ${designSystem.colorPalette?.textSecondary || 'inherit'}
-- Gradient: ${designSystem.colorPalette?.gradient || 'none'}
-- Mode: ${designSystem.colorPalette?.mode || 'dark'}
-- Heading Font: ${designSystem.typography?.headingFont || 'Inter'}
-- Body Font: ${designSystem.typography?.bodyFont || 'Inter'}
-- Card Style: ${designSystem.layoutPreferences?.cardStyle || 'glass'}
-- Border Radius: ${designSystem.layoutPreferences?.borderRadius || '0.75rem'}
-- Section Padding: ${designSystem.layoutPreferences?.sectionPadding || 'py-20'}` : ''
-      }
-
-MULTI-PAGE PLANNING RULES:
-1. Default to Multi-Page Application (set isMultiPage: true). Generate a "Home" page ("/") and at least one other page (e.g., "/about" or "/contact").
-2. "Single Page Override": If the user explicitly asks for a "single page website", "landing page", or specifically mentions "one-page website", you MUST set isMultiPage: false.
-3. When isMultiPage is true:
-   - Header and Footer components are ALWAYS shared (add their refIds to sharedComponentRefIds)
-   - Each page gets its OWN set of content components via the pages array
-   - The Home page ("/") MUST list every primary landing section in componentRefIds: hero (including shader/WebGL heroes), features, reviews, CTAs, etc. Do not leave the home route with only one widget while other sections exist — that produces a broken one-section site.
-   - Every selected component MUST appear in exactly one page's componentRefIds OR in sharedComponentRefIds — never omit a component from the routing map
-   - Secondary pages get focused content appropriate to their purpose
-   - Every page referenced in the header nav MUST have a matching page entry
-4. When isMultiPage is false (single page mode):
-   - Do NOT include pages or sharedComponentRefIds fields
-   - Plan components as a flat vertical stack (e.g. Hero, Features, Pricing, Footer) in the root components array
-
-${premiumMode === 'off' ? '<!-- Premium selection disabled -->' : `SELECTION CONTEXT: ${JSON.stringify(selectionContext)}`} `;
+    const retiredPlannerRules = `fairness=${fairnessRule}`;
+    if (process.env.NODE_ENV === 'development' && false) {
+      console.debug(retiredPlannerRules);
+    }
 
     // =========================================================================
     // V2 PIPELINE INTEGRATION
@@ -372,10 +663,16 @@ ${premiumMode === 'off' ? '<!-- Premium selection disabled -->' : `SELECTION CON
 
     let planData;
     let aiNarration = null;
+    let v2Result = null;
 
-    if (premiumMode === 'strict' || premiumMode === 'hybrid') {
-      // 🚀 USE NEW PHASE S8 V2 PIPELINE (for both strict & hybrid)
-      console.log(`[plan-website-components] ⚡ Redirecting to ULTRA V2 Pipeline... (mode: ${premiumMode})`);
+    const useLegacyPlannerFallback =
+      LOVABLE_FORCE_LEGACY_PLANNER_FALLBACK &&
+      LOVABLE_CANONICAL_FALLBACK &&
+      !isReplayCutoverReady() &&
+      effectivePremiumMode === 'off';
+    if (!useLegacyPlannerFallback) {
+      // Canonical V2 planner path for strict/hybrid and (when flag is off) codegen-first mode.
+      console.log(`[plan-website-components] ⚡ Using canonical V2 planning pipeline (mode=${effectivePremiumMode})`);
 
       const v2Context = {
         industry: designSystem?.industryCategory || '',
@@ -384,7 +681,7 @@ ${premiumMode === 'off' ? '<!-- Premium selection disabled -->' : `SELECTION CON
       };
 
       // Propagation of EXPLICIT_COMPONENTS from enhance-prompt
-      const explicitMatch = prompt.match(/EXPLICIT_COMPONENTS:\s*\[(.*?)\]/i);
+      const explicitMatch = `${prompt}\n${primaryPrompt}`.match(/EXPLICIT_COMPONENTS:\s*\[(.*?)\]/i);
       const explicitNames = explicitMatch && explicitMatch[1] ? explicitMatch[1].split(',').map(s => s.trim().replace(/['"`]/g, '')).filter(Boolean) : [];
 
       // CRITICAL: Also propagate V1 selection results as mandatory components
@@ -409,24 +706,35 @@ ${premiumMode === 'off' ? '<!-- Premium selection disabled -->' : `SELECTION CON
         allMandatory = [...new Set([...explicitNames, ...manualSelectionIds])];
       }
 
-      const intentLayoutType =
-        intentClassification?.layoutType && LAYOUT_TYPES.includes(intentClassification.layoutType)
-          ? intentClassification.layoutType
-          : undefined;
-      const v2Result = await selectComponentsV2(prompt, v2Context, allMandatory, strictMode, model, {
+      const intentLayoutType = intentLayoutTypeRaw;
+      const needsPremiumCatalogRequested =
+        confidenceCatalogPosture === 'catalog_first' ||
+        (confidenceCatalogPosture !== 'codegen_first' &&
+          !disableCommunity &&
+          intentClassification?.needsPremiumCatalog === true);
+      v2Result = await selectComponentsV2(primaryPrompt, v2Context, allMandatory, strictMode, model, {
         layoutType: intentLayoutType,
+        buildMode: finalBuildMode,
+        routingMode: finalRoutingMode,
+        chromeProfile: finalChromeProfile,
+        catalogPosture: confidenceCatalogPosture,
         suggestedCategories: intentClassification?.suggestedCategories || [],
-        needsPremiumCatalog: intentClassification?.needsPremiumCatalog === true
+        needsPremiumCatalog: needsPremiumCatalogRequested,
+        allowCommunityTemplates: !disableCommunity && confidenceCatalogPosture !== 'codegen_first'
       });
-      let layoutType = v2Result.layoutType || inferLayoutTypeFromPrompt(prompt);
+      let layoutType = v2Result.layoutType || inferLayoutTypeFromPrompt(primaryPrompt);
       if (intentClassification?.layoutType && LAYOUT_TYPES.includes(intentClassification.layoutType)) {
         layoutType = intentClassification.layoutType;
         console.log('[BUILDER-VERIFY] plan layoutType override intentClassification=%s', layoutType);
       }
+      if (forceExperimentalFromPrompt) {
+        layoutType = 'experimental-widget';
+        console.log('[BUILDER-VERIFY] plan layoutType override prompt=experimental-widget');
+      }
       console.log('[BUILDER-VERIFY] plan layoutType=%s (v2.payload=%s)', layoutType, v2Result.layoutType || 'inferred');
 
       // Map V2 components (DB rows) into the exact V1 shape the frontend expects
-      const mappedComponents = v2Result.components.map((dbComp, idx) => {
+      let mappedComponents = v2Result.components.map((dbComp, idx) => {
         // Derive clean export name, e.g. "ui_hero_01" -> "UiHero01" -> "HeroSection" (fallback)
         let safeExportName = dbComp.name.replace(/[^a-zA-Z0-9]/g, '');
         if (!safeExportName) safeExportName = `Component${idx}`;
@@ -449,6 +757,17 @@ ${premiumMode === 'off' ? '<!-- Premium selection disabled -->' : `SELECTION CON
         };
       });
 
+      // In codegen-first posture, do not carry premium catalog components forward.
+      if (confidenceCatalogPosture === 'codegen_first') {
+        mappedComponents = buildCodegenFirstScaffold({
+          promptText: primaryPrompt,
+          buildMode: finalBuildMode,
+          layoutType,
+          needsSidebar: intentClassification?.mandatoryStructure?.needsSidebar === true
+        });
+        console.log('[BUILDER-VERIFY] plan codegen_first scaffold: using generated components only (%d)', mappedComponents.length);
+      }
+
       // ═══════════════════════════════════════════════════════════════════
       // HYBRID MODE: Add AI-generated components for uncovered categories
       // V2 selects the BEST premium components, but in hybrid mode the LLM
@@ -456,7 +775,16 @@ ${premiumMode === 'off' ? '<!-- Premium selection disabled -->' : `SELECTION CON
       // We add placeholder "generated" components for those here so the
       // downstream generate-single-component step will create them from scratch.
       // ═══════════════════════════════════════════════════════════════════
-      if (premiumMode === 'hybrid') {
+      if (effectivePremiumMode === 'hybrid' && confidenceCatalogPosture !== 'codegen_first') {
+        const skipMarketingHybrid =
+          finalBuildMode === 'app_shell' ||
+          layoutType === 'experimental-widget' ||
+          promptLooksLikeFocusedApp(primaryPrompt);
+        if (skipMarketingHybrid) {
+          console.log(
+            '[BUILDER-VERIFY] plan hybrid: skipping marketing filler sections (app_shell / experimental-widget / focused-app prompt)'
+          );
+        } else {
         const coveredRoles = new Set(
           mappedComponents
             .filter((c) => !isBackgroundLikeComponent(c))
@@ -467,13 +795,15 @@ ${premiumMode === 'off' ? '<!-- Premium selection disabled -->' : `SELECTION CON
           console.log('[BUILDER-VERIFY] plan hybrid: %d background component(s) excluded from coveredRoles — they need foreground content', backgroundCount);
         }
         const customNeeded = [...(selectionContext?.customComponentsNeeded || [])];
-        if (intentClassification?.needsSidebar === true) {
+        if (intentClassification?.mandatoryStructure?.needsSidebar === true || finalBuildMode === 'app_shell') {
           customNeeded.unshift('Sidebar navigation with grouped sections and active state');
         }
         
         // Determine which standard roles are missing (web-app: do not inject marketing hero/footer shells)
         const standardRoles =
-          layoutType === 'web-app'
+          layoutType === 'experimental-widget'
+            ? ['feature']
+          : layoutType === 'web-app'
             ? ['header', 'feature']
             : ['header', 'hero', 'feature', 'footer'];
         const ms = intentClassification?.mandatoryStructure;
@@ -545,31 +875,42 @@ ${premiumMode === 'off' ? '<!-- Premium selection disabled -->' : `SELECTION CON
         } else {
           console.log(`[plan-website-components] 🔀 HYBRID: V2 covered all needed categories. No extra AI components needed.`);
         }
+        }
       }
 
-      const roleAdjusted = promoteBackgroundToHero(mappedComponents, layoutType, prompt);
+      const roleAdjusted = promoteBackgroundToHero(mappedComponents, layoutType, primaryPrompt);
       const structuredComponents = enforcePlanStructure(roleAdjusted, layoutType);
       if (structuredComponents.length !== mappedComponents.length) {
         console.log(`[plan-website-components] Structural dedupe removed ${mappedComponents.length - structuredComponents.length} duplicate role component(s).`);
       }
       console.log(`[plan-website-components] ✍️ Starting Master Copywriter & MPA Architect for ${structuredComponents.length} components...`);
 
-      let copyResult = { components: [], isMultiPage: true, pages: [], sharedComponentRefIds: [] };
+      const modePrefersMultiPage = finalBuildMode === 'multi_page' || finalRoutingMode === 'router';
+      let copyResult = { components: [], isMultiPage: modePrefersMultiPage, pages: [], sharedComponentRefIds: [] };
       try {
         const copyPrompt = `You are a world-class web architect and conversion copywriter. 
-        The user wants a website for: "${prompt}"
+        The user wants a website for: "${primaryPrompt}"
         The design system is: ${JSON.stringify(designSystem)}
+        Build mode contract:
+        - buildMode: ${finalBuildMode}
+        - routingMode: ${finalRoutingMode}
+        - chromeProfile: ${finalChromeProfile}
+        - catalogPosture: ${confidenceCatalogPosture}
         
         I have selected ${structuredComponents.length} components for this site. 
         Your job is TWO-FOLD:
-        PART A - ARCHITECTURE: The user STRONGLY PREFERS MULTI-PAGE WEBSITES (isMultiPage: true). You must distribute the components below across multiple logical pages (e.g., Home, About, Pricing, etc). Share the header/navbar and footer via 'sharedComponentRefIds'.
+        PART A - ARCHITECTURE: Respect buildMode strictly.
+          - single_section: compact one-surface composition, isMultiPage=false
+          - single_page_multi_section: one long single page, isMultiPage=false
+          - multi_page: routed pages with shared nav/footer, isMultiPage=true
+          - app_shell: functional app/dashboard shell; default isMultiPage=false unless routingMode=router
         PART B - COPYWRITING: Generate copy for each component that fits the user's actual business and brief — not generic filler. Prefer specific, client-appropriate headlines, CTAs, and feature text (high-converting where it fits).
         
         COMPONENTS REQUIRING ATTENTION:
         ${structuredComponents.map(c => `- NAME: ${c.name} | REF_ID: ${c.refId} | ROLE: ${c.role} | DESC: ${c.description}`).join('\n')}
         
         RULES:
-        1. Default to isMultiPage: true. Group components into 'pages'. 
+        1. Determine isMultiPage from buildMode + routingMode first, not from generic defaults.
         2. Keep 'header' and 'footer' role components in 'sharedComponentRefIds' so they render on all pages.
         3. Assign EVERY single one of the remaining refIds to at least one page.
         4. For each component, generate 'keyContent' and 'props' (array of {key, value} strings) matching the tone: ${designSystem?.mood || 'professional'}.
@@ -588,7 +929,7 @@ ${premiumMode === 'off' ? '<!-- Premium selection disabled -->' : `SELECTION CON
               value: z.string()
             }))
           })),
-          isMultiPage: z.boolean().describe("Default to true. Only false if user explicitly demands a single scrolling page."),
+          isMultiPage: z.boolean().describe("Must align with buildMode/routingMode contract."),
           pages: z.array(z.object({
             pagePath: z.string(),
             pageLabel: z.string(),
@@ -652,7 +993,22 @@ ${premiumMode === 'off' ? '<!-- Premium selection disabled -->' : `SELECTION CON
       const deterministicMpa = buildDeterministicMultiPagePlan(finalComponents);
       const copyPagesWithHero = enforceHomeHeroPlacement(copyResult.pages || [], finalComponents);
       const fallbackPagesWithHero = enforceHomeHeroPlacement(deterministicMpa.pages || [], finalComponents);
+      const forceSinglePageNow = forceSinglePage || layoutType === 'experimental-widget';
+      const modeLockedMultiPage =
+        finalBuildMode === 'multi_page'
+          ? true
+          : (finalBuildMode === 'single_section' || finalBuildMode === 'single_page_multi_section')
+            ? false
+            : null;
+      const useMultiPage =
+        modeLockedMultiPage !== null
+          ? modeLockedMultiPage
+          : (!forceSinglePageNow && (finalRoutingMode === 'router' || copyResult.isMultiPage !== false));
       planData = {
+        buildMode: finalBuildMode,
+        routingMode: finalRoutingMode,
+        chromeProfile: finalChromeProfile,
+        catalogPosture: confidenceCatalogPosture,
         components: finalComponents,
         layoutType,
         complexity:
@@ -668,11 +1024,15 @@ ${premiumMode === 'off' ? '<!-- Premium selection disabled -->' : `SELECTION CON
         appComposition: {
           order: finalComponents.map(c => ({ refId: c.refId }))
         },
-        isMultiPage: true,
-        pages: (copyPagesWithHero && copyPagesWithHero.length > 0) ? copyPagesWithHero : fallbackPagesWithHero,
-        sharedComponentRefIds: (copyResult.sharedComponentRefIds && copyResult.sharedComponentRefIds.length > 0)
-          ? copyResult.sharedComponentRefIds
-          : deterministicMpa.sharedComponentRefIds
+        isMultiPage: useMultiPage,
+        pages: useMultiPage
+          ? ((copyPagesWithHero && copyPagesWithHero.length > 0) ? copyPagesWithHero : fallbackPagesWithHero)
+          : [],
+        sharedComponentRefIds: useMultiPage
+          ? ((copyResult.sharedComponentRefIds && copyResult.sharedComponentRefIds.length > 0)
+            ? copyResult.sharedComponentRefIds
+            : deterministicMpa.sharedComponentRefIds)
+          : []
       };
 
       // V2 Narration
@@ -680,7 +1040,7 @@ ${premiumMode === 'off' ? '<!-- Premium selection disabled -->' : `SELECTION CON
         try {
           const narrator = new AIBuildNarrator();
           aiNarration = await narrator.narrate('planning', {
-            prompt,
+            prompt: primaryPrompt,
             componentCount: structuredComponents.length,
             premiumCount: structuredComponents.filter(c => c.source === 'premium').length,
             customCount: 0,
@@ -790,91 +1150,47 @@ ${premiumMode === 'off' ? '<!-- Premium selection disabled -->' : `SELECTION CON
       }
 
     } else {
-      // 🐢 FALLBACK TO V1 (HUGE JSON GENERATION) FOR CUSTOM/OFF MODE
-      console.log('[plan-website-components] 🐢 Using V1 Legacy Pipeline (JSON GenerateObject)');
-
-      let result;
-      try {
-        console.log(`[plan-website-components] Attempting generation with model: ${model}`);
-        
-        llmLog.request('WEBSITE-PLAN-V1', {
-          model,
-          systemPrompt: SYSTEM_PROMPT,
-          userPrompt: prompt,
-          schema: planSchema,
-          temperature: 0
-        });
-
-        const startMs = Date.now();
-        result = await generateObject({
-          model: getModel(model),
-          maxRetries: 3,
-          schema: planSchema,
-          messages: [{ role: 'system', content: SYSTEM_PROMPT }, { role: 'user', content }],
-          temperature: 0,
-        });
-
-        llmLog.response('WEBSITE-PLAN-V1', {
-          response: result.object,
-          durationMs: Date.now() - startMs
-        });
-      } catch (err) {
-        llmLog.error('WEBSITE-PLAN-V1', err);
-        const fb = resolveCrossProviderFallback(model);
-        console.warn(`[plan-website-components] Model ${model} failed, retrying with ${fb}. Error:`, err.message);
-
-        const startMsRetry = Date.now();
-        result = await generateObject({
-          model: getModel(fb),
-          schema: planSchema,
-          messages: [{ role: 'system', content: SYSTEM_PROMPT }, { role: 'user', content }],
-          temperature: 0,
-        });
-
-        llmLog.response('WEBSITE-PLAN-V1', {
-          response: result.object,
-          durationMs: Date.now() - startMsRetry,
-          extra: `Retry with ${fb}`
-        });
-      }
-
-      planData = result.object;
-      if (intentClassification?.layoutType && LAYOUT_TYPES.includes(intentClassification.layoutType)) {
-        planData.layoutType = intentClassification.layoutType;
-      } else if (!planData.layoutType) {
-        planData.layoutType = inferLayoutTypeFromPrompt(prompt);
-      }
-      if (intentClassification?.complexity) {
-        planData.complexity = intentClassification.complexity;
-      }
-      console.log(
-        '[BUILDER-VERIFY] plan layoutType=%s (source=v1%s)',
-        planData.layoutType,
-        intentClassification?.layoutType ? '+intent' : ''
+      // Legacy V1 planner is removed. Fallback now uses deterministic conservative scaffolding.
+      console.log('[plan-website-components] Using conservative fallback planner (legacy V1 removed).');
+      const fallbackLayoutType =
+        (intentLayoutTypeRaw && LAYOUT_TYPES.includes(intentLayoutTypeRaw))
+          ? intentLayoutTypeRaw
+          : (finalBuildMode === 'app_shell' ? 'web-app' : inferLayoutTypeFromPrompt(primaryPrompt));
+      const baseComponents =
+        finalBuildMode === 'single_section' || finalBuildMode === 'app_shell'
+          ? [
+              { name: 'CoreSection', refId: 'gen_core_01', exportName: 'CoreSection', path: 'src/components/CoreSection.jsx', description: 'Primary functional section for the requested use-case', designFocus: 'focused layout', keyContent: primaryPrompt.slice(0, 180), source: 'generated', bundleId: null, props: {}, role: 'feature' }
+            ]
+          : [
+              { name: 'HeaderSection', refId: 'gen_header_01', exportName: 'HeaderSection', path: 'src/components/HeaderSection.jsx', description: 'Primary navigation header', designFocus: 'clean nav', keyContent: '', source: 'generated', bundleId: null, props: {}, role: 'header' },
+              { name: 'MainSection', refId: 'gen_main_01', exportName: 'MainSection', path: 'src/components/MainSection.jsx', description: 'Main content for the requested website', designFocus: 'modern content blocks', keyContent: primaryPrompt.slice(0, 180), source: 'generated', bundleId: null, props: {}, role: 'feature' },
+              { name: 'FooterSection', refId: 'gen_footer_01', exportName: 'FooterSection', path: 'src/components/FooterSection.jsx', description: 'Footer with utility links', designFocus: 'minimal footer', keyContent: '', source: 'generated', bundleId: null, props: {}, role: 'footer' }
+            ];
+      const fallbackComponents = trimComponentsToBudget(
+        enforcePlanStructure(baseComponents, fallbackLayoutType),
+        fallbackLayoutType,
+        primaryPrompt
       );
-
-      // V1 Narration
-      if (generateNarration) {
-        try {
-          const narrator = new AIBuildNarrator();
-          aiNarration = await narrator.narrate('planning', {
-            prompt,
-            componentCount: planData.components.length,
-            premiumCount: planData.components.filter(c => c.source === 'premium').length,
-            customCount: planData.components.filter(c => c.source === 'generated').length,
-            premiumMode
-          }, { buildModelId: model });
-        } catch (e) { }
-      }
-
-      // Record AI selections for usage feedback loop
-      const premiumComponents = planData.components.filter(c => c.source === 'premium' && c.bundleId);
-      if (premiumComponents.length > 0) {
-        recordComponentSelections(buildId, premiumComponents.map(c => ({
-          componentId: c.bundleId,
-          confidence: 0.6 // Lower baseline confidence for V1 fallback
-        })));
-      }
+      planData = {
+        buildMode: finalBuildMode,
+        routingMode: finalRoutingMode,
+        chromeProfile: finalChromeProfile,
+        catalogPosture: confidenceCatalogPosture,
+        components: fallbackComponents,
+        layoutType: fallbackLayoutType,
+        complexity: 'simple',
+        globalStyle: '',
+        appImports: [],
+        requiredPackages: [],
+        appComposition: { order: fallbackComponents.map((c) => ({ refId: c.refId })) },
+        isMultiPage: finalBuildMode === 'multi_page',
+        pages: finalBuildMode === 'multi_page'
+          ? [{ pagePath: '/', path: '/', pageLabel: 'Home', pageComponent: 'Home', navVisible: true, componentRefIds: fallbackComponents.map((c) => c.refId) }]
+          : [],
+        sharedComponentRefIds: finalBuildMode === 'multi_page'
+          ? fallbackComponents.filter((c) => c.role === 'header' || c.role === 'footer').map((c) => c.refId)
+          : []
+      };
     }
 
     // =========================================================================
@@ -907,8 +1223,9 @@ ${premiumMode === 'off' ? '<!-- Premium selection disabled -->' : `SELECTION CON
       return { ...c, path: flatPath };
     });
 
-    const layoutTypeResolved = planData.layoutType || inferLayoutTypeFromPrompt(prompt);
+    const layoutTypeResolved = planData.layoutType || inferLayoutTypeFromPrompt(primaryPrompt);
     let flattenedComponents = enforcePlanStructure(flattenedComponentsRaw, layoutTypeResolved);
+    flattenedComponents = trimComponentsToBudget(flattenedComponents, layoutTypeResolved, primaryPrompt);
 
     // Double-check mandatory components (web-app: header only; hero/footer not injected)
     const hasHeader = flattenedComponents.some(c => c.role === 'header');
@@ -916,11 +1233,13 @@ ${premiumMode === 'off' ? '<!-- Premium selection disabled -->' : `SELECTION CON
     const hasFooter = flattenedComponents.some(c => c.role === 'footer');
 
     const msFlat = intentClassification?.mandatoryStructure;
-    const needHeader = !hasHeader && msFlat?.needsHeader !== false;
+    const isExperimentalWidget = layoutTypeResolved === 'experimental-widget';
+    const appShellMode = (planData.buildMode || finalBuildMode) === 'app_shell';
+    const needHeader = !appShellMode && !isExperimentalWidget && !hasHeader && msFlat?.needsHeader !== false;
     const needHero =
-      layoutTypeResolved !== 'web-app' && !hasHero && msFlat?.needsHero !== false;
+      !isExperimentalWidget && layoutTypeResolved !== 'web-app' && !hasHero && msFlat?.needsHero !== false;
     const needFooter =
-      layoutTypeResolved !== 'web-app' && !hasFooter && msFlat?.needsFooter !== false;
+      !isExperimentalWidget && layoutTypeResolved !== 'web-app' && !hasFooter && msFlat?.needsFooter !== false;
 
     if (needHeader || needHero || needFooter) {
       console.warn('[plan-website-components] Warning: Component plan missing mandatory roles! Injecting safe placeholders.', {
@@ -979,6 +1298,66 @@ ${premiumMode === 'off' ? '<!-- Premium selection disabled -->' : `SELECTION CON
       flattenedComponents = enforcePlanStructure([...flattenedComponents, ...additions], layoutTypeResolved);
     }
 
+    // Centralized semantic fidelity validation with one repair pass.
+    let semanticCheck = validateSemanticFidelity(flattenedComponents, primaryPrompt);
+    if (semanticCheck.needsRepair) {
+      console.warn(
+        '[plan-website-components] semantic fidelity low (score=%s). Running one repair pass.',
+        semanticCheck.score.toFixed(2)
+      );
+      try {
+        const repairSchema = z.object({
+          components: z.array(
+            z.object({
+              refId: z.string(),
+              keyContent: z.string(),
+              props: z.array(z.object({ key: z.string(), value: z.string() }))
+            })
+          )
+        });
+        const repairPrompt = `Repair semantic fidelity for this website prompt:
+"${primaryPrompt}"
+
+Rewrite component copy so it clearly matches the user's domain and use-case. Avoid generic template filler.
+Return updated keyContent and props only.
+
+COMPONENTS:
+${flattenedComponents
+  .map(
+    (c) =>
+      `- refId=${c.refId} name=${c.name} role=${c.role} description=${c.description} keyContent=${c.keyContent || ''}`
+  )
+  .join('\n')}`;
+        const repairResult = await generateObject({
+          model: getModel(model),
+          schema: repairSchema,
+          prompt: repairPrompt,
+          temperature: 0.1,
+          maxRetries: 1
+        });
+        const byRef = new Map((repairResult.object?.components || []).map((c) => [c.refId, c]));
+        flattenedComponents = flattenedComponents.map((c) => {
+          const repaired = byRef.get(c.refId);
+          if (!repaired) return c;
+          return {
+            ...c,
+            keyContent: repaired.keyContent || c.keyContent,
+            props: repaired.props ? Object.fromEntries(repaired.props.map((p) => [p.key, p.value])) : c.props
+          };
+        });
+      } catch (repairErr) {
+        console.warn('[plan-website-components] semantic repair failed:', repairErr?.message || repairErr);
+      }
+      semanticCheck = validateSemanticFidelity(flattenedComponents, primaryPrompt);
+      if (semanticCheck.needsRepair) {
+        console.warn(
+          '[plan-website-components] semantic fidelity still low after repair (score=%s). Applying conservative fallback mode.',
+          semanticCheck.score.toFixed(2)
+        );
+        planData.catalogPosture = disableCommunity ? 'codegen_first' : 'hybrid';
+      }
+    }
+
     planData.layoutType = layoutTypeResolved;
 
     // Calculate component counts and packages
@@ -991,11 +1370,13 @@ ${premiumMode === 'off' ? '<!-- Premium selection disabled -->' : `SELECTION CON
       ...(selectionContext?.requiredPackages || []),
       'framer-motion',
       'lucide-react',
-      'react-router-dom', // Force mandatory
       'react-icons', // Force mandatory
       'clsx',
       'tailwind-merge'
     ]);
+    if (planData.isMultiPage || finalRoutingMode === 'router' || planData.routingMode === 'router') {
+      requiredPackages.add('react-router-dom');
+    }
 
     if (planData.appImports) {
       planData.appImports.forEach(pkg => {
@@ -1012,15 +1393,27 @@ ${premiumMode === 'off' ? '<!-- Premium selection disabled -->' : `SELECTION CON
 
     // Normalize page paths so router always has a root route
     let normalizedPages = Array.isArray(planData.pages) ? [...planData.pages] : [];
+
+    const finalRoleSort = (aId, bId) => {
+      const roleOrder = { header: 0, hero: 1, feature: 2, footer: 3 };
+      const getRole = (id) => flattenedComponents.find(c => (c.refId === id || c.name === id))?.role || 'feature';
+      return (roleOrder[getRole(aId)] ?? 2) - (roleOrder[getRole(bId)] ?? 2);
+    };
+
     normalizedPages = normalizedPages.map((p, index) => {
       const rawPath = String(p?.pagePath || p?.path || '/').trim();
       let pagePath = rawPath.startsWith('/') ? rawPath : `/${rawPath}`;
       if (pagePath === '/home' || pagePath === '/index') pagePath = '/';
       if (index === 0 && !pagePath) pagePath = '/';
+
+      // FINAL ORDER ENFORCEMENT for components within a page
+      const sortedIds = (p.componentRefIds || []).sort(finalRoleSort);
+
       return {
         ...p,
         pagePath,
-        path: pagePath
+        path: pagePath,
+        componentRefIds: sortedIds
       };
     });
     if ((planData.isMultiPage || false) && normalizedPages.length === 0) {
@@ -1031,11 +1424,79 @@ ${premiumMode === 'off' ? '<!-- Premium selection disabled -->' : `SELECTION CON
       normalizedPages[0] = { ...normalizedPages[0], pagePath: '/', path: '/' };
     }
 
+    const modeValidated = validatePlanAgainstMode(
+      {
+        components: flattenedComponents,
+        isMultiPage: planData.isMultiPage || false,
+        pages: normalizedPages,
+        sharedComponentRefIds: planData.sharedComponentRefIds || [],
+        layoutType: layoutTypeResolved
+      },
+      {
+        buildMode: planData.buildMode || finalBuildMode,
+        routingMode: planData.routingMode || finalRoutingMode,
+        promptText: primaryPrompt
+      }
+    );
+    flattenedComponents = modeValidated.components;
+    normalizedPages = modeValidated.pages;
+    planData.isMultiPage = modeValidated.isMultiPage;
+    planData.sharedComponentRefIds = modeValidated.sharedComponentRefIds;
+
+    const replaySnapshot = {
+      modeAccuracy: Number(process.env.LOVABLE_REPLAY_MODE_ACCURACY || 0),
+      semanticCoverage: Number(process.env.LOVABLE_REPLAY_SEMANTIC_COVERAGE || 0),
+      singlePageDrift: Number(process.env.LOVABLE_REPLAY_SINGLE_PAGE_DRIFT || 100),
+      stableDays: Number(process.env.LOVABLE_REPLAY_STABLE_DAYS || 0)
+    };
+    const cutoverReady =
+      replaySnapshot.modeAccuracy >= 0.9 &&
+      replaySnapshot.semanticCoverage >= 0.85 &&
+      replaySnapshot.singlePageDrift <= 0.05 &&
+      replaySnapshot.stableDays >= 7;
+
+    const metrics = {
+      buildMode: planData.buildMode || finalBuildMode,
+      layoutType: layoutTypeResolved,
+      isMultiPage: planData.isMultiPage || false,
+      componentCount: flattenedComponents.length,
+      catalogPosture: planData.catalogPosture || confidenceCatalogPosture,
+      intentConfidence,
+      intentConfidenceTier: confidenceTier,
+      semantic: semanticCheck,
+      replaySnapshot,
+      cutoverReady,
+      templateUsed: !!v2Result?.templateUsed,
+      mismatch: {
+        intentVsFinalBuildMode:
+          normalizeBuildMode(intentClassification?.buildMode) &&
+          normalizeBuildMode(intentClassification?.buildMode) !== (planData.buildMode || finalBuildMode),
+        explicitSinglePageEndedMultiPage:
+          forceSinglePage && (planData.isMultiPage || false),
+        appShellForcedMarketing:
+          (planData.buildMode || finalBuildMode) === 'app_shell' && (planData.chromeProfile || finalChromeProfile) === 'marketing'
+      }
+    };
+    console.log('[BUILDER-METRICS] plan metrics=%s', JSON.stringify(metrics));
+
     console.log(`[plan-website-components] SUCCESS. Returning ${flattenedComponents.length} components.`);
     res.json({
       success: true,
       layoutType: layoutTypeResolved,
-      plan: { ...planData, components: flattenedComponents, appComposition: validAppComposition, pages: normalizedPages },
+      buildMode: planData.buildMode || finalBuildMode,
+      routingMode: planData.routingMode || finalRoutingMode,
+      chromeProfile: planData.chromeProfile || finalChromeProfile,
+      catalogPosture: planData.catalogPosture || confidenceCatalogPosture,
+      plan: {
+        ...planData,
+        buildMode: planData.buildMode || finalBuildMode,
+        routingMode: planData.routingMode || finalRoutingMode,
+        chromeProfile: planData.chromeProfile || finalChromeProfile,
+        catalogPosture: planData.catalogPosture || confidenceCatalogPosture,
+        components: flattenedComponents,
+        appComposition: validAppComposition,
+        pages: normalizedPages
+      },
       components: flattenedComponents, // legacy support
       globalStyle: planData.globalStyle,
       appImports: planData.appImports,
@@ -1046,6 +1507,7 @@ ${premiumMode === 'off' ? '<!-- Premium selection disabled -->' : `SELECTION CON
       isMultiPage: planData.isMultiPage || false,
       pages: normalizedPages,
       sharedComponentRefIds: planData.sharedComponentRefIds || [],
+      planningMetrics: metrics
     });
 
   } catch (error) {

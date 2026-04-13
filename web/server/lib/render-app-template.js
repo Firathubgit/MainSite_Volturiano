@@ -13,11 +13,34 @@
  * @param {Array<{path: string, label: string, component: string, navVisible: boolean}>} [params.pages=[]]
  * @param {Array<{exportName: string, path: string, role?: string, refId?: string}>} [params.sharedComponents=[]]
  * @param {string} [params.prompt=''] - Original user prompt (used for fallback hero content)
+ * @param {string} [params.buildMode='single_page_multi_section']
+ * @param {string} [params.routingMode='none']
+ * @param {string} [params.chromeProfile='marketing']
  * @returns {string} - The complete App.jsx code.
  */
-export function renderAppTemplate({ components, isMultiPage = false, pages = [], sharedComponents = [], prompt = '' }) {
+export function renderAppTemplate({
+    components,
+    isMultiPage = false,
+    pages = [],
+    sharedComponents = [],
+    prompt = '',
+    buildMode = 'single_page_multi_section',
+    routingMode = 'none',
+    chromeProfile = 'marketing'
+}) {
     if (!components || !Array.isArray(components)) {
         throw new Error('Invalid components list');
+    }
+
+    if (buildMode === 'app_shell') {
+        return renderAppShellTemplate(components, {
+            isMultiPage,
+            pages,
+            sharedComponents,
+            prompt,
+            routingMode,
+            chromeProfile
+        });
     }
 
     if (!isMultiPage) {
@@ -155,6 +178,87 @@ export default function App() {
   return (
     <div className="min-h-screen">
 ${renderedNodes}
+    </div>
+  )
+}
+`;
+}
+
+function renderAppShellTemplate(
+    components,
+    { isMultiPage = false, pages = [], sharedComponents = [], prompt = '', routingMode = 'none' } = {}
+) {
+    const uniqueMap = new Map();
+    components.forEach((c) => uniqueMap.set(c.exportName, c));
+    const uniqueComponents = Array.from(uniqueMap.values());
+
+    const imports = uniqueComponents.map(c => {
+        let importPath = c.path;
+        if (importPath.startsWith('src/')) importPath = './' + importPath.substring(4);
+        else if (!importPath.startsWith('.')) importPath = './' + importPath;
+        if (!importPath.endsWith('.jsx')) importPath += '.jsx';
+        return `import ${c.exportName} from '${importPath}'`;
+    }).join('\n');
+
+    const structural = { header: null, footer: null };
+    const body = [];
+    for (const c of uniqueComponents) {
+        const role = inferComponentRole(c);
+        if (!structural.header && role === 'header') {
+            structural.header = c;
+            continue;
+        }
+        if (!structural.footer && role === 'footer') {
+            structural.footer = c;
+            continue;
+        }
+        body.push(c);
+    }
+
+    const sideNav = body.find(c => /sidebar|sidenav|leftnav|dashboardnav/i.test(c.exportName || c.name || ''));
+    const mainBody = body.filter(c => c.exportName !== sideNav?.exportName);
+    let renderedBody = renderComponentSequenceWithOverlay(mainBody, '          ', prompt);
+    if (!renderedBody.trim()) {
+        renderedBody = `          <div className="flex min-h-0 flex-1 flex-col items-center justify-center border-t border-white/10 bg-white/[0.03] p-8 text-center text-white/70">
+            <p className="text-sm font-medium text-white/90">Main workspace</p>
+            <p className="mt-2 max-w-sm text-xs text-white/50">Add a dashboard or list component to this shell — the builder will place it here automatically.</p>
+          </div>`;
+    }
+
+    if (isMultiPage || routingMode === 'router') {
+        return renderMPATemplate(uniqueComponents, pages, sharedComponents, prompt);
+    }
+
+    // Full-viewport app shell: no outer padding on main. Responsive: stack on small viewports so flex-row
+    // does not squeeze columns and create fake “gaps”. overflow-x-hidden + min-w-0 on flex children prevents
+    // horizontal scrollbars and random gutters from overflowing content.
+    const shellRow = `${sideNav ? `        <aside className="flex min-h-0 w-full max-h-[42vh] shrink-0 flex-col overflow-hidden border-b border-white/10 bg-background md:h-full md:max-h-none md:w-72 md:border-b-0 md:border-r md:border-white/10">
+          <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto overflow-x-hidden">
+            <${sideNav.exportName} />
+          </div>
+        </aside>` : ''}
+        <main className="flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto overflow-x-hidden bg-background">
+${renderedBody}
+        </main>`;
+
+    const shellBody = `      <div className="flex min-h-0 flex-1 flex-col gap-0 overflow-hidden md:flex-row md:items-stretch">
+${shellRow}
+      </div>`;
+
+    return `import React from 'react'
+import './index.css'
+${imports}
+
+export default function App() {
+  return (
+    <div className="flex h-screen min-h-0 w-full max-w-full min-w-0 flex-col overflow-x-hidden overflow-y-hidden bg-background text-foreground">
+${structural.header ? `      <div className="shrink-0">
+        <${structural.header.exportName} />
+      </div>` : ''}
+${shellBody}
+${structural.footer ? `      <div className="shrink-0">
+        <${structural.footer.exportName} />
+      </div>` : ''}
     </div>
   )
 }

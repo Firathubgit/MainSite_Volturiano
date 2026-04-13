@@ -38,6 +38,7 @@ import renderApp from './routes/render-app.js';
 import validateImportsRoute from './routes/validate-imports.js';
 import verifyBuildRoute from './routes/verify-build.js';
 import finalizeCodebase from './routes/finalize-codebase.js';
+import lovableReplayStatus from './routes/lovable-replay-status.js';
 import { optionalAuth, requireAuth, requireUnrestricted } from './middleware/authMiddleware.js';
 import initProject from './routes/init-project.js';
 import updateProjectRoute from './routes/update-project.js';
@@ -172,6 +173,7 @@ app.post('/api/validate-imports', aiProtections, validateImportsRoute);
 
 // Verify Build (Prompt 8)
 app.post('/api/verify-build', standardLimiter, optionalAuth, verifyBuildRoute);
+app.get('/api/lovable-replay-status', standardLimiter, optionalAuth, lovableReplayStatus);
 
 // Finalize Codebase (Polish Step)
 app.post('/api/finalize-codebase', aiProtections, finalizeCodebase);

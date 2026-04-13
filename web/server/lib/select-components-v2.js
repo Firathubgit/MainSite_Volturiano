@@ -71,7 +71,13 @@ function matchesCategoryHint(component = {}, categoryHint = '') {
     return text.includes(hint);
 }
 
-function pickStructuredFallback(candidates = [], requiredCategories = [], explicitComponents = []) {
+function pickStructuredFallback(
+    candidates = [],
+    requiredCategories = [],
+    explicitComponents = [],
+    layoutType = 'marketing-landing',
+    buildMode = 'single_page_multi_section'
+) {
     const sorted = [...candidates].sort((a, b) => (b.computed_score || 0) - (a.computed_score || 0));
     const selected = [];
     const usedIds = new Set();
@@ -106,7 +112,17 @@ function pickStructuredFallback(candidates = [], requiredCategories = [], explic
         if (hit) tryAdd(hit);
     }
 
-    const targetSize = Math.min(18, Math.max(6, requiredCategories.length + 1));
+    const targetMin =
+        buildMode === 'single_section' || layoutType === 'experimental-widget'
+            ? 1
+            : buildMode === 'single_page_multi_section'
+                ? 2
+                : 4;
+    const targetMax =
+        buildMode === 'single_section' || layoutType === 'experimental-widget'
+            ? 2
+            : 8;
+    const targetSize = Math.min(targetMax, Math.max(targetMin, requiredCategories.length + 1));
     for (const c of sorted) {
         if (selected.length >= targetSize) break;
         tryAdd(c);
@@ -235,7 +251,17 @@ ${list}`;
     /**
      * AI Step 5: Final component selection from the top 30 filtered candidates
      */
-    selectFinalComponents: async (prompt, designSystem, candidates, explicitComponents = [], requestedCategories = [], aiModel = 'google/gemini-3.1-pro-preview') => {
+    selectFinalComponents: async (
+        prompt,
+        designSystem,
+        candidates,
+        explicitComponents = [],
+        requestedCategories = [],
+        aiModel = 'google/gemini-3.1-pro-preview',
+        layoutType = 'marketing-landing',
+        buildMode = 'single_page_multi_section',
+        catalogPosture = 'hybrid'
+    ) => {
         const schema = z.object({
             selected_component_ids: z.array(z.string()).describe('List of component_ids chosen for the final build'),
             reasoning: z.string().describe('Explain why this particular mix of components was chosen')
@@ -247,8 +273,21 @@ ${list}`;
             ? `\n\n🎯 MANDATORY SELECTION:\nThe user has EXPLICITLY requested these components. You MUST include them in your selected_component_ids array if they appear in the candidate list below:\n${explicitComponents.join(', ')}`
             : '';
 
-        const systemPrompt = `You are a Master Website Architect. Pick the absolute best 6-20 components to construct a cohesive, multi-page website experience.
+        const minComponents =
+            buildMode === 'single_section' || layoutType === 'experimental-widget'
+                ? 1
+                : buildMode === 'single_page_multi_section'
+                    ? 2
+                    : 4;
+        const maxComponents =
+            buildMode === 'single_section' || layoutType === 'experimental-widget'
+                ? 2
+                : 8;
+        const systemPrompt = `You are a Master Website Architect. Pick the absolute best ${minComponents}-${maxComponents} components to construct a cohesive website/app experience.
 You have been provided with up to 50 highly-scored candidates that have already been vetted for quality and industry fit.${explicitInprompt}
+Catalog posture for this run: ${catalogPosture}.
+
+CRITICAL: If the user requests a highly unique layout (e.g. an "experimental-widget", a plain dashboard, no navbar, etc.), you are PERMITTED to return an empty array [] or select only 1-2 generic background components if the community catalog does not have a perfect match. Do NOT force generic marketing components into a hyper-custom app.
 
 CANDIDATES:
 ${list}
@@ -278,7 +317,7 @@ RULES:
                 model: getModel(aiModel),
                 schema,
                 system: systemPrompt,
-                prompt: `User Request: "${prompt}"\nDesign Context: ${JSON.stringify(designSystem)}\n\nSelect the best 6-20 components to build out all requested pages.`,
+                prompt: `User Request: "${prompt}"\nDesign Context: ${JSON.stringify(designSystem)}\n\nLayout Type Hint: ${layoutType}\nBuild Mode: ${buildMode}\nSelect the best ${minComponents}-${maxComponents} components.`,
                 temperature: 0,
                 abortSignal: controller.signal
             });
@@ -293,7 +332,7 @@ RULES:
         } catch (e) {
             llmLog.error('FINAL-SELECT', e);
             console.warn('[Pipeline] Final selection LLM failed, using structured fallback selector:', e.message);
-            const fallbackIds = pickStructuredFallback(candidates, requestedCategories, explicitComponents);
+            const fallbackIds = pickStructuredFallback(candidates, requestedCategories, explicitComponents, layoutType, buildMode);
             console.log('[Pipeline] Structured fallback selected IDs:', fallbackIds);
             return fallbackIds;
         }
@@ -437,7 +476,7 @@ async function generateDynamicBlueprint(prompt, designSystem, aiModel = 'google/
         description: z.string().describe('Brief description'),
         required_categories: z.array(z.string()).describe('Required category slugs'),
         optional_categories: z.array(z.string()).describe('Optional category slugs'),
-        recommended_component_count: z.number().describe('Ideal number of components (6-18)'),
+        recommended_component_count: z.number().describe('Ideal number of components (4-8)'),
         default_color_mode: z.enum(['dark', 'light', 'mixed']),
         default_color_theme: z.string().describe('A color theme slug'),
         default_typography: z.enum(['modern-sans', 'serif', 'mono-tech']),
@@ -464,7 +503,7 @@ ${themeList}
 
 REQUIREMENTS:
 1. required_categories MUST include "header" and "footer".
-2. Pick 6-18 categories total.
+2. Pick 4-8 categories total.
 3. layout order should put header first, footer last.
 4. Pick the perfect color theme & mode.
 5. Slug MUST start with "ai-generated-".`;
@@ -547,7 +586,13 @@ async function loadBlueprint(blueprintSlug, dynamicData) {
 /**
  * Step 3: Refine categories with LLM
  */
-async function refineCategories(blueprint, prompt, designSystem, aiModel = 'google/gemini-3.1-pro-preview') {
+async function refineCategories(
+    blueprint,
+    prompt,
+    designSystem,
+    aiModel = 'google/gemini-3.1-pro-preview',
+    options = {}
+) {
     const allCategories = [
         ...(blueprint.required_categories || []),
         ...(blueprint.optional_categories || [])
@@ -566,10 +611,16 @@ async function refineCategories(blueprint, prompt, designSystem, aiModel = 'goog
 
     const refined = await llm.refineCategories(prompt, designSystem, categoryDetails, blueprint, aiModel);
 
-    // Ensure header and footer are always included as safety
+    // Ensure header/footer for marketing-style sites, but not for focused app/widget modes.
     const safeRefined = new Set(refined);
-    safeRefined.add('header');
-    safeRefined.add('footer');
+    const layoutType = options.layoutType || inferLayoutTypeFromPrompt(prompt);
+    const buildMode = options.buildMode || 'single_page_multi_section';
+    const suppressStructural =
+        buildMode === 'single_section' || buildMode === 'app_shell' || layoutType === 'experimental-widget';
+    if (!suppressStructural) {
+        safeRefined.add('header');
+        safeRefined.add('footer');
+    }
 
     return Array.from(safeRefined);
 }
@@ -611,7 +662,12 @@ async function filterByIndustry(categories, industrySlug) {
     }
 }
 
-function enforceStructuralSelection(selectedComponents = [], candidatePool = [], layoutType = 'marketing-landing') {
+function enforceStructuralSelection(
+    selectedComponents = [],
+    candidatePool = [],
+    layoutType = 'marketing-landing',
+    buildMode = 'single_page_multi_section'
+) {
     const sanitized = [];
     const seen = new Set();
     const roleSeen = { header: false, hero: false, footer: false };
@@ -635,11 +691,17 @@ function enforceStructuralSelection(selectedComponents = [], candidatePool = [],
     }
 
     const requiredStructural =
-        layoutType === 'web-app'
-            ? ['header']
-            : ['header', 'hero', 'footer'];
-    if (layoutType === 'web-app') {
+        layoutType === 'experimental-widget' || buildMode === 'app_shell' || buildMode === 'single_section'
+            ? []
+            : layoutType === 'web-app'
+              ? ['header']
+              : ['header', 'hero', 'footer'];
+    if (buildMode === 'app_shell' || buildMode === 'single_section') {
+        console.log('[BUILDER-VERIFY] v2 structural inject: buildMode=%s (no marketing header/hero/footer injection)', buildMode);
+    } else if (layoutType === 'web-app') {
         console.log('[BUILDER-VERIFY] v2 structural inject: layoutType=web-app (only header required from pool; hero/footer not injected)');
+    } else if (layoutType === 'experimental-widget') {
+        console.log('[BUILDER-VERIFY] v2 structural inject: layoutType=experimental-widget (skipping ALL structural requirements)');
     }
 
     for (const requiredRole of requiredStructural) {
@@ -672,7 +734,17 @@ function enforceStructuralSelection(selectedComponents = [], candidatePool = [],
 /**
  * Step 5: Theme & style scoring + LLM final selection
  */
-async function scoreAndSelect(candidates, designSystem, prompt, explicitComponents = [], requiredCategories = [], aiModel = 'google/gemini-3.1-pro-preview') {
+async function scoreAndSelect(
+    candidates,
+    designSystem,
+    prompt,
+    explicitComponents = [],
+    requiredCategories = [],
+    aiModel = 'google/gemini-3.1-pro-preview',
+    layoutType = 'marketing-landing',
+    buildMode = 'single_page_multi_section',
+    catalogPosture = 'hybrid'
+) {
     if (!candidates || candidates.length === 0) return [];
 
     // Score each candidate
@@ -715,7 +787,17 @@ async function scoreAndSelect(candidates, designSystem, prompt, explicitComponen
     });
 
     // LLM picks final 8-14 from top 50
-    const selectedIds = await llm.selectFinalComponents(prompt, designSystem, top50, mappedExplicit, requiredCategories, aiModel);
+    const selectedIds = await llm.selectFinalComponents(
+        prompt,
+        designSystem,
+        top50,
+        mappedExplicit,
+        requiredCategories,
+        aiModel,
+        layoutType,
+        buildMode,
+        catalogPosture
+    );
 
     // Map IDs back to full component objects with robust case-insensitive matching
     const selectedComponents = selectedIds
@@ -726,8 +808,7 @@ async function scoreAndSelect(candidates, designSystem, prompt, explicitComponen
         })
         .filter(Boolean); // remove any LLM hallucinations
 
-    const lt = inferLayoutTypeFromPrompt(prompt);
-    return enforceStructuralSelection(selectedComponents, top50, lt);
+    return enforceStructuralSelection(selectedComponents, top50, layoutType, buildMode);
 }
 
 /**
@@ -958,7 +1039,7 @@ export async function selectComponentsV2(
     console.time('[Pipeline] Total execution time');
 
     try {
-        const validLayoutTypes = ['marketing-landing', 'business-site', 'web-app', 'portfolio', 'e-commerce'];
+        const validLayoutTypes = ['marketing-landing', 'business-site', 'web-app', 'portfolio', 'e-commerce', 'experimental-widget'];
         const layoutTypeHint =
             typeof options.layoutType === 'string' && validLayoutTypes.includes(options.layoutType)
                 ? options.layoutType
@@ -966,7 +1047,18 @@ export async function selectComponentsV2(
         const suggestedCategories = Array.isArray(options.suggestedCategories)
             ? options.suggestedCategories.filter((c) => typeof c === 'string' && c.trim())
             : [];
+        const validBuildModes = ['single_section', 'single_page_multi_section', 'multi_page', 'app_shell'];
+        const buildMode =
+            typeof options.buildMode === 'string' && validBuildModes.includes(options.buildMode)
+                ? options.buildMode
+                : 'single_page_multi_section';
+        const validCatalogPostures = ['catalog_first', 'hybrid', 'codegen_first'];
+        const catalogPosture =
+            typeof options.catalogPosture === 'string' && validCatalogPostures.includes(options.catalogPosture)
+                ? options.catalogPosture
+                : 'hybrid';
         const needsPremiumCatalog = options.needsPremiumCatalog === true;
+        const allowCommunityTemplates = options.allowCommunityTemplates !== false;
         if (layoutTypeHint) {
             console.log('[BUILDER-VERIFY] v2 layoutType hint=%s', layoutTypeHint);
         }
@@ -976,6 +1068,7 @@ export async function selectComponentsV2(
         if (needsPremiumCatalog) {
             console.log('[BUILDER-VERIFY] v2 needsPremiumCatalog=true');
         }
+        console.log('[BUILDER-VERIFY] v2 buildMode=%s catalogPosture=%s', buildMode, catalogPosture);
 
         // -----------------------------------------------------------------
         // STEP 0: Community Template Matching (NEW — Phase S10)
@@ -989,8 +1082,19 @@ export async function selectComponentsV2(
 
         let templateMatch = null;
         let templateComponents = null;
+        const skipTemplatePath =
+            !allowCommunityTemplates ||
+            layoutTypeHint === 'experimental-widget' ||
+            buildMode === 'single_section' ||
+            buildMode === 'app_shell' ||
+            catalogPosture === 'codegen_first' ||
+            needsPremiumCatalog === false;
         try {
-            templateMatch = await matchTemplateFromDB(prompt, designSystem, aiModel);
+            if (!skipTemplatePath) {
+                templateMatch = await matchTemplateFromDB(prompt, designSystem, aiModel);
+            } else {
+                console.log('[Step 0] ⏭️ Template matching skipped (community templates disabled or experimental-widget intent)');
+            }
             console.log('[Step 0] matchTemplateFromDB result:', templateMatch ? `MATCH (${templateMatch.template_id})` : 'NO MATCH');
 
             if (templateMatch) {
@@ -1050,6 +1154,8 @@ export async function selectComponentsV2(
             const returnPayload = {
                 components: enrichedComponents,
                 layoutType: layoutTypeHint || inferLayoutTypeFromPrompt(prompt),
+                buildMode,
+                catalogPosture,
                 websiteType: 'template-based',
                 blueprint: `Template: ${templateMatch.template_id}`,
                 templateUsed: {
@@ -1112,6 +1218,8 @@ export async function selectComponentsV2(
             return {
                 components: enriched,
                 layoutType: layoutTypeHint || inferLayoutTypeFromPrompt(prompt),
+                buildMode,
+                catalogPosture,
                 websiteType: 'strict-selection',
                 blueprint: 'Strict User Selection',
                 stats: {
@@ -1147,7 +1255,9 @@ export async function selectComponentsV2(
             blueprint = await loadBlueprint(websiteType.slug, websiteType.blueprintData);
         } catch (e) {
             console.warn(`[Pipeline] Step 2 Failed. Using safe fallback categories.`, e.message);
-            blueprint = { name: 'Fallback', required_categories: ['header', 'hero', 'feature', 'cta', 'footer'] };
+            blueprint = buildMode === 'single_section' || buildMode === 'app_shell'
+                ? { name: 'Fallback', required_categories: ['feature', 'stats', 'services'] }
+                : { name: 'Fallback', required_categories: ['header', 'hero', 'feature', 'cta', 'footer'] };
         }
 
         console.log(`\n[Step 2] Blueprint Schema Loaded ✅`);
@@ -1161,7 +1271,10 @@ export async function selectComponentsV2(
         // -----------------------------------------------------------------
         let finalCategories = [...blueprint.required_categories];
         try {
-            finalCategories = await refineCategories(blueprint, prompt, designSystem, aiModel);
+            finalCategories = await refineCategories(blueprint, prompt, designSystem, aiModel, {
+                layoutType: layoutTypeHint || inferLayoutTypeFromPrompt(prompt),
+                buildMode
+            });
         } catch (e) {
             console.warn(`[Pipeline] Step 3 Failed. Using blueprint categories directly.`, e.message);
         }
@@ -1310,7 +1423,18 @@ export async function selectComponentsV2(
         // -----------------------------------------------------------------
         // STEP 5: Theme & Style Scoring + AI Selection
         // -----------------------------------------------------------------
-        let selectedComponents = await scoreAndSelect(candidates, designSystem, prompt, currentExplicit, finalCategories, aiModel);
+        const selectionLayoutType = layoutTypeHint || inferLayoutTypeFromPrompt(prompt);
+        let selectedComponents = await scoreAndSelect(
+            candidates,
+            designSystem,
+            prompt,
+            currentExplicit,
+            finalCategories,
+            aiModel,
+            selectionLayoutType,
+            buildMode,
+            catalogPosture
+        );
         if (currentExplicit.length > 0) {
             const explicitMatched = candidates.filter((c) =>
                 currentExplicit.some((name) =>
@@ -1371,6 +1495,8 @@ export async function selectComponentsV2(
         return {
             components: enrichedComponents,
             layoutType: layoutTypeForStructure,
+            buildMode,
+            catalogPosture,
             websiteType: websiteType.slug,
             blueprint: blueprint.name,
             stats: {

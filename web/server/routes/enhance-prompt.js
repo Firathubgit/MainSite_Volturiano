@@ -2,6 +2,7 @@ import { generateText } from 'ai';
 import { getModel } from '../lib/provider-helpers.js';
 import { log } from '../lib/build-manifest.js';
 import { llmLog } from '../lib/llm-logger.js';
+import { isLikelyModelRefusalResponse } from '../lib/prompt-truth.js';
 
 /**
  * Deterministically extract component names that look like named references.
@@ -156,6 +157,11 @@ CRITICAL CONTEXT RULES:
 
     if (!enhancedPrompt?.trim()) {
       log(buildId, `[enhance-prompt] Empty response, using original prompt`);
+      return res.json({ success: true, enhancedPrompt: prompt, wasEnhanced: false });
+    }
+
+    if (isLikelyModelRefusalResponse(enhancedPrompt)) {
+      log(buildId, `[enhance-prompt] Model returned refusal/safety text; using original prompt`);
       return res.json({ success: true, enhancedPrompt: prompt, wasEnhanced: false });
     }
 

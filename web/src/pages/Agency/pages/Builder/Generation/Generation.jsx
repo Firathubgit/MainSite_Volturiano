@@ -32,6 +32,7 @@ import gradientCorner from '../Dashboard/Assets/GradientCorner.png';
 import gradientCornerForCard from '../Dashboard/Assets/GradientCooorrnerForCard.png';
 import weirdButtonGradient from '../Dashboard/Assets/WeirdButtonGradient.png';
 import coinIcon from '../Dashboard/Assets/SvgIconToken.svg';
+import exportButtonImg from '../Dashboard/Assets/ExportButton.png';
 
 const SHOWCASE_SLIDES = [
   { image: rivelonThumbnail, title: 'Turn ideas into reality', desc: 'Describe your vision and watch it come to life in seconds.' },
@@ -477,6 +478,9 @@ export default function Generation() {
   const [previewMode, setPreviewMode] = useState('desktop');
   const [viewportRotated, setViewportRotated] = useState(false);
   const [premiumMode, setPremiumMode] = useState(queryParams.get('premiumMode') || location.state?.premiumMode || 'hybrid');
+  const [allowCommunityComponents] = useState(
+    queryParams.get('allowCommunity') !== 'false' && location.state?.allowCommunityComponents !== false
+  );
   const [viewportDropdownOpen, setViewportDropdownOpen] = useState(false);
   const [isSelectorOpen, setIsSelectorOpen] = useState(false);
   const [isCommunityPopupOpen, setIsCommunityPopupOpen] = useState(false);
@@ -484,6 +488,8 @@ export default function Generation() {
   const [loading, setLoading] = useState(false);
   const [modelDropdownOpen, setModelDropdownOpen] = useState(false);
   const modelDropdownRef = useRef(null);
+  const [exportDropdownOpen, setExportDropdownOpen] = useState(false);
+  const exportDropdownRef = useRef(null);
 
   const [generationProgress, setGenerationProgress] = useState({
     isGenerating: false, status: '', components: [], streamedCode: '',
@@ -516,6 +522,9 @@ export default function Generation() {
   const [isMultiPageProject, setIsMultiPageProject] = useState(false);
   const [projectPages, setProjectPages] = useState([]);
   const [projectSharedComponents, setProjectSharedComponents] = useState([]);
+  const [projectBuildMode, setProjectBuildMode] = useState('single_page_multi_section');
+  const [projectRoutingMode, setProjectRoutingMode] = useState('none');
+  const [projectChromeProfile, setProjectChromeProfile] = useState('marketing');
   const [selectedFile, setSelectedFile] = useState(null);
   const [isViewportDragging, setIsViewportDragging] = useState(false);
   const [showCreditsPopup, setShowCreditsPopup] = useState(false);
@@ -859,6 +868,10 @@ export default function Generation() {
       // Model dropdown (Chat Input area)
       if (modelDropdownRef.current && !modelDropdownRef.current.contains(event.target)) {
         setModelDropdownOpen(false);
+      }
+      // Export dropdown
+      if (exportDropdownRef.current && !exportDropdownRef.current.contains(event.target)) {
+        setExportDropdownOpen(false);
       }
     };
 
@@ -1358,6 +1371,18 @@ export default function Generation() {
             conversationContext,
             recentMessages: chatMessages.slice(-10),
             sandboxUrl: sandbox.url,
+            buildMode: projectBuildMode,
+            routingMode: projectRoutingMode,
+            chromeProfile: projectChromeProfile,
+            plan: {
+              components: componentPlanRef.current || [],
+              isMultiPage: isMultiPageProject,
+              pages: projectPages || [],
+              sharedComponentRefIds: (projectSharedComponents || []).map((c) => c.refId || c.exportName || c.name).filter(Boolean),
+              buildMode: projectBuildMode,
+              routingMode: projectRoutingMode,
+              chromeProfile: projectChromeProfile
+            },
             premiumComponents: generationProgress.files
               .filter(f => f.path.includes('components/premium/'))
               .map(f => ({ name: f.path.split('/').pop().replace(/\.(jsx|tsx)$/, ''), path: f.path }))
@@ -1402,7 +1427,19 @@ export default function Generation() {
     } catch (e) {
       throw e;
     }
-  }, [aiModel, conversationContext, chatMessages, generationProgress.files, applyGeneratedCode]);
+  }, [
+    aiModel,
+    conversationContext,
+    chatMessages,
+    generationProgress.files,
+    applyGeneratedCode,
+    projectBuildMode,
+    projectRoutingMode,
+    projectChromeProfile,
+    isMultiPageProject,
+    projectPages,
+    projectSharedComponents
+  ]);
 
   // ─── Start Generation (Prompt-only) ──────────────
   const startGeneration = useCallback(async (prompt, templateId = null, initialImages = [], manualSelectionIds = null, providedBuildId = null, strictMode = false, initialComponentsFull = null) => {
@@ -1416,6 +1453,12 @@ export default function Generation() {
     setLastPrompt(prompt);
     lastPromptRef.current = prompt;  // Synchronous update for polish step
     setDeliveryQueue([]);
+    setIsMultiPageProject(false);
+    setProjectPages([]);
+    setProjectSharedComponents([]);
+    setProjectBuildMode('single_page_multi_section');
+    setProjectRoutingMode('none');
+    setProjectChromeProfile('marketing');
 
     // Add deducting message to the loading state
     setGenerationProgress(prev => ({ ...prev, isGenerating: true, status: 'Starting... (Deducting 1 Credit)', files: [], streamedCode: '' }));
@@ -1512,7 +1555,16 @@ export default function Generation() {
         });
         const enhanceData = await safeParseJson(enhanceRes, 'enhance-prompt');
         if (enhanceData.success && enhanceData.wasEnhanced) {
-          finalPrompt = enhanceData.enhancedPrompt;
+          const ep = enhanceData.enhancedPrompt;
+          const refusalLike =
+            typeof ep === 'string' &&
+            ep.length > 80 &&
+            /\brespectfully decline\b/i.test(ep) &&
+            /\b(ethical|cannot|unable|policy)\b/i.test(ep);
+          finalPrompt = refusalLike ? prompt : ep;
+          if (refusalLike) {
+            console.warn('[BUILDER-VERIFY] enhance: refusal/safety blob discarded; using original user prompt');
+          }
           // Phase S13: Sync enhanced prompt
           saveProjectUpdates({ enhanced_prompt: finalPrompt });
         }
@@ -1524,15 +1576,27 @@ export default function Generation() {
         const classifyRes = await authFetch('/api/classify-intent', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ prompt: finalPrompt, images: initialImages, model: aiModel, buildId })
+          body: JSON.stringify({
+            prompt: finalPrompt,
+            rawPrompt: prompt,
+            images: initialImages,
+            model: aiModel,
+            buildId,
+            allowCommunityComponents
+          })
         });
         const classifyData = await safeParseJson(classifyRes, 'classify-intent');
         if (classifyData.success && classifyData.intentClassification) {
           intentClassification = classifyData.intentClassification;
           console.log(
-            '[BUILDER-VERIFY] generation: intentClassification layoutType=',
-            intentClassification.layoutType
+            '[BUILDER-VERIFY] generation: intent layoutType=%s buildMode=%s routingMode=%s',
+            intentClassification.layoutType,
+            intentClassification.buildMode,
+            intentClassification.routingMode
           );
+          if (intentClassification.buildMode) setProjectBuildMode(intentClassification.buildMode);
+          if (intentClassification.routingMode) setProjectRoutingMode(intentClassification.routingMode);
+          if (intentClassification.chromeProfile) setProjectChromeProfile(intentClassification.chromeProfile);
         }
       } catch (e) {
         console.warn('[Generation] classify-intent failed:', e);
@@ -1672,12 +1736,24 @@ Just position the new components in a logical order (e.g. after the Hero or befo
           setActiveTab('preview');
           return;
         }
-      } else if (premiumMode !== 'off') {
+      } else if (
+        premiumMode !== 'off' &&
+        allowCommunityComponents &&
+        intentClassification?.catalogPosture !== 'codegen_first'
+      ) {
         setGenerationProgress(prev => ({ ...prev, status: 'Selecting premium components...' }));
         try {
           const selectRes = await authFetch('/api/select-components', {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ prompt: finalPrompt, images: initialImages, model: aiModel, designSystem, buildId, premiumMode })
+            body: JSON.stringify({
+              prompt: finalPrompt,
+              rawPrompt: prompt,
+              images: initialImages,
+              model: aiModel,
+              designSystem,
+              buildId,
+              premiumMode
+            })
           });
           const selectData = await selectRes.json();
           if (selectData.success && selectData.selection) {
@@ -1700,6 +1776,7 @@ Just position the new components in a logical order (e.g. after the Hero or befo
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             prompt: finalPrompt,
+            rawPrompt: prompt,
             images: initialImages,
             model: aiModel,
             selectionContext,
@@ -1707,6 +1784,11 @@ Just position the new components in a logical order (e.g. after the Hero or befo
             buildId,
             generateNarration: true,
             premiumMode,
+            allowCommunityComponents,
+            buildMode: intentClassification?.buildMode || projectBuildMode,
+            routingMode: intentClassification?.routingMode || projectRoutingMode,
+            chromeProfile: intentClassification?.chromeProfile || projectChromeProfile,
+            catalogPosture: intentClassification?.catalogPosture,
             manualSelectionIds,
             strictMode,
             intentClassification
@@ -1739,7 +1821,20 @@ Just position the new components in a logical order (e.g. after the Hero or befo
         console.log('[BUILDER-VERIFY] generation: plan layoutType=', planData.layoutType);
       }
 
-      const { components: rawComponents, globalStyle, isMultiPage, pages, sharedComponentRefIds } = planData;
+      const {
+        components: rawComponents,
+        globalStyle,
+        isMultiPage,
+        pages,
+        sharedComponentRefIds,
+        buildMode,
+        routingMode,
+        chromeProfile
+      } = planData;
+
+      if (buildMode) setProjectBuildMode(buildMode);
+      if (routingMode) setProjectRoutingMode(routingMode);
+      if (chromeProfile) setProjectChromeProfile(chromeProfile);
 
       // Save MPA state for the renderer and future edit cycles
       if (isMultiPage) {
@@ -1749,6 +1844,10 @@ Just position the new components in a logical order (e.g. after the Hero or befo
         // Convert shared refIds to actual component objects
         const sharedComps = rawComponents.filter(c => (sharedComponentRefIds || []).includes(c.refId || c.name));
         setProjectSharedComponents(sharedComps);
+      } else {
+        setIsMultiPageProject(false);
+        setProjectPages([]);
+        setProjectSharedComponents([]);
       }
       // Deduplicate components by name to prevent multi-file generation errors
       const components = [...new Map(rawComponents.map(item => [item.name, item])).values()];
@@ -1930,6 +2029,7 @@ Just position the new components in a logical order (e.g. after the Hero or befo
               body: JSON.stringify({
                 component: comp,
                 globalStyle,
+                prompt: finalPrompt,
                 overallContext: finalPrompt,
                 model: aiModel,
                 componentIndex: premiumComponents.length + i + 1,
@@ -1993,7 +2093,10 @@ Just position the new components in a logical order (e.g. after the Hero or befo
             isMultiPage: planData?.isMultiPage || isMultiPageProject,
             pages: planData?.pages?.length > 0 ? planData.pages : projectPages,
             sharedComponents: planData?.isMultiPage ? planData.components.filter(c => (planData.sharedComponentRefIds || []).includes(c.refId || c.name)) : projectSharedComponents,
-            prompt: finalPrompt || ''
+            prompt: finalPrompt || '',
+            buildMode: planData?.buildMode || projectBuildMode,
+            routingMode: planData?.routingMode || projectRoutingMode,
+            chromeProfile: planData?.chromeProfile || projectChromeProfile
           })
         });
 
@@ -2107,7 +2210,28 @@ Just position the new components in a logical order (e.g. after the Hero or befo
           setGenerationProgress(prev => ({ ...prev, status: 'Generating (streaming)...' }));
           const res = await authFetch('/api/generate-ai-code-stream', {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ prompt, images: initialImages, model: aiModel, context: { sandboxId: sandboxData?.sandboxId }, isEdit: false, buildId })
+            body: JSON.stringify({
+              prompt,
+              images: initialImages,
+              model: aiModel,
+              context: {
+                sandboxId: sandboxData?.sandboxId,
+                buildMode: projectBuildMode,
+                routingMode: projectRoutingMode,
+                chromeProfile: projectChromeProfile,
+                plan: {
+                  components: componentPlanRef.current || [],
+                  isMultiPage: isMultiPageProject,
+                  pages: projectPages || [],
+                  sharedComponentRefIds: (projectSharedComponents || []).map((c) => c.refId || c.exportName || c.name).filter(Boolean),
+                  buildMode: projectBuildMode,
+                  routingMode: projectRoutingMode,
+                  chromeProfile: projectChromeProfile
+                }
+              },
+              isEdit: false,
+              buildId
+            })
           });
 
           if (!res.ok) throw new Error(`Fallback failed (${res.status})`);
@@ -2152,7 +2276,24 @@ Just position the new components in a logical order (e.g. after the Hero or befo
       setLoading(false);
       setGenerationProgress(prev => ({ ...prev, isGenerating: false, status: '' }));
     }
-  }, [sandboxData, aiModel, createSandbox, applyGeneratedCode, addChatMessage, conversationContext, session, refreshCredits, saveProjectUpdates]);
+  }, [
+    sandboxData,
+    aiModel,
+    createSandbox,
+    applyGeneratedCode,
+    addChatMessage,
+    conversationContext,
+    session,
+    refreshCredits,
+    saveProjectUpdates,
+    allowCommunityComponents,
+    projectBuildMode,
+    projectRoutingMode,
+    projectChromeProfile,
+    isMultiPageProject,
+    projectPages,
+    projectSharedComponents
+  ]);
 
 
   const sendChatMessage = useCallback(async () => {
@@ -2340,6 +2481,9 @@ Just position the new components in a logical order (e.g. after the Hero or befo
       // 2. Restore Design System & Plan
       if (project.design_system) designSystemRef.current = project.design_system;
       if (project.component_plan) componentPlanRef.current = project.component_plan;
+      if (project.build_mode) setProjectBuildMode(project.build_mode);
+      if (project.routing_mode) setProjectRoutingMode(project.routing_mode);
+      if (project.chrome_profile) setProjectChromeProfile(project.chrome_profile);
 
       // 3. Restore Files & Sandbox
       if (latestSnapshot && latestSnapshot.files) {
@@ -3271,14 +3415,14 @@ Just position the new components in a logical order (e.g. after the Hero or befo
                       onClick={() => fileInputRef.current?.click()}
                       title="Upload images"
                     >
-                      <svg width="25" height="25" viewBox="0 0 24 24" fill="none" stroke="#ffffff" strokeWidth="2.5"><path d="M12 5v14M5 12h14" /></svg>
+                      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#ffffff" strokeWidth="2.5"><path d="M12 5v14M5 12h14" /></svg>
                     </button>
                     <button
                       className={styles.actionBtn}
                       onClick={() => setIsCommunityPopupOpen(true)}
                       title="Add community components"
                     >
-                      <FiLayers size={18} />
+                      <svg xmlns="http://www.w3.org/2000/svg" height="24" viewBox="0 -960 960 960" width="24" fill="#e3e3e3"><path d="M120-520v-320h320v320H120Zm0 400v-320h320v320H120Zm400-400v-320h320v320H520Zm0 400v-320h320v320H520ZM200-600h160v-160H200v160Zm400 0h160v-160H600v160Zm0 400h160v-160H600v160Zm-400 0h160v-160H200v160Zm400-400Zm0 240Zm-240 0Zm0-240Z"/></svg>
                     </button>
                     <div className={styles.geminiIcon} title={`Current Engine: ${aiModel}`} ref={modelDropdownRef}>
                       <div onClick={() => setModelDropdownOpen(!modelDropdownOpen)} style={{ cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
@@ -3419,7 +3563,7 @@ Just position the new components in a logical order (e.g. after the Hero or befo
 
                 <TopBarLoadingIndicator generationProgress={generationProgress} />
                 <div className={styles.actionsGroup}>
-                  <div className={styles.separatorSmall} />
+
 
                   {/* Viewport dropdown */}
                   <div className={styles.viewportDropdown} ref={viewportDropdownRef}>
@@ -3489,62 +3633,54 @@ Just position the new components in a logical order (e.g. after the Hero or befo
                     <FiExternalLink size={16} />
                   </button>
 
-                  {/* Download */}
-                  <button
-                    className={styles.downloadBtn}
-                    onClick={downloadProject}
-                    disabled={!sandboxData || isDownloading}
-                    title="Download project as ZIP"
-                  >
-                    <FiDownload size={16} />
-                    <span className={styles.downloadBtnText}>
-                      {isDownloading ? 'Preparing...' : 'Download'}
-                    </span>
-                  </button>
+                  {/* Export Dropdown */}
+                  <div className={styles.exportDropdownContainer} ref={exportDropdownRef}>
+                    <button
+                      className={styles.exportBtnImage}
+                      onClick={() => setExportDropdownOpen(prev => !prev)}
+                      title="Export Options"
+                    >
+                      <img src={exportButtonImg} alt="Export" className={styles.exportImg} />
+                    </button>
+                    <AnimatePresence>
+                      {exportDropdownOpen && (
+                        <motion.div
+                          className={styles.viewportMenu}
+                          initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                          animate={{ opacity: 1, scale: 1, y: 0 }}
+                          exit={{ opacity: 0, scale: 0.95, y: 10 }}
+                          transition={{ duration: 0.2, ease: "easeOut" }}
+                        >
+                          <button
+                            className={styles.viewportOption}
+                            disabled={isPublishing}
+                            onClick={() => {
+                              setExportDropdownOpen(false);
+                              const result = handleOpenSlugModal();
+                              if (result === 'UPDATE_DIRECTLY') {
+                                confirmPublish(existingPublishedSlug);
+                              }
+                            }}
+                          >
+                            <svg stroke="currentColor" fill="none" strokeWidth="2" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round" height="16" width="16" xmlns="http://www.w3.org/2000/svg"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
+                            <span>{isPublishing ? 'Publishing...' : (existingPublishedSlug ? 'Update' : 'Publish')}</span>
+                          </button>
 
-                  {/* GitHub Push (Available soon) */}
-                  {/* GitHub Push (Available soon) */}
-                  <button
-                    className={styles.actionBtn}
-                    style={{
-                      opacity: 0.6,
-                      cursor: 'not-allowed',
-                      background: 'transparent',
-                      border: 'none',
-                      padding: '4px',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      color: 'rgba(255, 255, 255, 0.8)'
-                    }}
-                    disabled={true}
-                    title="Push to GitHub (Available soon)"
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" height="30" width="30">
-                      <path
-                        fill="currentColor"
-                        fillRule="evenodd"
-                        d="M5 1a4 4 0 0 0 -4 4v14a4 4 0 0 0 4 4h14a4 4 0 0 0 4 -4V5a4 4 0 0 0 -4 -4H5Zm1.815 5.11a7.99 7.99 0 0 1 5.182 -1.903 7.99 7.99 0 0 1 2.531 15.572c-0.405 0.077 -0.535 -0.159 -0.535 -0.372v-2.212a1.893 1.893 0 0 0 -0.546 -1.473c1.78 -0.197 3.648 -0.871 3.648 -3.942a3.086 3.086 0 0 0 -0.822 -2.146 2.87 2.87 0 0 0 -0.08 -2.114s-0.666 -0.214 -2.194 0.82a7.561 7.561 0 0 0 -4.002 0C8.472 7.306 7.8 7.52 7.8 7.52a2.867 2.867 0 0 0 -0.078 2.114 3.09 3.09 0 0 0 -0.823 2.144c0 3.063 1.866 3.748 3.64 3.95a1.705 1.705 0 0 0 -0.508 1.065 1.702 1.702 0 0 1 -2.325 -0.664 1.678 1.678 0 0 0 -1.224 -0.823s-0.78 -0.01 -0.054 0.487c0.426 0.271 0.74 0.686 0.887 1.168 0 0 0.459 1.535 2.682 1.053 0.003 0.504 0.002 0.929 0 1.19l0 0.2c0 0.21 -0.126 0.445 -0.525 0.375A7.99 7.99 0 0 1 6.815 6.11Z"
-                        clipRule="evenodd"
-                      />
-                    </svg>
-                  </button>
-
-                  {/* Publish / Update */}
-                  <button
-                    className={styles.publishBtn}
-                    disabled={isPublishing}
-                    title={existingPublishedSlug ? 'Update live site' : 'Publish to volturiano.com'}
-                    onClick={() => {
-                      const result = handleOpenSlugModal();
-                      if (result === 'UPDATE_DIRECTLY') {
-                        confirmPublish(existingPublishedSlug);
-                      }
-                    }}
-                  >
-                    <svg stroke="currentColor" fill="none" strokeWidth="2" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round" height="16" width="16" xmlns="http://www.w3.org/2000/svg" style={{ marginRight: '8px' }}><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
-                    {isPublishing ? (existingPublishedSlug ? 'Updating...' : 'Publishing...') : (existingPublishedSlug ? 'Update' : 'Publish')}
-                  </button>
+                          <button
+                            className={styles.viewportOption}
+                            disabled={!sandboxData || isDownloading}
+                            onClick={() => {
+                              setExportDropdownOpen(false);
+                              downloadProject();
+                            }}
+                          >
+                            <FiDownload size={16} />
+                            <span>{isDownloading ? 'Preparing...' : 'Download ZIP'}</span>
+                          </button>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
                 </div>
               </div>
 

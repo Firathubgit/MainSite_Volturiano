@@ -6,7 +6,8 @@ export const LAYOUT_TYPES = [
   'business-site',
   'web-app',
   'portfolio',
-  'e-commerce'
+  'e-commerce',
+  'experimental-widget'
 ];
 
 /**
@@ -16,7 +17,7 @@ export function inferLayoutTypeFromPrompt(prompt = '') {
   const p = String(prompt).toLowerCase();
 
   if (
-    /\b(dashboard|admin panel|control panel|saas platform|web app|webapp|internal tool|workspace app|money management|budget app|expense tracker|banking app|fintech|crm|analytics dashboard|data table|sidebar nav)\b/.test(
+    /\b(dashboard|admin panel|control panel|saas platform|web app|webapp|internal tool|workspace app|money management|budget app|expense tracker|banking app|fintech|crm|analytics dashboard|data table|sidebar nav|manager|management app|membership system|portal)\b/.test(
       p
     )
   ) {
@@ -30,6 +31,9 @@ export function inferLayoutTypeFromPrompt(prompt = '') {
   }
   if (/\b(agency|multi-?page|small business|restaurant|local business|blog|corporate site)\b/.test(p)) {
     return 'business-site';
+  }
+  if (/\b(no navbar|no header|no footer|single widget|interactive canvas|no standard layout|no normal standard layout|special tool|calculator|generator|unique widget|focused app|micro-app)\b/.test(p)) {
+    return 'experimental-widget';
   }
   return 'marketing-landing';
 }

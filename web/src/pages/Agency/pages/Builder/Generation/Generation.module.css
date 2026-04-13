@@ -579,7 +579,7 @@ svg.shimmerText {
 .chatActionsLeft {
   display: flex;
   align-items: center;
-  gap: 27px;
+  gap: 20px;
 }
 
 .actionBtn {
@@ -592,8 +592,8 @@ svg.shimmerText {
   cursor: pointer;
   transition: all 0.2s;
   padding: 0;
-  width: 32px;
-  height: 32px;
+  width: 40px;
+  height: 40px;
 }
 
 .actionBtn:hover {
@@ -678,30 +678,7 @@ svg.shimmerText {
   justify-content: flex-start;
 }
 
-.downloadBtn {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 12px;
-  font-size: 12px;
-  font-weight: 500;
-  color: #E3E3E3;
-  background: transparent;
-  border: none;
-  border-radius: 8px;
-  cursor: pointer;
-  transition: all 0.2s;
-}
 
-.downloadBtn:hover:not(:disabled) {
-  background: rgba(255, 255, 255, 0.1);
-  color: white;
-}
-
-.downloadBtn:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
-}
 
 .actionsGroup {
   display: flex;
@@ -808,7 +785,7 @@ svg.shimmerText {
   top: calc(100% + 6px);
   right: 0;
   z-index: 100;
-  min-width: 140px;
+  min-width: 180px;
   padding: 8px;
   background: #030304;
   border: 1px solid #ffffff;
@@ -830,6 +807,7 @@ svg.shimmerText {
   border-radius: 8px;
   cursor: pointer;
   transition: all 0.2s;
+  white-space: nowrap;
   opacity: 0.7;
 }
 
@@ -841,6 +819,31 @@ svg.shimmerText {
 .viewportOptionActive {
   background: rgba(255, 255, 255, 0.15);
   opacity: 1;
+}
+
+.exportDropdownContainer {
+  margin-left: 24px;
+  position: relative;
+}
+
+.exportBtnImage {
+  background: transparent;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.exportBtnImage:hover {
+  transform: translateY(-1px);
+}
+
+.exportImg {
+  height: 31px;
+  width: auto;
+  display: block;
 }
 
 .openTabBtn {
@@ -916,6 +919,8 @@ svg.shimmerText {
   cursor: pointer;
   transition: opacity 0.2s;
   position: relative;
+  width: 40px;
+  height: 40px;
 }
 
 .geminiIcon:hover {

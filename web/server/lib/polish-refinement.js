@@ -5,7 +5,7 @@ import { parseFileBlocks } from './file-blocks.js';
 import { llmLog } from './llm-logger.js';
 import { resolveDesignSpecModelId } from './llm-lightweight.js';
 
-const USE_PARALLEL_POLISH = true; // Toggle for 2-Step Async Parallel execution instead of slow monolithic runs
+const USE_PARALLEL_POLISH = false; // Toggle for 2-Step Async Parallel execution instead of slow monolithic runs
 const NON_POLISHABLE_SHELL_FILES = new Set(['src/App.jsx', 'src/main.jsx']);
 /** Skip polish for tiny wrappers — not enough text to justify an LLM call (Phase 8). */
 export const MIN_POLISH_CHAR_BYTES = 500;

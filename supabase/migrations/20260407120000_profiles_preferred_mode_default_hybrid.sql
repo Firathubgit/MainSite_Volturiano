@@ -9,3 +9,4 @@ ALTER TABLE public.profiles
 
 COMMENT ON COLUMN public.profiles.preferred_mode IS
   'Builder mode: free | hybrid | premium (mapped to backend off | hybrid | strict).';
+/LOL

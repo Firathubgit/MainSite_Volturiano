@@ -134,6 +134,9 @@ const TermsOfService = lazy(() => import("../pages/Legal/TermsOfService"));
 const LoadingOverlayTest = import.meta.env.DEV
   ? lazy(() => import("../pages/Debug/LoadingOverlayTest"))
   : null;
+const ThinkingRowTest = import.meta.env.DEV
+  ? lazy(() => import("../pages/Debug/ThinkingRowTest"))
+  : null;
 const RenderLogger = import.meta.env.DEV
   ? lazy(() => import("../pages/Debug/RenderLogger"))
   : null;
@@ -488,6 +491,12 @@ export default function App() {
                   <Route
                     path="/debug/loading-overlay"
                     element={<LoadingOverlayTest />}
+                  />
+                )}
+                {import.meta.env.DEV && ThinkingRowTest && (
+                  <Route
+                    path="/debug/thinking-row"
+                    element={<ThinkingRowTest />}
                   />
                 )}
                 {import.meta.env.DEV && RenderLogger && (

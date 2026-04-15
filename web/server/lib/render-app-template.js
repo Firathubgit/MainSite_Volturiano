@@ -55,7 +55,10 @@ function inferComponentRole(component) {
     const explicitRole = (component?.role || '').toLowerCase();
     const text = `${explicitRole} ${name} ${path}`;
 
-    if (explicitRole === 'header' || explicitRole === 'hero' || explicitRole === 'footer') return explicitRole;
+    // Planner role is canonical. Do not reinterpret in renderer if role is explicitly set.
+    if (explicitRole === 'header' || explicitRole === 'hero' || explicitRole === 'feature' || explicitRole === 'footer') {
+        return explicitRole;
+    }
 
     if (
         /(^|\b)(header|navbar|navigation|topbar|menu)(\b|$)/.test(text) ||
@@ -88,6 +91,7 @@ function isBackgroundLikeComponent(component) {
     const path = (component?.path || '').toLowerCase();
     const role = (component?.role || '').toLowerCase();
     const text = `${name} ${path} ${role}`;
+    if (role && role !== 'hero') return false;
     return /(^|\b)(background|shader|veil|backdrop|canvas|parallax|ambient|overlay)(\b|$)/.test(text);
 }
 
@@ -105,9 +109,9 @@ function renderComponentSequenceWithOverlay(components = [], baseIndent = '     
         }
 
         const next = components[i + 1];
+        const nextRole = next ? inferComponentRole(next) : 'feature';
         const nextIsUsable = next
-            && inferComponentRole(next) !== 'header'
-            && inferComponentRole(next) !== 'footer'
+            && nextRole === 'feature'
             && !isBackgroundLikeComponent(next);
 
         if (nextIsUsable) {
@@ -123,18 +127,9 @@ function renderComponentSequenceWithOverlay(components = [], baseIndent = '     
             continue;
         }
 
-        lines.push(`${baseIndent}<section className="relative min-h-screen overflow-hidden">`);
-        lines.push(`${baseIndent}  <div className="absolute inset-0">`);
-        lines.push(`${baseIndent}    <${current.exportName} />`);
-        lines.push(`${baseIndent}  </div>`);
-        lines.push(`${baseIndent}  <div className="relative z-10 flex items-center justify-center min-h-screen px-4">`);
-        lines.push(`${baseIndent}    <div className="text-center max-w-3xl mx-auto">`);
-        lines.push(`${baseIndent}      <h1 className="text-5xl sm:text-7xl font-bold text-white mb-6 drop-shadow-lg">Welcome</h1>`);
-        lines.push(`${baseIndent}      <p className="text-lg sm:text-xl text-white/80 mb-8 drop-shadow-md max-w-xl mx-auto">Explore what we have to offer</p>`);
-        lines.push(`${baseIndent}      <a href="#content" className="inline-block px-8 py-3 bg-white text-black font-semibold rounded-full hover:bg-white/90 transition-colors shadow-lg">Get Started</a>`);
-        lines.push(`${baseIndent}    </div>`);
-        lines.push(`${baseIndent}  </div>`);
-        lines.push(`${baseIndent}</section>`);
+        // Legacy fallback inserted a synthetic "Welcome" hero for background-only sections.
+        // This creates confusing double-hero visuals. Render the background component as-is.
+        lines.push(`${baseIndent}<${current.exportName} />`);
     }
     return lines.join('\n');
 }

@@ -413,6 +413,92 @@ function LoadingLogoView({ logoState }) {
   );
 }
 
+// ─── Thinking Row (Chat Component) ─────────────
+function ThinkingRow({ status, dots, logoState, volturianoLogo, components = [], isStreaming, boxed = false }) {
+  const [activeName, setActiveName] = useState('');
+  const [index, setIndex] = useState(0);
+
+  useEffect(() => {
+    if (components.length === 0 || !boxed) {
+      setActiveName(status);
+      return;
+    }
+
+    const cycle = () => {
+      setIndex(prev => (prev + 1) % components.length);
+      const nextDelay = Math.random() < 0.7 ? 500 : (Math.random() * 700 + 300);
+      return nextDelay;
+    };
+
+    let timer;
+    const run = () => {
+      const delay = cycle();
+      timer = setTimeout(run, delay);
+    };
+
+    timer = setTimeout(run, 500);
+    return () => clearTimeout(timer);
+  }, [components, status, boxed]);
+
+  useEffect(() => {
+    if (boxed && components.length > 0 && components[index]) {
+      setActiveName(`${status === 'Analyzing requirements' ? 'Analyzing' : status}: ${components[index].name}`);
+    } else {
+      setActiveName(status);
+    }
+  }, [index, components, status, boxed]);
+
+  if (isStreaming) return null;
+
+  const isFoundComponents = status === 'Found Components!';
+
+  return (
+    <div className={styles.chatMsg}>
+      <div data-layer="LoaidngRecantgle" className={boxed ? styles.thinkingBubble : styles.thinkingNormal}>
+        <div className={boxed ? styles.thinkingBubbleContent : styles.thinkingNormalContent} style={{ display: 'flex', alignItems: 'center', gap: boxed ? '14px' : '10px', flex: 1, minWidth: 0 }}>
+          <div
+            data-layer="Vector"
+            className={
+              logoState === 1 ? styles.tornadoLogoPulse :
+                logoState === 2 ? styles.tornadoLogoTikiTaka :
+                  logoState === 3 ? styles.tornadoLogoScanner :
+                    styles.tornadoLogoShimmer
+            }
+            style={{
+              width: boxed ? 24 : 18,
+              height: boxed ? 24 : 18,
+              flexShrink: 0,
+              '--logo-url': `url(${volturianoLogo})`,
+              backgroundClip: 'initial',
+              WebkitBackgroundClip: 'initial',
+              WebkitTextFillColor: 'initial',
+              color: 'initial'
+            }}
+          />
+          <span data-layer="ChangeableText..." className={styles.shimmerText} style={{ fontSize: boxed ? '14px' : '11px', fontWeight: 400, letterSpacing: '0.01em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', flexShrink: 1, minWidth: 0 }}>
+            {activeName}{!isFoundComponents ? dots : ''}
+          </span>
+        </div>
+        {boxed && !isFoundComponents && (
+          <div data-layer="LoadingOne" className={styles.loadingCircleSegmented} style={{ flexShrink: 0, marginLeft: '12px' }}>
+            {[...Array(8)].map((_, i) => (
+              <div
+                key={i}
+                className={styles.segment}
+                style={{
+                  transform: `rotate(${i * 45}deg) translateY(-6px)`,
+                  animationDelay: `${i * 0.125}s`
+                }}
+              />
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+
 const VIEWPORT_SIZES = {
   desktop: { label: 'Desktop', width: '100%', height: '100%', icon: FiMonitor },
   tablet: { label: 'Tablet', width: '553px', height: '667px', icon: FiTablet },
@@ -498,6 +584,7 @@ export default function Generation() {
   });
 
   const [codeApplicationState, setCodeApplicationState] = useState({ stage: null, packages: [], installedPackages: [], filesGenerated: [] });
+  const [componentSearchPhase, setComponentSearchPhase] = useState(null);
   const [conversationContext, setConversationContext] = useState({ appliedCode: [], generatedComponents: [], currentProject: '', lastGeneratedCode: '' });
   const [isTextStreaming, setIsTextStreaming] = useState(false);
   const [pendingComponents, setPendingComponents] = useState([]);
@@ -822,7 +909,10 @@ export default function Generation() {
   }, [currentProjectId, sandboxData?.sandboxId, sandboxFiles, chatMessages.length, session, fetchSnapshots, showNotification]);
   useEffect(() => {
     const hasActiveWork = generationProgress.isGenerating || !!aiThinking || !!codeApplicationState.stage;
-    if (!hasActiveWork) return;
+    if (!hasActiveWork) {
+      setStatusDots('');
+      return;
+    }
 
     const dotsInterval = setInterval(() => {
       setStatusDots(prev => prev.length >= 3 ? '' : prev + '.');
@@ -830,8 +920,42 @@ export default function Generation() {
 
     return () => {
       clearInterval(dotsInterval);
+      setStatusDots('');
     };
   }, [generationProgress.isGenerating, aiThinking, codeApplicationState.stage]);
+
+  useEffect(() => {
+    if (!componentSearchPhase?.active) return;
+    const SEARCH_LABELS = [
+      { text: 'Searching for Hero', delay: 400 },
+      { text: 'Searching for Header', delay: 400 },
+      { text: 'Selecting components...', delay: 800 },
+      { text: 'Searching for Features', delay: 400 },
+      { text: 'Searching for Pricing', delay: 400 },
+      { text: 'Reading component descriptions...', delay: 800 },
+      { text: 'Searching for Footer', delay: 400 },
+      { text: 'Searching for Gallery', delay: 400 },
+      { text: 'Reviewing component codes...', delay: 800 },
+      { text: 'Searching for Testimonials', delay: 400 },
+      { text: 'Searching for Contact', delay: 400 },
+      { text: 'Evaluating design fit...', delay: 800 },
+      { text: 'Searching for CTA', delay: 400 },
+      { text: 'Searching for Stats', delay: 400 },
+      { text: 'Matching components to vision...', delay: 800 },
+      { text: 'Searching for Services', delay: 400 },
+      { text: 'Searching for FAQ', delay: 400 },
+      { text: 'Finalizing component selection...', delay: 800 },
+    ];
+    let idx = 0;
+    let timer;
+    const cycle = () => {
+      idx = (idx + 1) % SEARCH_LABELS.length;
+      setComponentSearchPhase(prev => prev ? { ...prev, currentLabel: SEARCH_LABELS[idx].text } : prev);
+      timer = setTimeout(cycle, SEARCH_LABELS[idx].delay);
+    };
+    timer = setTimeout(cycle, SEARCH_LABELS[0].delay);
+    return () => clearTimeout(timer);
+  }, [componentSearchPhase?.active]);
 
   // Unified Serial Delivery: Ensures Wrote logs and AI messages follow correct order
   useEffect(() => {
@@ -1742,6 +1866,7 @@ Just position the new components in a logical order (e.g. after the Hero or befo
         intentClassification?.catalogPosture !== 'codegen_first'
       ) {
         setGenerationProgress(prev => ({ ...prev, status: 'Selecting premium components...' }));
+        setComponentSearchPhase({ active: true, currentLabel: 'Searching for Hero' });
         try {
           const selectRes = await authFetch('/api/select-components', {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -1769,6 +1894,9 @@ Just position the new components in a logical order (e.g. after the Hero or befo
 
       // 4. Plan components
       setGenerationProgress(prev => ({ ...prev, status: 'Planning components...' }));
+      if (!componentSearchPhase?.active) {
+        setComponentSearchPhase({ active: true, currentLabel: 'Searching for Header' });
+      }
       let planData;
       try {
         const planningPrompt = `${finalPrompt || ''} ${prompt || ''}`;
@@ -1834,7 +1962,10 @@ Just position the new components in a logical order (e.g. after the Hero or befo
         throw planError; // Re-throw to hit the main catch block which handles streaming fallback
       }
 
-      // Phase S2: Sync Component Plan to Supabase Project
+      // Phase S2: Transition component search pill to chat history
+      setComponentSearchPhase(null); 
+      addChatMessage('Found Components!', 'thinking-pill', { boxed: true });
+
       if (planData.success && planData.components) {
         componentPlanRef.current = planData.components; // Store for snapshot
         saveProjectUpdates({
@@ -3388,36 +3519,45 @@ Just position the new components in a logical order (e.g. after the Hero or befo
                         onStreamStateChange={setIsTextStreaming}
                       />
                     );
+                  } else if (msg.type === 'thinking-pill') {
+                    return (
+                      <ThinkingRow
+                        key={i}
+                        status={msg.content}
+                        dots=""
+                        logoState={0}
+                        volturianoLogo={volturianoLogo}
+                        boxed={msg.metadata?.boxed}
+                        isStreaming={false}
+                      />
+                    );
                   }
                 })}
 
-                {/* Active Status Indicator */}
-                {(aiThinking || generationProgress.isGenerating || codeApplicationState.stage === 'complete' || codeApplicationState.stage) && (
-                  <div className={`${styles.chatMsg} ${styles.chatMsg_system}`}>
-                    <div className={styles.chatBubble}>
-                      <span className={`${styles.typingDots} ${styles.shimmerText}`} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <div
-                          className={
-                            logoState === 1 ? styles.tornadoLogoPulse :
-                              logoState === 2 ? styles.tornadoLogoTikiTaka :
-                                logoState === 3 ? styles.tornadoLogoScanner :
-                                  styles.tornadoLogoShimmer
-                          }
-                          style={{
-                            width: 18,
-                            height: 18,
-                            flexShrink: 0,
-                            '--logo-url': `url(${volturianoLogo})`,
-                            backgroundClip: 'initial',
-                            WebkitBackgroundClip: 'initial',
-                            WebkitTextFillColor: 'initial',
-                            color: 'initial'
-                          }}
-                        />
-                        {`${getUnifiedStatus().replace(/\.\.\.$/, '')}${statusDots}`}
-                      </span>
-                    </div>
-                  </div>
+                {/* Component Search Pill — shown during active selection/planning phase */}
+                {componentSearchPhase?.active && (
+                  <ThinkingRow 
+                    status={componentSearchPhase.currentLabel || 'Searching...'}
+                    dots={statusDots}
+                    logoState={2} 
+                    volturianoLogo={volturianoLogo}
+                    components={[]} 
+                    isStreaming={false}
+                    boxed={true}
+                  />
+                )}
+
+                {/* Active Status Indicator — hidden during search pill phase and text streaming */}
+                {!componentSearchPhase?.active && (aiThinking || generationProgress.isGenerating || codeApplicationState.stage) && !isTextStreaming && (
+                  <ThinkingRow 
+                    status={getUnifiedStatus().replace(/\.\.\.$/, '')}
+                    dots={statusDots}
+                    logoState={logoState}
+                    volturianoLogo={volturianoLogo}
+                    components={generationProgress.components?.filter(c => !c.completed)}
+                    isStreaming={isTextStreaming || deliveryQueue.length > 0}
+                    boxed={false}
+                  />
                 )}
                 <div ref={chatEndRef} />
               </div>

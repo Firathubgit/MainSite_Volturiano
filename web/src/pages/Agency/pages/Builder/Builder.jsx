@@ -30,6 +30,7 @@ import platformThumbnail from '../../../../assets/114shots_so.png';
 import qyvoraClimateThumbnail from '../../../../assets/87shots_so.png';
 import rivelonThumbnail from '../../../../assets/134shots_so.png';
 import heroVideo from '../../../../assets/BackgroundVid.mp4';
+import tornadoLogo from '../../../../assets/Logo/TornadoLogo.png';
 
 // Template metadata mapping (Thumbnails + Demo URLs)
 const TEMPLATE_METADATA = {
@@ -124,7 +125,7 @@ const BuilderContent = () => {
 
     const [selectedModel, setSelectedModel] = useState('google/gemini-3.1-pro-preview');
     const [placeholderText, setPlaceholderText] = useState("");
-    
+
     // Phase S26: Initialize community popup state from URL to persist across reloads
     const [isCommunityOpen, setIsCommunityOpen] = useState(() => {
         if (typeof window !== 'undefined') {
@@ -139,7 +140,7 @@ const BuilderContent = () => {
         if (typeof window === 'undefined') return;
         const params = new URLSearchParams(window.location.search);
         const currentlyOpenInUrl = params.get('community') === 'open';
-        
+
         if (isCommunityOpen && !currentlyOpenInUrl) {
             params.set('community', 'open');
             window.history.replaceState(null, '', window.location.pathname + '?' + params.toString());
@@ -667,8 +668,14 @@ const BuilderContent = () => {
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ duration: 1 }}
                     >
-                        <h1 className={styles.title1}>Volturiano</h1>
-                        <h2 className={styles.title2}>Builder</h2>
+                        <h2 className={styles.heroLabel}>Immortal 4</h2>
+                        <h1 className={styles.heroTitle}>
+                            PREMIUM{' '}
+                            <img src={tornadoLogo} alt="Volturiano" className={styles.logoImage} />{' '}
+                            WEBSITES,
+                            <br />
+                            ALL EXAMPLES
+                        </h1>
                     </motion.div>
                 </div>
 
@@ -898,17 +905,18 @@ const BuilderContent = () => {
                     </div>
                 </motion.div>
 
-                {/* Bottom Styling Blur Overlay - Ensures it covers the entire scrollable area but sits below the inputForm */}
-                <GradualBlur 
-                    preset="bottom" 
-                    strength={2.5} 
-                    divCount={3} 
-                    height="8rem" 
-                    opacity={0.8} 
-                    zIndex={90} 
-                    style={{ pointerEvents: 'none', position: 'fixed', bottom: 0, left: 0, right: 0 }} 
-                />
             </div>
+
+            {/* Bottom Styling Blur Overlay - Ensures it covers the entire scrollable area but sits below the inputForm */}
+            <GradualBlur
+                preset="bottom"
+                strength={2.5}
+                divCount={3}
+                height="8rem"
+                opacity={0.8}
+                zIndex={90}
+                style={{ pointerEvents: 'none', position: 'fixed', bottom: 0, left: 0, right: 0 }}
+            />
 
             {/* ─── Fixed Overlays (Outside scaled wrapper for perfect centering) ─── */}
             {((isAuthenticated && profile && profile.onboarding_completed === false) || showCongrats) && (

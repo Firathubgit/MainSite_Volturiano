@@ -11,13 +11,17 @@
     position: fixed;
     top: 0;
     left: 0;
+    display: grid;
+    grid-template-columns: 100%;
+    grid-auto-rows: auto;
 }
 
 /* Page Container - Locked to viewport height (hero) */
 .pageContainer {
+    grid-row: 1;
+    grid-column: 1;
     width: 100%;
-    height: 100vh;
-    min-height: 100vh;
+    min-height: 85vh;
     flex-shrink: 0;
     position: relative;
     overflow: hidden;
@@ -66,57 +70,74 @@
 
 /* Title Styling */
 .titleWrapper {
-    position: absolute;
-    left: 50%;
-    transform: translateX(-50%);
-    /* Title position - moved up */
-    top: 12%;
+    grid-row: 1;
+    grid-column: 1;
+    position: relative;
+    align-self: start;
+    margin-top: 22vh;
     text-align: center;
     display: flex;
     flex-direction: column;
     align-items: center;
     pointer-events: none;
     z-index: 5;
+    width: 100%;
 }
 
-.title1,
-.title2 {
-    font-family: 'Syne', sans-serif;
-    line-height: 0.8;
-    font-weight: 800;
-    letter-spacing: -0.054em;
+.heroLabel {
+    font-family: 'Inter', sans-serif;
+    font-size: 0.99rem;
+    font-weight: 600;
     text-transform: uppercase;
-}
-
-.title1 {
-    font-size: 9vw;
-    color: #fff;
-    opacity: 0.95;
-    margin-bottom: -0.9rem;
+    letter-spacing: 0.2em;
+    color: #a4a4a7;
+    margin: 0;
+    margin-bottom: 1.35rem;
     z-index: 2;
 }
 
-.title2 {
-    font-size: 9vw;
-    color: transparent;
-    -webkit-text-stroke: 1.35px rgba(255, 255, 255, 0.9);
+.heroTitle {
+    font-family: 'Inter', sans-serif;
+    font-size: 4.95rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: -0.04em;
+    line-height: 1.1;
+    color: var(--color-text, #e6e6ea);
+    margin: 0;
+    z-index: 2;
+    text-align: center;
 }
 
-@media (min-width: 768px) {
+.logoImage {
+    height: 1.2em;
+    width: auto;
+    vertical-align: middle;
+    display: inline-block;
+    margin: 0;
+    filter: brightness(1);
+}
 
-    .title1,
-    .title2 {
-        font-size: 6.3rem;
+@media (max-width: 1024px) {
+    .heroTitle {
+        font-size: 3.15rem;
+    }
+}
+
+@media (max-width: 768px) {
+    .heroTitle {
+        font-size: 2.25rem;
     }
 }
 
 /* Maestro / Builder Component Styling */
 .maestroWrapper {
-    position: absolute;
-    /* Use left:0 + width:100% for reliable centering of inner elements */
-    left: 0;
-    /* At 100% zoom: sits at center */
-    top: 55%;
+    grid-row: 1;
+    grid-column: 1;
+    position: relative;
+    align-self: start;
+    margin-top: 52vh;
+    margin-bottom: 2vh; /* Ultra-tight bound so empty input doesn't stretch past 85vh natively */
     width: 100%;
     display: flex;
     flex-direction: column;
@@ -135,22 +156,22 @@
 /* ~90% zoom on 1080p → viewport ~1200px+ */
 @media (min-height: 1100px) {
     .titleWrapper {
-        top: 20%;
+        margin-top: 20vh;
     }
 
     .maestroWrapper {
-        top: 58%;
+        margin-top: 58vh;
     }
 }
 
 /* ~80% zoom → viewport ~1350px+ */
 @media (min-height: 1300px) {
     .titleWrapper {
-        top: 12%;
+        margin-top: 12vh;
     }
 
     .maestroWrapper {
-        top: 62%;
+        margin-top: 50vh;
     }
 }
 

@@ -14,6 +14,8 @@ export default function ComponentCard({
 }) {
     const [isHovered, setIsHovered] = useState(false);
     const [videoPlaying, setVideoPlaying] = useState(false);
+    const [imageLoaded, setImageLoaded] = useState(false);
+    const [avatarLoaded, setAvatarLoaded] = useState(false);
     const videoRef = useRef(null);
 
     // Formatting helpers
@@ -23,6 +25,46 @@ export default function ComponentCard({
         if (count >= 1000) return (count / 1000).toFixed(1) + 'k';
         return count.toString();
     };
+
+    const displayName = item.display_name || item.name || 'Unnamed';
+    const authorProfile = item.profiles || {};
+    const authorName = authorProfile.username || authorProfile.display_name || 'Unknown';
+    const qScore = item.quality_score ? Number(item.quality_score).toFixed(1) : '0.0';
+
+    // Image and Video loading logic
+    useEffect(() => {
+        if (!item.thumbnail_url && !item.preview_image_url) {
+            setImageLoaded(true);
+            return;
+        }
+
+        const img = new Image();
+        img.src = item.thumbnail_url || item.preview_image_url || "https://placehold.co/352x240";
+        
+        // .decode() ensures the image is fully downloaded AND ready to be displayed without jank
+        img.decode()
+            .then(() => {
+                setImageLoaded(true);
+            })
+            .catch(() => {
+                // Fallback if decode fails
+                setImageLoaded(true);
+            });
+    }, [item.thumbnail_url, item.preview_image_url]);
+
+    // Avatar loading logic
+    useEffect(() => {
+        if (!authorProfile.avatar_url) {
+            setAvatarLoaded(true);
+            return;
+        }
+
+        const img = new Image();
+        img.src = authorProfile.avatar_url;
+        img.decode()
+            .then(() => setAvatarLoaded(true))
+            .catch(() => setAvatarLoaded(true));
+    }, [authorProfile.avatar_url]);
 
     // Video playback handling
     useEffect(() => {
@@ -53,10 +95,7 @@ export default function ComponentCard({
         }
     };
 
-    const displayName = item.display_name || item.name || 'Unnamed';
-    const authorProfile = item.profiles || {};
-    const authorName = authorProfile.username || authorProfile.display_name || 'Unknown';
-    const qScore = item.quality_score ? Number(item.quality_score).toFixed(1) : '0.0';
+
 
     return (
         <div
@@ -89,7 +128,11 @@ export default function ComponentCard({
             {/* ─── Avatar ─── */}
             <div className={styles.avatarContainer}>
                 {authorProfile.avatar_url ? (
-                    <img src={authorProfile.avatar_url} alt={authorName} className={styles.avatarImage} />
+                    <img 
+                        src={authorProfile.avatar_url} 
+                        alt={authorName} 
+                        className={`${styles.avatarImage} ${avatarLoaded ? styles.avatarLoaded : styles.avatarLoading}`} 
+                    />
                 ) : (
                     <div className={styles.avatarFallback}>{authorName.charAt(0).toUpperCase()}</div>
                 )}
@@ -113,11 +156,22 @@ export default function ComponentCard({
                     <img
                         src={item.thumbnail_url || item.preview_image_url}
                         alt={displayName}
-                        className={styles.mediaImage}
+                        className={`${styles.mediaImage} ${imageLoaded ? styles.mediaLoaded : styles.mediaLoading}`}
                         loading="lazy"
                     />
                 ) : (
-                    <img src="https://placehold.co/352x240" alt="Placeholder" className={styles.mediaImage} loading="lazy" />
+                    <img 
+                        src="https://placehold.co/352x240" 
+                        alt="Placeholder" 
+                        className={`${styles.mediaImage} ${imageLoaded ? styles.mediaLoaded : styles.mediaLoading}`} 
+                        loading="lazy"
+                    />
+                )}
+                
+                {!imageLoaded && (
+                    <div className={styles.imagePlaceholder}>
+                        <div className={styles.shimmerEffect} />
+                    </div>
                 )}
 
                 {(item.preview_video_url || item.video_url) && isHovered && (

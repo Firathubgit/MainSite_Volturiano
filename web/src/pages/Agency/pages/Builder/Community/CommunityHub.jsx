@@ -364,8 +364,12 @@ export default function CommunityHub() {
 
                 {/* Standard Grid */}
                 {loading && page === 1 ? (
-                    <div className={styles.loadingContainer}>
-                        <div className={styles.loadingSpinner} />
+                    <div className={styles.itemGrid}>
+                        {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
+                            <div key={`skel-hub-${i}`} className={styles.skeletonPulse}>
+                                <div className={styles.shimmerEffect} />
+                            </div>
+                        ))}
                     </div>
                 ) : error && page === 1 ? (
                     <div className={styles.emptyState}>{error}</div>
@@ -411,10 +415,14 @@ export default function CommunityHub() {
                             <div ref={setObserverRefElement} style={{ height: '40px', width: '100%', marginTop: '20px' }} />
                         )}
 
-                        {/* Loading spinner at the bottom if fetching more */}
+                        {/* Loading skeletons at the bottom if fetching more */}
                         {loading && page > 1 && (
-                            <div className={styles.loadingContainer} style={{ marginTop: 24, padding: '24px 0' }}>
-                                <div className={styles.loadingSpinner} />
+                            <div className={styles.itemGrid} style={{ marginTop: 20 }}>
+                                {[1, 2, 3, 4].map((i) => (
+                                    <div key={`skel-hub-more-${i}`} className={styles.skeletonPulse}>
+                                        <div className={styles.shimmerEffect} />
+                                    </div>
+                                ))}
                             </div>
                         )}
                     </>

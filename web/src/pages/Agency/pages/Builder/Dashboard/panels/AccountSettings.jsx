@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useBuilderAuth } from '../../../../../../contexts/BuilderAuthContext';
 import { builderSupabase } from '../../../../../../lib/builderSupabaseClient';
+import styles from '../ProfileSettings.module.css';
 
 export default function AccountSettings() {
     const { user, profile, refreshProfile } = useBuilderAuth();
@@ -233,6 +234,7 @@ export default function AccountSettings() {
                         <button 
                             onClick={handleSave}
                             disabled={loading || actionLoading}
+                            className={styles.premiumTransition}
                             style={{ 
                                 padding: '16px 48px', 
                                 background: success ? '#4ade80' : '#fff', 
@@ -242,11 +244,10 @@ export default function AccountSettings() {
                                 fontSize: '15px', 
                                 fontWeight: '700', 
                                 cursor: 'pointer',
-                                transition: 'all 0.4s cubic-bezier(0.16, 1, 0.3, 1)',
                                 boxShadow: success ? '0 10px 20px rgba(74, 158, 128, 0.15)' : '0 10px 20px rgba(0,0,0,0.1)'
                             }}
-                            onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px) scale(1.02)'; }}
-                            onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0) scale(1)'; }}
+                            onMouseEnter={e => { e.currentTarget.style.transform = 'scale(1.02)'; }}
+                            onMouseLeave={e => { e.currentTarget.style.transform = 'scale(1)'; }}
                         >
                             {loading ? 'Saving Changes...' : (success ? 'Changes Saved' : 'Save Changes')}
                         </button>

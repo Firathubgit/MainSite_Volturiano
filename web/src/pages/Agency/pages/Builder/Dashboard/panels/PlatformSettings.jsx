@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import FeedbackModal from '../../../../../../components/Modals/FeedbackModal/FeedbackModal';
 import { MessageSquareIcon, Loader2 } from 'lucide-react';
 import { useBuilderAuth } from '../../../../../../contexts/BuilderAuthContext';
+import styles from '../ProfileSettings.module.css';
 
 export default function PlatformSettings() {
     const { user, profile, refreshProfile, getAccessToken } = useBuilderAuth();
@@ -109,6 +110,7 @@ export default function PlatformSettings() {
                                 <button
                                     key={mode.id}
                                     onClick={() => handleModeChange(mode.id)}
+                                    className={styles.premiumTransition}
                                     style={{
                                         padding: '12px 32px',
                                         borderRadius: '12px',
@@ -116,10 +118,15 @@ export default function PlatformSettings() {
                                         background: builderMode === mode.id ? '#fff' : 'transparent',
                                         color: builderMode === mode.id ? '#000' : '#888',
                                         cursor: 'pointer',
-                                        transition: 'all 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
                                         fontSize: '14px',
                                         fontWeight: '700',
                                         minWidth: '120px'
+                                    }}
+                                    onMouseEnter={(e) => {
+                                        if (builderMode !== mode.id) e.currentTarget.style.transform = 'scale(1.05)';
+                                    }}
+                                    onMouseLeave={(e) => {
+                                        e.currentTarget.style.transform = 'scale(1)';
                                     }}
                                 >
                                     {mode.label}

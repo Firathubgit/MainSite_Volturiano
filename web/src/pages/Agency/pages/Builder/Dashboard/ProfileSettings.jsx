@@ -36,9 +36,9 @@ export default function ProfileSettings() {
     const [successMsg, setSuccessMsg] = useState('');
     const [errorMsg, setErrorMsg] = useState('');
     const [activeTab, setActiveTab] = useState('Websites');
-    const [isHoveringAvatar, setIsHoveringAvatar] = useState(false);
     const [isEditingProfile, setIsEditingProfile] = useState(false);
     const [isCreditModalOpen, setIsCreditModalOpen] = useState(false);
+    const [isAvatarFullyReady, setIsAvatarFullyReady] = useState(false);
     
     // Published Sites (legacy "Projects" tab)
     const [projects, setProjects] = useState([]);
@@ -47,7 +47,7 @@ export default function ProfileSettings() {
     // My Websites (new "Websites" tab)
     const [builderWebsites, setBuilderWebsites] = useState([]);
     const [websitesLoading, setWebsitesLoading] = useState(false);
-    const [deleteModal, setDeleteModal] = useState({ isOpen: false, projectId: null });
+    const [deleteModal, setDeleteModal] = useState({ isOpen: false, projectId: null, isDeleting: false });
     
     const fileInputRef = useRef(null);
 
@@ -88,6 +88,19 @@ export default function ProfileSettings() {
         window.addEventListener('open-credit-purchase-modal', handleOpenCredits);
         return () => window.removeEventListener('open-credit-purchase-modal', handleOpenCredits);
     }, []);
+
+    // Avatar decoding logic for premium "fully ready" feel
+    useEffect(() => {
+        if (!avatarUrl) {
+            setIsAvatarFullyReady(true);
+            return;
+        }
+        const img = new Image();
+        img.src = avatarUrl;
+        img.decode()
+            .then(() => setIsAvatarFullyReady(true))
+            .catch(() => setIsAvatarFullyReady(true));
+    }, [avatarUrl]);
 
     const handleSave = async () => {
         setLoadingProfile(true);
@@ -150,6 +163,7 @@ export default function ProfileSettings() {
         const id = deleteModal.projectId;
         if (!id) return;
         
+        setDeleteModal(prev => ({ ...prev, isDeleting: true }));
         try {
             const token = await getAccessToken();
             const res = await fetch(`/api/dashboard/projects/${id}`, { 
@@ -205,11 +219,10 @@ export default function ProfileSettings() {
                         style={{
                             background: 'transparent',
                             border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px',
-                            padding: '8px 16px', borderRadius: '8px', transition: 'background 0.2s',
+                            padding: '8px 16px', borderRadius: '8px',
                             marginLeft: '-16px' // Visual optical alignment
                         }}
-                        onMouseEnter={(e) => Object.assign(e.currentTarget.style, { background: '#1F1F1F' })}
-                        onMouseLeave={(e) => Object.assign(e.currentTarget.style, { background: 'transparent' })}
+                        className={styles.navMenuBtn}
                     >
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '16px', height: '16px' }}>
                             <svg width="17" height="30" viewBox="0 0 17 30" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ transform: 'scale(0.5)' }}>
@@ -227,30 +240,26 @@ export default function ProfileSettings() {
                     <div className={styles.leftColumn}>
                         {/* Avatar */}
                         <div
-                            onMouseEnter={() => setIsHoveringAvatar(true)}
-                            onMouseLeave={() => setIsHoveringAvatar(false)}
                             onClick={() => fileInputRef.current?.click()}
                             style={{
                                 width: 'clamp(120px, 18vh, 203px)',
                                 height: 'clamp(120px, 18vh, 203px)',
-                                background: '#D9D9D9', borderRadius: 9999, overflow: 'hidden',
+                                borderRadius: 9999,
                                 border: 'clamp(2px, 0.4vh, 4px) solid #1F1F1F',
                                 position: 'relative', cursor: 'pointer'
-                            }}>
+                            }}
+                            className={`${styles.skeletonCircle} ${!isAvatarFullyReady ? styles.skeletonPulse : ''}`}
+                        >
                             {(avatarFile || avatarUrl) ? (
-                                <img src={avatarFile ? URL.createObjectURL(avatarFile) : avatarUrl} alt="Avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                <img 
+                                    src={avatarFile ? URL.createObjectURL(avatarFile) : avatarUrl} 
+                                    alt="Avatar" 
+                                    className={`${styles.blurUpImage} ${isAvatarFullyReady ? styles.blurUpImageLoaded : ''}`}
+                                    style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }} 
+                                />
                             ) : (
-                                <div style={{ width: '100%', height: '100%', background: 'linear-gradient(135deg, #222, #111)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                <div style={{ width: '100%', height: '100%', background: 'linear-gradient(135deg, #222, #111)', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '50%' }}>
                                     <UserIcon size="50%" color="rgba(255,255,255,0.2)" />
-                                </div>
-                            )}
-                            {isHoveringAvatar && (
-                                <div style={{
-                                    position: 'absolute', top: 0, left: 0, width: '100%', height: '100%',
-                                    background: 'rgba(0, 0, 0, 0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                    zIndex: 10, transition: 'background 0.2s'
-                                }}>
-                                    <UploadCloudIcon size={32} color="white" />
                                 </div>
                             )}
                         </div>
@@ -281,11 +290,6 @@ export default function ProfileSettings() {
                                 key={item}
                                 onClick={() => setActiveTab(item)}
                                 className={`${styles.navMenuBtn} ${activeTab === item ? styles.navMenuBtnActive : ''}`}
-                                style={{
-                                    background: activeTab === item ? '#2E2D2D' : 'transparent'
-                                }}
-                                onMouseEnter={(e) => { if (activeTab !== item) e.currentTarget.style.background = '#2E2D2D'; }}
-                                onMouseLeave={(e) => { if (activeTab !== item) e.currentTarget.style.background = 'transparent'; }}
                             >
                                 {item}
                             </button>
@@ -377,8 +381,15 @@ export default function ProfileSettings() {
                                     <button 
                                         className={`${styles.modalBtn} ${styles.modalBtnDanger}`}
                                         onClick={confirmDeleteWebsite}
+                                        disabled={deleteModal.isDeleting}
+                                        style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
                                     >
-                                        Delete Project
+                                        {deleteModal.isDeleting ? (
+                                            <>
+                                                <Loader2Icon size={16} className="animate-spin" style={{ animation: 'spin 1.2s linear infinite' }} />
+                                                Deleting...
+                                            </>
+                                        ) : 'Delete Project'}
                                     </button>
                                 </div>
                             </motion.div>

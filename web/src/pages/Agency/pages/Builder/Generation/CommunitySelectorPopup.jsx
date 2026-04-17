@@ -417,8 +417,12 @@ export default function CommunitySelectorPopup({ isOpen, onClose, onConfirm, max
                         {(selectedCategory || items.length > 0 || sidebarActiveItem === 'Liked components') && (
                             <>
                                 {loading && page === 1 ? (
-                                    <div className={styles.loadingContainer}>
-                                        <div className={styles.loadingSpinner} />
+                                    <div className={styles.itemGrid}>
+                                        {[1, 2, 3, 4, 5, 6].map((i) => (
+                                            <div key={`skel-${i}`} className={styles.skeletonPulse}>
+                                                <div className={styles.shimmerEffect} />
+                                            </div>
+                                        ))}
                                     </div>
                                 ) : error && page === 1 ? (
                                     <div className={styles.emptyState}>{error}</div>
@@ -463,8 +467,12 @@ export default function CommunitySelectorPopup({ isOpen, onClose, onConfirm, max
                                         )}
 
                                         {loading && page > 1 && (
-                                            <div className={styles.loadingContainer} style={{ marginTop: 24, padding: '24px 0' }}>
-                                                <div className={styles.loadingSpinner} />
+                                            <div className={styles.itemGrid} style={{ marginTop: 20 }}>
+                                                {[1, 2, 3].map((i) => (
+                                                    <div key={`skel-more-${i}`} className={styles.skeletonPulse}>
+                                                        <div className={styles.shimmerEffect} />
+                                                    </div>
+                                                ))}
                                             </div>
                                         )}
                                     </>

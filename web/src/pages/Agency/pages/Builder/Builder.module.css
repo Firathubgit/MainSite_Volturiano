@@ -178,33 +178,33 @@
 /* ~75% zoom → viewport ~1440px+ */
 @media (min-height: 1440px) {
     .titleWrapper {
-        top: 12%;
+        margin-top: 10vh;
     }
 
     .maestroWrapper {
-        top: 64%;
+        margin-top: 48vh;
     }
 }
 
 /* ~67% zoom → viewport ~1600px+ */
 @media (min-height: 1600px) {
     .titleWrapper {
-        top: 8%;
+        margin-top: 8vh;
     }
 
     .maestroWrapper {
-        top: 67%;
+        margin-top: 46vh;
     }
 }
 
 /* ~50% zoom → viewport ~2160px+ */
 @media (min-height: 2000px) {
     .titleWrapper {
-        top: 5%;
+        margin-top: 6vh;
     }
 
     .maestroWrapper {
-        top: 70%;
+        margin-top: 44vh;
     }
 }
 
@@ -245,7 +245,7 @@
         /* Very subtle ambient glows */
         -10px -10px 25px -15px rgba(255, 255, 255, 0.08),
         10px 10px 25px -15px rgba(255, 255, 255, 0.1);
-    transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+    transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
     position: relative;
     z-index: 10;
 }
@@ -438,7 +438,7 @@
     /* Ensure delete button can overlap */
     border: 1px solid rgba(255, 255, 255, 0.08);
     background: rgba(40, 40, 40, 0.4);
-    transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .communityPreviewItem:hover {
@@ -669,7 +669,7 @@
 .modelSelectorButton[data-active="true"] {
     background-color: rgba(255, 255, 255, 0.1);
     color: white;
-    transform: translateY(-2px);
+    transform: scale(1.05);
 }
 
 .modelSelectorButton svg {
@@ -785,7 +785,7 @@
 .iconButton:hover {
     background-color: rgba(255, 255, 255, 0.1);
     color: white;
-    transform: translateY(-2px);
+    transform: scale(1.05);
 }
 
 .submitButton {
@@ -798,7 +798,7 @@
     align-items: center;
     justify-content: center;
     cursor: pointer;
-    transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+    transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
     border: none;
     position: relative;
     /* Removed inset shadow that caused a gradient-like edge line */
@@ -807,7 +807,7 @@
 
 .submitButton svg {
     color: #666;
-    transition: color 0.4s ease;
+    transition: color 0.25s ease;
 }
 
 .submitButton.hasText {
@@ -849,7 +849,7 @@
     height: 100%;
     object-fit: cover;
     opacity: 0.7;
-    transition: all 0.5s;
+    transition: all 0.3s;
     z-index: 10;
 }
 
@@ -924,7 +924,7 @@
     gap: 1.5rem;
     height: 100%;
     width: 100%;
-    transition: all 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .templateGridThumb {
@@ -946,7 +946,7 @@
     width: 100%;
     height: 100%;
     object-fit: cover;
-    transition: transform 0.5s ease;
+    transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
     opacity: 1;
 }
 
@@ -960,7 +960,7 @@
     inset: 0;
     background: rgba(0, 0, 0, 0.4);
     opacity: 0;
-    transition: opacity 0.4s ease;
+    transition: opacity 0.25s ease;
     z-index: 5;
 }
 
@@ -978,7 +978,7 @@
     gap: 12px;
     opacity: 0;
     transform: translateY(10px);
-    transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
     z-index: 10;
     pointer-events: none;
 }
@@ -1315,7 +1315,7 @@
 .supabaseIconButton:hover {
     background-color: #1c1c1f;
     border-color: rgba(62, 207, 142, 0.3);
-    transform: translateY(-2.5px) scale(1.04);
+    transform: scale(1.04);
 }
 
 .supabaseIconButton svg {
@@ -1799,4 +1799,45 @@
 /* Movement when checked */
 .pixelToggle:checked+.pixelSlider:before {
     transform: translateX(32px);
+}
+
+/* Skeleton Loaders */
+.skeletonPulse {
+    background-color: #1a1a1a;
+    position: relative;
+    overflow: hidden;
+}
+
+.skeletonTextLine {
+    height: 12px;
+    background-color: #222;
+    border-radius: 4px;
+    position: relative;
+    overflow: hidden;
+}
+
+.skeletonTitleWidth {
+    width: 60%;
+    height: 16px;
+    margin-bottom: 4px;
+}
+
+.skeletonDescWidth {
+    width: 40%;
+}
+
+.shimmerEffect {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.08), transparent);
+    animation: shimmer 1.5s infinite linear;
+    transform: skewX(-20deg);
+}
+
+@keyframes shimmer {
+    0% { transform: translateX(-150%) skewX(-20deg); }
+    100% { transform: translateX(150%) skewX(-20deg); }
 }

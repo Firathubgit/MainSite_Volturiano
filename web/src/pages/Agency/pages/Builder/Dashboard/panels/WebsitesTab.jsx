@@ -6,8 +6,22 @@ import { useRouteTransition } from "../../../../../../contexts/RouteTransitionCo
 
 function ProjectCard({ project, onDelete, navigate }) {
     const [showMenu, setShowMenu] = useState(false);
+    const [imgLoaded, setImgLoaded] = useState(false);
     const { startTransition } = useRouteTransition();
     const menuRef = useRef(null);
+
+    // Image decoding for premium feel
+    useEffect(() => {
+        if (!project.thumbnail_url) {
+            setImgLoaded(true);
+            return;
+        }
+        const img = new Image();
+        img.src = project.thumbnail_url;
+        img.decode()
+            .then(() => setImgLoaded(true))
+            .catch(() => setImgLoaded(true));
+    }, [project.thumbnail_url]);
 
     // Close menu when clicking outside
     useEffect(() => {
@@ -21,7 +35,6 @@ function ProjectCard({ project, onDelete, navigate }) {
     }, []);
 
     const handleTransitionStart = (projectId) => {
-        // Elegantly drop out the dashboard UI
         const dashboardRoot = document.querySelector('[style*="min-height: 100vh"]') || document.body;
         if (dashboardRoot) {
             dashboardRoot.style.transition = 'all 0.6s cubic-bezier(0.16, 1, 0.3, 1)';
@@ -30,7 +43,6 @@ function ProjectCard({ project, onDelete, navigate }) {
             dashboardRoot.style.filter = 'blur(12px)';
         }
 
-        // Start Cinematic Transition for REVISIT
         startTransition(`/builder/generation?project=${projectId}`, {
             prompt: "I want to continue editing this project...",
             isProjectRevisit: true
@@ -65,40 +77,73 @@ function ProjectCard({ project, onDelete, navigate }) {
 
     return (
         <div 
+            className={styles.premiumTransition}
             style={{
                 display: 'flex',
                 flexDirection: 'column',
-                transition: 'all 0.4s cubic-bezier(0.16, 1, 0.3, 1)',
                 cursor: 'pointer',
                 position: 'relative',
                 gap: '16px'
             }}
             onClick={handleCardClick}
             onMouseEnter={(e) => {
-                e.currentTarget.style.transform = 'translateY(-3px)';
+                e.currentTarget.style.transform = 'scale(1.02)';
             }}
             onMouseLeave={(e) => {
-                e.currentTarget.style.transform = 'translateY(0)';
+                e.currentTarget.style.transform = 'scale(1)';
             }}
         >
             {/* Horizontal Rectangle Project Preview Image */}
-            <div style={{ 
-                aspectRatio: '16/10', 
-                background: '#161616', 
-                position: 'relative', 
-                overflow: 'hidden',
-                borderRadius: '20px',
-                border: '1px solid #2E2D2D',
-                transition: 'border-color 0.3s',
-            }}
-            onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#444'; }}
-            onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#2E2D2D'; }}
+            <div 
+                className={styles.premiumTransition}
+                style={{ 
+                    aspectRatio: '16/10', 
+                    background: '#161616', 
+                    position: 'relative', 
+                    overflow: 'hidden',
+                    borderRadius: '20px',
+                    border: '1px solid #2E2D2D',
+                }}
+                onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#444'; }}
+                onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#2E2D2D'; }}
             >
+                {!imgLoaded && (
+                    <div className={styles.skeletonPulse} style={{ position: 'absolute', inset: 0 }}>
+                        <div className={styles.shimmerEffect} />
+                    </div>
+                )}
+                
                 {project.thumbnail_url ? (
-                    <img src={project.thumbnail_url} alt={project.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    <img 
+                        src={project.thumbnail_url} 
+                        alt={project.name} 
+                        className={`${styles.blurUpImage} ${imgLoaded ? styles.blurUpImageLoaded : ''}`}
+                        style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
+                    />
                 ) : (
-                    <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: 0.1 }}>
-                        <Layout size={64} color="#fff" strokeWidth={1} />
+                    <div 
+                        className={styles.skeletonPulse}
+                        style={{ 
+                            width: '100%', 
+                            height: '100%', 
+                            display: 'flex', 
+                            flexDirection: 'column',
+                            alignItems: 'center', 
+                            justifyContent: 'center', 
+                            gap: '12px'
+                        }}
+                    >
+                        <div className={styles.shimmerEffect} />
+                        <Layout size={48} color="rgba(255,255,255,0.05)" strokeWidth={1} />
+                        <span style={{ 
+                            fontSize: '11px', 
+                            fontWeight: '700', 
+                            color: 'rgba(255,255,255,0.2)', 
+                            letterSpacing: '0.1em',
+                            textTransform: 'uppercase'
+                        }}>
+                            Generating Site...
+                        </span>
                     </div>
                 )}
             </div>
@@ -266,8 +311,18 @@ function ProjectCard({ project, onDelete, navigate }) {
 export default function WebsitesTab({ websites, loading, onDelete, onCreateNew, navigate }) {
     if (loading) {
         return (
-            <div style={{ display: 'flex', justifyContent: 'center', padding: '100px' }}>
-                <Loader2 size={40} color="#444" style={{ animation: 'spin 1s linear infinite' }} />
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(360px, 100%), 1fr))', gap: '24px' }}>
+                {[1, 2, 3].map(i => (
+                    <div key={i} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                        <div className={styles.skeletonPulse} style={{ aspectRatio: '16/10', borderRadius: '20px' }}>
+                            <div className={styles.shimmerEffect} />
+                        </div>
+                        <div style={{ padding: '0 8px' }}>
+                            <div className={styles.skeletonText} style={{ width: '60%', height: '24px' }} />
+                            <div className={styles.skeletonText} style={{ width: '40%', height: '14px' }} />
+                        </div>
+                    </div>
+                ))}
             </div>
         );
     }

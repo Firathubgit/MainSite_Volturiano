@@ -138,9 +138,31 @@ export default function MySubmissions() {
 
     if (loading) {
         return (
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '300px', gap: '12px' }}>
-                <Loader2 size={32} color="#555" style={{ animation: 'spin 1s linear infinite' }} />
-                <span style={{ color: '#555', fontSize: '13px' }}>Loading your dashboard...</span>
+            <div className={styles.dashboardContainer}>
+                <div className={styles.header}>
+                    <div className={styles.skeletonText} style={{ width: '200px', height: '32px', marginBottom: '1.5rem' }} />
+                    <div className={styles.statsRow}>
+                        {[1, 2, 3].map(i => (
+                            <div key={i} className={styles.statCard} style={{ background: 'transparent' }}>
+                                <div className={styles.skeletonText} style={{ width: '80px', height: '14px' }} />
+                                <div className={styles.skeletonText} style={{ width: '60px', height: '28px' }} />
+                            </div>
+                        ))}
+                    </div>
+                </div>
+                <div className={styles.submissionsGrid}>
+                    {[1, 2, 3, 4, 5, 6].map(i => (
+                        <div key={i} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                            <div className={styles.skeletonPulse} style={{ aspectRatio: '16/10', borderRadius: '20px' }}>
+                                <div className={styles.shimmerEffect} />
+                            </div>
+                            <div style={{ padding: '0 4px' }}>
+                                <div className={styles.skeletonText} style={{ width: '60%', height: '20px' }} />
+                                <div className={styles.skeletonText} style={{ width: '40%', height: '12px' }} />
+                            </div>
+                        </div>
+                    ))}
+                </div>
             </div>
         );
     }
@@ -208,99 +230,20 @@ export default function MySubmissions() {
                         <div className={styles.emptyState}>No components submitted yet.</div>
                     ) : (
                         submissions.map(sub => (
-                            <div
-                                key={sub.id}
-                                className={styles.submissionCard}
-                                onClick={() => handleEdit(sub)}
-                                onMouseEnter={() => setHoveredCardId(sub.id)}
-                                onMouseLeave={() => {
-                                    setHoveredCardId(null);
-                                    setVideoPlayingId(null);
-                                }}
-                            >
-                                <div className={styles.thumbnailWrapper}>
-                                    {getThumbnailUrl(sub.thumbnail_url) ? (
-                                        <img
-                                            src={getThumbnailUrl(sub.thumbnail_url)}
-                                            alt={sub.name}
-                                            className={styles.thumbnailImage}
-                                            loading="lazy"
-                                        />
-                                    ) : (
-                                        <div className={styles.thumbnailPlaceholder}>
-                                            <ActivityIcon size={32} opacity={0.2} />
-                                        </div>
-                                    )}
-
-                                    {sub.preview_video_url && hoveredCardId === sub.id && (
-                                        <video
-                                            src={getPreviewVideoUrl(sub.preview_video_url)}
-                                            autoPlay
-                                            muted
-                                            loop
-                                            poster={getThumbnailUrl(sub.thumbnail_url)}
-                                            className={`${styles.thumbnailVideo} ${videoPlayingId === sub.id ? styles.thumbnailVideoVisible : ''}`}
-                                            onPlaying={() => setVideoPlayingId(sub.id)}
-                                        />
-                                    )}
-
-                                    <div className={styles.statusLabelOverlay}>
-                                        <StatusBadge status={sub.status} />
-                                    </div>
-                                </div>
-
-                                <div className={styles.cardContent}>
-                                    <div className={styles.projectNameRow}>
-                                        <h3 className={styles.projectName}>{sub.name}</h3>
-                                        <div className={styles.menuContainer}>
-                                            <button 
-                                                className={styles.menuTrigger}
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    setMenuOpenId(menuOpenId === sub.id ? null : sub.id);
-                                                }}
-                                            >
-                                                <MoreHorizontal size={18} />
-                                            </button>
-                                            
-                                            {menuOpenId === sub.id && (
-                                                <div className={styles.dropdownMenu} onClick={(e) => e.stopPropagation()}>
-                                                    <button 
-                                                        className={styles.menuItemDanger}
-                                                        onClick={(e) => {
-                                                            e.stopPropagation();
-                                                            setConfirmDeleteId(sub.id);
-                                                            setMenuOpenId(null);
-                                                        }}
-                                                    >
-                                                        <Trash2Icon size={14} /> Delete Component
-                                                    </button>
-                                                </div>
-                                            )}
-                                        </div>
-                                    </div>
-
-                                    <div className={styles.projectMeta}>
-                                        <div className={styles.metaLeft}>
-                                            <span className={styles.lastUpdated}>
-                                                Updated {formatDistanceToNow(new Date(sub.updated_at || sub.created_at), { addSuffix: true })}
-                                            </span>
-                                            {sub.quality_score && (
-                                                <span className={styles.qualityScore}>
-                                                     • Score: {sub.quality_score}/10
-                                                </span>
-                                            )}
-                                        </div>
-                                        
-                                        <div className={styles.metaRight}>
-                                            <div className={styles.likesCount}>
-                                                <Heart size={12} fill="rgba(255,255,255,0.2)" stroke="none" />
-                                                <span>{sub.likes_count || 0}</span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
+                            <SubmissionCard 
+                                key={sub.id} 
+                                sub={sub} 
+                                onEdit={handleEdit}
+                                onDelete={(id) => setConfirmDeleteId(id)}
+                                menuOpenId={menuOpenId}
+                                setMenuOpenId={setMenuOpenId}
+                                hoveredCardId={hoveredCardId}
+                                setHoveredCardId={setHoveredCardId}
+                                videoPlayingId={videoPlayingId}
+                                setVideoPlayingId={setVideoPlayingId}
+                                getThumbnailUrl={getThumbnailUrl}
+                                getPreviewVideoUrl={getPreviewVideoUrl}
+                            />
                         ))
                     )}
                 </div>
@@ -469,5 +412,126 @@ function StatusBadge({ status }) {
         <span className={`${styles.statusBadge} ${colorClass}`}>
             {icon} {statusLabel}
         </span>
+    );
+}
+
+function SubmissionCard({ 
+    sub, onEdit, onDelete, menuOpenId, setMenuOpenId, 
+    hoveredCardId, setHoveredCardId, videoPlayingId, 
+    setVideoPlayingId, getThumbnailUrl, getPreviewVideoUrl 
+}) {
+    const [imgLoaded, setImgLoaded] = useState(false);
+    const thumbnailUrl = getThumbnailUrl(sub.thumbnail_url);
+
+    useEffect(() => {
+        if (!thumbnailUrl) {
+            setImgLoaded(true);
+            return;
+        }
+        const img = new Image();
+        img.src = thumbnailUrl;
+        img.decode()
+            .then(() => setImgLoaded(true))
+            .catch(() => setImgLoaded(true));
+    }, [thumbnailUrl]);
+
+    return (
+        <div
+            className={styles.submissionCard}
+            onClick={() => onEdit(sub)}
+            onMouseEnter={() => setHoveredCardId(sub.id)}
+            onMouseLeave={() => {
+                setHoveredCardId(null);
+                setVideoPlayingId(null);
+            }}
+        >
+            <div className={styles.thumbnailWrapper}>
+                {!imgLoaded && (
+                    <div className={styles.skeletonPulse} style={{ position: 'absolute', inset: 0 }}>
+                        <div className={styles.shimmerEffect} />
+                    </div>
+                )}
+                
+                {thumbnailUrl ? (
+                    <img
+                        src={thumbnailUrl}
+                        alt={sub.name}
+                        className={`${styles.thumbnailImage} ${styles.blurUpImage} ${imgLoaded ? styles.blurUpImageLoaded : ''}`}
+                    />
+                ) : (
+                    <div className={styles.thumbnailPlaceholder}>
+                        <ActivityIcon size={32} opacity={0.2} />
+                    </div>
+                )}
+
+                {sub.preview_video_url && hoveredCardId === sub.id && (
+                    <video
+                        src={getPreviewVideoUrl(sub.preview_video_url)}
+                        autoPlay
+                        muted
+                        loop
+                        poster={thumbnailUrl}
+                        className={`${styles.thumbnailVideo} ${videoPlayingId === sub.id ? styles.thumbnailVideoVisible : ''}`}
+                        onPlaying={() => setVideoPlayingId(sub.id)}
+                    />
+                )}
+
+                <div className={styles.statusLabelOverlay}>
+                    <StatusBadge status={sub.status} />
+                </div>
+            </div>
+
+            <div className={styles.cardContent}>
+                <div className={styles.projectNameRow}>
+                    <h3 className={styles.projectName}>{sub.name}</h3>
+                    <div className={styles.menuContainer}>
+                        <button 
+                            className={styles.menuTrigger}
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                setMenuOpenId(menuOpenId === sub.id ? null : sub.id);
+                            }}
+                        >
+                            <MoreHorizontal size={18} />
+                        </button>
+                        
+                        {menuOpenId === sub.id && (
+                            <div className={styles.dropdownMenu} onClick={(e) => e.stopPropagation()}>
+                                <button 
+                                    className={styles.menuItemDanger}
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        onDelete(sub.id);
+                                        setMenuOpenId(null);
+                                    }}
+                                >
+                                    <Trash2Icon size={14} /> Delete Component
+                                </button>
+                            </div>
+                        )}
+                    </div>
+                </div>
+
+                <div className={styles.projectMeta}>
+                    <div className={styles.metaLeft}>
+                        <span className={styles.lastUpdated}>
+                            Updated {formatDistanceToNow(new Date(sub.updated_at || sub.created_at), { addSuffix: true })}
+                        </span>
+                        {sub.quality_score && (
+                            <span className={styles.qualityScore}>
+                                 • Score: {sub.quality_score}/10
+                            </span>
+                        )}
+                    </div>
+                    
+                    <div className={styles.metaRight}>
+                        <div className={styles.likesCount}>
+                            <Heart size={12} fill="rgba(255,255,255,0.2)" stroke="none" />
+                            <span>{sub.likes_count || 0}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
     );
 }

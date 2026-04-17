@@ -17,6 +17,7 @@ import CommunitySelectorPopup from './Generation/CommunitySelectorPopup';
 import AuthGateModal from '../../../../components/Modals/AuthGateModal';
 import CongratsModal from './Dashboard/components/CongratsModal';
 import gradientCornerImage from './Dashboard/Assets/GradientCornerOne.png';
+import TryComponentSelectPopup from './components/TryComponentSelectPopup';
 
 // Import assets (Reference page thumbnails)
 import scaleIntelligenceThumbnail from '../../../../assets/ScaleIntelegenceMocup.png';
@@ -108,6 +109,7 @@ const BuilderContent = () => {
     const { refreshCredits } = useCredits();
     const [inputValue, setInputValue] = useState("");
     const [templates, setTemplates] = useState([]);
+    const [isLoadingTemplates, setIsLoadingTemplates] = useState(true);
     const [images, setImages] = useState([]);
     const [notification, setNotification] = useState(null);
     const [premiumMode, setPremiumMode] = useState(
@@ -156,6 +158,9 @@ const BuilderContent = () => {
     const [showAuthModal, setShowAuthModal] = useState(false);
     const [showCongrats, setShowCongrats] = useState(false);
     const [popupDismissed, setPopupDismissed] = useState(false); // Session guard
+
+    const [hasShownComponentPopup, setHasShownComponentPopup] = useState(false);
+    const [showComponentPopup, setShowComponentPopup] = useState(false);
 
     const premiumPhrases = [
         "design a luxury real estate site...",
@@ -393,8 +398,12 @@ const BuilderContent = () => {
             .then(res => res.json())
             .then(data => {
                 if (data.success) setTemplates(data.templates || []);
+                setIsLoadingTemplates(false);
             })
-            .catch(err => console.error('Failed to load templates:', err));
+            .catch(err => {
+                console.error('Failed to load templates:', err);
+                setIsLoadingTemplates(false);
+            });
     }, []);
 
     const handlePaste = (e) => {
@@ -478,7 +487,7 @@ const BuilderContent = () => {
     };
 
     const handleSubmit = (e) => {
-        e.preventDefault();
+        if (e) e.preventDefault();
 
         // Phase P7: Auth Gating
         if (!isAuthenticated) {
@@ -489,46 +498,57 @@ const BuilderContent = () => {
         if (isSubmitting) return;
 
         if (inputValue.trim() || images.length > 0 || selectedComponents.length > 0) {
-            setIsSubmitting(true);
-
-            // Elegantly drop out the entire Builder UI (main content)
-            const builderRoot = document.querySelector(`[class*="outerWrapper"]`);
-            if (builderRoot) {
-                builderRoot.style.transition = 'all 0.8s cubic-bezier(0.16, 1, 0.3, 1)';
-                builderRoot.style.opacity = '0';
-                builderRoot.style.transform = 'translateY(40px) scale(0.88)'; // Scale down from 0.9 base
-                builderRoot.style.filter = 'blur(20px)';
+            // Check if we need to show the Component Select popup
+            if (selectedComponents.length === 0 && !hasShownComponentPopup) {
+                setHasShownComponentPopup(true);
+                setShowComponentPopup(true);
+                return; // Stop submission for now
             }
 
-            // Dispatch an event to drop out the Header NavBar at the same time
-            window.dispatchEvent(new CustomEvent('cinematic-transition-start'));
-
-            // Dispatch an optimistic credit deduction event to animate the top right counter instantly
-            if (inputValue.trim()) {
-                window.dispatchEvent(new CustomEvent('optimistic-credit-deduction'));
-            }
-
-            // Start Cinematic Transition
-            // Wait 1.2s before actually transitioning so the user can enjoy the optimistic credit pop animation
-            setTimeout(() => {
-                // Map settings value → backend pipeline value:
-                //   Settings 'free'    → Backend 'off'    (pure AI generation, no premium components)
-                //   Settings 'hybrid'  → Backend 'hybrid' (mix of premium + AI generated)
-                //   Settings 'premium' → Backend 'strict' (only premium components from Supabase)
-                const modeMap = { 'free': 'off', 'hybrid': 'hybrid', 'premium': 'strict' };
-                const backendMode = modeMap[premiumMode] || 'hybrid';
-
-                startTransition('/builder/generation', {
-                    prompt: inputValue.trim() || (selectedComponents.length > 0 ? "Build from community components" : ""),
-                    images: images,
-                    premiumMode: backendMode,
-                    model: selectedModel,
-                    manualSelectionIds: selectedComponents.map(c => c.id),
-                    initialComponents: selectedComponents,
-                    strictMode: strictMode
-                });
-            }, 1200);
+            executeSubmit();
         }
+    };
+
+    const executeSubmit = () => {
+        setIsSubmitting(true);
+
+        // Elegantly drop out the entire Builder UI (main content)
+        const builderRoot = document.querySelector(`[class*="outerWrapper"]`);
+        if (builderRoot) {
+            builderRoot.style.transition = 'all 0.8s cubic-bezier(0.16, 1, 0.3, 1)';
+            builderRoot.style.opacity = '0';
+            builderRoot.style.transform = 'translateY(40px) scale(0.88)'; // Scale down from 0.9 base
+            builderRoot.style.filter = 'blur(20px)';
+        }
+
+        // Dispatch an event to drop out the Header NavBar at the same time
+        window.dispatchEvent(new CustomEvent('cinematic-transition-start'));
+
+        // Dispatch an optimistic credit deduction event to animate the top right counter instantly
+        if (inputValue.trim()) {
+            window.dispatchEvent(new CustomEvent('optimistic-credit-deduction'));
+        }
+
+        // Start Cinematic Transition
+        // Wait 1.2s before actually transitioning so the user can enjoy the optimistic credit pop animation
+        setTimeout(() => {
+            // Map settings value → backend pipeline value:
+            //   Settings 'free'    → Backend 'off'    (pure AI generation, no premium components)
+            //   Settings 'hybrid'  → Backend 'hybrid' (mix of premium + AI generated)
+            //   Settings 'premium' → Backend 'strict' (only premium components from Supabase)
+            const modeMap = { 'free': 'off', 'hybrid': 'hybrid', 'premium': 'strict' };
+            const backendMode = modeMap[premiumMode] || 'hybrid';
+
+            startTransition('/builder/generation', {
+                prompt: inputValue.trim() || (selectedComponents.length > 0 ? "Build from community components" : ""),
+                images: images,
+                premiumMode: backendMode,
+                model: selectedModel,
+                manualSelectionIds: selectedComponents.map(c => c.id),
+                initialComponents: selectedComponents,
+                strictMode: strictMode
+            });
+        }, 1200);
     };
 
     const handleTemplateSelect = (templateId) => {
@@ -573,7 +593,7 @@ const BuilderContent = () => {
                 </div>
 
                 {/* ─── Template Selector Section (outside hero) ─── */}
-                {templates.length > 0 && (
+                {(templates.length > 0 || isLoadingTemplates) && (
                     <div className={styles.templateSection}>
                         <div className={styles.templateSectionInner}>
                             <motion.div
@@ -587,46 +607,64 @@ const BuilderContent = () => {
                             </motion.div>
 
                             <div className={styles.templateGrid}>
-                                {templates.map((tmpl, idx) => (
-                                    <motion.div
-                                        key={tmpl.templateId}
-                                        initial={{ opacity: 0, y: 40 }}
-                                        whileInView={{ opacity: 1, y: 0 }}
-                                        transition={{ duration: 0.6, delay: idx * 0.1 }}
-                                        viewport={{ once: true }}
-                                        className={styles.templateGridCard}
-                                    >
-                                        <div className={styles.templateGridThumb}>
-                                            <img
-                                                src={TEMPLATE_METADATA[tmpl.templateId]?.thumbnail || platformThumbnail}
-                                                alt={tmpl.name}
-                                                className={styles.templateGridImage}
-                                            />
-                                            <div className={styles.templateGridOverlay} />
-
-                                            <div className={styles.templateCardActions}>
-                                                <button
-                                                    className={`${styles.templateActionBtn} ${styles.useTemplateBtn}`}
-                                                    onClick={() => handleTemplateSelect(tmpl.templateId)}
-                                                >
-                                                    Use Template
-                                                </button>
-                                                {TEMPLATE_METADATA[tmpl.templateId]?.url && (
-                                                    <button
-                                                        className={`${styles.templateActionBtn} ${styles.viewSiteBtn}`}
-                                                        onClick={() => window.open(TEMPLATE_METADATA[tmpl.templateId].url, '_blank')}
-                                                    >
-                                                        View Site
-                                                    </button>
-                                                )}
+                                {isLoadingTemplates ? (
+                                    [1, 2, 3].map((skeleton) => (
+                                        <div key={skeleton} className={styles.templateGridCard}>
+                                            <div className={`${styles.templateGridThumb} ${styles.skeletonPulse}`}>
+                                                <div className={styles.shimmerEffect} />
+                                            </div>
+                                            <div className={styles.templateGridInfo}>
+                                                <div className={`${styles.skeletonTextLine} ${styles.skeletonTitleWidth}`}>
+                                                    <div className={styles.shimmerEffect} />
+                                                </div>
+                                                <div className={`${styles.skeletonTextLine} ${styles.skeletonDescWidth}`}>
+                                                    <div className={styles.shimmerEffect} />
+                                                </div>
                                             </div>
                                         </div>
-                                        <div className={styles.templateGridInfo}>
-                                            <h3 className={styles.templateGridName}>{tmpl.name}</h3>
-                                            <span className={styles.templateGridDesc}>{tmpl.description}</span>
-                                        </div>
-                                    </motion.div>
-                                ))}
+                                    ))
+                                ) : (
+                                    templates.map((tmpl, idx) => (
+                                        <motion.div
+                                            key={tmpl.templateId}
+                                            initial={{ opacity: 0, y: 40 }}
+                                            whileInView={{ opacity: 1, y: 0 }}
+                                            transition={{ duration: 0.6, delay: idx * 0.1 }}
+                                            viewport={{ once: true }}
+                                            className={styles.templateGridCard}
+                                        >
+                                            <div className={styles.templateGridThumb}>
+                                                <img
+                                                    src={TEMPLATE_METADATA[tmpl.templateId]?.thumbnail || platformThumbnail}
+                                                    alt={tmpl.name}
+                                                    className={styles.templateGridImage}
+                                                />
+                                                <div className={styles.templateGridOverlay} />
+
+                                                <div className={styles.templateCardActions}>
+                                                    <button
+                                                        className={`${styles.templateActionBtn} ${styles.useTemplateBtn}`}
+                                                        onClick={() => handleTemplateSelect(tmpl.templateId)}
+                                                    >
+                                                        Use Template
+                                                    </button>
+                                                    {TEMPLATE_METADATA[tmpl.templateId]?.url && (
+                                                        <button
+                                                            className={`${styles.templateActionBtn} ${styles.viewSiteBtn}`}
+                                                            onClick={() => window.open(TEMPLATE_METADATA[tmpl.templateId].url, '_blank')}
+                                                        >
+                                                            View Site
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            </div>
+                                            <div className={styles.templateGridInfo}>
+                                                <h3 className={styles.templateGridName}>{tmpl.name}</h3>
+                                                <span className={styles.templateGridDesc}>{tmpl.description}</span>
+                                            </div>
+                                        </motion.div>
+                                    ))
+                                )}
                             </div>
                         </div>
                     </div>
@@ -960,6 +998,19 @@ const BuilderContent = () => {
                     {notification}
                 </motion.div>
             )}
+
+            <TryComponentSelectPopup
+                isOpen={showComponentPopup}
+                onClose={() => setShowComponentPopup(false)}
+                onOpenCommunity={() => {
+                    setShowComponentPopup(false);
+                    setIsCommunityOpen(true);
+                }}
+                onProceedWithout={() => {
+                    setShowComponentPopup(false);
+                    executeSubmit();
+                }}
+            />
 
             <CommunitySelectorPopup
                 isOpen={isCommunityOpen}

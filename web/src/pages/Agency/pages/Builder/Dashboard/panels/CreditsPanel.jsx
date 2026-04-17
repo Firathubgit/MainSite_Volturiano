@@ -5,6 +5,7 @@ import { Loader2 } from 'lucide-react';
 import useCredits from '../../../../../../hooks/useCredits';
 import coinIcon from '../Assets/SvgIconToken.svg';
 import CreditLimitModal from '../../../../../../components/Modals/CreditLimitModal';
+import styles from '../ProfileSettings.module.css';
 
 export default function CreditsPanel() {
     const { user, profile, getAccessToken } = useBuilderAuth();
@@ -85,8 +86,19 @@ export default function CreditsPanel() {
 
     if (loading || !creditsLoaded) {
         return (
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '200px' }}>
-                <Loader2 size={32} color="#555" style={{ animation: 'spin 1s linear infinite' }} />
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '40px' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                    <div className={styles.skeletonText} style={{ width: '120px' }} />
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+                        <div className={styles.skeletonCircle} style={{ width: '48px', height: '48px' }} />
+                        <div className={styles.skeletonText} style={{ width: '100px', height: '80px' }} />
+                    </div>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '12px' }}>
+                    {[1,2,3,4].map(i => (
+                        <div key={i} className={styles.skeletonPulse} style={{ height: '100px', borderRadius: '16px' }} />
+                    ))}
+                </div>
             </div>
         );
     }

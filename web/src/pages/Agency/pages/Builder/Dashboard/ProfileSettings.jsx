@@ -47,7 +47,7 @@ export default function ProfileSettings() {
     // My Websites (new "Websites" tab)
     const [builderWebsites, setBuilderWebsites] = useState([]);
     const [websitesLoading, setWebsitesLoading] = useState(false);
-    const [deleteModal, setDeleteModal] = useState({ isOpen: false, projectId: null, isDeleting: false });
+    const [deleteModal, setDeleteModal] = useState({ isOpen: false, projectId: null, isDeleting: false, type: 'builder' });
     
     const fileInputRef = useRef(null);
 
@@ -155,29 +155,37 @@ export default function ProfileSettings() {
         }
     };
 
-    const handleDeleteWebsite = (id) => {
-        setDeleteModal({ isOpen: true, projectId: id });
+    const handleDeleteWebsite = (id, type = 'builder') => {
+        setDeleteModal({ isOpen: true, projectId: id, isDeleting: false, type });
     };
 
     const confirmDeleteWebsite = async () => {
-        const id = deleteModal.projectId;
+        const { projectId: id, type } = deleteModal;
         if (!id) return;
         
         setDeleteModal(prev => ({ ...prev, isDeleting: true }));
         try {
             const token = await getAccessToken();
-            const res = await fetch(`/api/dashboard/projects/${id}`, { 
+            const url = type === 'published' ? `/api/dashboard/sites/${id}` : `/api/dashboard/projects/${id}`;
+            
+            const res = await fetch(url, { 
                 method: 'DELETE',
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             const data = await res.json();
             if (data.success) {
-                setBuilderWebsites(prev => prev.filter(p => p.id !== id));
+                if (type === 'published') {
+                    // Force a local update or wait for panel to re-fetch? 
+                    // To keep it simple and consistent:
+                    window.dispatchEvent(new CustomEvent('site-deleted', { detail: { id } }));
+                } else {
+                    setBuilderWebsites(prev => prev.filter(p => p.id !== id));
+                }
             }
         } catch (err) {
             console.error('Delete failed:', err);
         } finally {
-            setDeleteModal({ isOpen: false, projectId: null });
+            setDeleteModal({ isOpen: false, projectId: null, isDeleting: false, type: 'builder' });
         }
     };
 
@@ -325,7 +333,7 @@ export default function ProfileSettings() {
 
                     {activeTab === 'Projects' && (
                         <div style={{ width: '100%', padding: '20px' }}>
-                            <PublishedSites />
+                            <PublishedSites onDelete={(id) => handleDeleteWebsite(id, 'published')} />
                         </div>
                     )}
 

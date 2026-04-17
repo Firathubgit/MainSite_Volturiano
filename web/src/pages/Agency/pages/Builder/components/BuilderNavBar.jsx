@@ -74,9 +74,28 @@ export function BuilderNavBar() {
             zIndex: -1,
             filter: 'blur(12px)'
           }} />
-          <button type="button" className={navStyles.menuButton} aria-label="Menu">
+          <Link 
+            to="/builder/profile" 
+            className={navStyles.menuButton}
+            aria-label="Account Dashboard"
+            style={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              justifyContent: 'center',
+              textDecoration: 'none',
+              transition: 'all 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.transform = 'scale(1.1)';
+              e.currentTarget.style.opacity = '0.8';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.transform = 'scale(1)';
+              e.currentTarget.style.opacity = '1';
+            }}
+          >
             <img src={hamburgerIcon} alt="" className={navStyles.menuIcon} />
-          </button>
+          </Link>
 
           {/* Logo sign removed per user request */}
         </div>
@@ -204,7 +223,7 @@ export function BuilderNavBar() {
                     <DropdownItem 
                       icon={<UserIcon size={15} />} 
                       label="Account Dashboard" 
-                      onClick={() => { setDropdownOpen(false); navigate('/builder/dashboard'); }} 
+                      onClick={() => { setDropdownOpen(false); navigate('/builder/profile'); }} 
                     />
 
                     <DropdownItem 

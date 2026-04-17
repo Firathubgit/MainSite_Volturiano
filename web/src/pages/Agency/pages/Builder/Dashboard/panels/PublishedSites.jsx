@@ -4,7 +4,7 @@ import { ExternalLink, Globe, Trash2, Loader2, Pause, Play, Eye, Calendar, Layou
 import { formatDistanceToNow } from 'date-fns';
 import styles from '../ProfileSettings.module.css';
 
-export default function PublishedSites() {
+export default function PublishedSites({ onDelete }) {
     const { user, getAccessToken } = useBuilderAuth();
     const [sites, setSites] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -32,6 +32,16 @@ export default function PublishedSites() {
         if (user) fetchSites();
     }, [user]);
 
+    // Listen for custom delete events from the parent modal
+    useEffect(() => {
+        const handleSiteDeleted = (e) => {
+            const deletedId = e.detail.id;
+            setSites(prev => prev.filter(s => s.id !== deletedId));
+        };
+        window.addEventListener('site-deleted', handleSiteDeleted);
+        return () => window.removeEventListener('site-deleted', handleSiteDeleted);
+    }, []);
+
     const handleToggleStatus = async (siteId, currentStatus) => {
         const newStatus = currentStatus === 'active' ? 'paused' : 'active';
         setActionId(siteId);
@@ -57,23 +67,7 @@ export default function PublishedSites() {
     };
 
     const handleDelete = async (siteId) => {
-        if (!window.confirm('Are you sure? This will delete the hosting files from Supabase and unpublish the site completely.')) return;
-        setActionId(siteId);
-        try {
-            const token = await getAccessToken();
-            const res = await fetch(`/api/dashboard/sites/${siteId}`, {
-                method: 'DELETE',
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-            const data = await res.json();
-            if (data.success) {
-                setSites(prev => prev.filter(s => s.id !== siteId));
-            }
-        } catch (err) {
-            console.error('Delete failed:', err);
-        } finally {
-            setActionId(null);
-        }
+        onDelete(siteId);
     };
 
     if (loading) {

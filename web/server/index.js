@@ -56,6 +56,7 @@ import webhookRoutes from './routes/webhooks.js';
 import dashboardRoutes from './routes/dashboard.js';
 import settingsRoutes from './routes/settings.js';
 import adminRoutes from './routes/admin.js';
+import agentRoutes from './routes/agent.js';
 
 const app = express();
 
@@ -212,6 +213,9 @@ app.use('/api/settings', settingsRoutes);
 
 // Admin Panel: Component metadata management
 app.use('/api/admin', strictLimiter, adminRoutes);
+
+// Phase A1: Agentic Builder (AI agent loop with tool calling)
+app.use('/api/agent', aiLimiter, optionalAuth, agentRoutes);
 
 // List published sites API (User specific or all depending on auth)
 app.get('/api/published-sites', optionalAuth, async (req, res) => {

@@ -17,6 +17,8 @@ import CreditLimitModal from '../../../../../components/Modals/CreditLimitModal'
 import { builderSupabase } from '../../../../../lib/builderSupabaseClient';
 import styles from './Generation.module.css';
 import { OpenAIIcon, AnthropicIcon, GeminiIcon } from '../BuilderIcons2';
+import { useAgentMode } from './useAgentMode';
+import { AgentToolCard, AgentSummaryBadge, AgentThinkingPill } from './AgentChatCards';
 
 // Import project thumbnails for loading carousel
 import volturianoLogo from '../../../../../assets/Logo/TornadoLogo.png';
@@ -361,7 +363,7 @@ function TopBarLoadingIndicator({ generationProgress }) {
   return (
     <div className={styles.topBarLoading}>
       <div className={styles.topBarLoadingInner}>
-        <AnimatePresence mode="wait">
+        {/* <AnimatePresence mode="wait">
           <motion.span
             key={current}
             initial={{ opacity: 0, y: 3 }}
@@ -372,7 +374,8 @@ function TopBarLoadingIndicator({ generationProgress }) {
           >
             {currentTitle}
           </motion.span>
-        </AnimatePresence>
+        </AnimatePresence> */}
+
         <div className={styles.topBarBarRow}>
           <div className={styles.topBarLoadingBarWrap}>
             <div
@@ -556,6 +559,7 @@ export default function Generation() {
     return [{ content: 'Welcome! Describe what you want to build and I\'ll generate it for you.', type: 'system', timestamp: new Date() }];
   });
   const [aiChatInput, setAiChatInput] = useState('');
+  const [isAgentMode, setIsAgentMode] = useState(false);
   const [aiModel, setAiModel] = useState(queryParams.get('model') || location.state?.model || 'google/gemini-3.1-pro-preview');
   const [isMobilePreviewOpen, setIsMobilePreviewOpen] = useState(false);
   const [showMobileSettingsModal, setShowMobileSettingsModal] = useState(false);
@@ -2504,10 +2508,38 @@ Just position the new components in a logical order (e.g. after the Hero or befo
   ]);
 
 
+  // ─── Agent Mode Hook ─────────────────────────────────────
+  const {
+    agentLoading,
+    canUndo: agentCanUndo,
+    sendAgentMessage,
+    undoLastTurn: agentUndoLastTurn,
+  } = useAgentMode({
+    sandboxId: sandboxData?.sandboxId,
+    model: aiModel,
+    addChatMessage,
+    authFetch,
+    onMutation: () => {
+      // Refresh preview iframe after agent file mutations
+      if (iframeRef.current && sandboxData?.url) {
+        setTimeout(() => {
+          iframeRef.current.src = sandboxData.url + '?t=' + Date.now();
+        }, 800); // Brief delay for Vite HMR to process
+      }
+    }
+  });
+
   const sendChatMessage = useCallback(async () => {
     const msg = aiChatInput.trim();
     if (!msg && pendingImages.length === 0 && pendingComponents.length === 0) return;
-    if (loading) return;
+    if (loading || agentLoading) return;
+
+    // ─── AGENT MODE: Route through agentic loop ───────────
+    if (isAgentMode && sandboxData?.sandboxId) {
+      setAiChatInput('');
+      await sendAgentMessage(msg);
+      return;
+    }
 
     // Dispatch optimistic deduction animation for generation edits
     window.dispatchEvent(new CustomEvent('optimistic-credit-deduction'));
@@ -2612,7 +2644,7 @@ Just position the new components in a logical order (e.g. after the Hero or befo
         setGenerationProgress(prev => ({ ...prev, isGenerating: false, status: '', isEdit: false }));
       }
     }
-  }, [aiChatInput, pendingImages, pendingComponents, loading, conversationContext, sandboxData, currentProjectId, handleAIGeneratedEdit, createSandbox, addChatMessage, startGeneration, applyGeneratedCode, strictMode]);
+  }, [aiChatInput, pendingImages, pendingComponents, loading, agentLoading, isAgentMode, conversationContext, sandboxData, currentProjectId, handleAIGeneratedEdit, createSandbox, addChatMessage, startGeneration, applyGeneratedCode, strictMode, sendAgentMessage]);
 
   // ─── Restore Snapshot (Silent Time-Travel) ──────────────
   const restoreSnapshot = useCallback(async (snapshot, revertTargetIndex, revertedPromptText, revertedComponents = []) => {
@@ -3499,6 +3531,36 @@ Just position the new components in a logical order (e.g. after the Hero or befo
                     );
                   }
 
+                  // ─── Agent Chat Card Types ───────────────────
+                  if (msg.type === 'agent-tool' || msg.type === 'agent-tool-result') {
+                    return (
+                      <AgentToolCard
+                        key={i}
+                        toolName={msg.metadata?.toolName}
+                        args={msg.metadata?.args}
+                        status={msg.metadata?.status}
+                        result={msg.metadata?.result}
+                        success={msg.metadata?.success}
+                      />
+                    );
+                  }
+
+                  if (msg.type === 'agent-summary') {
+                    return (
+                      <AgentSummaryBadge
+                        key={i}
+                        toolCallCount={msg.metadata?.toolCallCount}
+                        mutationCount={msg.metadata?.mutationCount}
+                        canUndo={msg.metadata?.canUndo}
+                        onUndo={agentUndoLastTurn}
+                      />
+                    );
+                  }
+
+                  if (msg.type === 'agent-thinking') {
+                    return <AgentThinkingPill key={i} />;
+                  }
+
                   if (msg.type === 'ai' || msg.type === 'ai-narrator') {
                     // AI messages no longer show the button internally
                     const metadata = msg.metadata || {};
@@ -3730,7 +3792,23 @@ Just position the new components in a logical order (e.g. after the Hero or befo
                       <FiZap size={16} />
                     </button>
                   </div>
-                  <button onClick={sendChatMessage} disabled={loading || (!aiChatInput.trim() && pendingImages.length === 0)} className={styles.sendBtn}>
+                  {/* Agent Mode Toggle */}
+                  <button
+                    onClick={() => setIsAgentMode(prev => !prev)}
+                    className={`${styles.actionBtn} ${isAgentMode ? styles.actionBtnActive : ''}`}
+                    title={isAgentMode ? 'Agent Mode: ON — AI edits files directly' : 'Agent Mode: OFF — Standard generation'}
+                    style={{
+                      background: isAgentMode ? 'rgba(99, 102, 241, 0.15)' : undefined,
+                      borderColor: isAgentMode ? 'rgba(99, 102, 241, 0.3)' : undefined,
+                      color: isAgentMode ? '#818cf8' : undefined,
+                      transition: 'all 0.25s ease'
+                    }}
+                  >
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+                    </svg>
+                  </button>
+                  <button onClick={sendChatMessage} disabled={(loading || agentLoading) || (!aiChatInput.trim() && pendingImages.length === 0)} className={styles.sendBtn}>
                     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#ffffff" strokeWidth="1.5"><path d="M22 2L11 13" /><path d="M22 2L15 22L11 13L2 9L22 2Z" /></svg>
                   </button>
                 </div>

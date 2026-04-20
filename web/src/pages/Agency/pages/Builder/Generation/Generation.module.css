@@ -2449,7 +2449,7 @@ svg.shimmerText {
 .topBarLoadingInner {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  justify-content: center;
   width: 180px;
 }
 

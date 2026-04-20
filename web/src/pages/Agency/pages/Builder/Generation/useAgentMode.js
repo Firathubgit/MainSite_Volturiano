@@ -1,0 +1,230 @@
+/**
+ * useAgentMode — React hook for the agentic builder
+ * 
+ * Manages the SSE connection to /api/agent/message, parses tool events,
+ * and provides state/actions that plug into the Generation page's chat system.
+ */
+import { useState, useCallback, useRef } from 'react';
+
+const API_BASE = import.meta.env.VITE_API_URL || '';
+
+/**
+ * @param {object} options
+ * @param {string} options.sandboxId
+ * @param {string} options.model
+ * @param {Function} options.addChatMessage — callback to add messages to the Generation chat
+ * @param {Function} options.authFetch — authenticated fetch wrapper from Generation
+ * @param {Function} options.onMutation — called when the agent mutates files (to refresh preview)
+ */
+export function useAgentMode({ sandboxId, model, addChatMessage, authFetch, onMutation }) {
+  const [agentActive, setAgentActive] = useState(false);
+  const [agentLoading, setAgentLoading] = useState(false);
+  const [canUndo, setCanUndo] = useState(false);
+  const abortControllerRef = useRef(null);
+
+  /**
+   * Send a message through the agentic loop (SSE streamed).
+   * Emits chat messages as tool events arrive.
+   */
+  const sendAgentMessage = useCallback(async (prompt) => {
+    if (!prompt?.trim() || agentLoading) return;
+
+    setAgentLoading(true);
+
+    // Add user message to chat immediately
+    addChatMessage(prompt, 'user');
+
+    // Track mutations in this turn
+    let hadMutations = false;
+
+    try {
+      abortControllerRef.current = new AbortController();
+
+      const fetchFn = authFetch || fetch;
+      const response = await fetchFn(`${API_BASE}/api/agent/message`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          prompt: prompt.trim(),
+          sandboxId,
+          model
+        }),
+        signal: abortControllerRef.current.signal
+      });
+
+      if (!response.ok) {
+        const errData = await response.json().catch(() => ({ error: 'Unknown error' }));
+        throw new Error(errData.error || `Server error ${response.status}`);
+      }
+
+      // Parse SSE stream
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || ''; // Keep incomplete line in buffer
+
+        let currentEventType = null;
+        for (const line of lines) {
+          if (line.startsWith('event: ')) {
+            currentEventType = line.slice(7).trim();
+          } else if (line.startsWith('data: ') && currentEventType) {
+            try {
+              const data = JSON.parse(line.slice(6));
+              handleAgentEvent(currentEventType, data, addChatMessage, () => {
+                hadMutations = true;
+              });
+            } catch (e) {
+              // Skip malformed JSON
+            }
+            currentEventType = null;
+          } else if (line.trim() === '') {
+            currentEventType = null;
+          }
+        }
+      }
+
+      // Refresh preview if mutations occurred
+      if (hadMutations && onMutation) {
+        onMutation();
+      }
+
+    } catch (error) {
+      if (error.name !== 'AbortError') {
+        addChatMessage(`Agent error: ${error.message}`, 'error');
+      }
+    } finally {
+      setAgentLoading(false);
+      abortControllerRef.current = null;
+    }
+  }, [sandboxId, model, addChatMessage, authFetch, agentLoading, onMutation]);
+
+  /**
+   * Undo the last agent turn.
+   */
+  const undoLastTurn = useCallback(async () => {
+    try {
+      const fetchFn = authFetch || fetch;
+      const res = await fetchFn(`${API_BASE}/api/agent/undo`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sandboxId })
+      });
+      const data = await res.json();
+      if (data.success) {
+        addChatMessage(`Undone: "${data.undonePrompt}". ${data.restoredFiles.length} files restored.`, 'system');
+        setCanUndo(data.canUndo);
+        if (onMutation) onMutation();
+      } else {
+        addChatMessage(`Undo failed: ${data.error}`, 'error');
+      }
+    } catch (e) {
+      addChatMessage(`Undo failed: ${e.message}`, 'error');
+    }
+  }, [sandboxId, authFetch, addChatMessage, onMutation]);
+
+  /**
+   * Cancel an in-flight agent request.
+   */
+  const cancelAgent = useCallback(() => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      setAgentLoading(false);
+    }
+  }, []);
+
+  return {
+    agentActive,
+    setAgentActive,
+    agentLoading,
+    canUndo,
+    sendAgentMessage,
+    undoLastTurn,
+    cancelAgent
+  };
+}
+
+// ─── SSE Event Dispatcher ─────────────────────────────
+
+function handleAgentEvent(eventType, data, addChatMessage, onMutationDetected) {
+  switch (eventType) {
+    case 'agent_start':
+      addChatMessage(null, 'agent-thinking', { stage: 'analyzing' });
+      break;
+
+    case 'agent_thinking':
+      // Update thinking indicator (handled by thinking pill in chat)
+      break;
+
+    case 'tool_start': {
+      const { toolName, args } = data;
+      // Show tool call card in chat
+      addChatMessage(null, 'agent-tool', {
+        toolName,
+        args,
+        status: 'running'
+      });
+      break;
+    }
+
+    case 'tool_result': {
+      const { toolName, result, success } = data;
+      // Update the last tool card (or add result)
+      addChatMessage(null, 'agent-tool-result', {
+        toolName,
+        result,
+        success
+      });
+
+      // Detect mutations
+      if (['create_file', 'edit_file', 'replace_file'].includes(toolName) && success) {
+        onMutationDetected();
+      }
+      break;
+    }
+
+    case 'agent_text':
+      // Agent's text response — show as AI message
+      if (data.text) {
+        addChatMessage(data.text, 'ai-narrator', { style: 'casual', isAgentResponse: true });
+      }
+      break;
+
+    case 'agent_done': {
+      const { response, toolCallCount, mutationCount, canUndo } = data;
+      // Final response if not already sent via agent_text
+      if (response && !data.text) {
+        addChatMessage(response, 'ai-narrator', { style: 'casual', isAgentResponse: true });
+      }
+      // Summary badge
+      if (mutationCount > 0) {
+        addChatMessage(null, 'agent-summary', {
+          toolCallCount,
+          mutationCount,
+          canUndo
+        });
+      }
+      break;
+    }
+
+    case 'agent_error':
+      addChatMessage(`Agent error: ${data.message}`, 'error');
+      break;
+
+    case 'agent_warning':
+      addChatMessage(data.message, 'warning');
+      break;
+
+    default:
+      // Unknown event — ignore
+      break;
+  }
+}
+
+export default useAgentMode;

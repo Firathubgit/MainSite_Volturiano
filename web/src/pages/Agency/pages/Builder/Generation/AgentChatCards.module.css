@@ -1,0 +1,307 @@
+/* ─── Agent Chat Cards ─────────────────────────────────── */
+
+/* Tool Call Card */
+.toolCard {
+  margin: 4px 0;
+  padding: 8px 12px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 8px;
+  font-size: 13px;
+  transition: all 0.2s ease;
+}
+
+.toolCardMutation {
+  border-color: rgba(99, 102, 241, 0.15);
+  background: rgba(99, 102, 241, 0.04);
+}
+
+.toolCardError {
+  border-color: rgba(239, 68, 68, 0.2);
+  background: rgba(239, 68, 68, 0.04);
+}
+
+.toolCardHeader {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.toolCardIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 5px;
+  background: rgba(255, 255, 255, 0.06);
+  color: #94a3b8;
+  flex-shrink: 0;
+}
+
+.toolCardMutation .toolCardIcon {
+  background: rgba(99, 102, 241, 0.12);
+  color: #818cf8;
+}
+
+.toolCardError .toolCardIcon {
+  background: rgba(239, 68, 68, 0.12);
+  color: #f87171;
+}
+
+.toolCardLabel {
+  color: #94a3b8;
+  font-weight: 500;
+  font-size: 12px;
+  letter-spacing: 0.02em;
+}
+
+.toolCardFile {
+  color: #e2e8f0;
+  font-weight: 600;
+  font-size: 12.5px;
+  font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 200px;
+}
+
+.toolCardStatus {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+}
+
+.toolCardSuccess {
+  color: #34d399;
+}
+
+.toolCardFail {
+  color: #f87171;
+}
+
+.toolCardSpinner {
+  width: 12px;
+  height: 12px;
+  border: 1.5px solid rgba(255, 255, 255, 0.15);
+  border-top-color: #818cf8;
+  border-radius: 50%;
+  animation: agentSpin 0.8s linear infinite;
+}
+
+@keyframes agentSpin {
+  to { transform: rotate(360deg); }
+}
+
+/* Inline Diff */
+.toolCardDiff {
+  margin-top: 6px;
+  padding: 6px 8px;
+  border-radius: 5px;
+  background: rgba(0, 0, 0, 0.25);
+  font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+  font-size: 11px;
+  line-height: 1.5;
+  overflow-x: auto;
+}
+
+.diffRemoved {
+  display: flex;
+  gap: 6px;
+  color: #fca5a5;
+  background: rgba(239, 68, 68, 0.08);
+  padding: 2px 4px;
+  border-radius: 3px;
+  margin-bottom: 2px;
+}
+
+.diffAdded {
+  display: flex;
+  gap: 6px;
+  color: #86efac;
+  background: rgba(34, 197, 94, 0.08);
+  padding: 2px 4px;
+  border-radius: 3px;
+}
+
+.diffSign {
+  flex-shrink: 0;
+  font-weight: 700;
+  width: 12px;
+  opacity: 0.7;
+}
+
+.diffRemoved code,
+.diffAdded code {
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+/* Error Message */
+.toolCardErrorMsg {
+  margin-top: 4px;
+  padding: 4px 8px;
+  font-size: 11px;
+  color: #fca5a5;
+  background: rgba(239, 68, 68, 0.06);
+  border-radius: 4px;
+  font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+}
+
+/* Build Result */
+.toolCardBuild {
+  margin-top: 4px;
+  padding: 4px 8px;
+  font-size: 11px;
+  font-weight: 600;
+  border-radius: 4px;
+}
+
+.buildPassed {
+  color: #34d399;
+  background: rgba(34, 197, 94, 0.08);
+}
+
+.buildFailed {
+  color: #f87171;
+  background: rgba(239, 68, 68, 0.08);
+}
+
+/* Meta Text */
+.toolCardMeta {
+  margin-top: 3px;
+  font-size: 11px;
+  color: #64748b;
+  padding-left: 30px;
+}
+
+/* ─── Agent Summary Badge ─────────────────────────────── */
+
+.summaryBadge {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 8px 0;
+  padding: 8px 14px;
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.08), rgba(139, 92, 246, 0.06));
+  border: 1px solid rgba(99, 102, 241, 0.15);
+  border-radius: 10px;
+}
+
+.summaryContent {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.summaryIcon {
+  font-size: 14px;
+}
+
+.summaryText {
+  font-size: 12px;
+  font-weight: 500;
+  color: #c4b5fd;
+}
+
+.undoBtn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  color: #94a3b8;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.undoBtn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #e2e8f0;
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+/* ─── Agent Thinking Pill ─────────────────────────────── */
+
+.thinkingPill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  margin: 6px 0;
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.thinkingDot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #818cf8;
+  animation: agentPulse 1.2s ease-in-out infinite;
+}
+
+@keyframes agentPulse {
+  0%, 100% { opacity: 0.3; transform: scale(0.8); }
+  50% { opacity: 1; transform: scale(1.1); }
+}
+
+.thinkingText {
+  font-size: 12px;
+  color: #94a3b8;
+  font-weight: 500;
+}
+
+/* ─── Agent Mode Toggle ───────────────────────────────── */
+
+.agentToggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 6px;
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: #64748b;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.agentToggle:hover {
+  border-color: rgba(99, 102, 241, 0.3);
+  color: #94a3b8;
+}
+
+.agentToggleActive {
+  background: rgba(99, 102, 241, 0.12);
+  border-color: rgba(99, 102, 241, 0.3);
+  color: #818cf8;
+}
+
+.agentToggleActive:hover {
+  background: rgba(99, 102, 241, 0.18);
+  color: #a5b4fc;
+}
+
+.agentToggleDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #64748b;
+  transition: background 0.25s ease;
+}
+
+.agentToggleActive .agentToggleDot {
+  background: #818cf8;
+  box-shadow: 0 0 8px rgba(129, 140, 248, 0.5);
+}

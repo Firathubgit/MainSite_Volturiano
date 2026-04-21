@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
@@ -18,7 +18,10 @@ import { builderSupabase } from '../../../../../lib/builderSupabaseClient';
 import styles from './Generation.module.css';
 import { OpenAIIcon, AnthropicIcon, GeminiIcon } from '../BuilderIcons2';
 import { useAgentMode } from './useAgentMode';
-import { AgentToolCard, AgentSummaryBadge, AgentThinkingPill } from './AgentChatCards';
+import { AgentToolCard, AgentSummaryBadge, AgentThinkingPill, AgentActivityRow } from './AgentChatCards';
+import AgentTurnClump from './AgentTurnClump';
+
+
 
 // Import project thumbnails for loading carousel
 import volturianoLogo from '../../../../../assets/Logo/TornadoLogo.png';
@@ -456,34 +459,15 @@ function ThinkingRow({ status, dots, logoState, volturianoLogo, components = [],
   const isFoundComponents = status === 'Found Components!';
 
   return (
-    <div className={styles.chatMsg}>
-      <div data-layer="LoaidngRecantgle" className={boxed ? styles.thinkingBubble : styles.thinkingNormal}>
-        <div className={boxed ? styles.thinkingBubbleContent : styles.thinkingNormalContent} style={{ display: 'flex', alignItems: 'center', gap: boxed ? '14px' : '10px', flex: 1, minWidth: 0 }}>
-          <div
-            data-layer="Vector"
-            className={
-              logoState === 1 ? styles.tornadoLogoPulse :
-                logoState === 2 ? styles.tornadoLogoTikiTaka :
-                  logoState === 3 ? styles.tornadoLogoScanner :
-                    styles.tornadoLogoShimmer
-            }
-            style={{
-              width: boxed ? 24 : 18,
-              height: boxed ? 24 : 18,
-              flexShrink: 0,
-              '--logo-url': `url(${volturianoLogo})`,
-              backgroundClip: 'initial',
-              WebkitBackgroundClip: 'initial',
-              WebkitTextFillColor: 'initial',
-              color: 'initial'
-            }}
-          />
-          <span data-layer="ChangeableText..." className={styles.shimmerText} style={{ fontSize: boxed ? '14px' : '11px', fontWeight: 400, letterSpacing: '0.01em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', flexShrink: 1, minWidth: 0 }}>
-            {activeName}{!isFoundComponents ? dots : ''}
-          </span>
-        </div>
-        {boxed && !isFoundComponents && (
-          <div data-layer="LoadingOne" className={styles.loadingCircleSegmented} style={{ flexShrink: 0, marginLeft: '12px' }}>
+    <div className={styles.thinkingRowMessage}>
+      <div className={styles.activityHeader}>
+        <AgentShimmerIcon volturianoLogo={volturianoLogo} />
+        <span className={styles.activityHeaderText}>
+          {activeName}{!isFoundComponents ? dots : ''}
+        </span>
+      </div>
+      {boxed && !isFoundComponents && (
+          <div className={styles.loadingCircleSegmented} style={{ marginLeft: '12px' }}>
             {[...Array(8)].map((_, i) => (
               <div
                 key={i}
@@ -496,7 +480,6 @@ function ThinkingRow({ status, dots, logoState, volturianoLogo, components = [],
             ))}
           </div>
         )}
-      </div>
     </div>
   );
 }
@@ -559,7 +542,8 @@ export default function Generation() {
     return [{ content: 'Welcome! Describe what you want to build and I\'ll generate it for you.', type: 'system', timestamp: new Date() }];
   });
   const [aiChatInput, setAiChatInput] = useState('');
-  const [isAgentMode, setIsAgentMode] = useState(false);
+  const [isAgentMode, setIsAgentMode] = useState(true);
+  const [useAgentBuild, setUseAgentBuild] = useState(location.state?.useAgentBuild || false); // ⭐ Experimental agent-mode initial build
   const [aiModel, setAiModel] = useState(queryParams.get('model') || location.state?.model || 'google/gemini-3.1-pro-preview');
   const [isMobilePreviewOpen, setIsMobilePreviewOpen] = useState(false);
   const [showMobileSettingsModal, setShowMobileSettingsModal] = useState(false);
@@ -1028,7 +1012,7 @@ export default function Generation() {
       }
     }
 
-    return (generationProgress.status || 'Working').replace(/\.\.\.*$/, '');
+    return (generationProgress.status || 'Processing').replace(/\.\.\.*$/, '');
   }, [codeApplicationState.stage, codeApplicationState.packages, aiThinking, generationProgress.status]);
 
   // Map AI pipeline steps to logo personality traits
@@ -2513,18 +2497,71 @@ Just position the new components in a logical order (e.g. after the Hero or befo
     agentLoading,
     canUndo: agentCanUndo,
     sendAgentMessage,
+    sendAgentInitialBuild,
     undoLastTurn: agentUndoLastTurn,
   } = useAgentMode({
     sandboxId: sandboxData?.sandboxId,
+    sandboxUrl: sandboxData?.url,
     model: aiModel,
     addChatMessage,
     authFetch,
-    onMutation: () => {
-      // Refresh preview iframe after agent file mutations
-      if (iframeRef.current && sandboxData?.url) {
+    onTurnComplete: async ({ hadMutations, mutationCount, toolCallCount, prompt: agentPrompt, response, isUndo, sandboxId: passedSandboxId, sandboxUrl: passedSandboxUrl, isInitialBuild }) => {
+      const activeSandboxId = passedSandboxId || sandboxData?.sandboxId;
+      const activeSandboxUrl = passedSandboxUrl || sandboxData?.url;
+
+      // 1. Always refresh the preview iframe
+      if (iframeRef.current && activeSandboxUrl) {
         setTimeout(() => {
-          iframeRef.current.src = sandboxData.url + '?t=' + Date.now();
-        }, 800); // Brief delay for Vite HMR to process
+          iframeRef.current.src = activeSandboxUrl + (activeSandboxUrl.includes('?') ? '&' : '?') + 't=' + Date.now();
+        }, 800);
+      }
+
+      // If this was the initial build, automatically switch to preview tab to show the results
+      if (isInitialBuild && activeSandboxUrl) {
+        setTimeout(() => {
+          setActiveTab('preview');
+          setGenerationProgress(prev => ({ ...prev, isGenerating: false, status: 'Build Complete' }));
+          setLogoState(0); 
+          setLoading(false);
+        }, 1200);
+      }
+
+      // If this was an undo or no mutations occurred, skip persistence
+      if (isUndo || !hadMutations) return;
+
+      // 2. Persist project metadata to Supabase
+      saveProjectUpdates({
+        buildId: currentProjectId,
+        build_status: 'preview',
+      });
+
+      // 3. Create snapshot via existing /api/snapshots endpoint
+      //    This is the SAME flow as the legacy generation pipeline (Phase S2)
+      try {
+        if (!activeSandboxId) throw new Error('No sandbox ID available for persistence');
+
+        const filesRes = await fetch(`/api/get-sandbox-files?sandboxId=${activeSandboxId}`);
+        const filesData = await filesRes.json();
+        if (filesData.success) {
+          await authFetch('/api/snapshots', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              projectId: currentProjectId,
+              chatIndex: chatMessages.length,
+              text: agentPrompt || 'Agent edit',
+              files: filesData.files,
+              designSystem: designSystemRef.current,
+              componentPlan: componentPlanRef.current,
+              sandboxUrl: activeSandboxUrl,
+              sandboxId: activeSandboxId
+            })
+          });
+          // 4. Refresh snapshot list so revert arrows appear under user messages
+          fetchSnapshots();
+        }
+      } catch (e) {
+        console.warn('[Agent Persistence] Snapshot save failed:', e);
       }
     }
   });
@@ -2536,6 +2573,8 @@ Just position the new components in a logical order (e.g. after the Hero or befo
 
     // ─── AGENT MODE: Route through agentic loop ───────────
     if (isAgentMode && sandboxData?.sandboxId) {
+      // Dispatch optimistic deduction animation (same as legacy flow)
+      window.dispatchEvent(new CustomEvent('optimistic-credit-deduction'));
       setAiChatInput('');
       await sendAgentMessage(msg);
       return;
@@ -2553,7 +2592,62 @@ Just position the new components in a logical order (e.g. after the Hero or befo
     const isEdit = conversationContext.appliedCode.length > 0;
 
     if (!isEdit) {
-      // First generation
+      // ─── AGENT INITIAL BUILD: Use agent pipeline ⭐ ────────
+      if (useAgentBuild) {
+        addChatMessage(msg || 'Build website', 'user', { images: currentImages });
+        setLoading(true);
+        setGenerationProgress(prev => ({ ...prev, isGenerating: true, status: 'Agent building...', isEdit: false }));
+
+        try {
+          // 1. Init project
+          const generateUUID = () => {
+            if (typeof crypto !== 'undefined' && crypto.randomUUID) return crypto.randomUUID();
+            return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+              const r = (Math.random() * 16) | 0;
+              const v = c === 'x' ? r : (r & 0x3) | 0x8;
+              return v.toString(16);
+            });
+          };
+          let buildId = generateUUID();
+          const initRes = await authFetch('/api/projects/init', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ prompt: msg, buildId })
+          });
+          const initData = await safeParseJson(initRes, 'project-init');
+          if (initData.success && initData.projectId) {
+            buildId = initData.projectId;
+            setCurrentProjectId(buildId);
+          }
+
+          // 2. Create sandbox if needed
+          let sandbox = sandboxData;
+          if (!sandbox) {
+            const createData = await createSandbox();
+            sandbox = { sandboxId: createData.sandboxId, url: createData.url };
+          }
+
+          // 3. Run agent initial build
+          await sendAgentInitialBuild(msg, buildId);
+
+          // 4. Mark as having applied code so subsequent messages route through edit mode
+          setConversationContext(prev => ({
+            ...prev,
+            appliedCode: [...prev.appliedCode, 'agent-initial-build']
+          }));
+
+          setActiveTab('preview');
+        } catch (error) {
+          console.error('[AgentInitialBuild] Error:', error);
+          addChatMessage(`Agent build failed: ${error.message}`, 'error');
+        } finally {
+          setLoading(false);
+          setGenerationProgress(prev => ({ ...prev, isGenerating: false, status: '' }));
+        }
+        return;
+      }
+
+      // Legacy pipeline: First generation
       await startGeneration(msg || "Build from selection", null, currentImages, currentComponents.map(c => c.id), null, strictMode);
     } else {
       // Edit existing
@@ -2822,30 +2916,107 @@ Just position the new components in a logical order (e.g. after the Hero or befo
     } else if (importIds) {
       initStartedRef.current = true;
       const ids = importIds.split(',');
-      startGeneration("Build from community components", null, [], ids, null, strictModeValue);
+      if (useAgentBuild) {
+        (async () => {
+          const buildId = crypto.randomUUID();
+          setCurrentProjectId(buildId);
+          setLoading(true);
+          setGenerationProgress(prev => ({ ...prev, isGenerating: true, status: 'Initializing project...' }));
+          
+          try {
+            await authFetch('/api/projects/init', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ prompt: "Build from community components", buildId })
+            });
+            
+            // Add the user message so it shows up at the top
+            addChatMessage("Build from community components", 'user');
+
+            // Ensure sandbox exists for agent to write to
+            setGenerationProgress(prev => ({ ...prev, status: 'Creating sandbox...' }));
+            const sb = await createSandbox();
+
+            await sendAgentInitialBuild("Build from community components", buildId, {
+              manualSelectionIds: ids,
+              sandboxId: sb.sandboxId,
+              sandboxUrl: sb.url
+            });
+          } catch (err) {
+            addChatMessage(`Failed to initialize: ${err.message}`, 'error');
+            setLoading(false);
+          }
+        })();
+      } else {
+        startGeneration("Build from community components", null, [], ids, null, strictModeValue);
+      }
       // Clean up URL to prevent re-trigger on refresh
       window.history.replaceState({}, document.title, location.pathname);
       setAiChatInput('');
     } else if (templateId) {
       initStartedRef.current = true;
-      startGeneration(templateId, templateId, initialImages, null, null, strictModeValue); // template mode
+      // Templates are still handled by the legacy pipeline for now as they are static
+      startGeneration(templateId, templateId, initialImages, null, null, strictModeValue); 
       setAiChatInput('');
       setPendingImages([]);
     } else if (prompt?.trim() || initialImages.length > 0 || manualSelectionIds) {
       initStartedRef.current = true;
-      startGeneration(
-        prompt?.trim() || (manualSelectionIds ? "Build from community components" : "Analyze design and build"),
-        null,
-        initialImages,
-        manualSelectionIds,
-        null,
-        strictModeValue,
-        initialComponents
-      );
+      const finalPrompt = prompt?.trim() || (manualSelectionIds ? "Build from community components" : "Analyze design and build");
+      
+      if (useAgentBuild) {
+        (async () => {
+          const buildId = crypto.randomUUID();
+          setCurrentProjectId(buildId);
+          setLoading(true);
+          setGenerationProgress(prev => ({ ...prev, isGenerating: true, status: 'Initializing project...' }));
+
+          try {
+            // First initialize the project so it exists in DB for credit deduction FK
+            await authFetch('/api/projects/init', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ prompt: finalPrompt, buildId })
+            });
+
+            // ⭐ UI_OPTIMIZATION: Add the user message IMMEDIATELY so it shows up at the top
+            // while the slower sandbox creation and npm install happen in the background.
+            addChatMessage(finalPrompt, 'user', { 
+              images: initialImages, 
+              stagedComponents: initialComponents 
+            });
+
+            // Ensure sandbox exists for agent to write to
+            setGenerationProgress(prev => ({ ...prev, status: 'Creating sandbox...' }));
+            const sb = await createSandbox();
+
+            // Trigger the autonomous Agent Build pipeline
+            await sendAgentInitialBuild(finalPrompt, buildId, {
+              images: initialImages,
+              manualSelectionIds,
+              initialComponents,
+              sandboxId: sb.sandboxId,
+              sandboxUrl: sb.url
+            });
+          } catch (err) {
+            addChatMessage(`Failed to initialize: ${err.message}`, 'error');
+            setLoading(false);
+          }
+        })();
+      } else {
+        startGeneration(
+          finalPrompt,
+          null,
+          initialImages,
+          manualSelectionIds,
+          null,
+          strictModeValue,
+          initialComponents
+        );
+      }
       setAiChatInput('');
       setPendingImages([]);
     }
-  }, [location.state, location.search, location.pathname, startGeneration, loadProject]); // Added dependencies for safety
+  }, [location.state, location.search, location.pathname, startGeneration, loadProject, useAgentBuild, sendAgentInitialBuild]); // Added dependencies for safety
 
   // ─── Sandbox Status Polling ──────────────
   useEffect(() => {
@@ -3365,8 +3536,169 @@ Just position the new components in a logical order (e.g. after the Hero or befo
               </div>
 
               <div className={styles.chatMessages} onScroll={handleManualScroll}>
-                {chatMessages.map((msg, i) => {
-                  const isLast = i === chatMessages.length - 1;
+                {(() => {
+                  // ─── Antigravity-style turn grouping ───────────────────
+                  // Group consecutive agent messages into "turns" that get
+                  // clumped into a collapsible row once the turn completes.
+                  const AGENT_MSG_TYPES = new Set(['agent-tool', 'agent-tool-result', 'agent-thinking', 'agent-summary']);
+                  const groups = [];
+                  let currentAgentGroup = null;
+
+                  for (let idx = 0; idx < chatMessages.length; idx++) {
+                    const msg = chatMessages[idx];
+                    const isAgentRow = AGENT_MSG_TYPES.has(msg.type);
+
+                    if (isAgentRow) {
+                      if (!currentAgentGroup) {
+                        currentAgentGroup = { startIndex: idx, messages: [], startTime: msg.timestamp };
+                      }
+                      currentAgentGroup.messages.push({ msg, index: idx });
+                      if (msg.type === 'agent-summary') {
+                        currentAgentGroup.toolCallCount = msg.metadata?.toolCallCount || 0;
+                        currentAgentGroup.mutationCount = msg.metadata?.mutationCount || 0;
+                      }
+                    } else {
+                      if (currentAgentGroup) {
+                        currentAgentGroup.endTime = msg.timestamp || currentAgentGroup.messages[currentAgentGroup.messages.length - 1]?.msg?.timestamp;
+                        groups.push({ type: 'agent-clump', group: currentAgentGroup });
+                        currentAgentGroup = null;
+                      }
+                      groups.push({ type: 'normal', msg, index: idx });
+                    }
+                  }
+                  if (currentAgentGroup) {
+                    // Only mark as "live" if the agent is actively loading
+                    // Otherwise the turn is finished and should collapse
+                    currentAgentGroup.isLive = agentLoading;
+                    currentAgentGroup.endTime = currentAgentGroup.messages[currentAgentGroup.messages.length - 1]?.msg?.timestamp;
+                    groups.push({ type: 'agent-clump', group: currentAgentGroup });
+                  }
+
+                  // ─── Render helper for individual agent messages ─────
+                  const renderAgentMsg = (msg, i, hideStatus = false) => {
+                    if (msg.type === 'agent-tool' || msg.type === 'agent-tool-result') {
+                      return (
+                        <AgentToolCard
+                          key={i}
+                          toolName={msg.metadata?.toolName}
+                          args={msg.metadata?.args}
+                          status={msg.metadata?.status}
+                          result={msg.metadata?.result}
+                          success={msg.metadata?.success}
+                          hideStatus={hideStatus}
+                        />
+                      );
+                    }
+                    if (msg.type === 'agent-summary') {
+                      return (
+                        <AgentSummaryBadge
+                          key={i}
+                          toolCallCount={msg.metadata?.toolCallCount}
+                          mutationCount={msg.metadata?.mutationCount}
+                          canUndo={msg.metadata?.canUndo}
+                          onUndo={agentUndoLastTurn}
+                        />
+                      );
+                    }
+                    if (msg.type === 'agent-thinking') {
+                      const content = msg.content || '';
+                      const lowered = content.toLowerCase();
+                      const isSearching = lowered.includes('searching') || lowered.includes('listing');
+                      const isReading = lowered.includes('reading');
+                      const isWriting = lowered.includes('writing') || lowered.includes('editing');
+                      const isCheckingBuild = lowered.includes('checking build') || lowered.includes('verifying build');
+                      let fileName = null;
+                      if (isReading || isWriting) {
+                        const matches = content.match(/\S+\.[a-zA-Z0-9]+$/);
+                        if (matches) fileName = matches[0].split('/').pop();
+                      }
+                      let type = 'thinking';
+                      if (isSearching) type = 'search';
+                      else if (isReading) type = 'read';
+                      else if (isWriting) type = 'write';
+                      else if (isCheckingBuild) type = 'get_build_errors';
+                      return (
+                        <AgentThinkingPill
+                          key={i}
+                          volturianoLogo={volturianoLogo}
+                          stage={isReading ? 'Reading' : isWriting ? 'Editing' : isCheckingBuild ? 'Checking build' : content}
+                          type={type}
+                          fileName={fileName}
+                        />
+                      );
+                    }
+                    return null;
+                  };
+
+                  return groups.map((entry, groupIdx) => {
+                    // ─── Agent Turn Clump ─────────────────────────────
+                    if (entry.type === 'agent-clump') {
+                      const { group } = entry;
+                      const durationMs = group.endTime && group.startTime
+                        ? new Date(group.endTime).getTime() - new Date(group.startTime).getTime()
+                        : 0;
+
+                      // Partition messages into Minor (consolidated under Thinking) and Major (standalone cards)
+                      const majorMsgs = [];
+                      const minorMsgs = [];
+                      const thinkingMsgs = [];
+                      
+                      group.messages.forEach(m => {
+                        const { msg } = m;
+                        const toolName = msg.metadata?.toolName;
+                        const content = (msg.content || '').toLowerCase();
+                        
+                        // "Everything except checking build and edit" goes under thinking row
+                        // Major: edit_file, create_file, replace_file, get_build_errors, and summaries
+                        const isMajor = 
+                          ['edit_file', 'create_file', 'replace_file', 'get_build_errors'].includes(toolName) ||
+                          msg.type === 'agent-summary' ||
+                          (msg.type === 'agent-thinking' && (content.includes('checking build') || content.includes('verifying build')));
+                          
+                        if (isMajor) {
+                          majorMsgs.push(m);
+                        } else if (msg.type === 'agent-tool') {
+                          minorMsgs.push(m);
+                        } else if (msg.type === 'agent-thinking') {
+                          thinkingMsgs.push(m);
+                        }
+                      });
+
+                      const latestThinking = thinkingMsgs[thinkingMsgs.length - 1]?.msg?.content;
+
+                      return (
+                        <AgentTurnClump
+                          key={`clump-${group.startIndex}`}
+                          durationMs={durationMs}
+                          toolCallCount={group.toolCallCount || group.messages.filter(m => m.msg.type === 'agent-tool').length}
+                          mutationCount={group.mutationCount || 0}
+                          isLive={group.isLive || false}
+                        >
+                          {/* Major standalone cards (Editing, Build Checks, Diffs) rendered first */}
+                          {majorMsgs.map(({ msg, index }) => renderAgentMsg(msg, index, !group.isLive))}
+
+                          {/* Consolidated thinking row for search/read/list/etc - hidden if major tasks are active */}
+                          {(() => {
+                            const isMajorActive = majorMsgs.some(m => m.msg.metadata?.status === 'running');
+                            // Only render the activity row if it's currently live (thinking) OR if it has tool calls to show in the stack
+                            const shouldShowActivity = (minorMsgs.length > 0 || (group.isLive && (latestThinking || generationProgress.status)));
+                            
+                            return shouldShowActivity && !isMajorActive && !isTextStreaming && (
+                              <AgentActivityRow 
+                                status={latestThinking || (group.isLive ? (generationProgress.status || 'Architecting') : 'Task completed')} 
+                                volturianoLogo={volturianoLogo} 
+                                messages={minorMsgs} 
+                                isLive={group.isLive}
+                              />
+                            );
+                          })()}
+                        </AgentTurnClump>
+                      );
+                    }
+
+                    // ─── Normal Messages ──────────────────────────────
+                    const { msg, index: i } = entry;
+                    const isLast = i === chatMessages.length - 1;
 
                   // Special component for planning phases
                   if ((msg.type === 'system' || msg.type === 'ai') && msg.content.includes('Planning') && msg.content.includes('components:')) {
@@ -3396,23 +3728,15 @@ Just position the new components in a logical order (e.g. after the Hero or befo
                   }
 
                   if (msg.type === 'user') {
-                    // Determine if this is the very first user message — never show revert on it
                     const firstUserMsgIndex = chatMessages.findIndex(m => m.type === 'user');
                     const isFirstUserMsg = firstUserMsgIndex === i;
-
-                    // Find the most relevant snapshot for this user message
                     const nextMsg = chatMessages[i + 1];
                     let snapshot = null;
                     let isEdit = false;
 
                     if (!isFirstUserMsg) {
-                      // Find the snapshot from BEFORE this user message was sent
-                      // This represents the state the project was in before this edit
-                      // Strategy: find the most recent snapshot with chat_message_index strictly BEFORE this user message
                       const sortedSnapshots = [...snapshots].sort((a, b) => b.chat_message_index - a.chat_message_index);
                       snapshot = sortedSnapshots.find(s => s.chat_message_index < i);
-
-                      // Check if this was an edit via next message metadata
                       if (nextMsg && (nextMsg.type === 'ai' || nextMsg.type === 'ai-narrator')) {
                         isEdit = nextMsg.metadata?.isEdit;
                       }
@@ -3454,8 +3778,6 @@ Just position the new components in a logical order (e.g. after the Hero or befo
                         </div>
                         <div className={styles.chatActionRow}>
                           {isEdit && <FiEdit2 size={12} className={styles.editIndicator} title="Modified version" />}
-
-                          {/* Revert icon — never appears on the first user message */}
                           {snapshot && (
                             <button
                               className={styles.restoreBtn_underUser}
@@ -3498,14 +3820,12 @@ Just position the new components in a logical order (e.g. after the Hero or befo
                           {msg.content.includes('overloaded') && isLast && (
                             <button
                               onClick={() => {
-                                // Find the last user message that caused this error
                                 const lastUserMsg = chatMessages.slice().reverse().find(m => m.type === 'user');
                                 if (lastUserMsg) {
                                   setAiChatInput(lastUserMsg.content || '');
                                   if (lastUserMsg.metadata?.images) setPendingImages([...lastUserMsg.metadata.images]);
                                   if (lastUserMsg.metadata?.stagedComponents) setPendingComponents([...lastUserMsg.metadata.stagedComponents]);
                                 }
-                                // Pop the error message AND the user message visually
                                 setChatMessages(prev => prev.filter(m => m !== msg && m !== lastUserMsg));
                               }}
                               style={{
@@ -3531,46 +3851,13 @@ Just position the new components in a logical order (e.g. after the Hero or befo
                     );
                   }
 
-                  // ─── Agent Chat Card Types ───────────────────
-                  if (msg.type === 'agent-tool' || msg.type === 'agent-tool-result') {
-                    return (
-                      <AgentToolCard
-                        key={i}
-                        toolName={msg.metadata?.toolName}
-                        args={msg.metadata?.args}
-                        status={msg.metadata?.status}
-                        result={msg.metadata?.result}
-                        success={msg.metadata?.success}
-                      />
-                    );
-                  }
-
-                  if (msg.type === 'agent-summary') {
-                    return (
-                      <AgentSummaryBadge
-                        key={i}
-                        toolCallCount={msg.metadata?.toolCallCount}
-                        mutationCount={msg.metadata?.mutationCount}
-                        canUndo={msg.metadata?.canUndo}
-                        onUndo={agentUndoLastTurn}
-                      />
-                    );
-                  }
-
-                  if (msg.type === 'agent-thinking') {
-                    return <AgentThinkingPill key={i} />;
-                  }
-
                   if (msg.type === 'ai' || msg.type === 'ai-narrator') {
-                    // AI messages no longer show the button internally
                     const metadata = msg.metadata || {};
                     let style = metadata.style || 'casual';
                     if (msg.type === 'ai-narrator' && (msg.content.toLowerCase().includes('generated') || msg.content.toLowerCase().includes('applied'))) {
                       style = 'premium-success';
                     }
-
                     const isNewlyAdded = msg.timestamp && (Date.now() - new Date(msg.timestamp).getTime() < 10000);
-
                     return (
                       <AIMessage
                         key={i}
@@ -3594,10 +3881,13 @@ Just position the new components in a logical order (e.g. after the Hero or befo
                       />
                     );
                   }
-                })}
+
+                  return null;
+                  });
+                })()}
 
                 {/* Component Search Pill — shown during active selection/planning phase */}
-                {componentSearchPhase?.active && (
+                {componentSearchPhase?.active && !isTextStreaming && (
                   <ThinkingRow 
                     status={componentSearchPhase.currentLabel || 'Searching...'}
                     dots={statusDots}
@@ -3609,8 +3899,8 @@ Just position the new components in a logical order (e.g. after the Hero or befo
                   />
                 )}
 
-                {/* Active Status Indicator — hidden during search pill phase and text streaming */}
-                {!componentSearchPhase?.active && (aiThinking || generationProgress.isGenerating || codeApplicationState.stage) && !isTextStreaming && (
+                {/* Active Status Indicator — hidden during search pill phase, agent mode activity, and text streaming */}
+                {!componentSearchPhase?.active && (aiThinking || (generationProgress.isGenerating && !isAgentMode) || codeApplicationState.stage) && !isTextStreaming && (
                   <ThinkingRow 
                     status={getUnifiedStatus().replace(/\.\.\.$/, '')}
                     dots={statusDots}
@@ -3621,19 +3911,29 @@ Just position the new components in a logical order (e.g. after the Hero or befo
                     boxed={false}
                   />
                 )}
+                {isAgentMode && generationProgress.isGenerating && !isTextStreaming && !chatMessages.some(m => m.type?.startsWith('agent-')) && (
+                  <div style={{ marginTop: '30px' }}>
+                    <AgentActivityRow 
+                      status={generationProgress.status || 'Initializing...'} 
+                      volturianoLogo={volturianoLogo} 
+                      isLive={true}
+                    />
+                  </div>
+                )}
                 <div ref={chatEndRef} />
               </div>
 
-              <div
-                ref={chatInputAreaRef}
-                className={styles.chatInputArea}
-                onPaste={handlePaste}
-                onDragOver={e => e.preventDefault()}
-              >
                 <div
-                  className={`${styles.chatInputWrapper} ${pendingImages.length > 0 ? styles.extended : ''} ${isViewportDragging ? styles.isDragging : ''}`}
+                  ref={chatInputAreaRef}
+                  className={styles.chatInputArea}
+                  onPaste={handlePaste}
+                  onDragOver={e => e.preventDefault()}
+                >
+                <div
+                  className={`${styles.chatInputWrapper} ${pendingImages.length > 0 ? styles.extended : ''} ${isViewportDragging ? styles.isDragging : ''} ${isAgentMode ? styles.agentWrapperActive : ''}`}
                   data-dragging={isViewportDragging}
                 >
+                  
                   {(pendingImages.length > 0 || pendingComponents.length > 0) && (
                     <div className={styles.pendingItemsArea}>
                       {pendingImages.map((img, idx) => (
@@ -3703,6 +4003,23 @@ Just position the new components in a logical order (e.g. after the Hero or befo
                     >
                       <svg xmlns="http://www.w3.org/2000/svg" height="24" viewBox="0 -960 960 960" width="24" fill="#e3e3e3"><path d="M120-520v-320h320v320H120Zm0 400v-320h320v320H120Zm400-400v-320h320v320H520Zm0 400v-320h320v320H520ZM200-600h160v-160H200v160Zm400 0h160v-160H600v160Zm0 400h160v-160H600v160Zm-400 0h160v-160H200v160Zm400-400Zm0 240Zm-240 0Zm0-240Z"/></svg>
                     </button>
+                    {/* ⭐ Agent Build Toggle — only for initial prompt */}
+                    {conversationContext.appliedCode.length === 0 && (
+                      <button
+                        className={styles.actionBtn}
+                        onClick={() => setUseAgentBuild(prev => !prev)}
+                        title={useAgentBuild ? 'Agent Build Mode ON (Experimental)' : 'Enable Agent Build Mode'}
+                        style={{
+                          color: useAgentBuild ? '#FFD700' : '#e3e3e3',
+                          transition: 'color 0.3s ease, filter 0.3s ease',
+                          filter: useAgentBuild ? 'drop-shadow(0 0 6px rgba(255, 215, 0, 0.6))' : 'none'
+                        }}
+                      >
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill={useAgentBuild ? '#FFD700' : 'none'} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+                        </svg>
+                      </button>
+                    )}
                     <div className={styles.geminiIcon} title={`Current Engine: ${aiModel}`} ref={modelDropdownRef}>
                       <div onClick={() => setModelDropdownOpen(!modelDropdownOpen)} style={{ cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
                         {aiModel.startsWith('openai/') ? (
@@ -3792,22 +4109,7 @@ Just position the new components in a logical order (e.g. after the Hero or befo
                       <FiZap size={16} />
                     </button>
                   </div>
-                  {/* Agent Mode Toggle */}
-                  <button
-                    onClick={() => setIsAgentMode(prev => !prev)}
-                    className={`${styles.actionBtn} ${isAgentMode ? styles.actionBtnActive : ''}`}
-                    title={isAgentMode ? 'Agent Mode: ON — AI edits files directly' : 'Agent Mode: OFF — Standard generation'}
-                    style={{
-                      background: isAgentMode ? 'rgba(99, 102, 241, 0.15)' : undefined,
-                      borderColor: isAgentMode ? 'rgba(99, 102, 241, 0.3)' : undefined,
-                      color: isAgentMode ? '#818cf8' : undefined,
-                      transition: 'all 0.25s ease'
-                    }}
-                  >
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
-                    </svg>
-                  </button>
+                  {/* Agent Mode Toggle — hidden, always-on */}
                   <button onClick={sendChatMessage} disabled={(loading || agentLoading) || (!aiChatInput.trim() && pendingImages.length === 0)} className={styles.sendBtn}>
                     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#ffffff" strokeWidth="1.5"><path d="M22 2L11 13" /><path d="M22 2L15 22L11 13L2 9L22 2Z" /></svg>
                   </button>

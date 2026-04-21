@@ -198,8 +198,13 @@ export async function getCatalogForPromptAsync(filterKeywords = [], maxItems = 8
     let components = catalog.components;
 
     // Optional keyword pre-filter to reduce context size
-    if (filterKeywords && filterKeywords.length > 0) {
-        const lowerKeywords = filterKeywords.map(k => k.toLowerCase());
+    // Robustly handle string or array inputs
+    const keywordsArray = typeof filterKeywords === 'string' 
+        ? filterKeywords.split(/[\s,]+/).filter(Boolean) 
+        : (Array.isArray(filterKeywords) ? filterKeywords : []);
+
+    if (keywordsArray.length > 0) {
+        const lowerKeywords = keywordsArray.map(k => k.toLowerCase());
         components = components.filter(c => {
             const haystack = [
                 c.name, c.category, c.description,

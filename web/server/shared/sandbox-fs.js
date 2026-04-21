@@ -24,7 +24,7 @@ const TEXT_EXTENSIONS = new Set([
 
 // Files that should never be edited by the agent
 const PROTECTED_FILES = new Set([
-  'vite.config.js', 'tailwind.config.js', 'postcss.config.js',
+  'vite.config.js', 'postcss.config.js',
   'package.json', 'package-lock.json', 'tsconfig.json',
   'main.jsx' // main.jsx is the entry point, agent shouldn't touch it
 ]);

@@ -143,6 +143,10 @@ const RenderLogger = import.meta.env.DEV
 const TestSaveToGarage = import.meta.env.DEV
   ? lazy(() => import("../pages/Debug/TestSaveToGarage"))
   : null;
+const AgentModeChatInputsPreview = import.meta.env.DEV
+  ? lazy(() => import("../pages/Agency/pages/Builder/Generation/AgentModeChatInputsPreview"))
+  : null;
+
 
 console.log(
   "[App] ===== APP COMPONENT MODULE LOADED =====",
@@ -505,6 +509,10 @@ export default function App() {
                 {import.meta.env.DEV && TestSaveToGarage && (
                   <Route path="/debug/test-save" element={<TestSaveToGarage />} />
                 )}
+                {import.meta.env.DEV && AgentModeChatInputsPreview && (
+                  <Route path="/debug/agent-inputs" element={<AgentModeChatInputsPreview />} />
+                )}
+
                 <Route
                   path="/admin"
                   element={

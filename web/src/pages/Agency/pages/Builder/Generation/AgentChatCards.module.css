@@ -2,58 +2,36 @@
 
 /* Tool Call Card */
 .toolCard {
-  margin: 4px 0;
-  padding: 8px 12px;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  border-radius: 8px;
-  font-size: 13px;
-  transition: all 0.2s ease;
-}
-
-.toolCardMutation {
-  border-color: rgba(99, 102, 241, 0.15);
-  background: rgba(99, 102, 241, 0.04);
-}
-
-.toolCardError {
-  border-color: rgba(239, 68, 68, 0.2);
-  background: rgba(239, 68, 68, 0.04);
+  margin: 16px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  position: relative;
+  animation: fadeIn 0.4s ease-out;
 }
 
 .toolCardHeader {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 12px;
+  padding-left: 4px;
 }
 
 .toolCardIcon {
+  width: 18px;
+  height: 18px;
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 22px;
-  height: 22px;
-  border-radius: 5px;
-  background: rgba(255, 255, 255, 0.06);
   color: #94a3b8;
+  opacity: 0.6;
   flex-shrink: 0;
 }
 
-.toolCardMutation .toolCardIcon {
-  background: rgba(99, 102, 241, 0.12);
-  color: #818cf8;
-}
-
-.toolCardError .toolCardIcon {
-  background: rgba(239, 68, 68, 0.12);
-  color: #f87171;
-}
-
 .toolCardLabel {
-  color: #94a3b8;
-  font-weight: 500;
-  font-size: 12px;
-  letter-spacing: 0.02em;
+  font-size: 11px;
+  letter-spacing: 0.01em;
+  font-weight: 400;
 }
 
 .toolCardFile {
@@ -96,84 +74,107 @@
 
 /* Inline Diff */
 .toolCardDiff {
-  margin-top: 6px;
-  padding: 6px 8px;
-  border-radius: 5px;
-  background: rgba(0, 0, 0, 0.25);
-  font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+  margin-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.diffRemoved, .diffAdded {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
   font-size: 11px;
   line-height: 1.5;
-  overflow-x: auto;
+  position: relative;
+  overflow: hidden;
+  backdrop-filter: blur(5px);
 }
 
 .diffRemoved {
-  display: flex;
-  gap: 6px;
-  color: #fca5a5;
-  background: rgba(239, 68, 68, 0.08);
-  padding: 2px 4px;
-  border-radius: 3px;
-  margin-bottom: 2px;
+  background: rgba(255, 82, 82, 0.05);
+  border: 1px solid rgba(255, 82, 82, 0.1);
+  border-left: 3px solid #ff5252;
 }
 
 .diffAdded {
-  display: flex;
-  gap: 6px;
-  color: #86efac;
-  background: rgba(34, 197, 94, 0.08);
-  padding: 2px 4px;
-  border-radius: 3px;
+  background: rgba(0, 230, 118, 0.05);
+  border: 1px solid rgba(0, 230, 118, 0.1);
+  border-left: 3px solid #00e676;
 }
 
 .diffSign {
+  font-size: 16px;
+  font-weight: 800;
+  width: 14px;
   flex-shrink: 0;
-  font-weight: 700;
-  width: 12px;
-  opacity: 0.7;
+  font-family: 'Inter', sans-serif;
 }
 
-.diffRemoved code,
-.diffAdded code {
-  white-space: pre-wrap;
-  word-break: break-all;
+.diffRemoved .diffSign, .buildFailed .diffSign { color: #ff5252; text-shadow: 0 0 10px rgba(255, 82, 82, 0.3); }
+.diffAdded .diffSign, .buildPassed .diffSign { color: #00e676; text-shadow: 0 0 10px rgba(0, 230, 118, 0.3); }
+
+.toolCardFile {
+  font-weight: 800 !important;
+  color: #ffffff;
+  opacity: 1;
+}
+
+.diffRemoved code, .diffAdded code {
+  color: transparent !important;
+  background: linear-gradient(to right, #94a3b8 0%, #e2e8f0 50%, #94a3b8 100%) !important;
+  background-size: 200% auto !important;
+  -webkit-background-clip: text !important;
+  background-clip: text !important;
+  animation: textShimmer 3s linear infinite !important;
+  text-shadow: none !important;
+  opacity: 0.9;
 }
 
 /* Error Message */
 .toolCardErrorMsg {
-  margin-top: 4px;
-  padding: 4px 8px;
-  font-size: 11px;
-  color: #fca5a5;
-  background: rgba(239, 68, 68, 0.06);
-  border-radius: 4px;
-  font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+  margin-top: 8px;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
 }
 
 /* Build Result */
 .toolCardBuild {
   margin-top: 4px;
-  padding: 4px 8px;
-  font-size: 11px;
-  font-weight: 600;
-  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 6px 12px;
+  border-radius: 8px;
+  backdrop-filter: blur(5px);
 }
 
 .buildPassed {
-  color: #34d399;
-  background: rgba(34, 197, 94, 0.08);
+  border-left: 3px solid #00e676;
+  background: rgba(0, 230, 118, 0.03);
 }
 
 .buildFailed {
-  color: #f87171;
-  background: rgba(239, 68, 68, 0.08);
+  border-left: 3px solid #ff5252;
+  background: rgba(255, 82, 82, 0.03);
 }
 
 /* Meta Text */
 .toolCardMeta {
-  margin-top: 3px;
+  margin-top: 4px;
   font-size: 11px;
-  color: #64748b;
   padding-left: 30px;
+  color: transparent;
+  background: linear-gradient(to right, #64748b 0%, #94a3b8 50%, #64748b 100%);
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  animation: textShimmer 3s linear infinite;
+  opacity: 0.8;
 }
 
 /* ─── Agent Summary Badge ─────────────────────────────── */
@@ -182,11 +183,13 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin: 8px 0;
-  padding: 8px 14px;
-  background: linear-gradient(135deg, rgba(99, 102, 241, 0.08), rgba(139, 92, 246, 0.06));
-  border: 1px solid rgba(99, 102, 241, 0.15);
-  border-radius: 10px;
+  margin: 16px 0;
+  padding: 12px 18px;
+  background: rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(25px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
 }
 
 .summaryContent {
@@ -226,36 +229,75 @@
   border-color: rgba(255, 255, 255, 0.2);
 }
 
-/* ─── Agent Thinking Pill ─────────────────────────────── */
+/* ─── Agent Thinking Indicator (Classic Style) ───────── */
 
-.thinkingPill {
-  display: inline-flex;
+.agentThinkingRow {
+  display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 6px 14px;
-  margin: 6px 0;
-  border-radius: 20px;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  gap: 12px;
+  margin: 12px 0;
+  padding-left: 4px;
 }
 
-.thinkingDot {
-  width: 5px;
-  height: 5px;
-  border-radius: 50%;
-  background: #818cf8;
-  animation: agentPulse 1.2s ease-in-out infinite;
+.tornadoLogoShimmer,
+.searchIconShimmer,
+.fileIconShimmer,
+.writeIconShimmer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  opacity: 0.8;
+  animation: logoShimmer 3s ease-in-out infinite;
 }
 
-@keyframes agentPulse {
-  0%, 100% { opacity: 0.3; transform: scale(0.8); }
-  50% { opacity: 1; transform: scale(1.1); }
+.tornadoLogoShimmer {
+  background-image: var(--logo-url);
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  filter: brightness(0) invert(1);
 }
 
-.thinkingText {
-  font-size: 12px;
-  color: #94a3b8;
-  font-weight: 500;
+.searchIconShimmer,
+.fileIconShimmer,
+.writeIconShimmer,
+.terminalIconShimmer {
+  color: #ffffff;
+  opacity: 0.8;
+  animation: logoShimmer 3s ease-in-out infinite;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+@keyframes logoShimmer {
+  0%, 100% { opacity: 0.4; filter: brightness(0) invert(1) blur(1px); }
+  50% { opacity: 1; filter: brightness(0) invert(1) blur(0px); }
+}
+
+.shimmerText {
+  font-size: 11px;
+  font-weight: 400;
+  color: #ffffff;
+  letter-spacing: 0.01em;
+  background: linear-gradient(90deg, #ffffff 0%, #a1a1aa 50%, #ffffff 100%);
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: textShimmer 4s linear infinite;
+}
+
+.boldText {
+  font-weight: 800;
+  color: #ffffff;
+  -webkit-text-fill-color: #ffffff;
+  margin: 0 4px;
+}
+
+@keyframes textShimmer {
+  to { background-position: 200% center; }
 }
 
 /* ─── Agent Mode Toggle ───────────────────────────────── */
@@ -304,4 +346,65 @@
 .agentToggleActive .agentToggleDot {
   background: #818cf8;
   box-shadow: 0 0 8px rgba(129, 140, 248, 0.5);
+}
+
+/* ─── Agent Activity Clustered UI ────────────────────── */
+
+.activityContainer {
+  margin: 16px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding-left: 4px;
+}
+
+.activityHeader {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+/* Force icons in header and stack to be smaller */
+.activityHeader > div,
+.activityHeader > div svg {
+  width: 12px !important;
+  height: 12px !important;
+}
+
+.activityHeaderText {
+  color: white;
+  font-size: 11px;
+  font-family: 'Inter', sans-serif;
+  font-weight: 400;
+  letter-spacing: 0.02em;
+}
+
+.activityStack {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-left: 21px; /* To align icons correctly */
+}
+
+.activityEntry {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  overflow: hidden;
+}
+
+.activityEntry > div,
+.activityEntry > div svg {
+  width: 11px !important;
+  height: 11px !important;
+}
+
+.activityEntryText {
+  color: rgba(175, 255, 252, 0.85);
+  font-size: 11px;
+  font-family: 'Inter', sans-serif;
+  font-weight: 400;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }

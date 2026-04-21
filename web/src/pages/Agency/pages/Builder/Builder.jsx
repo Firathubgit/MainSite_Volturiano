@@ -154,6 +154,7 @@ const BuilderContent = () => {
     }, [isCommunityOpen]);
 
     const [selectedComponents, setSelectedComponents] = useState([]);
+    const [useAgentBuild, setUseAgentBuild] = useState(false); // ⭐ Experimental agent-mode initial build
     const [strictMode, setStrictMode] = useState(false);
     const [showAuthModal, setShowAuthModal] = useState(false);
     const [showCongrats, setShowCongrats] = useState(false);
@@ -546,7 +547,8 @@ const BuilderContent = () => {
                 model: selectedModel,
                 manualSelectionIds: selectedComponents.map(c => c.id),
                 initialComponents: selectedComponents,
-                strictMode: strictMode
+                strictMode: strictMode,
+                useAgentBuild: useAgentBuild
             });
         }, 1200);
     };
@@ -923,6 +925,30 @@ const BuilderContent = () => {
                                         </svg>
                                     </button>
                                     <div className={styles.supabaseTooltip}>Available soon</div>
+                                </div>
+
+                                {/* ⭐ Experimental Agent Mode Toggle */}
+                                <div className={styles.supabaseIconWrapper}>
+                                    <button
+                                        type="button"
+                                        className={`${styles.iconButton} ${useAgentBuild ? styles.iconBtnActive : ''}`}
+                                        onClick={() => {
+                                            setUseAgentBuild(!useAgentBuild);
+                                            showNotification(`Agent Build Mode: ${!useAgentBuild ? 'ENABLED' : 'DISABLED'}`);
+                                        }}
+                                        title={useAgentBuild ? "Agent Mode: ON (Autonomous multi-step build)" : "Enable Experimental Agent Mode"}
+                                        style={{
+                                            color: useAgentBuild ? '#FFD700' : '#e3e3e3',
+                                            transition: 'all 0.3s ease',
+                                            filter: useAgentBuild ? 'drop-shadow(0 0 8px rgba(255, 215, 0, 0.4))' : 'none'
+                                        }}
+                                        disabled={isSubmitting}
+                                    >
+                                        <svg width="20" height="20" viewBox="0 0 24 24" fill={useAgentBuild ? '#FFD700' : 'none'} stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                            <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+                                        </svg>
+                                    </button>
+                                    <div className={styles.supabaseTooltip}>Agent Build</div>
                                 </div>
 
                                 <div style={{ flex: 1 }} />

@@ -358,7 +358,7 @@ export default function MySubmissions() {
                         >
                             <h3 className={styles.modalTitle}>Delete Component</h3>
                             <p className={styles.modalDesc}>
-                                Are you sure you want to delete this component, this cant be un done
+                                Are you sure you want to delete this component? This action cannot be undone.
                             </p>
                             <div className={styles.modalActions}>
                                 <button 

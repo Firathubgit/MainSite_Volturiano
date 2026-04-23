@@ -17,7 +17,7 @@ const API_BASE = import.meta.env.VITE_API_URL || '';
  * @param {Function} options.onTurnComplete — called when the agent finishes a turn, receives metadata for persistence
  */
 export function useAgentMode({ sandboxId, sandboxUrl, model, addChatMessage, authFetch, onTurnComplete }) {
-  const [agentActive, setAgentActive] = useState(false);
+  const [agentActive, setAgentActive] = useState(true);
   const [agentLoading, setAgentLoading] = useState(false);
   const [canUndo, setCanUndo] = useState(false);
   const abortControllerRef = useRef(null);

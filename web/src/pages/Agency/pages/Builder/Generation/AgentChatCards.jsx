@@ -74,8 +74,8 @@ export const AgentShimmerIcon = ({ type, volturianoLogo }) => {
       <div 
         className={styles.tornadoLogoShimmer} 
         style={{ 
-          width: 18, 
-          height: 18, 
+          width: 20, 
+          height: 20, 
           '--logo-url': `url(${volturianoLogo})` 
         }} 
       />

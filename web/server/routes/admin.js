@@ -124,7 +124,7 @@ router.post('/update-component', requireAuth, requireBuilderAdmin, async (req, r
 
 // ═══ POST /api/admin/upload-asset — Upload image/video to Supabase Storage ═══
 router.post('/upload-asset', requireAuth, requireBuilderAdmin, async (req, res) => {
-    const { fileName, fileData, contentType, componentId } = req.body;
+    const { fileName, fileData, contentType, componentId, bucket = 'builder-assets' } = req.body;
 
     if (!fileName || !fileData || !contentType) {
         return res.status(400).json({ error: 'fileName, fileData (base64), and contentType required' });
@@ -136,7 +136,7 @@ router.post('/upload-asset', requireAuth, requireBuilderAdmin, async (req, res) 
         const storagePath = `admin-uploads/${componentId || 'general'}/${Date.now()}-${fileName}`;
 
         const { data, error } = await supabaseAdmin.storage
-            .from('builder-assets')
+            .from(bucket)
             .upload(storagePath, buffer, {
                 contentType,
                 upsert: false,
@@ -146,12 +146,135 @@ router.post('/upload-asset', requireAuth, requireBuilderAdmin, async (req, res) 
 
         // Get public URL
         const { data: urlData } = supabaseAdmin.storage
-            .from('builder-assets')
+            .from(bucket)
             .getPublicUrl(storagePath);
 
         res.json({ success: true, url: urlData.publicUrl, path: storagePath });
     } catch (err) {
         console.error('[Admin] Upload asset failed:', err);
+        res.status(500).json({ success: false, error: err.message });
+    }
+});
+
+// ═══ GET /api/admin/templates — Fetch all templates for admin panel ═══
+router.get('/templates', requireAuth, requireBuilderAdmin, async (req, res) => {
+    try {
+        // Try with agent_prompt column first
+        let queryResult = await supabaseAdmin
+            .from('templates')
+            .select('id, template_id, name, description, thumbnail_url, agent_prompt, status, usage_count, quality_score, priority, visit_url, created_at, updated_at')
+            .order('priority', { ascending: true, nullsFirst: false });
+
+        // Fallback: if agent_prompt column doesn't exist yet
+        if (queryResult.error && queryResult.error.code === '42703') {
+            console.warn('[Admin] agent_prompt column not found, querying without it.');
+            queryResult = await supabaseAdmin
+                .from('templates')
+                .select('id, template_id, name, description, thumbnail_url, status, usage_count, quality_score, created_at, updated_at')
+                .order('name', { ascending: true });
+        }
+
+        if (queryResult.error) throw queryResult.error;
+
+        // Ensure agent_prompt field exists on each row (empty string fallback)
+        const templates = (queryResult.data || []).map(t => ({
+            ...t,
+            agent_prompt: t.agent_prompt || '',
+            priority: t.priority ?? null,
+            visit_url: t.visit_url || ''
+        }));
+
+        res.json({ success: true, templates });
+    } catch (err) {
+        console.error('[Admin] Fetch templates failed:', err);
+        res.status(500).json({ success: false, error: err.message });
+    }
+});
+
+// ═══ POST /api/admin/update-template — Update a single template ═══
+const ALLOWED_TEMPLATE_FIELDS = new Set([
+    'agent_prompt',
+    'name',
+    'description',
+    'status',
+    'quality_score',
+    'thumbnail_url',
+    'priority',
+    'visit_url',
+]);
+
+router.post('/update-template', requireAuth, requireBuilderAdmin, async (req, res) => {
+    const { templateId, updates } = req.body;
+
+    if (!templateId || !updates || typeof updates !== 'object') {
+        return res.status(400).json({ error: 'templateId and updates object required' });
+    }
+
+    // Filter to only allowed fields
+    const safeUpdates = {};
+    for (const [key, value] of Object.entries(updates)) {
+        if (ALLOWED_TEMPLATE_FIELDS.has(key)) {
+            safeUpdates[key] = value;
+        }
+    }
+
+    if (Object.keys(safeUpdates).length === 0) {
+        return res.status(400).json({ error: 'No valid fields to update' });
+    }
+
+    console.log(`[Admin] Updating template ${templateId}:`, JSON.stringify(safeUpdates, null, 2));
+
+    try {
+        const { data, error } = await supabaseAdmin
+            .from('templates')
+            .update(safeUpdates)
+            .eq('id', templateId)
+            .select()
+            .single();
+
+        if (error) throw error;
+        res.json({ success: true, template: data });
+    } catch (err) {
+        console.error('[Admin] Update template failed:', err);
+        res.status(500).json({ success: false, error: err.message });
+    }
+});
+
+// ═══ POST /api/admin/create-template — Create a new template ═══
+router.post('/create-template', requireAuth, requireBuilderAdmin, async (req, res) => {
+    const { template_id, name, description, agent_prompt, thumbnail_url, priority, visit_url } = req.body;
+
+    if (!template_id || !name) {
+        return res.status(400).json({ error: 'template_id and name are required' });
+    }
+
+    try {
+        const newTemplate = {
+            template_id,
+            name,
+            description: description || '',
+            agent_prompt: agent_prompt || '',
+            thumbnail_url: thumbnail_url || null,
+            priority: priority ?? null,
+            visit_url: visit_url || '',
+            status: 'active',
+            usage_count: 0,
+            quality_score: 5,
+            template_code: { components: [] } // Standard empty template structure
+        };
+
+        console.log(`[Admin] Creating new template:`, JSON.stringify(newTemplate, null, 2));
+
+        const { data, error } = await supabaseAdmin
+            .from('templates')
+            .insert([newTemplate])
+            .select()
+            .single();
+
+        if (error) throw error;
+        res.json({ success: true, template: data });
+    } catch (err) {
+        console.error('[Admin] Create template failed:', err);
         res.status(500).json({ success: false, error: err.message });
     }
 });

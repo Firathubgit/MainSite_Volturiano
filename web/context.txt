@@ -669,10 +669,10 @@ const BuilderContent = () => {
                                                     >
                                                         Use Template
                                                     </button>
-                                                    {tmpl.visitUrl && (
+                                                    {TEMPLATE_METADATA[tmpl.templateId]?.url && (
                                                         <button
                                                             className={`${styles.templateActionBtn} ${styles.viewSiteBtn}`}
-                                                            onClick={() => window.open(tmpl.visitUrl, '_blank')}
+                                                            onClick={() => window.open(TEMPLATE_METADATA[tmpl.templateId].url, '_blank')}
                                                         >
                                                             View Site
                                                         </button>
@@ -1079,3 +1079,1846 @@ const Builder = () => {
 };
 
 export default Builder;
+/* Outer wrapper — handles scrolling */
+.outerWrapper {
+    width: 111.11%;
+    /* 1 / 0.9 */
+    height: 111.11vh;
+    overflow-x: hidden;
+    overflow-y: auto;
+    background-color: #000;
+    transform: scale(0.9);
+    transform-origin: top left;
+    position: fixed;
+    top: 0;
+    left: 0;
+    display: grid;
+    grid-template-columns: 100%;
+    grid-auto-rows: auto;
+}
+
+/* Page Container - Locked to viewport height (hero) */
+.pageContainer {
+    grid-row: 1;
+    grid-column: 1;
+    width: 100%;
+    min-height: 85vh;
+    flex-shrink: 0;
+    position: relative;
+    overflow: hidden;
+    background-color: #000;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Background Video */
+.heroVideo {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    opacity: 0.7;
+    z-index: 0;
+}
+
+/* Overlay */
+.pageContainer::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.35);
+    z-index: 1;
+    pointer-events: none;
+}
+
+/* Main Content Container - used as positioning context */
+.mainContent {
+    position: relative;
+    z-index: 10;
+    width: 100%;
+    height: 100%;
+}
+
+/* ==============================================
+   Title & Maestro are ABSOLUTELY positioned
+   independently so they can diverge on zoom out.
+   ============================================== */
+
+/* Title Styling */
+.titleWrapper {
+    grid-row: 1;
+    grid-column: 1;
+    position: relative;
+    align-self: start;
+    margin-top: 22vh;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    pointer-events: none;
+    z-index: 5;
+    width: 100%;
+}
+
+.heroLabel {
+    font-family: 'Inter', sans-serif;
+    font-size: 0.99rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.2em;
+    color: #a4a4a7;
+    margin: 0;
+    margin-bottom: 1.35rem;
+    z-index: 2;
+}
+
+.heroTitle {
+    font-family: 'Inter', sans-serif;
+    font-size: 4.95rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: -0.04em;
+    line-height: 1.1;
+    color: var(--color-text, #e6e6ea);
+    margin: 0;
+    z-index: 2;
+    text-align: center;
+}
+
+.logoImage {
+    height: 1.2em;
+    width: auto;
+    vertical-align: middle;
+    display: inline-block;
+    margin: 0;
+    filter: brightness(1);
+}
+
+@media (max-width: 1024px) {
+    .heroTitle {
+        font-size: 3.15rem;
+    }
+}
+
+@media (max-width: 768px) {
+    .heroTitle {
+        font-size: 2.25rem;
+    }
+}
+
+/* Maestro / Builder Component Styling */
+.maestroWrapper {
+    grid-row: 1;
+    grid-column: 1;
+    position: relative;
+    align-self: start;
+    margin-top: 52vh;
+    margin-bottom: 2vh; /* Ultra-tight bound so empty input doesn't stretch past 85vh natively */
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: 100 !important;
+}
+
+/* ==============================================
+   ZOOM-OUT RESPONSIVE: Spread title UP, maestro DOWN
+   When browser Ctrl- is pressed, CSS viewport height
+   increases, triggering these breakpoints.
+   The % top values diverge: title % goes DOWN, maestro % goes UP.
+   ============================================== */
+
+/* ~90% zoom on 1080p → viewport ~1200px+ */
+@media (min-height: 1100px) {
+    .titleWrapper {
+        margin-top: 20vh;
+    }
+
+    .maestroWrapper {
+        margin-top: 58vh;
+    }
+}
+
+/* ~80% zoom → viewport ~1350px+ */
+@media (min-height: 1300px) {
+    .titleWrapper {
+        margin-top: 12vh;
+    }
+
+    .maestroWrapper {
+        margin-top: 50vh;
+    }
+}
+
+/* ~75% zoom → viewport ~1440px+ */
+@media (min-height: 1440px) {
+    .titleWrapper {
+        margin-top: 10vh;
+    }
+
+    .maestroWrapper {
+        margin-top: 48vh;
+    }
+}
+
+/* ~67% zoom → viewport ~1600px+ */
+@media (min-height: 1600px) {
+    .titleWrapper {
+        margin-top: 8vh;
+    }
+
+    .maestroWrapper {
+        margin-top: 46vh;
+    }
+}
+
+/* ~50% zoom → viewport ~2160px+ */
+@media (min-height: 2000px) {
+    .titleWrapper {
+        margin-top: 6vh;
+    }
+
+    .maestroWrapper {
+        margin-top: 44vh;
+    }
+}
+
+/* Floating Input */
+.floatingInputContainer {
+    position: relative;
+    z-index: 30;
+    width: 90%;
+    max-width: 667px;
+    margin-top: 14vh;
+}
+
+.inputForm {
+    width: 100%;
+    background-color: #0f0f0f;
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+
+    /* Near-invisible Gradient Border */
+    border: 1px solid transparent;
+    background-image:
+        linear-gradient(#0f0f0f, #0f0f0f),
+        linear-gradient(135deg,
+            rgba(255, 255, 255, 0.05),
+            rgba(255, 255, 255, 0.08),
+            rgba(255, 255, 255, 0.12),
+            rgba(255, 255, 255, 0.15));
+    background-origin: border-box;
+    background-clip: padding-box, border-box;
+
+    border-radius: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    padding: 24px 20px 22px 22px;
+    gap: 14px;
+    box-shadow:
+        0 30px 60px -12px rgba(0, 0, 0, 0.6),
+        /* Very subtle ambient glows */
+        -10px -10px 25px -15px rgba(255, 255, 255, 0.08),
+        10px 10px 25px -15px rgba(255, 255, 255, 0.1);
+    transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    position: relative;
+    z-index: 10;
+}
+
+
+
+.inputForm:focus-within {
+    transform: scale(1.02);
+    background-image:
+        linear-gradient(#111111, #111111),
+        linear-gradient(135deg,
+            rgba(255, 255, 255, 0.15),
+            rgba(255, 255, 255, 0.2),
+            rgba(255, 255, 255, 0.25));
+    box-shadow:
+        0 40px 80px -15px rgba(0, 0, 0, 0.7),
+        /* Focus glows also toned down but visible */
+        -12px -12px 35px -20px rgba(255, 255, 255, 0.15),
+        12px 12px 35px -20px rgba(255, 255, 255, 0.18);
+    background-color: #111111;
+}
+
+.browseInlineBtn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: transparent;
+    border: none;
+    color: rgba(255, 255, 255, 0.45);
+    font-size: 0.82rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    padding: 4px 8px;
+    border-radius: 6px;
+    margin-left: -4px;
+}
+
+.browseInlineBtn:hover {
+    color: #ffffff;
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.browseInlineBtn svg {
+    opacity: 0.8;
+}
+
+.inputForm.extended {
+    border-radius: 1.25rem;
+}
+
+.inputForm.isDragging {
+    background-image:
+        linear-gradient(rgba(30, 30, 30, 0.92), rgba(30, 30, 30, 0.92)),
+        linear-gradient(110deg, transparent 35%, rgba(255, 255, 255, 0.05) 50%, transparent 65%),
+        linear-gradient(90deg, #4b5563, #ffffff, #4b5563);
+    background-origin: border-box;
+    background-clip: padding-box, padding-box, border-box;
+    background-size: 100% 100%, 200% 100%, 200% 100%;
+    border: 1px solid transparent;
+    box-shadow:
+        0 20px 50px -10px rgba(0, 0, 0, 0.7),
+        0 0 30px rgba(255, 255, 255, 0.1);
+    transform: translate(var(--magnet-x, 0), calc(-2px + var(--magnet-y, 0))) scale(1.012);
+    animation: borderSlideLanding 3.5s linear infinite, waveSlide 4s ease-in-out infinite;
+    transition: transform 0.15s ease-out, box-shadow 0.4s;
+}
+
+@keyframes borderSlideLanding {
+    0% {
+        background-position: 0% 0, 0% 0, 0% 0;
+    }
+
+    100% {
+        background-position: 0% 0, 0% 0, 200% 0;
+    }
+}
+
+@keyframes waveSlide {
+    0% {
+        background-position: 0% 0, -200% 0, 0% 0;
+    }
+
+    100% {
+        background-position: 0% 0, 200% 0, 0% 0;
+    }
+}
+
+/* Input with Previews */
+.inputWithPreviews {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    gap: 4px;
+}
+
+.imagePreviews {
+    display: flex;
+    flex-wrap: nowrap;
+    gap: 0.5rem;
+    padding: 0 0 8px 0;
+    width: 100%;
+    overflow: hidden;
+}
+
+.previewItem {
+    position: relative;
+    width: 40px;
+    height: 40px;
+    flex-shrink: 0;
+    border-radius: 4px;
+    overflow: hidden;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    transition: all 0.2s ease;
+}
+
+.imagePreviews[data-count="8"] .previewItem {
+    width: 35px;
+    height: 35px;
+}
+
+.imagePreviews[data-count="9"] .previewItem {
+    width: 31px;
+    height: 31px;
+}
+
+.imagePreviews[data-count="10"] .previewItem {
+    width: 27px;
+    height: 27px;
+}
+
+.previewItem img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.removeImgBtn {
+    position: absolute;
+    top: 0;
+    right: 0;
+    background: rgba(0, 0, 0, 0.6);
+    color: #fff;
+    border: none;
+    width: 16px;
+    height: 16px;
+    font-size: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    border-radius: 0 0 0 4px;
+}
+
+.removeImgBtn:hover {
+    background: #ff4444;
+}
+
+/* Community Component Previews */
+.communityPreviews {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 0 0 10px 0;
+    width: 100%;
+}
+
+.communityItemsRow {
+    display: flex;
+    flex-wrap: nowrap;
+    gap: 10px;
+    width: 100%;
+    overflow-x: auto;
+    scrollbar-width: none;
+    padding: 10px 4px 4px;
+    /* More top padding for overhanging buttons */
+}
+
+.communityItemsRow::-webkit-scrollbar {
+    display: none;
+}
+
+.communityPreviewItem {
+    position: relative;
+    width: 48px;
+    height: 48px;
+    flex-shrink: 0;
+    border-radius: 8px;
+    overflow: visible;
+    /* Ensure delete button can overlap */
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(40, 40, 40, 0.4);
+    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.communityPreviewItem:hover {
+    border-color: rgba(255, 255, 255, 0.2);
+    background: rgba(255, 255, 255, 0.03);
+}
+
+.communityPreviewItemActive {
+    border-color: #ffffff !important;
+    box-shadow: 0 0 15px rgba(255, 255, 255, 0.15) !important;
+    background: rgba(255, 255, 255, 0.05) !important;
+}
+
+.communityPreviewItem img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px;
+    /* Maintain shape with overflow: visible */
+}
+
+.compIconFallback {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: rgba(255, 255, 255, 0.2);
+}
+
+.compNameBadge {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    padding: 2px 4px;
+    background: rgba(0, 0, 0, 0.7);
+    color: white;
+    font-size: 8px;
+    text-align: center;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    backdrop-filter: blur(4px);
+    border-bottom-left-radius: 7px;
+    /* Match parent minus border */
+    border-bottom-right-radius: 7px;
+    pointer-events: none;
+}
+
+.removeComponentBtn {
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    background: #ef4444;
+    color: #fff;
+    border: 2px solid #141414;
+    width: 18px;
+    height: 18px;
+    font-size: 14px;
+    font-weight: bold;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    border-radius: 50%;
+    z-index: 10;
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    padding: 0;
+}
+
+.removeComponentBtn:hover {
+    background: #b91c1c;
+    /* Darker red on hover */
+}
+
+.strictModeControl {
+    display: inline-flex;
+    align-items: center;
+    gap: 12px;
+    cursor: pointer;
+    user-select: none;
+    margin: 8px 0;
+    transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.strictModeControl:hover {
+    transform: scale(1.01);
+}
+
+.strictModeControl:active {
+    transform: scale(0.98);
+}
+
+.strictModeLabel {
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: rgba(255, 255, 255, 0.45);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    transition: color 0.3s ease;
+}
+
+.pixelActive + .strictModeLabel {
+    color: #ffffff;
+}
+
+.btnGradientOverlay {
+    position: absolute;
+    right: 0;
+    top: 1px;
+    bottom: 1px;
+    height: calc(100% - 2px);
+    width: auto;
+    object-fit: contain;
+    pointer-events: none;
+    z-index: 0;
+}
+
+.strictModeToggle span {
+    position: relative;
+    z-index: 1;
+}
+
+
+.textInput {
+    background: transparent;
+    color: #fff;
+    font-size: 1.05rem;
+    /* Larger text */
+    width: 100%;
+    outline: none;
+    font-weight: 400;
+    letter-spacing: 0.01em;
+    min-height: 24px;
+    /* Fat minimal height */
+    max-height: 120px;
+    /* Max height before scroll */
+    overflow-y: hidden;
+    border: none;
+    resize: none;
+    display: block;
+    box-sizing: border-box;
+    padding: 0 4px 0 0;
+    /* Add slight right padding to push scrollbar away from text */
+    /* Container handles padding */
+    line-height: 1.5;
+
+    /* Cross-browser scrollbar styling (Firefox, etc.) */
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
+}
+
+/* Custom scrollbar for webkit (Chrome/Edge/Safari) */
+.textInput::-webkit-scrollbar {
+    width: 6px;
+}
+
+.textInput::-webkit-scrollbar-track {
+    background: transparent;
+    margin: 4px 0;
+}
+
+.textInput::-webkit-scrollbar-thumb {
+    background-color: rgba(255, 255, 255, 0.15);
+    border-radius: 6px;
+}
+
+.textInput::-webkit-scrollbar-thumb:hover,
+.textInput::-webkit-scrollbar-thumb:active {
+    background-color: rgba(255, 255, 255, 0.3);
+}
+
+.textInput::placeholder {
+    color: rgba(255, 255, 255, 0.5);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.actionButtons {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    /* Use spacer to push send button to the right */
+    gap: 0.36rem;
+    background: transparent;
+    width: 100%;
+    /* Take full width of the bottom row */
+}
+
+.iconButton {
+    width: 2.025rem;
+    height: 2.025rem;
+    border-radius: 50%;
+    background-color: transparent;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    color: rgba(255, 255, 255, 0.6);
+    cursor: pointer;
+    border: none;
+}
+
+/* The container for positioning the dropdown */
+.modelSelectorContainer {
+    position: relative;
+}
+
+/* The button that opens the menu */
+.modelSelectorButton {
+    width: 2.025rem;
+    height: 2.025rem;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: transparent;
+    color: rgba(255, 255, 255, 0.6);
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    border: none;
+    padding: 0;
+}
+
+.modelSelectorButton:hover,
+.modelSelectorButton[data-active="true"] {
+    background-color: rgba(255, 255, 255, 0.1);
+    color: white;
+    transform: scale(1.05);
+}
+
+.modelSelectorButton svg {
+    pointer-events: none;
+}
+
+/* The Dropdown Menu */
+.modelDropdown {
+    position: absolute;
+    bottom: 140%;
+    /* Position above the input bar */
+    left: 50%;
+    transform: translateX(-50%);
+    width: 240px;
+    background: rgba(13, 13, 15, 0.95);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 12px;
+    padding: 6px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    box-shadow:
+        0 4px 6px -1px rgba(0, 0, 0, 0.1),
+        0 10px 15px -3px rgba(0, 0, 0, 0.1),
+        0 0 0 1px rgba(0, 0, 0, 0.2);
+    z-index: 100;
+    transform-origin: bottom center;
+}
+
+.modelOption {
+    width: 100%;
+    padding: 10px 12px;
+    border-radius: 8px;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    color: rgba(255, 255, 255, 0.6);
+    font-size: 0.875rem;
+    font-family: inherit;
+    transition: all 0.2s ease;
+    text-align: left;
+}
+
+.modelOption:hover {
+    background: rgba(255, 255, 255, 0.05);
+    color: white;
+}
+
+.modelOptionActive {
+    background: rgba(255, 255, 255, 0.1);
+    color: white;
+    font-weight: 500;
+}
+
+.modelCheck {
+    width: 14px;
+    height: 14px;
+    color: #ffffff;
+}
+
+.modelOptionLeft {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.modelOptionIcon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+}
+
+.modelOptionIcon svg {
+    width: 100%;
+    height: 100%;
+}
+
+.modelOptionLabel {
+    flex: 1;
+}
+
+.activeModelIconWrapper {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+}
+
+.activeModelIconWrapper svg {
+    max-width: 100%;
+    max-height: 100%;
+}
+
+
+.iconButton>* {
+    pointer-events: none;
+}
+
+.submitButton>svg {
+    pointer-events: none;
+}
+
+
+
+.iconButton:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+    color: white;
+    transform: scale(1.05);
+}
+
+.submitButton {
+    width: 38px;
+    height: 38px;
+    border-radius: 12px;
+    background-color: #2a2a2a;
+    color: #0d0d0d;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    border: none;
+    position: relative;
+    /* Removed inset shadow that caused a gradient-like edge line */
+    box-shadow: none;
+}
+
+.submitButton svg {
+    color: #666;
+    transition: color 0.25s ease;
+}
+
+.submitButton.hasText {
+    background-color: #ffffff;
+}
+
+.submitButton.hasText svg {
+    color: #000;
+}
+
+.submitButton:hover:not(:disabled) {
+    transform: scale(1.05);
+}
+
+.hasText:hover {
+    background-color: #f1f1f1;
+    box-shadow: 0 0 20px rgba(255, 255, 255, 0.2);
+}
+
+.submitButton:active {
+    transform: scale(0.95);
+}
+
+.suspenseDot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background-color: #ef4444;
+    /* Red-500 */
+    box-shadow: 0 0 8px rgba(239, 68, 68, 0.6);
+    animation: pulseRed 1s infinite;
+}
+
+
+.cardImage {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    opacity: 0.7;
+    transition: all 0.3s;
+    z-index: 10;
+}
+
+
+.footerText {
+    position: absolute;
+    bottom: 2.25rem;
+    left: 0;
+    margin-top: 0;
+    color: rgba(255, 255, 255, 0.3);
+    text-align: center;
+    font-size: 0.63rem;
+    font-weight: 600;
+    letter-spacing: 0.225em;
+    text-transform: uppercase;
+    width: 100%;
+    z-index: 10;
+}
+
+/* ─── TEMPLATE SELECTOR SECTION ─── */
+.templateSection {
+    position: relative;
+    z-index: 60;
+    width: 100%;
+    background: #000;
+    padding: 80px 0 120px;
+}
+
+.templateSectionInner {
+    max-width: 100%;
+    margin: 0 auto;
+    padding: 0 2rem 4rem;
+    position: relative;
+    z-index: 10;
+}
+
+.templateSectionHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 3rem;
+}
+
+.templateLabel {
+    display: none;
+}
+
+.templateSectionTitle {
+    font-family: 'Inter', sans-serif;
+    font-size: 1.25rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--text-primary);
+    margin: 0;
+}
+
+.templateSectionDesc {
+    display: none;
+}
+
+.templateGrid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 2rem;
+    width: 100%;
+}
+
+.templateGridCard {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    height: 100%;
+    width: 100%;
+    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.templateGridThumb {
+    width: 100%;
+    aspect-ratio: 4/3;
+    border-radius: 12px;
+    overflow: hidden;
+    position: relative;
+    background-color: #1a1a1a;
+    box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.3);
+    transition: box-shadow 0.3s ease;
+}
+
+.templateGridCard:hover .templateGridThumb {
+    box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.5);
+}
+
+.templateGridImage {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    opacity: 1;
+}
+
+.templateGridCard:hover .templateGridImage {
+    transform: scale(1.03);
+    opacity: 1;
+}
+
+.templateGridOverlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.4);
+    opacity: 0;
+    transition: opacity 0.25s ease;
+    z-index: 5;
+}
+
+.templateGridCard:hover .templateGridOverlay {
+    opacity: 1;
+}
+
+.templateCardActions {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    opacity: 0;
+    transform: translateY(10px);
+    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    z-index: 10;
+    pointer-events: none;
+}
+
+.templateGridCard:hover .templateCardActions {
+    opacity: 1;
+    transform: translateY(0);
+    pointer-events: auto;
+}
+
+.templateActionBtn {
+    width: 160px;
+    padding: 10px 0;
+    border-radius: 99px;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    cursor: pointer;
+    transition: all 0.3s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    border: none;
+}
+
+.useTemplateBtn {
+    background: #fff;
+    color: #000;
+}
+
+.useTemplateBtn:hover {
+    background: #e5e5e5;
+    transform: scale(1.05);
+}
+
+.viewSiteBtn {
+    background: rgba(255, 255, 255, 0.1);
+    color: #fff;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.viewSiteBtn:hover {
+    background: rgba(255, 255, 255, 0.2);
+    border-color: rgba(255, 255, 255, 0.4);
+    transform: scale(1.05);
+}
+
+.templateGridBadge {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    color: rgba(255, 255, 255, 0.8);
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    padding: 4px 10px;
+    border-radius: 100px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.templateGridInfo {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.templateGridName {
+    font-size: 1.5rem;
+    font-weight: 600;
+    margin: 0;
+    color: var(--text-primary, #fff);
+    font-family: 'Inter', sans-serif;
+    letter-spacing: -0.02em;
+}
+
+.templateGridDesc {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-secondary);
+    opacity: 0.8;
+    font-weight: 500;
+    margin: 0;
+}
+
+/* ─── Notification Popup ─── */
+.notificationPopup {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    z-index: 9999;
+    background: rgba(20, 20, 20, 0.95);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 12px;
+    padding: 12px 20px;
+    color: #fff;
+    font-size: 13px;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    box-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.8);
+    pointer-events: none;
+}
+
+.notificationPopup svg {
+    color: #ef4444;
+}
+
+/* ─── Community Discovery CTA ─── */
+.ctaSection {
+    position: relative;
+    width: 100%;
+    padding: 60px 1rem 100px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+/* The card: border only on top + bottom, radial gradient from top-left */
+.ctaCard {
+    position: relative;
+    width: 100%;
+    max-width: 64rem;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 40px;
+    border-top: 1px solid rgba(255, 255, 255, 0.12);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+    background: radial-gradient(35% 80% at 25% 0%, rgba(255, 255, 255, 0.06), transparent);
+    padding: 80px 48px;
+}
+
+/* Vertical left + right border lines extending beyond the card */
+.ctaCard::before,
+.ctaCard::after {
+    content: '';
+    position: absolute;
+    top: -40px;
+    bottom: -40px;
+    width: 1px;
+    pointer-events: none;
+}
+
+.ctaCard::before {
+    left: 0;
+    border-left: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.ctaCard::after {
+    right: 0;
+    border-right: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+/* Dashed vertical centre line */
+.ctaCenterLine {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 50%;
+    border-left: 1px dashed rgba(255, 255, 255, 0.10);
+    pointer-events: none;
+    z-index: 0;
+}
+
+/* Plus / cross icons at each corner */
+.ctaCorner {
+    position: absolute;
+    width: 24px;
+    height: 24px;
+    color: rgba(255, 255, 255, 0.50);
+    z-index: 1;
+    pointer-events: none;
+}
+
+.ctaCornerTL {
+    top: -12px;
+    left: -12px;
+}
+
+.ctaCornerTR {
+    top: -12px;
+    right: -12px;
+}
+
+.ctaCornerBL {
+    bottom: -12px;
+    left: -12px;
+}
+
+.ctaCornerBR {
+    bottom: -12px;
+    right: -12px;
+}
+
+/* Text content block */
+.ctaContent {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.ctaTitle {
+    text-align: center;
+    font-family: 'Inter', sans-serif;
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #fff;
+    margin: 0;
+    letter-spacing: -0.025em;
+    line-height: 1.25;
+}
+
+.ctaDesc {
+    text-align: center;
+    font-family: 'Inter', sans-serif;
+    font-size: 0.9rem;
+    color: rgba(255, 255, 255, 0.45);
+    margin: 0;
+    line-height: 1.5;
+}
+
+/* Button row */
+.ctaButtons {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+/* Outline button */
+.ctaBtnOutline {
+    height: 40px;
+    padding: 0 18px;
+    border-radius: 6px;
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    background: transparent;
+    color: rgba(255, 255, 255, 0.75);
+    font-family: 'Inter', sans-serif;
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.2s, border-color 0.2s, color 0.2s;
+    white-space: nowrap;
+}
+
+.ctaBtnOutline:hover {
+    background: rgba(255, 255, 255, 0.07);
+    border-color: rgba(255, 255, 255, 0.3);
+    color: #fff;
+}
+
+/* Primary (filled) button */
+.ctaBtnPrimary {
+    height: 40px;
+    padding: 0 18px;
+    border-radius: 6px;
+    border: none;
+    background: #fff;
+    color: #000;
+    font-family: 'Inter', sans-serif;
+    font-size: 0.875rem;
+    font-weight: 600;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    transition: background 0.2s, transform 0.15s;
+    white-space: nowrap;
+}
+
+.ctaBtnPrimary:hover {
+    background: #e5e5e5;
+    transform: translateY(-1px);
+}
+
+.ctaBtnPrimary:active {
+    transform: translateY(0) scale(0.98);
+}
+
+/* Arrow inside primary button */
+.ctaBtnArrow {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 16px;
+    height: 16px;
+    transition: transform 0.2s;
+}
+
+.ctaBtnPrimary:hover .ctaBtnArrow {
+    transform: translateX(2px);
+}
+
+/* Supabase Icon Stage 13 */
+.supabaseIconWrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 8px;
+}
+
+.supabaseIconButton {
+    width: 1.85rem;
+    height: 1.85rem;
+    border-radius: 8px;
+    background-color: #161618;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    cursor: pointer;
+    border: 1.2px solid rgba(255, 255, 255, 0.1);
+    padding: 0;
+    overflow: hidden;
+}
+
+.supabaseIconButton:hover {
+    background-color: #1c1c1f;
+    border-color: rgba(62, 207, 142, 0.3);
+    transform: scale(1.04);
+}
+
+.supabaseIconButton svg {
+    width: 60%;
+    height: 60%;
+}
+
+.supabaseTooltip {
+    position: absolute;
+    bottom: 140%;
+    left: 50%;
+    transform: translateX(-50%) translateY(10px);
+    background: rgba(13, 13, 15, 0.95);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    color: #fff;
+    padding: 6px 10px;
+    border-radius: 8px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    white-space: nowrap;
+    pointer-events: none;
+    opacity: 0;
+    transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+    z-index: 200;
+}
+
+.supabaseIconWrapper:hover .supabaseTooltip {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+}
+
+
+
+/* Ambient violet glow blob bottom-left */
+.gridCard::after {
+    content: '';
+    position: absolute;
+    bottom: -40px;
+    left: -40px;
+    width: 220px;
+    height: 220px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(139, 92, 246, 0.12) 0%, transparent 70%);
+    pointer-events: none;
+    z-index: 0;
+}
+
+.gridCardPattern {
+    width: 100%;
+    height: 100%;
+    background-image: radial-gradient(circle, rgba(255, 255, 255, 0.13) 1px, transparent 1px);
+    background-size: 28px 28px;
+}
+
+.gridCardGradient {
+    width: 100%;
+    height: 100%;
+    background: radial-gradient(ellipse 80% 80% at 50% 50%,
+            rgba(10, 10, 15, 0.90) 0%,
+            rgba(10, 10, 15, 0.65) 55%,
+            rgba(10, 10, 15, 0.95) 100%);
+}
+
+/* Inner layout: side-by-side on desktop */
+.gridCardInner {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 48px 52px;
+    gap: 40px;
+    flex-wrap: wrap;
+}
+
+.gridCardLeft {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    flex: 1;
+    min-width: 240px;
+}
+
+.gridCardRight {
+    display: flex;
+    align-items: center;
+    flex-shrink: 0;
+}
+
+.gridCardBody {
+    display: none;
+}
+
+.gridCardEyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.65rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.18em;
+    color: rgba(139, 92, 246, 0.9);
+    font-family: 'Inter', sans-serif;
+    margin: 0;
+}
+
+.gridCardEyebrow::before {
+    content: '';
+    display: inline-block;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: rgba(139, 92, 246, 0.9);
+    box-shadow: 0 0 6px rgba(139, 92, 246, 0.7);
+    animation: pulseDot 2s ease-in-out infinite;
+}
+
+@keyframes pulseDot {
+
+    0%,
+    100% {
+        opacity: 1;
+        transform: scale(1);
+    }
+
+    50% {
+        opacity: 0.5;
+        transform: scale(0.7);
+    }
+}
+
+.gridCardTitle {
+    font-size: 2rem;
+    font-weight: 700;
+    color: #fff;
+    margin: 0;
+    font-family: 'Inter', sans-serif;
+    letter-spacing: -0.03em;
+    line-height: 1.2;
+}
+
+.gridCardDesc {
+    font-size: 0.875rem;
+    color: rgba(255, 255, 255, 0.45);
+    margin: 0;
+    font-family: 'Inter', sans-serif;
+    line-height: 1.6;
+    max-width: 340px;
+}
+
+.gridCardFooter {
+    display: none;
+}
+
+/* StarButton */
+.starButton {
+    position: relative;
+    z-index: 3;
+    overflow: hidden;
+    height: 46px;
+    padding: 0 28px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    white-space: nowrap;
+    border-radius: 999px;
+    font-size: 0.875rem;
+    font-weight: 600;
+    font-family: 'Inter', sans-serif;
+    cursor: pointer;
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    background: rgba(255, 255, 255, 0.06);
+    isolation: isolate;
+    transition: background 0.3s, border-color 0.3s, box-shadow 0.3s, transform 0.2s;
+}
+
+.starButton:hover {
+    background: rgba(255, 255, 255, 0.10);
+    border-color: rgba(255, 255, 255, 0.25);
+    box-shadow: 0 0 28px rgba(139, 92, 246, 0.2), 0 8px 20px rgba(0, 0, 0, 0.3);
+    transform: translateY(-1px);
+}
+
+.starButton:active {
+    transform: translateY(0) scale(0.98);
+}
+
+.starButtonOrbit {
+    position: absolute;
+    aspect-ratio: 1 / 1;
+    background: radial-gradient(ellipse at center, rgba(250, 250, 250, 0.85), transparent 60%);
+    animation: starOrbit calc(var(--star-duration, 3) * 1s) linear infinite;
+    offset-path: var(--star-path);
+    offset-distance: 0%;
+    width: var(--star-light-width, 90px);
+    pointer-events: none;
+}
+
+@keyframes starOrbit {
+    0% {
+        offset-distance: 0%;
+    }
+
+    100% {
+        offset-distance: 100%;
+    }
+}
+
+.starButtonBorder {
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    overflow: hidden;
+    z-index: 4;
+    pointer-events: none;
+    opacity: 0.2;
+}
+
+.starButtonBorderSvg {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+}
+
+.starButtonLabel {
+    position: relative;
+    z-index: 10;
+    background: linear-gradient(to bottom, #ffffff 30%, rgba(200, 200, 210, 0.85) 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    letter-spacing: 0.01em;
+}
+
+/* â”€â”€â”€ Community Discovery CTA â”€â”€â”€ */
+.ctaSection {
+    position: relative;
+    width: 100%;
+    padding: 60px 1rem 100px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+/* Fully enclosed rectangular card with rounded corners, matching theme background */
+.ctaCard {
+    position: relative;
+    width: 100%;
+    max-width: 64rem;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 32px;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    /* Very subtle border */
+    border-radius: 20px;
+    background: #0b0b0c;
+    /* Exact match to pure theme background */
+    padding: 56px 48px;
+    overflow: hidden;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+    transition: border-color 0.3s ease, transform 0.3s ease;
+}
+
+.ctaCard:hover {
+    border-color: rgba(255, 255, 255, 0.1);
+}
+
+/* Exact geometric diagonal stripes matching the structural shading of the white reference card.
+   Both stripes flow parallel to each other, forming a single continuous geometric overlay. */
+.ctaCard::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background:
+        linear-gradient(135deg,
+            rgba(255, 255, 255, 0.05) 0%,
+            rgba(255, 255, 255, 0.01) 25%,
+            transparent 25%,
+            transparent 75%,
+            rgba(255, 255, 255, 0.05) 75%,
+            rgba(255, 255, 255, 0.01) 100%);
+    pointer-events: none;
+    z-index: 0;
+}
+
+
+/* Text block */
+.ctaContent {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.ctaTitle {
+    text-align: center;
+    font-family: 'Inter', sans-serif;
+    font-size: 2.25rem;
+    font-weight: 700;
+    color: #fff;
+    margin: 0;
+    letter-spacing: -0.04em;
+    line-height: 1.1;
+}
+
+.ctaDesc {
+    text-align: center;
+    font-family: 'Inter', sans-serif;
+    font-size: 0.95rem;
+    color: rgba(255, 255, 255, 0.45);
+    margin: 0;
+    line-height: 1.5;
+    max-width: 600px;
+    align-self: center;
+}
+
+/* Button row */
+.ctaButtons {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    flex-wrap: wrap;
+    margin-top: 0px;
+}
+
+/* Outline button (secondary) */
+.ctaBtnOutline {
+    height: 52px;
+    padding: 0 32px;
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    background: transparent;
+    color: rgba(255, 255, 255, 0.75);
+    font-family: 'Inter', sans-serif;
+    font-size: 1rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.2s, border-color 0.2s, color 0.2s;
+    white-space: nowrap;
+}
+
+.ctaBtnOutline:hover {
+    background: rgba(255, 255, 255, 0.07);
+    border-color: rgba(255, 255, 255, 0.3);
+    color: #fff;
+}
+
+/* Primary filled button */
+.ctaBtnPrimary {
+    height: 52px;
+    padding: 0 32px;
+    border-radius: 8px;
+    border: none;
+    background: #fff;
+    color: #000;
+    font-family: 'Inter', sans-serif;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    transition: background 0.2s, transform 0.15s;
+    white-space: nowrap;
+}
+
+.ctaBtnPrimary:hover {
+    background: #e5e5e5;
+    transform: translateY(-1px);
+}
+
+.ctaBtnPrimary:active {
+    transform: translateY(0) scale(0.98);
+}
+
+/* Arrow icon in primary button */
+.ctaBtnArrow {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 16px;
+    height: 16px;
+    transition: transform 0.2s;
+}
+
+.ctaBtnPrimary:hover .ctaBtnArrow {
+    transform: translateX(2px);
+}
+
+/* Pixelated Toggle Switch */
+.pixelSwitch {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    width: 60px;
+    height: 26px;
+}
+
+.pixelToggle {
+    opacity: 0;
+    width: 0;
+    height: 0;
+    position: absolute;
+}
+
+/* Base Track */
+.pixelSlider {
+    image-rendering: pixelated;
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAlgAAAEECAYAAAD0wkrNAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsEAAA7BAbiRa+0AAAGHaVRYdFhNTDpjb20uYWRvYmUueG1wAAAAAAA8P3hwYWNrZXQgYmVnaW49J++7vycgaWQ9J1c1TTBNcENlaGlIenJlU3pOVGN6a2M5ZCc/Pg0KPHg6eG1wbWV0YSB4bWxuczp4PSJhZG9iZTpuczptZXRhLyI+PHJkZjpSREYgeG1sbnM6cmRmPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5LzAyLzIyLXJkZi1zeW50YXgtbnMjIj48cmRmOkRlc2NyaXB0aW9uIHJkZjphYm91dD0idXVpZDpmYWY1YmRkNS1iYTNkLTExZGEtYWQzMS1kMzNkNzUxODJmMWIiIHhtbG5zOnRpZmY9Imh0dHA6Ly9ucy5hZG9iZS5jb20vdGlmZi8xLjAvIj48dGlmZjpPcmllbnRhdGlvbj4xPC90aWZmOk9yaWVudGF0aW9uPjwvcmRmOkRlc2NyaXB0aW9uPjwvcmRmOlJERj48L3g6eG1wbWV0YT4NCjw/eHBhY2tldCBlbmQ9J3cnPz4slJgLAAAFd0lEQVR4Xu3YMWpbQRhG0ZGdwqAVJqQzRsYIL8aoSUgppKUJvIaYl346+91Csc+Bab52msu/GWMsAwCAzM08AACwjsACAIgJLACAmMACAIgJLACAmMACAIgJLACAmMACAIgJLACAmMACAIgJLACAmMACAIgJLACAmMACAIgJLACAmMACAIgJLACAmMACAIgJLACA2GaMsczjGsfTeZ4AAK7azx/f52kVFywAgJjAAgCICSwAgJjAAgCICSwAgJjAAgCICSwAgJjAAgCICSwAgJjAAgCICSwAgJjAAgCICSwAgJjAAgCICSwAgJjAAgCICSwAgJjAAgCICSwAgJjAAgCICSwAgJjAAgCICSwAgJjAAgCICSwAgJjAAgCICSwAgJjAAgCICSwAgJjAAgCICSwAgJjAAgCICSwAgJjAAgCICSwAgJjAAgCICSwAgJjAAgCICSwAgNhmjLHM4xrH03mersrl8jpPAHzA4fAyT7zDfv88T5/adns3T1fl6XE3T6u4YAEAxAQWAEBMYAEAxAQWAEBMYAEAxAQWAEBMYAEAxAQWAEBMYAEAxAQWAEBMYAEAxAQWAEBMYAEAxAQWAEBMYAEAxAQWAEBMYAEAxAQWAEBMYAEAxDZjjGUe1ziezvN0VS6X13kC+BIOh5d5WmW/f54n3uGr/cd2ezdPq9zefpunVXYP9/O0igsWAEBMYAEAxAQWAEBMYAEAxAQWAEBMYAEAxAQWAEBMYAEAxAQWAEBMYAEAxAQWAEBMYAEAxAQWAEBMYAEAxAQWAEBMYAEAxAQWAEBMYAEAxAQWAEBMYAEAxAQWAEBMYAEAxAQWAEBMYAEAxAQWAEBMYAEAxAQWAEBMYAEAxAQWAEBMYAEAxAQWAEBMYAEAxAQWAEBMYAEAxAQWAEBMYAEAxAQWAEBMYAEAxAQWAEBMYAEA/523t7/pqwksAICYwAIAiAksAICYwAIAiAksAICYwAIAiAksAICYwAIAiAksAICYwAIAiAksAICYwAIAiAksAICYwAIAiAksAICYwAIAiAksAICYwAIAiAksAICYwAIAiAksAICYwAIAiAksAICYwAIAiAksAICYwAIAiAksAICYwAIAiAksAICYwAIAiAksAICYwAIAiAksAICYwAIAiAksAICYwAIAiAksAICYwAIAiAksAICYwAIAiAksAICYwAIAiAksAICYwAIAiAksAICYwAIAiAksAICYwAIAiAksAICYwAIAiAksAICYwAIAiAksAICYwAIAiAksAICYwAIAiAksAICYwAIAiAksAIDYZoyxzOMax9N5nq7K5fI6TwB8wOHwMk+8w37/PE+f2nZ7N09X5elxN0+ruGABAMQEFgBATGABAMQEFgBATGABAMQEFgBATGABAMQEFgBATGABAMQEFgBATGABAMQEFgBATGABAMQEFgBATGABAMQEFgBATGABAMQEFgBATGABAMQ2Y4xlHtf4/evPPAEApJabzTytsnu4n6dVXLAAAGICCwAgJrAAAGICCwAgJrAAAGICCwAgJrAAAGICCwAgJrAAAGICCwAgJrAAAGICCwAgJrAAAGICCwAgJrAAAGICCwAgJrAAAGICCwAgJrAAAGICCwAgJrAAAGICCwAgJrAAAGICCwAgJrAAAGICCwAgJrAAAGICCwAgJrAAAGICCwAgJrAAAGICCwAgJrAAAGICCwAgJrAAAGICCwAgJrAAAGICCwAgJrAAAGKbMcYyjwAAfJwLFgBATGABAMQEFgBATGABAMQEFgBATGABAMQEFgBATGABAMQEFgBATGABAMQEFgBATGABAMQEFgBATGABAMQEFgBATGABAMQEFgBATGABAMQEFgBA7B+FCmkzoT9HAAAAAABJRU5ErkJggg==);
+    background-size: 100% 100%;
+    transition: background 0.3s ease;
+    /* REMOVED: overflow: hidden; so the thumb doesn't get clipped! */
+}
+
+/* Teal Overlay + Active Line */
+.pixelSlider::after {
+    content: "";
+    position: absolute;
+    top: 4px;
+    left: 4px;
+    right: 4px;
+    bottom: 4px;
+    /* Teal gradient PLUS a white vertical line centered in the teal area */
+    background:
+        linear-gradient(90deg, transparent 40%, #ffffff 40%, #ffffff 60%, transparent 60%),
+        /* The Line */
+        linear-gradient(180deg, #b0f2ff 0%, #00ced1 100%);
+    /* The Teal Gradient */
+    background-size: 10px 12px, 100% 100%;
+    /* Line size vs Background size */
+    background-repeat: no-repeat;
+    background-position: 8px center, center;
+    /* Position the line specifically in the left "on" area */
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    z-index: 1;
+}
+
+/* Show teal overlay when checked */
+.pixelToggle:checked+.pixelSlider::after {
+    opacity: 1;
+}
+
+/* Swiper (Thumb) */
+.pixelSlider:before {
+    box-sizing: border-box;
+    position: absolute;
+    content: "";
+    height: 32px;
+    width: 28px;
+    bottom: -3px;
+    /* FIXED: Centers the 32px thumb vertically over the 26px track */
+    left: 0;
+    background: url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAARgAAAFACAYAAABnU2MWAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsEAAA7BAbiRa+0AAAGHaVRYdFhNTDpjb20uYWRvYmUueG1wAAAAAAA8P3hwYWNrZXQgYmVnaW49J++7vycgaWQ9J1c1TTBNcENlaGlIenJlU3pOVGN6a2M5ZCc/Pg0KPHg6eG1wbWV0YSB4bWxuczp4PSJhZG9iZTpuczptZXRhLyI+PHJkZjpSREYgeG1sbnM6cmRmPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5LzAyLzIyLXJkZi1zeW50YXgtbnMjIj48cmRmOkRlc2NyaXB0aW9uIHJkZjphYm91dD0idXVpZDpmYWY1YmRkNS1iYTNkLTExZGEtYWQzMS1kMzNkNzUxODJmMWIiIHhtbG5zOnRpZmY9Imh0dHA6Ly9ucy5hZG9iZS5jb20vdGlmZi8xLjAvIj48dGlmZjpPcmllbnRhdGlvbj4xPC90aWZmOk9yaWVudGF0aW9uPjwvcmRmOkRlc2NyaXB0aW9uPjwvcmRmOlJERj48L3g6eG1wbWV0YT4NCjw/eHBhY2tldCBlbmQ9J3cnPz4slJgLAAAEZElEQVR4Xu3cMWojURBF0WpHQpYXOxivYjBerGWhrCf/aesOFpwTvgVcKqptZvYBCLysA8CjCAyQERggIzBARmCAjMAAGYEBMgIDZAQGyAgMkBEYICMwQEZggIzAABmBATICA2QEBsgIDJARGCCzPfon7/V2XyfgSVzOp3U6xAUDZAQGyAgMkBEYICMwQEZggIzAABmBATICA2QEBsgIDJARGCAjMEBGYICMwAAZgQEyAgNkBAbICAyQERggIzBARmCAjMAAGYEBMgIDZAQGyAgMkBEYICMwQEZggIzAABmBATICA2QEBsgIDJARGCAjMEBGYICMwACZbWb2dTzieruv06/y/f2zTvDfvL29rtOvcjmf1ukQFwyQERggIzBARmCAjMAAGYEBMgIDZAQGyAgMkBEYICMwQEZggIzAABmBATICA2QEBsgIDJARGCAjMEBGYICMwAAZgQEyAgNkBAbICAyQERggIzBARmCAjMAAGYEBMgIDZAQGyAgMkBEYICMwQEZggIzAABmBATICA2QEBsgIDJARGCAjMEBGYICMwAAZgQEyAgNkBAbICAyQERggIzBARmCAjMAAGYEBMgIDZAQGyAgMkBEYICMwQEZggIzAABmBATICA2QEBsgIDJARGCAjMEBGYICMwAAZgQEyAgNkBAbICAyQERggIzBARmCAjMAAGYEBMgIDZAQGyAgMkBEYICMwQEZggIzAABmBATICA2QEBsgIDJARGCAjMEBGYICMwAAZgQEyAgNkBAbICAyQERggIzBARmCAjMAAGYEBMgIDZAQGyAgMkBEYICMwQEZggIzAABmBATICA2S2mdnX8Yjr7b5OwJO4nE/rdIgLBsgIDJARGCAjMEBGYICMwAAZgQEyAgNkBAbICAyQERggIzBARmCAjMAAGYEBMgIDZAQGyAgMkBEYICMwQEZggIzAABmBATICA2QEBsgIDJARGCAjMEBGYICMwAAZgQEyAgNkBAbICAyQERggIzBARmCAjMAAGYEBMtvM7Ot4xN/Pr3UCnsTH+591OsQFA2QEBsgIDJARGCAjMEBGYICMwAAZgQEyAgNkBAbICAyQERggIzBARmCAjMAAGYEBMgIDZAQGyAgMkBEYICMwQEZggIzAABmBATICA2QEBsgIDJARGCAjMEBGYICMwAAZgQEyAgNkBAbICAyQERggIzBARmCAjMAAmW1m9nUEeAQXDJARGCAjMEBGYICMwAAZgQEyAgNkBAbICAyQERggIzBARmCAjMAAGYEBMgIDZAQGyAgMkBEYICMwQOYfxHAXdb5V9+0AAAAASUVORK5CYII=);
+    background-size: 28px 32px;
+    transition: 0.3s;
+    z-index: 2;
+}
+
+/* Movement when checked */
+.pixelToggle:checked+.pixelSlider:before {
+    transform: translateX(32px);
+}
+
+/* Skeleton Loaders */
+.skeletonPulse {
+    background-color: #1a1a1a;
+    position: relative;
+    overflow: hidden;
+}
+
+.skeletonTextLine {
+    height: 12px;
+    background-color: #222;
+    border-radius: 4px;
+    position: relative;
+    overflow: hidden;
+}
+
+.skeletonTitleWidth {
+    width: 60%;
+    height: 16px;
+    margin-bottom: 4px;
+}
+
+.skeletonDescWidth {
+    width: 40%;
+}
+
+.shimmerEffect {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.08), transparent);
+    animation: shimmer 1.5s infinite linear;
+    transform: skewX(-20deg);
+}
+
+@keyframes shimmer {
+    0% { transform: translateX(-150%) skewX(-20deg); }
+    100% { transform: translateX(150%) skewX(-20deg); }
+}

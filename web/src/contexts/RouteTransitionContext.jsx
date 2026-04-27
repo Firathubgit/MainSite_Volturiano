@@ -25,7 +25,7 @@ export const RouteTransitionProvider = ({ children }) => {
         const fetchStartTime = Date.now();
         let cinematicPromise = null;
         
-        if (!stateToPass?.isProjectRevisit && !stateToPass?.templateId && stateToPass?.prompt) {
+        if (!stateToPass?.isProjectRevisit && !stateToPass?.templateId && !stateToPass?.templateData && stateToPass?.prompt) {
             let cineModel = 'google/gemini-2.5-flash';
             if (stateToPass.model) {
                 if (stateToPass.model.includes('openai/')) cineModel = 'openai/gpt-5.4-mini';
@@ -64,14 +64,15 @@ export const RouteTransitionProvider = ({ children }) => {
                 ...prev, 
                 cinematicResponse: "Alright! Setting up environment for you." 
             }));
-        } else if (stateToPass?.templateId) {
+        } else if (stateToPass?.templateId || stateToPass?.templateData) {
             // HARDCODED RESPONSE FOR TEMPLATES
             const minimumSuspenseTime = 2500;
             await new Promise(r => setTimeout(r, minimumSuspenseTime));
             
+            const templateName = stateToPass?.templateData?.name || 'template';
             setTransitionData(prev => ({ 
                 ...prev, 
-                cinematicResponse: "Alright, I will set up the template for you." 
+                cinematicResponse: `Alright, I will set up the ${templateName} for you.` 
             }));
         } else {
             try {

@@ -413,10 +413,23 @@ export async function listTemplatesAsync() {
     console.log('[Registry] listTemplatesAsync called - Fetching from Supabase...');
     if (supabase) {
         try {
-            const { data, error } = await supabase
+            // Try with agent_prompt and priority columns
+            let queryResult = await supabase
                 .from('templates')
-                .select('template_id, name, description, thumbnail_url, template_code')
-                .eq('status', 'active');
+                .select('template_id, name, description, thumbnail_url, template_code, agent_prompt, priority, visit_url')
+                .eq('status', 'active')
+                .order('priority', { ascending: true, nullsFirst: false });
+
+            // Fallback: if new columns don't exist yet, query without them
+            if (queryResult.error && queryResult.error.code === '42703') {
+                console.warn('[Registry] agent_prompt/priority column not found, querying without them. Run the migration SQL.');
+                queryResult = await supabase
+                    .from('templates')
+                    .select('template_id, name, description, thumbnail_url, template_code')
+                    .eq('status', 'active');
+            }
+
+            const { data, error } = queryResult;
 
             if (error) {
                 console.error('[Registry] Supabase templates error:', error);
@@ -430,7 +443,10 @@ export async function listTemplatesAsync() {
                     name: t.name,
                     description: t.description,
                     thumbnailUrl: t.thumbnail_url || null,
-                    componentCount: t.template_code?.components?.length || 0
+                    componentCount: t.template_code?.components?.length || 0,
+                    agentPrompt: t.agent_prompt || '',
+                    priority: t.priority ?? null,
+                    visitUrl: t.visit_url || null
                 }));
             } else {
                 console.warn('[Registry] Supabase returned empty template list.');

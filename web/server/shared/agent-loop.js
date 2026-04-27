@@ -25,7 +25,7 @@ import { getCatalogForPromptAsync, getBundleAsync, bundleToFileBlocks } from '..
 
 // ─── Constants ───────────────────────────────────────────────
 
-const MAX_STEPS = 12; // Max model↔tool round trips per user message
+const MAX_STEPS = 20; // Max model↔tool round trips per user message
 
 // Gemini 3.x models require thought signatures in multi-turn tool calling.
 // @ai-sdk/google v1 doesn't support this, so we use @google/genai natively.
@@ -58,7 +58,7 @@ const AGENT_SYSTEM_PROMPT = `You are an expert frontend developer working inside
 - Use edit_file for targeted changes with exact string matching. Use replace_file only for major rewrites.
 - After ALL edits are done, call get_build_errors exactly once. Do not build-check after every single edit.
 - If a build fails, read the error carefully and fix it in one targeted edit.
-- You have a maximum of ~10 tool calls. Use them wisely.
+- You have a maximum of ~20 tool calls. Use them wisely.
 
 ## Code Style
 - Available libraries: framer-motion, lucide-react, react-icons, react-router-dom, clsx, tailwind-merge, three, @react-three/fiber, @react-three/drei, @radix-ui/react-icons.

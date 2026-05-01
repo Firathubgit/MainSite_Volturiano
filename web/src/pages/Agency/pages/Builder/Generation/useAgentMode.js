@@ -6,19 +6,25 @@
  */
 import { useState, useCallback, useRef } from 'react';
 
-const API_BASE = import.meta.env.VITE_API_URL || '';
+const API_BASE = import.meta.env?.VITE_API_URL || '';
+const MUTATING_TOOLS = new Set(['create_file', 'edit_file', 'replace_file', 'delete_file']);
+const CATALOG_TOOLS = new Set(['browse_components', 'fetch_component_bundle']);
+const FILE_READ_TOOLS = new Set(['read_file']);
+const MAX_VISIBLE_RESPONSE_CHARS = 520;
 
 /**
  * @param {object} options
  * @param {string} options.sandboxId
  * @param {string} options.model
+ * @param {string} options.projectId
  * @param {Function} options.addChatMessage — callback to add messages to the Generation chat
  * @param {Function} options.authFetch — authenticated fetch wrapper from Generation
  * @param {Function} options.onTurnComplete — called when the agent finishes a turn, receives metadata for persistence
  */
-export function useAgentMode({ sandboxId, sandboxUrl, model, addChatMessage, authFetch, onTurnComplete }) {
+export function useAgentMode({ sandboxId, sandboxUrl, projectId, model, addChatMessage, authFetch, onTurnComplete }) {
   const [agentActive, setAgentActive] = useState(true);
   const [agentLoading, setAgentLoading] = useState(false);
+  const [agentProgressText, setAgentProgressText] = useState('');
   const [canUndo, setCanUndo] = useState(false);
   const abortControllerRef = useRef(null);
   
@@ -34,15 +40,10 @@ export function useAgentMode({ sandboxId, sandboxUrl, model, addChatMessage, aut
     if (!prompt?.trim() || agentLoading) return;
 
     setAgentLoading(true);
+    setAgentProgressText('Thinking...');
 
     // Add user message to chat immediately
     addChatMessage(prompt, 'user');
-
-    // Track turn metadata for persistence
-    let hadMutations = false;
-    let turnMutationCount = 0;
-    let turnToolCallCount = 0;
-    let turnResponse = '';
 
     try {
       abortControllerRef.current = new AbortController();
@@ -54,6 +55,7 @@ export function useAgentMode({ sandboxId, sandboxUrl, model, addChatMessage, aut
         body: JSON.stringify({
           prompt: prompt.trim(),
           sandboxId: sandboxId, // Uses the latest reactive id
+          projectId,
           model
         }),
         signal: abortControllerRef.current.signal
@@ -64,63 +66,20 @@ export function useAgentMode({ sandboxId, sandboxUrl, model, addChatMessage, aut
         throw new Error(errData.error || `Server error ${response.status}`);
       }
 
-      // Parse SSE stream
-      const reader = response.body.getReader();
-      const decoder = new TextDecoder();
-      let buffer = '';
-
-      while (true) {
-        const { value, done } = await reader.read();
-        if (done) break;
-
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split('\n');
-        buffer = lines.pop() || ''; // Keep incomplete line in buffer
-
-        let currentEventType = null;
-        for (const line of lines) {
-          if (line.startsWith('event: ')) {
-            currentEventType = line.slice(7).trim();
-          } else if (line.startsWith('data: ') && currentEventType) {
-            try {
-              const data = JSON.parse(line.slice(6));
-              
-              // Track mutations for persistence
-              if (currentEventType === 'tool_result') {
-                turnToolCallCount++;
-                if (['create_file', 'edit_file', 'replace_file'].includes(data.toolName) && data.success) {
-                  hadMutations = true;
-                  turnMutationCount++;
-                }
-              }
-
-              const eventMeta = handleAgentEvent(currentEventType, data, addChatMessage, () => {
-                hadMutations = true;
-                turnMutationCount++;
-              });
-              // Accumulate metadata from agent_done event
-              if (eventMeta) {
-                if (eventMeta.mutationCount) turnMutationCount = eventMeta.mutationCount;
-                if (eventMeta.toolCallCount) turnToolCallCount = eventMeta.toolCallCount;
-                if (eventMeta.response) turnResponse = eventMeta.response;
-              }
-            } catch (e) {
-              // Skip malformed JSON
-            }
-            currentEventType = null;
-          } else if (line.trim() === '') {
-            currentEventType = null;
-          }
-        }
-      }
+      const turnMeta = await consumeAgentEventStream(response.body, {
+        addChatMessage,
+        setCanUndo,
+        setAgentProgressText
+      });
 
       // Trigger persistence pipeline after the turn completes
       if (onTurnCompleteRef.current) {
         onTurnCompleteRef.current({
-          hadMutations,
-          mutationCount: turnMutationCount,
-          toolCallCount: turnToolCallCount,
-          response: turnResponse,
+          hadMutations: turnMeta.hadMutations,
+          mutationCount: turnMeta.mutationCount,
+          toolCallCount: turnMeta.toolCallCount,
+          response: turnMeta.response,
+          buildStatus: turnMeta.buildStatus,
           prompt: prompt.trim(),
           sandboxId: sandboxId,
           sandboxUrl: sandboxUrl
@@ -133,9 +92,10 @@ export function useAgentMode({ sandboxId, sandboxUrl, model, addChatMessage, aut
       }
     } finally {
       setAgentLoading(false);
+      setAgentProgressText('');
       abortControllerRef.current = null;
     }
-  }, [sandboxId, model, addChatMessage, authFetch, agentLoading]);
+  }, [sandboxId, sandboxUrl, projectId, model, addChatMessage, authFetch, agentLoading]);
 
   /**
    * Undo the last agent turn.
@@ -162,7 +122,30 @@ export function useAgentMode({ sandboxId, sandboxUrl, model, addChatMessage, aut
     } catch (e) {
       addChatMessage(`Undo failed: ${e.message}`, 'error');
     }
-  }, [sandboxId, authFetch, addChatMessage]);
+  }, [sandboxId, sandboxUrl, authFetch, addChatMessage]);
+
+  const hydrateAgentSession = useCallback(async (options = {}) => {
+    const activeProjectId = options.projectId || projectId;
+    const activeSandboxId = options.sandboxId || sandboxId;
+    if (!activeProjectId && !activeSandboxId) return null;
+
+    try {
+      const fetchFn = authFetch || fetch;
+      const params = new URLSearchParams({ hydrate: '1' });
+      if (activeProjectId) params.set('projectId', activeProjectId);
+      if (activeSandboxId) params.set('sandboxId', activeSandboxId);
+      if (options.limit) params.set('limit', String(options.limit));
+
+      const res = await fetchFn(`${API_BASE}/api/agent/session?${params.toString()}`);
+      const data = await res.json();
+      if (!data.success) return null;
+      if (typeof data.canUndo === 'boolean') setCanUndo(data.canUndo);
+      return data;
+    } catch (error) {
+      console.warn('[AgentMode] Session hydration skipped:', error);
+      return null;
+    }
+  }, [projectId, sandboxId, authFetch]);
 
   /**
    * Send an initial build prompt through the agent-mode pipeline (SSE streamed).
@@ -173,11 +156,8 @@ export function useAgentMode({ sandboxId, sandboxUrl, model, addChatMessage, aut
     if (!prompt?.trim() || agentLoading) return;
 
     setAgentLoading(true);
+    setAgentProgressText('Thinking...');
 
-    let hadMutations = false;
-    let turnMutationCount = 0;
-    let turnToolCallCount = 0;
-    let turnResponse = '';
     const activeSandboxId = options.sandboxId || sandboxId;
 
     try {
@@ -190,6 +170,7 @@ export function useAgentMode({ sandboxId, sandboxUrl, model, addChatMessage, aut
         body: JSON.stringify({
           prompt: prompt.trim(),
           sandboxId: activeSandboxId,
+          projectId: options.projectId || buildId || projectId,
           buildId,
           model,
           initialComponents: options.initialComponents,
@@ -204,63 +185,20 @@ export function useAgentMode({ sandboxId, sandboxUrl, model, addChatMessage, aut
         throw new Error(errData.error || `Server error ${response.status}`);
       }
 
-      // Stream SSE events — exact same parsing as sendAgentMessage
-      const reader = response.body.getReader();
-      const decoder = new TextDecoder();
-      let buffer = '';
-      let currentEventType = null;
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split('\n');
-        buffer = lines.pop() || '';
-
-        for (const line of lines) {
-          if (line.startsWith('event: ')) {
-            currentEventType = line.slice(7).trim();
-          } else if (line.startsWith('data: ') && currentEventType) {
-            try {
-              const data = JSON.parse(line.slice(6));
-
-              // Track mutations for persistence
-              if (currentEventType === 'tool_result') {
-                turnToolCallCount++;
-                if (['create_file', 'edit_file', 'replace_file'].includes(data.toolName) && data.success) {
-                  hadMutations = true;
-                  turnMutationCount++;
-                }
-              }
-
-              const eventMeta = handleAgentEvent(currentEventType, data, addChatMessage, () => {
-                hadMutations = true;
-                turnMutationCount++;
-              });
-
-              if (eventMeta) {
-                if (eventMeta.mutationCount) turnMutationCount = eventMeta.mutationCount;
-                if (eventMeta.toolCallCount) turnToolCallCount = eventMeta.toolCallCount;
-                if (eventMeta.response) turnResponse = eventMeta.response;
-              }
-            } catch (e) {
-              // Skip malformed JSON
-            }
-            currentEventType = null;
-          } else if (line.trim() === '') {
-            currentEventType = null;
-          }
-        }
-      }
+      const turnMeta = await consumeAgentEventStream(response.body, {
+        addChatMessage,
+        setCanUndo,
+        setAgentProgressText
+      });
 
       // Trigger persistence pipeline after the build completes
       if (onTurnCompleteRef.current) {
         onTurnCompleteRef.current({
-          hadMutations,
-          mutationCount: turnMutationCount,
-          toolCallCount: turnToolCallCount,
-          response: turnResponse,
+          hadMutations: turnMeta.hadMutations,
+          mutationCount: turnMeta.mutationCount,
+          toolCallCount: turnMeta.toolCallCount,
+          response: turnMeta.response,
+          buildStatus: turnMeta.buildStatus,
           prompt: prompt.trim(),
           isInitialBuild: true,
           sandboxId: activeSandboxId,
@@ -274,9 +212,10 @@ export function useAgentMode({ sandboxId, sandboxUrl, model, addChatMessage, aut
       }
     } finally {
       setAgentLoading(false);
+      setAgentProgressText('');
       abortControllerRef.current = null;
     }
-  }, [sandboxId, model, addChatMessage, authFetch, agentLoading, onTurnComplete]);
+  }, [sandboxId, sandboxUrl, projectId, model, addChatMessage, authFetch, agentLoading]);
 
   /**
    * Cancel an in-flight agent request.
@@ -285,6 +224,7 @@ export function useAgentMode({ sandboxId, sandboxUrl, model, addChatMessage, aut
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
       setAgentLoading(false);
+      setAgentProgressText('');
     }
   }, []);
 
@@ -292,69 +232,170 @@ export function useAgentMode({ sandboxId, sandboxUrl, model, addChatMessage, aut
     agentActive,
     setAgentActive,
     agentLoading,
+    agentProgressText,
+    setAgentProgressText,
     canUndo,
     sendAgentMessage,
     sendAgentInitialBuild,
+    hydrateAgentSession,
     undoLastTurn,
     cancelAgent
   };
 }
 
-// ─── SSE Event Dispatcher ─────────────────────────────
-// Returns metadata from agent_done events so the caller can accumulate turn stats.
+// Shared SSE event dispatcher. It keeps UI rendering separate from turn metadata.
 
-function handleAgentEvent(eventType, data, addChatMessage, onMutationDetected) {
+export async function consumeAgentEventStream(body, { addChatMessage, setCanUndo = () => {}, setAgentProgressText = () => {} }) {
+  if (!body?.getReader) {
+    throw new Error('Agent stream is not readable');
+  }
+
+  const reader = body.getReader();
+  const decoder = new TextDecoder();
+  const progressTracker = createAgentProgressTracker({ addChatMessage, setAgentProgressText });
+  const turnMeta = {
+    hadMutations: false,
+    mutationCount: 0,
+    toolCallCount: 0,
+    response: '',
+    visibleResponseShown: false,
+    canUndo: false,
+    buildStatus: null
+  };
+  let buffer = '';
+  let currentEventType = null;
+
+  const processEvent = (eventType, data) => {
+    progressTracker.handle(eventType, data);
+
+    if (eventType === 'tool_result') {
+      turnMeta.toolCallCount += 1;
+      if (MUTATING_TOOLS.has(data.toolName) && data.success) {
+        turnMeta.hadMutations = true;
+        turnMeta.mutationCount += 1;
+      }
+    }
+
+    const eventMeta = handleAgentEvent(eventType, data, addChatMessage, {
+      visibleResponseShown: turnMeta.visibleResponseShown,
+      response: turnMeta.response
+    });
+
+    if (!eventMeta) return;
+
+    if (eventMeta.visibleResponseShown) {
+      turnMeta.visibleResponseShown = true;
+    }
+    if (typeof eventMeta.mutationCount === 'number') {
+      turnMeta.mutationCount = eventMeta.mutationCount;
+      turnMeta.hadMutations = eventMeta.mutationCount > 0;
+    }
+    if (typeof eventMeta.toolCallCount === 'number') {
+      turnMeta.toolCallCount = eventMeta.toolCallCount;
+    }
+    if (typeof eventMeta.response === 'string') {
+      turnMeta.response = eventMeta.response;
+    }
+    if (typeof eventMeta.canUndo === 'boolean') {
+      turnMeta.canUndo = eventMeta.canUndo;
+      setCanUndo(eventMeta.canUndo);
+    }
+    if (typeof eventMeta.buildStatus === 'string') {
+      turnMeta.buildStatus = eventMeta.buildStatus;
+    }
+  };
+
+  const processLine = (line) => {
+    if (line.startsWith('event: ')) {
+      currentEventType = line.slice(7).trim();
+      return;
+    }
+
+    if (line.startsWith('data: ') && currentEventType) {
+      try {
+        processEvent(currentEventType, JSON.parse(line.slice(6)));
+      } catch (e) {
+        // Keep streaming even if a single SSE payload is malformed.
+      }
+      currentEventType = null;
+      return;
+    }
+
+    if (line.trim() === '') {
+      currentEventType = null;
+    }
+  };
+
+  while (true) {
+    const { value, done } = await reader.read();
+    if (done) break;
+
+    buffer += decoder.decode(value, { stream: true });
+    const lines = buffer.split('\n');
+    buffer = lines.pop() || '';
+
+    for (const line of lines) {
+      processLine(line);
+    }
+  }
+
+  buffer += decoder.decode();
+  if (buffer.trim()) {
+    processLine(buffer);
+  }
+
+  progressTracker.finish();
+
+  return {
+    hadMutations: turnMeta.hadMutations,
+    mutationCount: turnMeta.mutationCount,
+    toolCallCount: turnMeta.toolCallCount,
+    response: turnMeta.response,
+    canUndo: turnMeta.canUndo,
+    buildStatus: turnMeta.buildStatus
+  };
+}
+
+function handleAgentEvent(eventType, data, addChatMessage, options = {}) {
   switch (eventType) {
     case 'agent_start':
-      addChatMessage(null, 'agent-thinking', { stage: 'analyzing' });
       return null;
 
     case 'agent_thinking':
-      // Update thinking indicator (handled by thinking pill in chat)
       return null;
 
-    case 'tool_start': {
-      const { toolName, args } = data;
-      // Show tool call card in chat
-      addChatMessage(null, 'agent-tool', {
-        toolName,
-        args,
-        status: 'running'
-      });
+    case 'tool_start':
       return null;
-    }
 
-    case 'tool_result': {
-      const { toolName, result, success } = data;
-      // Update the last tool card (or add result)
-      addChatMessage(null, 'agent-tool-result', {
-        toolName,
-        result,
-        success
-      });
-
-      // Detect mutations
-      if (['create_file', 'edit_file', 'replace_file'].includes(toolName) && success) {
-        onMutationDetected();
-      }
+    case 'tool_result':
       return null;
-    }
 
     case 'agent_text':
-      // Agent's text response — show as AI message
+      // Store streamed text, but render the visible final message from agent_done
+      // so the summary/undo metadata lands in the same completed turn.
       if (data.text) {
-        addChatMessage(data.text, 'ai-narrator', { style: 'casual', isAgentResponse: true });
+        return { response: data.text };
       }
       return null;
 
     case 'agent_done': {
-      const { response, toolCallCount, mutationCount, canUndo } = data;
-      // Final response if not already sent via agent_text
-      if (response && !data.text) {
-        addChatMessage(response, 'ai-narrator', { style: 'casual', isAgentResponse: true });
+      const { response, toolCallCount, mutationCount, canUndo, buildStatus } = data;
+      const finalResponse = response || options.response;
+      let visibleResponseShown = options.visibleResponseShown;
+
+      if (finalResponse && !visibleResponseShown) {
+        addChatMessage(toConciseAgentResponse(finalResponse), 'ai-narrator', {
+          style: 'casual',
+          isAgentResponse: true,
+          toolCallCount: toolCallCount || 0,
+          mutationCount: mutationCount || 0,
+          buildStatus: buildStatus || null,
+          canUndo: Boolean(canUndo)
+        });
+        visibleResponseShown = true;
       }
-      // Return metadata so the hook can pass it to onTurnComplete
-      return { mutationCount, toolCallCount, response };
+      // Return metadata so the hook can pass it to onTurnComplete.
+      return { mutationCount, toolCallCount, response: finalResponse || '', canUndo, buildStatus, visibleResponseShown };
     }
 
     case 'agent_error':
@@ -369,6 +410,322 @@ function handleAgentEvent(eventType, data, addChatMessage, onMutationDetected) {
       // Unknown event — ignore
       return null;
   }
+}
+
+function createAgentProgressTracker({ addChatMessage, setAgentProgressText }) {
+  const state = {
+    categoriesRead: 0,
+    filesRead: new Set(),
+    filesScanned: 0,
+    filesEdited: new Set(),
+    linesAdded: 0,
+    linesRemoved: 0,
+    readCommitted: false,
+    editCommitted: false,
+    buildTimer: null
+  };
+
+  const setLive = (text) => {
+    if (typeof setAgentProgressText === 'function') {
+      setAgentProgressText(text);
+    }
+  };
+
+  const addProgress = (content, metadata = {}) => {
+    if (!content) return;
+    addChatMessage(content, 'agent-progress', metadata);
+  };
+
+  const commitReadProgress = () => {
+    if (state.readCommitted) return;
+    const readText = formatReadProgress({
+      categories: state.categoriesRead,
+      files: getTotalFilesRead(state)
+    });
+    if (!readText) return;
+    state.readCommitted = true;
+    addProgress(readText, {
+      kind: 'read',
+      categories: state.categoriesRead,
+      files: getTotalFilesRead(state)
+    });
+  };
+
+  const commitEditProgress = () => {
+    if (state.editCommitted || state.filesEdited.size === 0) return;
+    state.editCommitted = true;
+    addProgress(formatEditedProgress(state.filesEdited.size), {
+      kind: 'edit',
+      files: state.filesEdited.size,
+      linesAdded: state.linesAdded,
+      linesRemoved: state.linesRemoved
+    });
+  };
+
+  const clearBuildTimer = () => {
+    if (state.buildTimer) {
+      clearTimeout(state.buildTimer);
+      state.buildTimer = null;
+    }
+  };
+
+  const handleBuildResult = (data = {}) => {
+    const buildPassed = Boolean(data.result?.buildPassed);
+    clearBuildTimer();
+
+    if (buildPassed) {
+      setLive('Build completed');
+      return;
+    }
+
+    setLive('Build failed...');
+    state.buildTimer = setTimeout(() => {
+      setLive('Thinking...');
+      state.buildTimer = null;
+    }, 4000);
+  };
+
+  return {
+    handle(eventType, data = {}) {
+      if (eventType === 'agent_start') {
+        setLive('Thinking...');
+        return;
+      }
+
+      if (eventType === 'agent_thinking') {
+        const step = String(data.step || '').replace(/_/g, ' ').trim();
+        if (step && !/processing tool results/i.test(step)) {
+          setLive(`${capitalize(step)}...`);
+        }
+        return;
+      }
+
+      if (eventType === 'tool_start') {
+        const toolName = data.toolName;
+        const args = data.args || {};
+
+        if (CATALOG_TOOLS.has(toolName)) {
+          setLive(formatReadingLive(state.categoriesRead + 1, getTotalFilesRead(state)));
+          return;
+        }
+
+        if (FILE_READ_TOOLS.has(toolName)) {
+          const fileName = getFileName(args.path || args.filePath);
+          setLive(fileName ? `Reading ${fileName} file...` : formatReadingLive(state.categoriesRead, getTotalFilesRead(state) + 1));
+          return;
+        }
+
+        if (toolName === 'search_files') {
+          setLive(formatReadingLive(state.categoriesRead, getTotalFilesRead(state)));
+          return;
+        }
+
+        if (MUTATING_TOOLS.has(toolName)) {
+          commitReadProgress();
+          const fileName = getFileName(args.path || args.filePath);
+          setLive(fileName ? `Editing ${fileName} file...` : 'Editing file...');
+          return;
+        }
+
+        if (toolName === 'get_build_errors') {
+          commitReadProgress();
+          commitEditProgress();
+          clearBuildTimer();
+          setLive('Building...');
+          return;
+        }
+
+        setLive('Thinking...');
+        return;
+      }
+
+      if (eventType === 'tool_result') {
+        const toolName = data.toolName;
+        if (!data.success) return;
+
+        if (CATALOG_TOOLS.has(toolName)) {
+          state.categoriesRead += 1;
+          setLive(formatReadingLive(state.categoriesRead, getTotalFilesRead(state)));
+          return;
+        }
+
+        if (FILE_READ_TOOLS.has(toolName)) {
+          const filePath = data.result?.filePath || data.args?.path || data.args?.filePath;
+          if (filePath) state.filesRead.add(filePath);
+          setLive(formatReadingLive(state.categoriesRead, getTotalFilesRead(state)));
+          return;
+        }
+
+        if (toolName === 'search_files') {
+          const files = Number(data.result?.totalFiles || 0);
+          if (Number.isFinite(files) && files > 0) {
+            state.filesScanned += files;
+          }
+          setLive(formatReadingLive(state.categoriesRead, getTotalFilesRead(state)));
+          return;
+        }
+
+        if (MUTATING_TOOLS.has(toolName)) {
+          const filePath = data.result?.filePath || data.args?.path || data.args?.filePath;
+          state.filesEdited.add(filePath || `${toolName}:${state.filesEdited.size + 1}`);
+          addMutationLineStats(state, toolName, data.result);
+          setLive(formatEditedProgress(state.filesEdited.size));
+          return;
+        }
+
+        if (toolName === 'get_build_errors') {
+          handleBuildResult(data);
+        }
+      }
+
+      if (eventType === 'agent_done') {
+        commitReadProgress();
+        commitEditProgress();
+        clearBuildTimer();
+        setLive('');
+      }
+
+      if (eventType === 'agent_error') {
+        clearBuildTimer();
+        setLive('');
+      }
+    },
+
+    finish() {
+      clearBuildTimer();
+      setLive('');
+    }
+  };
+}
+
+function formatReadingLive(categories, files) {
+  const text = formatReadProgress({ categories, files, progressive: true });
+  return text ? `${text}...` : 'Reading...';
+}
+
+function formatReadProgress({ categories = 0, files = 0, progressive = false } = {}) {
+  const parts = [];
+  if (categories > 0) parts.push(`through ${categories} ${pluralize('category', categories)}`);
+  if (files > 0) parts.push(`${files} ${pluralize('file', files)}`);
+  if (parts.length === 0) return '';
+  return `${progressive ? 'Reading' : 'Read'} ${parts.join(', ')}`;
+}
+
+function formatEditedProgress(count) {
+  return `Edited ${count} ${pluralize('file', count)}`;
+}
+
+function addMutationLineStats(state, toolName, result = {}) {
+  const stats = getMutationLineStats(toolName, result);
+  state.linesAdded += stats.added;
+  state.linesRemoved += stats.removed;
+}
+
+function getMutationLineStats(toolName, result = {}) {
+  const diff = result.diff || {};
+  const diffAdded = toSafeCount(diff.linesAdded);
+  const diffRemoved = toSafeCount(diff.linesRemoved);
+
+  if (diffAdded > 0 || diffRemoved > 0) {
+    return { added: diffAdded, removed: diffRemoved };
+  }
+
+  if (toolName === 'create_file') {
+    return { added: toSafeCount(result.lineCount), removed: 0 };
+  }
+
+  if (toolName === 'replace_file') {
+    return {
+      added: toSafeCount(result.newLineCount || result.lineCount),
+      removed: toSafeCount(result.oldLineCount)
+    };
+  }
+
+  if (toolName === 'delete_file') {
+    return { added: 0, removed: toSafeCount(result.lineCount) };
+  }
+
+  return { added: 0, removed: 0 };
+}
+
+function toSafeCount(value) {
+  const number = Number(value || 0);
+  return Number.isFinite(number) && number > 0 ? number : 0;
+}
+
+function getTotalFilesRead(state) {
+  return state.filesRead.size + state.filesScanned;
+}
+
+function getFileName(path) {
+  const clean = String(path || '').trim();
+  if (!clean) return '';
+  return clean.split(/[\\/]/).pop();
+}
+
+function pluralize(word, count) {
+  return count === 1 ? word : `${word}s`;
+}
+
+function capitalize(text) {
+  const clean = String(text || '').trim();
+  return clean ? clean.charAt(0).toUpperCase() + clean.slice(1) : clean;
+}
+
+export function toConciseAgentResponse(text) {
+  const clean = String(text || '').replace(/\r\n/g, '\n').trim();
+  if (!clean) return '';
+
+  const rawLines = clean
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean);
+  const rawBulletCount = rawLines.filter((line) => /^([-*]|[0-9]+[.)])\s+/.test(line)).length;
+
+  if (clean.length <= MAX_VISIBLE_RESPONSE_CHARS && sentenceCount(clean) <= 4 && rawBulletCount <= 3 && rawLines.length <= 4) {
+    return clean;
+  }
+
+  const meaningfulLines = rawLines
+    .filter(Boolean)
+    .filter((line) => !/^#+\s*/.test(line))
+    .filter((line) => !/^(summary|changes made|what changed|files changed):?$/i.test(line));
+
+  const bulletLines = meaningfulLines
+    .filter((line) => /^([-*]|[0-9]+[.)])\s+/.test(line))
+    .map((line) => line.replace(/^([-*]|[0-9]+[.)])\s+/, '').trim())
+    .filter(Boolean);
+
+  const hasProblem = /\b(error|failed|failing|issue|unable|couldn'?t|cannot|blocked)\b/i.test(clean);
+  const lead = hasProblem ? 'I hit an issue:' : 'Done:';
+
+  if (bulletLines.length > 0) {
+    return [
+      lead,
+      ...bulletLines.slice(0, 3).map((line) => `- ${trimToLength(line, 150)}`)
+    ].join('\n');
+  }
+
+  const sentences = extractSentences(clean)
+    .map((sentence) => sentence.replace(/\s+/g, ' ').trim())
+    .filter(Boolean);
+  const summary = sentences.slice(0, hasProblem ? 2 : 3).join(' ');
+  const compact = summary || meaningfulLines.slice(0, 2).join(' ');
+
+  return `${lead} ${trimToLength(compact, MAX_VISIBLE_RESPONSE_CHARS - lead.length - 1)}`;
+}
+
+function extractSentences(text) {
+  return text.match(/[^.!?]+[.!?]+|[^.!?]+$/g) || [];
+}
+
+function sentenceCount(text) {
+  return extractSentences(text).length;
+}
+
+function trimToLength(text, maxLength) {
+  if (text.length <= maxLength) return text;
+  return `${text.slice(0, Math.max(0, maxLength - 3)).trim()}...`;
 }
 
 export default useAgentMode;

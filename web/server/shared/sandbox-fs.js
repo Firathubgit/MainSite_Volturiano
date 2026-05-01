@@ -422,6 +422,7 @@ async function deleteFile(provider, filePath) {
   return {
     type: 'delete',
     filePath: toRelativePath(absolutePath),
+    lineCount: originalContent.split('\n').length,
     _original: originalContent
   };
 }

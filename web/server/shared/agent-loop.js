@@ -10,18 +10,20 @@
  *                                                          SSE events via onStepFinish callback
  */
 
-import { generateText, tool } from 'ai';
-import { z } from 'zod';
+import { generateText } from 'ai';
 import { GoogleGenAI } from '@google/genai';
 import { getModel } from '../lib/provider-helpers.js';
 import {
-  listFiles, readFile, createFile, editFile, replaceFile,
-  searchFiles, createSnapshot, restoreSnapshot,
-  SandboxFsError
+  listFiles, createSnapshot, restoreSnapshot
 } from './sandbox-fs.js';
-import { verifySandboxBuild } from '../lib/verify-sandbox-build.js';
 import { sandboxManager } from '../lib/sandbox/sandbox-manager.js';
-import { getCatalogForPromptAsync, getBundleAsync, bundleToFileBlocks } from '../lib/registry/registry.js';
+import { normalizeAgentResponse } from '../lib/agent/response-normalizer.js';
+import {
+  bundleToFiles as runtimeBundleToFiles,
+  createAgentToolRuntime,
+  toGeminiToolExecutors,
+  toVercelTools
+} from '../lib/agent/tool-runtime.js';
 
 // ─── Constants ───────────────────────────────────────────────
 
@@ -40,6 +42,8 @@ const nativeGoogleAI = new GoogleGenAI({
   apiKey: process.env.GEMINI_API_KEY
 });
 
+export const bundleToFiles = runtimeBundleToFiles;
+
 // ─── System Prompt ───────────────────────────────────────────
 
 const AGENT_SYSTEM_PROMPT = `You are an expert frontend developer working inside a live React + Tailwind project sandbox powered by Vite.
@@ -49,7 +53,7 @@ const AGENT_SYSTEM_PROMPT = `You are an expert frontend developer working inside
 2. **Plan**: Decide exactly what changes to make. You get a limited number of steps, so plan carefully.
 3. **Execute**: Make all your edits. Batch related changes together — don't make one tiny change per step.
 4. **Verify**: Call get_build_errors once after all edits are done.
-5. **Respond**: Explain what you changed and why.
+5. **Respond**: Give a short, user-facing completion message.
 
 ## Critical Rules
 - **Never experiment or trial-and-error.** Do not make a change just to test a theory, then revert it. Understand the code first, then make the correct fix once.
@@ -59,6 +63,7 @@ const AGENT_SYSTEM_PROMPT = `You are an expert frontend developer working inside
 - After ALL edits are done, call get_build_errors exactly once. Do not build-check after every single edit.
 - If a build fails, read the error carefully and fix it in one targeted edit.
 - You have a maximum of ~20 tool calls. Use them wisely.
+- Visible responses must stay concise. Tool cards already show implementation detail. For normal edits, use one short sentence or up to 3 clear bullets. Do not list every file unless the user asks.
 
 ## Code Style
 - Available libraries: framer-motion, lucide-react, react-icons, react-router-dom, clsx, tailwind-merge, three, @react-three/fiber, @react-three/drei, @radix-ui/react-icons.
@@ -75,489 +80,32 @@ const AGENT_SYSTEM_PROMPT = `You are an expert frontend developer working inside
  * 
  * The `onEvent` callback is called for tool start/result SSE events.
  */
-function buildTools(provider, sandboxId, onEvent, { enableCatalogTools = false } = {}) {
-  const mutations = []; // Track all file mutations
-
-  const tools = {
-    list_files: tool({
-      description: 'List all files in the project. Returns file paths, extensions, and whether they are protected system files. Use this to understand the project structure before making changes.',
-      parameters: z.object({}),
-      execute: async () => {
-        console.log('[agent] 🔧 list_files');
-        onEvent('tool_start', { toolName: 'list_files', args: {} });
-        try {
-          const result = await listFiles(provider);
-          console.log(`[agent]   ✓ list_files → ${result.totalFiles} files`);
-          onEvent('tool_result', { toolName: 'list_files', result, success: true });
-          return result;
-        } catch (e) {
-          const err = { error: e.message, code: e.code };
-          onEvent('tool_result', { toolName: 'list_files', result: err, success: false });
-          return err;
-        }
-      }
-    }),
-
-    read_file: tool({
-      description: 'Read the contents of a file. Returns the full content or a specific line range. Use this to understand existing code before editing.',
-      parameters: z.object({
-        path: z.string().describe('Relative path to the file (e.g. "src/components/Hero.jsx")'),
-        start_line: z.number().int().min(1).optional().describe('First line to read (1-indexed). Omit to read entire file.'),
-        end_line: z.number().int().min(1).optional().describe('Last line to read (1-indexed, inclusive). Omit to read to end.')
-      }),
-      execute: async ({ path, start_line, end_line }) => {
-        console.log(`[agent] 🔧 read_file → ${path}${start_line ? ` (L${start_line}-${end_line || 'end'})` : ''}`);
-        onEvent('tool_start', { toolName: 'read_file', args: { path, start_line, end_line } });
-        try {
-          const result = await readFile(provider, path, { startLine: start_line, endLine: end_line });
-          console.log(`[agent]   ✓ read_file → ${result.totalLines} lines, ${result.sizeBytes}B`);
-          onEvent('tool_result', {
-            toolName: 'read_file',
-            result: { filePath: result.filePath, totalLines: result.totalLines, sizeBytes: result.sizeBytes },
-            success: true
-          });
-          return result;
-        } catch (e) {
-          const err = { error: e.message, code: e.code };
-          onEvent('tool_result', { toolName: 'read_file', result: err, success: false });
-          return err;
-        }
-      }
-    }),
-
-    create_file: tool({
-      description: 'Create a new file. Fails if the file already exists — use edit_file or replace_file to modify existing files. Directories are created automatically.',
-      parameters: z.object({
-        path: z.string().describe('Relative path for the new file (e.g. "src/components/Footer.jsx")'),
-        content: z.string().describe('Full content of the file to create')
-      }),
-      execute: async ({ path, content }) => {
-        console.log(`[agent] 🔧 create_file → ${path} (${content.length} chars)`);
-        onEvent('tool_start', {
-          toolName: 'create_file',
-          args: { path, contentLength: content.length }
-        });
-        try {
-          const result = await createFile(provider, path, content);
-          mutations.push({ tool: 'create_file', path, timestamp: Date.now() });
-          console.log(`[agent]   ✓ create_file → ${result.filePath} (${result.lineCount} lines)`);
-          onEvent('tool_result', {
-            toolName: 'create_file',
-            result: { filePath: result.filePath, lineCount: result.lineCount, sizeBytes: result.sizeBytes },
-            success: true
-          });
-          return { success: true, filePath: result.filePath, lineCount: result.lineCount };
-        } catch (e) {
-          const err = { error: e.message, code: e.code };
-          onEvent('tool_result', { toolName: 'create_file', result: err, success: false });
-          return err;
-        }
-      }
-    }),
-
-    edit_file: tool({
-      description: 'Edit an existing file by replacing an exact string match. This is the primary tool for making targeted changes — specify the exact text to find (old_string) and its replacement (new_string). IMPORTANT: old_string must exactly match text in the file, including whitespace and indentation.',
-      parameters: z.object({
-        path: z.string().describe('Relative path to the file to edit'),
-        old_string: z.string().describe('The exact text currently in the file that should be replaced. Must match character-for-character including whitespace.'),
-        new_string: z.string().describe('The replacement text to insert where old_string was found.'),
-        replace_all: z.boolean().optional().default(false).describe('If true, replace ALL occurrences of old_string. Default: false.')
-      }),
-      execute: async ({ path, old_string, new_string, replace_all }) => {
-        console.log(`[agent] 🔧 edit_file → ${path} (old: ${old_string.length} chars → new: ${new_string.length} chars)`);
-        onEvent('tool_start', {
-          toolName: 'edit_file',
-          args: {
-            path,
-            old_string: old_string.length > 300 ? old_string.slice(0, 300) + '...' : old_string,
-            new_string: new_string.length > 300 ? new_string.slice(0, 300) + '...' : new_string,
-            replace_all
-          }
-        });
-        try {
-          const result = await editFile(provider, path, old_string, new_string, replace_all);
-          mutations.push({ tool: 'edit_file', path, timestamp: Date.now() });
-          console.log(`[agent]   ✓ edit_file → ${result.filePath} (${result.occurrencesReplaced} replaced)`);
-          onEvent('tool_result', {
-            toolName: 'edit_file',
-            result: {
-              filePath: result.filePath,
-              occurrencesReplaced: result.occurrencesReplaced,
-              diff: result.diff
-            },
-            success: true
-          });
-          return {
-            success: true,
-            filePath: result.filePath,
-            occurrencesReplaced: result.occurrencesReplaced
-          };
-        } catch (e) {
-          const err = { error: e.message, code: e.code };
-          onEvent('tool_result', { toolName: 'edit_file', result: err, success: false });
-          return err;
-        }
-      }
-    }),
-
-    replace_file: tool({
-      description: 'Replace the entire content of a file. Use this for major rewrites where edit_file would be impractical. Also works to create new files.',
-      parameters: z.object({
-        path: z.string().describe('Relative path to the file to replace'),
-        content: z.string().describe('The complete new content for the file')
-      }),
-      execute: async ({ path, content }) => {
-        console.log(`[agent] 🔧 replace_file → ${path} (${content.length} chars)`);
-        onEvent('tool_start', {
-          toolName: 'replace_file',
-          args: { path, contentLength: content.length }
-        });
-        try {
-          const result = await replaceFile(provider, path, content);
-          mutations.push({ tool: 'replace_file', path, timestamp: Date.now() });
-          console.log(`[agent]   ✓ replace_file → ${result.filePath} (${result.lineCount} lines)`);
-          onEvent('tool_result', {
-            toolName: 'replace_file',
-            result: { filePath: result.filePath, type: result.type, lineCount: result.lineCount },
-            success: true
-          });
-          return { success: true, filePath: result.filePath, type: result.type, lineCount: result.lineCount };
-        } catch (e) {
-          const err = { error: e.message, code: e.code };
-          onEvent('tool_result', { toolName: 'replace_file', result: err, success: false });
-          return err;
-        }
-      }
-    }),
-
-    search_files: tool({
-      description: 'Search across all project files for a text pattern (regex supported). Returns matching files with line numbers and context.',
-      parameters: z.object({
-        pattern: z.string().describe('Regex pattern to search for across project files'),
-        glob: z.string().optional().describe('File extension filter (e.g. "*.jsx", "*.css")'),
-        case_sensitive: z.boolean().optional().default(true).describe('Whether the search is case-sensitive.')
-      }),
-      execute: async ({ pattern, glob, case_sensitive }) => {
-        console.log(`[agent] 🔧 search_files → "${pattern}"${glob ? ` (${glob})` : ''}`);
-        onEvent('tool_start', { toolName: 'search_files', args: { pattern, glob } });
-        try {
-          const result = await searchFiles(provider, pattern, { glob, caseSensitive: case_sensitive });
-          console.log(`[agent]   ✓ search_files → ${result.totalMatches} matches in ${result.totalFiles} files`);
-          onEvent('tool_result', {
-            toolName: 'search_files',
-            result: { totalFiles: result.totalFiles, totalMatches: result.totalMatches },
-            success: true
-          });
-          return result;
-        } catch (e) {
-          const err = { error: e.message, code: e.code };
-          onEvent('tool_result', { toolName: 'search_files', result: err, success: false });
-          return err;
-        }
-      }
-    }),
-
-    get_build_errors: tool({
-      description: 'Check if the project builds successfully. Returns build pass/fail status and any error messages. Use this after making changes to verify they compile correctly.',
-      parameters: z.object({}),
-      execute: async () => {
-        console.log('[agent] 🔧 get_build_errors → running vite build...');
-        onEvent('tool_start', { toolName: 'get_build_errors', args: {} });
-        try {
-          if (!sandboxId) {
-            const err = { buildPassed: false, error: 'No sandbox ID available' };
-            onEvent('tool_result', { toolName: 'get_build_errors', result: err, success: false });
-            return err;
-          }
-          const buildResult = await verifySandboxBuild(sandboxId);
-          const result = {
-            buildPassed: buildResult.success,
-            errors: buildResult.success ? null : buildResult.logs?.slice(0, 2000)
-          };
-          console.log(`[agent]   ${result.buildPassed ? '✓' : '✗'} build ${result.buildPassed ? 'PASSED' : 'FAILED'}`);
-          onEvent('tool_result', {
-            toolName: 'get_build_errors',
-            result: { buildPassed: result.buildPassed },
-            success: true
-          });
-          return result;
-        } catch (e) {
-          const err = { error: e.message };
-          onEvent('tool_result', { toolName: 'get_build_errors', result: err, success: false });
-          return err;
-        }
-      }
-    }),
+function buildTools(provider, sandboxId, onEvent, { enableCatalogTools = false, debugTimeline = null } = {}) {
+  const runtime = createAgentToolRuntime({ provider, sandboxId, onEvent, enableCatalogTools, debugTimeline });
+  return {
+    tools: toVercelTools(runtime),
+    getMutations: runtime.getMutations,
+    getBuildChecks: runtime.getBuildChecks
   };
-
-  // ─── Catalog tools (only for initial builds) ──────────────
-  if (enableCatalogTools) {
-    tools.browse_components = tool({
-      description: 'Browse the community component library. Returns available premium components with IDs, names, categories, and descriptions. Use this to find existing high-quality components to use in the build instead of writing everything from scratch.',
-      parameters: z.object({
-        keywords: z.string().optional().describe('Optional comma-separated keywords to filter components (e.g. "hero, pricing, testimonial")')
-      }),
-      execute: async ({ keywords }) => {
-        console.log(`[agent] 🔧 browse_components → "${keywords || 'all'}"`);
-        onEvent('tool_start', { toolName: 'browse_components', args: { keywords } });
-        try {
-          const catalog = await getCatalogForPromptAsync(keywords || '', 50);
-          const summary = (catalog.components || []).map(c => ({
-            id: c.id,
-            name: c.name,
-            category: c.category,
-            description: c.description?.slice(0, 120) || ''
-          }));
-          console.log(`[agent]   ✓ browse_components → ${summary.length} components`);
-          onEvent('tool_result', { toolName: 'browse_components', result: { count: summary.length }, success: true });
-          return { components: summary, total: summary.length };
-        } catch (e) {
-          const err = { error: e.message };
-          onEvent('tool_result', { toolName: 'browse_components', result: err, success: false });
-          return err;
-        }
-      }
-    });
-
-    tools.fetch_component_bundle = tool({
-      description: 'Fetch the full source code of a community component by its ID. Returns an array of files (path + content) that you should write to the sandbox using create_file or replace_file. The component files go in src/components/premium/.',
-      parameters: z.object({
-        component_id: z.string().describe('The component ID from browse_components (e.g. "hero.video.aurora.v1")')
-      }),
-      execute: async ({ component_id }) => {
-        console.log(`[agent] 🔧 fetch_component_bundle → ${component_id}`);
-        onEvent('tool_start', { toolName: 'fetch_component_bundle', args: { component_id } });
-        try {
-          const bundle = await getBundleAsync(component_id);
-          if (!bundle) {
-            const err = { error: `Component not found: ${component_id}` };
-            onEvent('tool_result', { toolName: 'fetch_component_bundle', result: err, success: false });
-            return err;
-          }
-          const fileBlocks = bundleToFileBlocks(bundle);
-          // Parse <file path="...">...</file> blocks into { path, content } array
-          const fileRegex = /<file path="([^"]+)">(\n?)([\s\S]*?)<\/file>/g;
-          const files = [];
-          let match;
-          while ((match = fileRegex.exec(fileBlocks)) !== null) {
-            files.push({ path: match[1], content: match[3].trim() });
-          }
-          console.log(`[agent]   ✓ fetch_component_bundle → ${files.length} file(s)`);
-          onEvent('tool_result', { toolName: 'fetch_component_bundle', result: { fileCount: files.length, paths: files.map(f => f.path) }, success: true });
-          return { files, componentId: component_id };
-        } catch (e) {
-          const err = { error: e.message };
-          onEvent('tool_result', { toolName: 'fetch_component_bundle', result: err, success: false });
-          return err;
-        }
-      }
-    });
-  }
-
-  return { tools, getMutations: () => mutations };
 }
-
 // ─── Native Gemini Tool Executors (for @google/genai) ────────
 
 /**
  * Build tool executors and Google-format function declarations for native SDK.
  * Returns { declarations, executors } where executors is a map of name → async function.
  */
-function buildNativeToolExecutors(provider, sandboxId, onEvent, { enableCatalogTools = false } = {}) {
-  const mutations = []; // Track file mutations in native path
-
-  const executors = {
-    list_files: async () => {
-      console.log('[agent] 🔧 list_files');
-      onEvent('tool_start', { toolName: 'list_files', args: {} });
-      try {
-        const result = await listFiles(provider);
-        console.log(`[agent]   ✓ list_files → ${result.totalFiles} files`);
-        onEvent('tool_result', { toolName: 'list_files', result, success: true });
-        return result;
-      } catch (e) {
-        onEvent('tool_result', { toolName: 'list_files', result: { error: e.message }, success: false });
-        return { error: e.message };
-      }
-    },
-
-    read_file: async ({ path, start_line, end_line }) => {
-      console.log(`[agent] 🔧 read_file → ${path}`);
-      onEvent('tool_start', { toolName: 'read_file', args: { path } });
-      try {
-        const result = await readFile(provider, path, { startLine: start_line, endLine: end_line });
-        console.log(`[agent]   ✓ read_file → ${result.totalLines} lines, ${result.sizeBytes}B`);
-        onEvent('tool_result', { toolName: 'read_file', result: { totalLines: result.totalLines, sizeBytes: result.sizeBytes }, success: true });
-        return result;
-      } catch (e) {
-        onEvent('tool_result', { toolName: 'read_file', result: { error: e.message }, success: false });
-        return { error: e.message };
-      }
-    },
-
-    create_file: async ({ path, content }) => {
-      console.log(`[agent] 🔧 create_file → ${path} (${content.length} chars)`);
-      onEvent('tool_start', { toolName: 'create_file', args: { path, contentLength: content.length } });
-      try {
-        const result = await createFile(provider, path, content);
-        mutations.push({ tool: 'create_file', path, timestamp: Date.now() });
-        console.log(`[agent]   ✓ create_file → ${result.filePath} (${result.lineCount} lines)`);
-        onEvent('tool_result', { toolName: 'create_file', result: { filePath: result.filePath, lineCount: result.lineCount }, success: true });
-        return { success: true, filePath: result.filePath, lineCount: result.lineCount };
-      } catch (e) {
-        onEvent('tool_result', { toolName: 'create_file', result: { error: e.message }, success: false });
-        return { error: e.message };
-      }
-    },
-
-    edit_file: async ({ path, old_string, new_string, replace_all }) => {
-      console.log(`[agent] 🔧 edit_file → ${path} (old: ${old_string.length} chars → new: ${new_string.length} chars)`);
-      onEvent('tool_start', { toolName: 'edit_file', args: { path, old_string: old_string.slice(0, 300), new_string: new_string.slice(0, 300) } });
-      try {
-        const result = await editFile(provider, path, old_string, new_string, replace_all);
-        mutations.push({ tool: 'edit_file', path, timestamp: Date.now() });
-        console.log(`[agent]   ✓ edit_file → ${result.filePath} (${result.occurrencesReplaced} replaced)`);
-        onEvent('tool_result', { toolName: 'edit_file', result: { filePath: result.filePath, occurrencesReplaced: result.occurrencesReplaced, diff: result.diff }, success: true });
-        return { success: true, filePath: result.filePath, occurrencesReplaced: result.occurrencesReplaced };
-      } catch (e) {
-        onEvent('tool_result', { toolName: 'edit_file', result: { error: e.message }, success: false });
-        return { error: e.message };
-      }
-    },
-
-    replace_file: async ({ path, content }) => {
-      console.log(`[agent] 🔧 replace_file → ${path} (${content.length} chars)`);
-      onEvent('tool_start', { toolName: 'replace_file', args: { path, contentLength: content.length } });
-      try {
-        const result = await replaceFile(provider, path, content);
-        mutations.push({ tool: 'replace_file', path, timestamp: Date.now() });
-        console.log(`[agent]   ✓ replace_file → ${result.filePath} (${result.lineCount} lines)`);
-        onEvent('tool_result', { toolName: 'replace_file', result: { filePath: result.filePath, lineCount: result.lineCount }, success: true });
-        return { success: true, filePath: result.filePath, lineCount: result.lineCount };
-      } catch (e) {
-        onEvent('tool_result', { toolName: 'replace_file', result: { error: e.message }, success: false });
-        return { error: e.message };
-      }
-    },
-
-    search_files: async ({ pattern, glob, case_sensitive }) => {
-      console.log(`[agent] 🔧 search_files → "${pattern}"`);
-      onEvent('tool_start', { toolName: 'search_files', args: { pattern, glob } });
-      try {
-        const result = await searchFiles(provider, pattern, { glob, caseSensitive: case_sensitive });
-        console.log(`[agent]   ✓ search_files → ${result.totalMatches} matches in ${result.totalFiles} files`);
-        onEvent('tool_result', { toolName: 'search_files', result: { totalFiles: result.totalFiles, totalMatches: result.totalMatches }, success: true });
-        return result;
-      } catch (e) {
-        onEvent('tool_result', { toolName: 'search_files', result: { error: e.message }, success: false });
-        return { error: e.message };
-      }
-    },
-
-    get_build_errors: async () => {
-      console.log('[agent] 🔧 get_build_errors → running vite build...');
-      onEvent('tool_start', { toolName: 'get_build_errors', args: {} });
-      try {
-        const buildResult = await verifySandboxBuild(sandboxId);
-        const result = { buildPassed: buildResult.success, errors: buildResult.success ? null : buildResult.logs?.slice(0, 2000) };
-        console.log(`[agent]   ${result.buildPassed ? '✓' : '✗'} build ${result.buildPassed ? 'PASSED' : 'FAILED'}`);
-        onEvent('tool_result', { toolName: 'get_build_errors', result: { buildPassed: result.buildPassed }, success: true });
-        return result;
-      } catch (e) {
-        onEvent('tool_result', { toolName: 'get_build_errors', result: { error: e.message }, success: false });
-        return { error: e.message };
-      }
-    }
-  };
-
-  // Google GenAI function declarations format
-  const declarations = [
-    { name: 'list_files', description: 'List all files in the project.', parameters: { type: 'object', properties: {} } },
-    { name: 'read_file', description: 'Read file contents. Always read before editing.', parameters: { type: 'object', properties: { path: { type: 'string', description: 'Relative file path' }, start_line: { type: 'integer', description: 'Start line (1-indexed, optional)' }, end_line: { type: 'integer', description: 'End line (1-indexed, optional)' } }, required: ['path'] } },
-    { name: 'create_file', description: 'Create a new file. Fails if exists.', parameters: { type: 'object', properties: { path: { type: 'string', description: 'Relative file path' }, content: { type: 'string', description: 'File content' } }, required: ['path', 'content'] } },
-    { name: 'edit_file', description: 'Edit file by exact string replacement. old_string must match exactly.', parameters: { type: 'object', properties: { path: { type: 'string', description: 'Relative file path' }, old_string: { type: 'string', description: 'Exact text to find' }, new_string: { type: 'string', description: 'Replacement text' }, replace_all: { type: 'boolean', description: 'Replace all occurrences' } }, required: ['path', 'old_string', 'new_string'] } },
-    { name: 'replace_file', description: 'Replace entire file content. Use for major rewrites.', parameters: { type: 'object', properties: { path: { type: 'string', description: 'Relative file path' }, content: { type: 'string', description: 'New file content' } }, required: ['path', 'content'] } },
-    { name: 'search_files', description: 'Search project files with regex pattern.', parameters: { type: 'object', properties: { pattern: { type: 'string', description: 'Regex pattern' }, glob: { type: 'string', description: 'File filter e.g. *.jsx' }, case_sensitive: { type: 'boolean', description: 'Case sensitive search' } }, required: ['pattern'] } },
-    { name: 'get_build_errors', description: 'Check if project builds successfully.', parameters: { type: 'object', properties: {} } }
-  ];
-
-  // ─── Catalog tools (only for initial builds) ──────────────
-  if (enableCatalogTools) {
-    executors.browse_components = async ({ keywords }) => {
-      console.log(`[agent] \ud83d\udd27 browse_components \u2192 "${keywords || 'all'}"`);
-      onEvent('tool_start', { toolName: 'browse_components', args: { keywords } });
-      try {
-        const catalog = await getCatalogForPromptAsync(keywords || '', 50);
-        const summary = (catalog.components || []).map(c => ({
-          id: c.id, name: c.name, category: c.category,
-          description: c.description?.slice(0, 120) || ''
-        }));
-        console.log(`[agent]   \u2713 browse_components \u2192 ${summary.length} components`);
-        onEvent('tool_result', { toolName: 'browse_components', result: { count: summary.length }, success: true });
-        return { components: summary, total: summary.length };
-      } catch (e) {
-        onEvent('tool_result', { toolName: 'browse_components', result: { error: e.message }, success: false });
-        return { error: e.message };
-      }
-    };
-
-    executors.fetch_component_bundle = async ({ component_id }) => {
-      console.log(`[agent] \ud83d\udd27 fetch_component_bundle \u2192 ${component_id}`);
-      onEvent('tool_start', { toolName: 'fetch_component_bundle', args: { component_id } });
-      try {
-        const bundle = await getBundleAsync(component_id);
-        if (!bundle) {
-          const err = { error: `Component not found: ${component_id}` };
-          onEvent('tool_result', { toolName: 'fetch_component_bundle', result: err, success: false });
-          return err;
-        }
-        const fileBlocks = bundleToFileBlocks(bundle);
-        const fileRegex = /<file path="([^"]+)">(\n?)([\s\S]*?)<\/file>/g;
-        const files = [];
-        let match;
-        while ((match = fileRegex.exec(fileBlocks)) !== null) {
-          files.push({ path: match[1], content: match[3].trim() });
-        }
-
-        // AI_STABILITY_FIX_V6: Actually write the files to the sandbox as promised in the tool description
-        const writtenPaths = [];
-        for (const file of files) {
-          try {
-            await createFile(provider, file.path, file.content);
-            writtenPaths.push(file.path);
-          } catch (createErr) {
-            // If file exists, we might want to replace it, but let's stick to safe creation for now
-            // or just log it. The agent will handle existing files.
-            console.warn(`[agent] fetch_component_bundle: failed to write ${file.path}:`, createErr.message);
-          }
-        }
-
-        console.log(`[agent]   \u2713 fetch_component_bundle \u2192 ${files.length} file(s) (${writtenPaths.length} written)`);
-        onEvent('tool_result', { toolName: 'fetch_component_bundle', result: { fileCount: files.length, writtenCount: writtenPaths.length, paths: files.map(f => f.path) }, success: true });
-        return { files, writtenPaths, componentId: component_id };
-      } catch (e) {
-        onEvent('tool_result', { toolName: 'fetch_component_bundle', result: { error: e.message }, success: false });
-        return { error: e.message };
-      }
-    };
-
-    declarations.push(
-      { name: 'browse_components', description: 'Browse community component library. Returns component IDs, names, categories, descriptions.', parameters: { type: 'object', properties: { keywords: { type: 'string', description: 'Optional keywords to filter' } } } },
-      { name: 'fetch_component_bundle', description: 'Fetch full source code of a community component by ID. Write returned files to sandbox.', parameters: { type: 'object', properties: { component_id: { type: 'string', description: 'Component ID from browse_components' } }, required: ['component_id'] } }
-    );
-  }
-
-  return { executors, declarations, getMutations: () => mutations };
+function buildNativeToolExecutors(provider, sandboxId, onEvent, { enableCatalogTools = false, debugTimeline = null } = {}) {
+  const runtime = createAgentToolRuntime({ provider, sandboxId, onEvent, enableCatalogTools, debugTimeline });
+  return toGeminiToolExecutors(runtime);
 }
-
 // ─── Native Gemini Loop ──────────────────────────────────────
 
 /**
  * Run agent loop using @google/genai directly (for Gemini 3.x models).
  * Handles thought signatures transparently.
  */
-async function runNativeGeminiLoop({ modelId, systemPrompt, messages, toolExecutors, maxSteps, onEvent }) {
-  const { executors, declarations, getMutations: getNativeMutations } = toolExecutors;
+async function runNativeGeminiLoop({ modelId, systemPrompt, messages, toolExecutors, maxSteps, onEvent, debugTimeline = null }) {
+  const { executors, declarations, getMutations: getNativeMutations, getBuildChecks: getNativeBuildChecks } = toolExecutors;
 
   // Convert messages to Google GenAI format
   const googleMessages = messages.map(m => ({
@@ -595,6 +143,11 @@ async function runNativeGeminiLoop({ modelId, systemPrompt, messages, toolExecut
     if (!functionCalls || functionCalls.length === 0) break; // Model finished
 
     onEvent('agent_thinking', { step: `executing_tools_step_${steps}` });
+    debugTimeline?.event?.('native_tool_round', {
+      step: steps,
+      functionCallCount: functionCalls.length,
+      toolNames: functionCalls.map((fc) => fc.name).filter(Boolean)
+    });
 
     // Execute all function calls
     const functionResponses = [];
@@ -602,6 +155,11 @@ async function runNativeGeminiLoop({ modelId, systemPrompt, messages, toolExecut
       const executor = executors[fc.name];
       if (!executor) {
         console.warn(`[agent-native] Unknown tool: ${fc.name}`);
+        debugTimeline?.event?.('tool_result', {
+          toolName: fc.name,
+          success: false,
+          error: { message: `Unknown tool: ${fc.name}` }
+        });
         functionResponses.push({ name: fc.name, response: { error: `Unknown tool: ${fc.name}` } });
         continue;
       }
@@ -624,6 +182,7 @@ async function runNativeGeminiLoop({ modelId, systemPrompt, messages, toolExecut
       );
     } catch (sendErr) {
       console.error(`[agent-native] chat.sendMessage failed at step ${steps}:`, sendErr.message);
+      debugTimeline?.error?.('model_call_error', sendErr, { step: steps, providerPath: 'native_gemini' });
       onEvent('agent_error', { message: `Model communication error: ${sendErr.message}` });
       break; 
     }
@@ -648,7 +207,8 @@ async function runNativeGeminiLoop({ modelId, systemPrompt, messages, toolExecut
   return {
     text: finalResponseText,
     steps,
-    toolCalls: allToolCalls
+    toolCalls: allToolCalls,
+    buildChecks: typeof getNativeBuildChecks === 'function' ? getNativeBuildChecks() : []
   };
 }
 
@@ -657,7 +217,7 @@ async function runNativeGeminiLoop({ modelId, systemPrompt, messages, toolExecut
 /**
  * Build the initial context for the agent.
  */
-function assembleMessages(userPrompt, conversationHistory = [], fileTree = null) {
+function assembleMessages(userPrompt, conversationHistory = [], fileTree = null, projectContextBlock = '') {
   const messages = [];
 
   // Add conversation history (last 20 messages max)
@@ -671,13 +231,16 @@ function assembleMessages(userPrompt, conversationHistory = [], fileTree = null)
     }
   }
 
-  // Add file tree context if available
+  // Add durable project context and file tree context if available
   let contextPrefix = '';
+  if (projectContextBlock) {
+    contextPrefix += `${projectContextBlock}\n\n`;
+  }
   if (fileTree) {
     const fileListStr = fileTree.files
       .map(f => `  ${f.protected ? '🔒 ' : ''}${f.path}`)
       .join('\n');
-    contextPrefix = `[Current project files]\n${fileListStr}\n\n`;
+    contextPrefix += `[Current project files]\n${fileListStr}\n\n`;
   }
 
   // Add user's new message
@@ -712,11 +275,21 @@ export async function runAgentLoop(options) {
     onEvent = () => {},
     systemPromptOverride = null,
     maxStepsOverride = null,
-    enableCatalogTools = false
+    enableCatalogTools = false,
+    projectContextBlock = '',
+    debugTimeline = null
   } = options;
 
   const effectiveMaxSteps = maxStepsOverride || MAX_STEPS;
   const effectiveSystemPrompt = systemPromptOverride || AGENT_SYSTEM_PROMPT;
+  debugTimeline?.event?.('loop_start', {
+    modelId,
+    sandboxId,
+    maxSteps: effectiveMaxSteps,
+    enableCatalogTools,
+    conversationHistoryLength: conversationHistory.length,
+    projectContextChars: projectContextBlock.length
+  });
 
   // Resolve sandbox provider
   const provider = sandboxId
@@ -724,17 +297,27 @@ export async function runAgentLoop(options) {
     : (sandboxManager.getActiveProvider() || global.activeSandboxProvider);
 
   if (!provider) {
+    debugTimeline?.event?.('provider_missing', { sandboxId });
     throw new Error('No active sandbox. Create one first.');
   }
 
   const activeSandboxId = sandboxId || provider.getSandboxInfo()?.sandboxId;
+  debugTimeline?.setContext?.({ sandboxId: activeSandboxId, model: modelId });
+  debugTimeline?.event?.('provider_resolved', {
+    sandboxId: activeSandboxId,
+    providerType: provider?.constructor?.name || 'unknown'
+  });
 
   // Get file tree for context
   let fileTree = null;
   try {
     fileTree = await listFiles(provider);
+    debugTimeline?.event?.('file_tree_loaded', {
+      fileCount: fileTree?.totalFiles || fileTree?.files?.length || 0
+    });
   } catch (e) {
     console.warn('[agent-loop] Could not list files for context:', e.message);
+    debugTimeline?.error?.('file_tree_failed', e);
   }
 
   console.log(`\n[agent] ═══════════════════════════════════════════`);
@@ -744,24 +327,33 @@ export async function runAgentLoop(options) {
   console.log(`[agent]    Files in sandbox: ${fileTree?.totalFiles || 0}`);
   console.log(`[agent] ═══════════════════════════════════════════\n`);
 
-  // Create pre-mutation snapshot of all src/ files
+  // Create pre-mutation snapshot of all editable files (everything except protected system files)
   let snapshot = null;
   try {
     if (fileTree) {
-      const srcFiles = fileTree.files
-        .filter(f => f.path.startsWith('src/'))
+      const editableFiles = fileTree.files
+        .filter(f => !f.protected)
         .map(f => f.path);
-      snapshot = await createSnapshot(provider, srcFiles);
+      snapshot = await createSnapshot(provider, editableFiles);
+      debugTimeline?.event?.('snapshot_created', {
+        fileCount: editableFiles.length,
+        hasSnapshot: Boolean(snapshot)
+      });
     }
   } catch (e) {
     console.warn('[agent-loop] Could not create pre-mutation snapshot:', e.message);
+    debugTimeline?.error?.('snapshot_failed', e);
   }
 
   // Build tool instances (used by Vercel SDK path; native path builds its own)
-  let { tools, getMutations } = buildTools(provider, activeSandboxId, onEvent, { enableCatalogTools });
+  let { tools, getMutations, getBuildChecks } = buildTools(provider, activeSandboxId, onEvent, { enableCatalogTools, debugTimeline });
 
   // Assemble messages
-  const messages = assembleMessages(prompt, conversationHistory, fileTree);
+  const messages = assembleMessages(prompt, conversationHistory, fileTree, projectContextBlock);
+  debugTimeline?.event?.('messages_assembled', {
+    messageCount: messages.length,
+    lastMessageChars: String(messages[messages.length - 1]?.content || '').length
+  });
 
   onEvent('agent_start', {
     prompt,
@@ -773,24 +365,33 @@ export async function runAgentLoop(options) {
 
   let result;
   const useNativeSDK = GEMINI_3X_MODELS.has(modelId);
+  debugTimeline?.event?.('model_call_start', {
+    providerPath: useNativeSDK ? 'native_gemini' : 'vercel_ai_sdk',
+    modelId,
+    maxSteps: effectiveMaxSteps,
+    toolCount: Object.keys(tools || {}).length
+  });
 
   if (useNativeSDK) {
     // ─── NATIVE GOOGLE SDK PATH (Gemini 3.x) ─────────────────
     console.log(`[agent] Using native @google/genai SDK for ${modelId}`);
     try {
-        const nativeToolExec = buildNativeToolExecutors(provider, sandboxId, onEvent, { enableCatalogTools });
+        const nativeToolExec = buildNativeToolExecutors(provider, sandboxId, onEvent, { enableCatalogTools, debugTimeline });
       result = await runNativeGeminiLoop({
         modelId: modelId.replace('google/', ''),
         systemPrompt: effectiveSystemPrompt,
         messages,
         toolExecutors: nativeToolExec,
         maxSteps: effectiveMaxSteps,
-        onEvent
+        onEvent,
+        debugTimeline
       });
       // Use native mutations for the summary
       getMutations = nativeToolExec.getMutations;
+      getBuildChecks = nativeToolExec.getBuildChecks;
     } catch (modelError) {
       console.error('[agent-loop] ✗ Native Gemini call failed:', modelError.message);
+      debugTimeline?.error?.('model_call_error', modelError, { providerPath: 'native_gemini', modelId });
       onEvent('agent_error', { message: `Model error: ${modelError.message}` });
       throw modelError;
     }
@@ -809,6 +410,12 @@ export async function runAgentLoop(options) {
         temperature: 0.2,
         toolChoice: 'auto',
         onStepFinish: ({ text, toolCalls, toolResults, stepType }) => {
+          debugTimeline?.event?.('sdk_step_finish', {
+            stepType,
+            textChars: String(text || '').length,
+            toolCallCount: toolCalls?.length || 0,
+            toolResultCount: toolResults?.length || 0
+          });
           if (stepType === 'tool-result') {
             onEvent('agent_thinking', { step: 'processing_tool_results' });
           }
@@ -822,19 +429,56 @@ export async function runAgentLoop(options) {
       };
     } catch (modelError) {
       console.error('[agent-loop] ✗ Model call failed:', modelError.message);
+      debugTimeline?.error?.('model_call_error', modelError, { providerPath: 'vercel_ai_sdk', modelId });
       onEvent('agent_error', { message: `Model error: ${modelError.message}` });
       throw modelError;
     }
   }
 
-  const finalResponse = result.text || '';
-  const allMutations = getMutations();
+  debugTimeline?.event?.('model_call_done', {
+    providerPath: useNativeSDK ? 'native_gemini' : 'vercel_ai_sdk',
+    rounds: result.steps || 1,
+    rawResponseLength: String(result.text || '').length,
+    toolCallCount: result.toolCalls?.length || 0
+  });
 
-  onEvent('agent_text', { text: finalResponse });
+  const rawResponse = result.text || '';
+  const allMutations = getMutations();
+  const buildChecks = typeof getBuildChecks === 'function'
+    ? getBuildChecks()
+    : Array.isArray(result.buildChecks) ? result.buildChecks : [];
+  const latestBuildCheck = buildChecks[buildChecks.length - 1] || null;
+  const buildStatus = latestBuildCheck
+    ? latestBuildCheck.buildPassed ? 'passed' : 'failed'
+    : null;
+  const changedFiles = allMutations.map((mutation) => mutation.path || mutation.filePath).filter(Boolean);
+  const responseEnvelope = normalizeAgentResponse(rawResponse, {
+    mutationCount: allMutations.length,
+    toolCallCount: result.toolCalls?.length || 0,
+    changedFiles,
+    buildStatus
+  });
+  const finalResponse = responseEnvelope.userMessage;
+
+  onEvent('agent_text', {
+    text: finalResponse,
+    normalized: responseEnvelope.wasNormalized
+  });
   onEvent('agent_complete', {
     steps: result.steps || 1,
     mutationCount: allMutations.length,
-    hasSnapshot: !!snapshot
+    hasSnapshot: !!snapshot,
+    buildStatus,
+    response: responseEnvelope
+  });
+  debugTimeline?.final?.({
+    status: 'completed',
+    response: finalResponse,
+    changedFiles,
+    buildStatus,
+    mutationCount: allMutations.length,
+    toolCallCount: result.toolCalls?.length || 0,
+    rounds: result.steps || 1
   });
 
   console.log(`\n[agent] ═══════════════════════════════════════════`);
@@ -846,6 +490,10 @@ export async function runAgentLoop(options) {
 
   return {
     response: finalResponse,
+    rawResponse,
+    responseEnvelope,
+    buildStatus,
+    buildChecks,
     toolCalls: result.toolCalls || [],
     mutations: allMutations,
     snapshot,

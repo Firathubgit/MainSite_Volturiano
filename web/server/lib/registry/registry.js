@@ -195,28 +195,10 @@ export async function getCategoriesAsync() {
  */
 export async function getCatalogForPromptAsync(filterKeywords = [], maxItems = 80) {
     const catalog = await getCatalogAsync();
-    let components = catalog.components;
-
-    // Optional keyword pre-filter to reduce context size
-    // Robustly handle string or array inputs
-    const keywordsArray = typeof filterKeywords === 'string' 
-        ? filterKeywords.split(/[\s,]+/).filter(Boolean) 
-        : (Array.isArray(filterKeywords) ? filterKeywords : []);
-
-    if (keywordsArray.length > 0) {
-        const lowerKeywords = keywordsArray.map(k => k.toLowerCase());
-        components = components.filter(c => {
-            const haystack = [
-                c.name, c.category, c.description,
-                ...(c.tags || []),
-                ...(c.keywords || [])
-            ].join(' ').toLowerCase();
-            return lowerKeywords.some(kw => haystack.includes(kw));
-        });
-    }
-
-    // Limit to maxItems
-    components = components.slice(0, maxItems);
+    const promptText = Array.isArray(filterKeywords)
+        ? filterKeywords.join(' ')
+        : String(filterKeywords || '');
+    const components = rankComponentsForPrompt(catalog.components, promptText, { maxItems });
 
     return {
         catalogVersion: catalog.catalogVersion,
@@ -240,11 +222,323 @@ export async function getCatalogForPromptAsync(filterKeywords = [], maxItems = 8
             authorType: c.authorType || 'official',
             qualityScore: c.qualityScore,
             ratingAvg: c.ratingAvg,
+            fitScore: c.fitScore,
+            fitReasons: c.fitReasons,
+            matchedRoles: c.matchedRoles,
+            matchedSiteTypes: c.matchedSiteTypes,
         })),
     };
 }
 
 // ─── Bundles ──────────────────────────────────────────────
+
+// Component fit intelligence adapts Claw-style tool routing to Volturiano's
+// domain: route a user prompt toward the right website sections and components.
+const ROLE_INTENTS = [
+    { role: 'header', terms: ['header', 'navbar', 'navigation', 'nav', 'menu', 'topbar'] },
+    { role: 'hero', terms: ['hero', 'above the fold', 'intro', 'headline', 'landing'] },
+    { role: 'features', terms: ['features', 'feature', 'benefits', 'services', 'capabilities'] },
+    { role: 'pricing', terms: ['pricing', 'plans', 'subscription', 'tiers', 'checkout'] },
+    { role: 'testimonials', terms: ['testimonial', 'testimonials', 'reviews', 'social proof', 'customers'] },
+    { role: 'footer', terms: ['footer', 'bottom', 'links'] },
+    { role: 'dashboard', terms: ['dashboard', 'admin', 'crm', 'workspace', 'panel', 'backoffice'] },
+    { role: 'data_table', terms: ['table', 'list', 'records', 'rows', 'manage', 'management', 'database'] },
+    { role: 'stats', terms: ['stats', 'metrics', 'analytics', 'kpi', 'charts', 'chart'] },
+    { role: 'cards', terms: ['cards', 'grid', 'tiles', 'profiles', 'profile cards'] },
+    { role: 'calendar', terms: ['calendar', 'schedule', 'appointments', 'events'] },
+    { role: 'form', terms: ['form', 'input', 'submit', 'contact', 'signup', 'login'] },
+    { role: 'profile', terms: ['profile', 'user', 'member', 'customer', 'client', 'girlfriend', 'boyfriend', 'people'] },
+    { role: 'ecommerce', terms: ['shop', 'store', 'product', 'cart', 'commerce', 'ecommerce'] },
+    { role: 'portfolio', terms: ['portfolio', 'case study', 'case studies', 'gallery', 'showcase'] }
+];
+
+const SITE_TYPE_INTENTS = [
+    { type: 'dashboard', terms: ['dashboard', 'admin', 'crm', 'manage', 'management', 'panel', 'workspace'] },
+    { type: 'landing_page', terms: ['landing page', 'homepage', 'marketing site', 'website', 'startup', 'saas'] },
+    { type: 'ecommerce', terms: ['ecommerce', 'shop', 'store', 'product', 'cart'] },
+    { type: 'portfolio', terms: ['portfolio', 'agency', 'case study', 'showcase'] },
+    { type: 'restaurant', terms: ['restaurant', 'cafe', 'menu', 'booking'] },
+    { type: 'automotive', terms: ['car', 'automotive', 'vehicle', 'dealership', 'luxury car'] }
+];
+
+const MOOD_INTENTS = [
+    { mood: 'premium', terms: ['premium', 'luxury', 'high end', 'elegant', 'exclusive'] },
+    { mood: 'minimal', terms: ['minimal', 'clean', 'simple', 'quiet'] },
+    { mood: 'cinematic', terms: ['cinematic', 'immersive', 'shader', 'webgl', '3d', 'motion'] },
+    { mood: 'professional', terms: ['professional', 'corporate', 'business', 'trustworthy'] },
+    { mood: 'playful', terms: ['playful', 'fun', 'colorful', 'creative'] }
+];
+
+const COLOR_INTENTS = [
+    { color: 'dark', terms: ['dark', 'black', 'night'] },
+    { color: 'light', terms: ['light', 'white', 'bright'] },
+    { color: 'teal', terms: ['teal', 'cyan', 'aqua'] },
+    { color: 'blue', terms: ['blue', 'navy'] },
+    { color: 'purple', terms: ['purple', 'violet'] },
+    { color: 'green', terms: ['green', 'emerald'] },
+    { color: 'orange', terms: ['orange', 'amber'] }
+];
+
+export function inferComponentIntent(input = '') {
+    const query = Array.isArray(input) ? input.join(' ') : String(input || '');
+    const normalized = normalizeText(query);
+    const tokens = tokenize(query);
+    const sectionRoles = collectIntentMatches(normalized, ROLE_INTENTS, 'role');
+    const siteTypes = collectIntentMatches(normalized, SITE_TYPE_INTENTS, 'type');
+    const moodTones = collectIntentMatches(normalized, MOOD_INTENTS, 'mood');
+    const colorModes = collectIntentMatches(normalized, COLOR_INTENTS, 'color');
+
+    if (siteTypes.includes('dashboard')) {
+        addUnique(sectionRoles, ['dashboard', 'data_table', 'stats', 'cards', 'profile', 'form']);
+    }
+    if (siteTypes.includes('landing_page')) {
+        addUnique(sectionRoles, ['header', 'hero', 'features', 'testimonials', 'pricing', 'footer']);
+    }
+    if (siteTypes.includes('ecommerce')) {
+        addUnique(sectionRoles, ['header', 'hero', 'ecommerce', 'cards', 'pricing', 'footer']);
+    }
+
+    return {
+        query,
+        normalized,
+        tokens,
+        sectionRoles,
+        siteTypes,
+        moodTones,
+        colorModes,
+        hasIntent: Boolean(tokens.length || sectionRoles.length || siteTypes.length || moodTones.length || colorModes.length)
+    };
+}
+
+export function rankComponentsForPrompt(components = [], prompt = '', options = {}) {
+    const maxItems = Number.isFinite(options.maxItems) ? options.maxItems : 80;
+    const minRelevance = Number.isFinite(options.minRelevance) ? options.minRelevance : 0.18;
+    const intent = options.intent || inferComponentIntent(prompt);
+
+    const scored = (components || []).map((component, index) => {
+        const fit = scoreComponentFit(component, intent);
+        return {
+            ...component,
+            fitScore: fit.score,
+            fitReasons: fit.reasons,
+            matchedRoles: fit.matchedRoles,
+            matchedSiteTypes: fit.matchedSiteTypes,
+            _fitMatched: fit.matched,
+            _fitRelevance: fit.relevance,
+            _originalIndex: index
+        };
+    });
+
+    let candidates = scored;
+    if (intent.hasIntent) {
+        const filtered = scored.filter((component) => (
+            component._fitMatched && component._fitRelevance >= minRelevance
+        ));
+        if (filtered.length > 0) candidates = filtered;
+    }
+
+    return candidates
+        .sort((a, b) => {
+            if (b.fitScore !== a.fitScore) return b.fitScore - a.fitScore;
+            const qualityDelta = normalizeQualityScore(b) - normalizeQualityScore(a);
+            if (qualityDelta !== 0) return qualityDelta;
+            return a._originalIndex - b._originalIndex;
+        })
+        .slice(0, maxItems)
+        .map(({ _fitMatched, _fitRelevance, _originalIndex, ...component }) => component);
+}
+
+export function scoreComponentFit(component = {}, intentOrPrompt = '') {
+    const intent = typeof intentOrPrompt === 'string' || Array.isArray(intentOrPrompt)
+        ? inferComponentIntent(intentOrPrompt)
+        : intentOrPrompt;
+    const haystack = componentHaystack(component);
+    const componentRoles = classifyComponentRoles(component);
+    const componentSiteTypes = classifyComponentSiteTypes(component);
+    const componentMoods = classifyComponentMoods(component);
+    const componentColors = classifyComponentColors(component);
+    const reasons = [];
+
+    let relevance = 0;
+    const matchedRoles = intersection(intent.sectionRoles, componentRoles);
+    const matchedSiteTypes = intersection(intent.siteTypes, componentSiteTypes);
+    const matchedMoods = intersection(intent.moodTones, componentMoods);
+    const matchedColors = intersection(intent.colorModes, componentColors);
+    const tokenHits = intent.tokens.filter((token) => token.length > 2 && haystack.includes(token));
+
+    if (matchedRoles.length) {
+        relevance += Math.min(0.42, matchedRoles.length * 0.18);
+        reasons.push(`section:${matchedRoles.slice(0, 3).join(',')}`);
+    }
+    if (matchedSiteTypes.length) {
+        relevance += Math.min(0.24, matchedSiteTypes.length * 0.14);
+        reasons.push(`site:${matchedSiteTypes.slice(0, 2).join(',')}`);
+    }
+    if (matchedMoods.length) {
+        relevance += Math.min(0.16, matchedMoods.length * 0.08);
+        reasons.push(`mood:${matchedMoods.slice(0, 2).join(',')}`);
+    }
+    if (matchedColors.length) {
+        relevance += Math.min(0.08, matchedColors.length * 0.04);
+        reasons.push(`color:${matchedColors.slice(0, 2).join(',')}`);
+    }
+    if (tokenHits.length) {
+        relevance += Math.min(0.24, tokenHits.length * 0.04);
+        reasons.push(`keyword:${tokenHits.slice(0, 4).join(',')}`);
+    }
+
+    const penalty = notSuitablePenalty(component, intent);
+    if (penalty > 0) reasons.push('penalty:not_suitable');
+
+    const qualityBoost = normalizeQualityScore(component) * 0.22;
+    const score = clamp01(relevance + qualityBoost - penalty);
+
+    return {
+        score: Number(score.toFixed(3)),
+        relevance: Number(relevance.toFixed(3)),
+        matched: relevance > 0 && penalty < 0.5,
+        reasons: reasons.length ? reasons : ['quality_rank'],
+        matchedRoles,
+        matchedSiteTypes
+    };
+}
+
+function classifyComponentRoles(component) {
+    const haystack = componentHaystack(component);
+    const roles = collectIntentMatches(haystack, ROLE_INTENTS, 'role');
+    if (component.category) addUnique(roles, [normalizeCategoryRole(component.category)]);
+    return roles.filter(Boolean);
+}
+
+function classifyComponentSiteTypes(component) {
+    const haystack = componentHaystack(component);
+    const siteTypes = collectIntentMatches(haystack, SITE_TYPE_INTENTS, 'type');
+    const suitableFor = normalizeArray(component.suitableFor).join(' ');
+    addUnique(siteTypes, collectIntentMatches(normalizeText(suitableFor), SITE_TYPE_INTENTS, 'type'));
+    return siteTypes;
+}
+
+function classifyComponentMoods(component) {
+    const haystack = componentHaystack(component);
+    return collectIntentMatches(`${haystack} ${normalizeText(component.moodTone || '')}`, MOOD_INTENTS, 'mood');
+}
+
+function classifyComponentColors(component) {
+    const haystack = componentHaystack(component);
+    const colorProfile = component.colorProfile || {};
+    const colorText = [
+        colorProfile.mode,
+        colorProfile.primary,
+        colorProfile.warmth
+    ].filter(Boolean).join(' ');
+    return collectIntentMatches(`${haystack} ${normalizeText(colorText)}`, COLOR_INTENTS, 'color');
+}
+
+function componentHaystack(component) {
+    return normalizeText([
+        component.id,
+        component.name,
+        component.category,
+        component.description,
+        component.visualDescription,
+        component.moodTone,
+        component.typographyStyle,
+        component.layoutType,
+        ...(component.tags || []),
+        ...(component.keywords || []),
+        ...normalizeArray(component.suitableFor),
+        JSON.stringify(component.supports || {})
+    ].filter(Boolean).join(' '));
+}
+
+function notSuitablePenalty(component, intent) {
+    const notSuitable = normalizeText(normalizeArray(component.notSuitableFor).join(' '));
+    if (!notSuitable) return 0;
+    const disallowedHits = [
+        ...intent.siteTypes,
+        ...intent.sectionRoles,
+        ...intent.moodTones,
+        ...intent.tokens
+    ].filter((term) => term.length > 2 && notSuitable.includes(term));
+    return disallowedHits.length ? 0.35 : 0;
+}
+
+function collectIntentMatches(normalizedText, definitions, key) {
+    const matches = [];
+    for (const definition of definitions) {
+        if (definition.terms.some((term) => normalizedText.includes(normalizeText(term)))) {
+            matches.push(definition[key]);
+        }
+    }
+    return [...new Set(matches)];
+}
+
+function normalizeCategoryRole(category = '') {
+    const clean = normalizeText(category).replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
+    const aliasMap = {
+        nav: 'header',
+        navbar: 'header',
+        navigation: 'header',
+        admin: 'dashboard',
+        analytics: 'stats',
+        chart: 'stats',
+        charts: 'stats',
+        grid: 'cards',
+        card: 'cards',
+        product: 'ecommerce',
+        shop: 'ecommerce'
+    };
+    return aliasMap[clean] || clean;
+}
+
+function normalizeQualityScore(component) {
+    const rawQuality = Number(component.qualityScore ?? component.quality_score ?? 5);
+    const quality = Number.isFinite(rawQuality) ? rawQuality : 5;
+    const rating = Number(component.ratingAvg ?? component.rating_avg ?? 0);
+    const qualityPart = clamp01(quality / 10);
+    const ratingPart = Number.isFinite(rating) && rating > 0 ? clamp01(rating / 5) : qualityPart;
+    return clamp01((qualityPart * 0.75) + (ratingPart * 0.25));
+}
+
+function normalizeArray(value) {
+    if (!value) return [];
+    if (Array.isArray(value)) return value.filter(Boolean).map(String);
+    if (typeof value === 'string') {
+        try {
+            const parsed = JSON.parse(value);
+            if (Array.isArray(parsed)) return parsed.filter(Boolean).map(String);
+        } catch {
+            return value.split(/[,;]+/).map((item) => item.trim()).filter(Boolean);
+        }
+    }
+    return [];
+}
+
+function tokenize(text = '') {
+    return normalizeText(text)
+        .split(/[^a-z0-9]+/)
+        .filter((token) => token.length > 2)
+        .slice(0, 30);
+}
+
+function normalizeText(text = '') {
+    return String(text || '').toLowerCase().replace(/[_-]+/g, ' ').replace(/\s+/g, ' ').trim();
+}
+
+function intersection(left = [], right = []) {
+    const rightSet = new Set(right);
+    return left.filter((item) => rightSet.has(item));
+}
+
+function addUnique(target, items) {
+    for (const item of items) {
+        if (item && !target.includes(item)) target.push(item);
+    }
+}
+
+function clamp01(value) {
+    return Math.max(0, Math.min(1, Number(value) || 0));
+}
 
 /**
  * Load a single component bundle explicitly from local JSON.

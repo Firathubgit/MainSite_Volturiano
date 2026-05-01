@@ -17,6 +17,18 @@
 import express from 'express';
 import { runAgentLoop, undoLastTurn } from '../shared/agent-loop.js';
 import { supabaseAdmin } from '../lib/supabase-admin.js';
+import { buildAgentContextEnvelope } from '../lib/agent/context-assembler.js';
+import { createAgentDebugTimeline, logAgentDebugEvent } from '../lib/agent/debug-timeline.js';
+import { persistTurnMemories } from '../lib/agent/memory-manager.js';
+import {
+  appendAgentToolEvent,
+  extractComponentIds,
+  finalizeAgentTurn,
+  getOrCreateAgentSession,
+  loadAgentSessionHydration,
+  startAgentTurn,
+  summarizeChangedFiles
+} from '../lib/agent/session-store.js';
 
 const router = express.Router();
 
@@ -38,6 +50,27 @@ function getSession(sandboxId) {
   return session;
 }
 
+function persistLater(operation, label) {
+  if (!operation) return;
+  Promise.resolve(operation).catch((error) => {
+    console.warn(`[agent-persist] ${label} failed:`, error?.message || error);
+  });
+}
+
+async function resolveAuthUserId(req) {
+  const token = req.headers.authorization?.split(' ')[1];
+  if (!token || !supabaseAdmin) return req.user?.id || null;
+
+  try {
+    const { data: { user }, error } = await supabaseAdmin.auth.getUser(token);
+    if (error) throw error;
+    return user?.id || req.user?.id || null;
+  } catch (error) {
+    console.warn('[agent] Auth resolve skipped:', error.message);
+    return req.user?.id || null;
+  }
+}
+
 // ─── POST /api/agent/message ─────────────────────────────────
 // Starts the agent loop and streams SSE events to the client.
 
@@ -47,6 +80,7 @@ router.post('/message', async (req, res) => {
     sandboxId,
     model = 'google/gemini-3.1-pro-preview',
     buildId,
+    projectId: requestProjectId,
     initialComponents = [],
     manualSelectionIds = [],
     images = []
@@ -61,37 +95,93 @@ router.post('/message', async (req, res) => {
   }
 
   const activeSandboxId = sandboxId || global.sandboxData?.sandboxId;
+  const activeProjectId = requestProjectId || buildId || null;
+  const debugTimeline = createAgentDebugTimeline({
+    route: 'message',
+    projectId: activeProjectId,
+    sandboxId: activeSandboxId,
+    model,
+    prompt: prompt.trim(),
+    turnType: 'edit'
+  });
+  debugTimeline.event('request_received', {
+    buildId,
+    initialComponentCount: initialComponents.length,
+    manualSelectionCount: manualSelectionIds.length,
+    imageCount: images.length
+  });
 
   // ─── Credit Deduction (same pattern as apply-ai-code-stream) ────
   const token = req.headers.authorization?.split(' ')[1];
-  if (token) {
+  let authUserId = req.user?.id || null;
+  if (token && supabaseAdmin) {
     try {
       const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token);
       if (user && !authError) {
+        authUserId = user.id;
         const { data: deductData, error: deductError } = await supabaseAdmin.rpc('deduct_credits_safe', {
           p_user_id: user.id,
           p_amount: 1,
           p_description: 'Agent Mode Edit',
-          p_project_id: req.body.buildId || null
+          p_project_id: activeProjectId
         });
 
         if (deductError || !deductData || !deductData.success) {
           console.warn(`[agent] Credit deduction failed for user ${user.id}: ${deductError?.message || deductData?.error}`);
+          debugTimeline.event('credit_check_failed', {
+            userId: user.id,
+            error: deductError?.message || deductData?.error || 'credit deduction failed'
+          });
           return res.status(402).json({ success: false, error: 'Creative Energy Depleted. Please recharge your credits.' });
         }
+        debugTimeline.setContext({ userId: user.id });
+        debugTimeline.event('credit_deducted', { userId: user.id, amount: 1 });
         console.log(`[agent] Successfully deducted 1 credit for user ${user.id}`);
       }
     } catch (e) {
+      debugTimeline.error('credit_check_error', e);
       console.warn('[agent] Credit check error (non-fatal):', e.message);
     }
   } else {
+    debugTimeline.event('credit_check_skipped', {
+      reason: token ? 'supabase_admin_unavailable' : 'no_auth_token'
+    });
     console.log('[agent] No auth token provided, skipping credit check (Guest mode/Local).');
   }
 
   const session = getSession(activeSandboxId || 'default');
+  const durableSession = await getOrCreateAgentSession({
+    userId: authUserId,
+    projectId: activeProjectId,
+    sandboxId: activeSandboxId,
+    model,
+    metadata: { route: 'message' }
+  });
+  const durableTurn = await startAgentTurn({
+    sessionId: durableSession?.id,
+    userId: authUserId,
+    projectId: activeProjectId,
+    sandboxId: activeSandboxId,
+    model,
+    prompt: prompt.trim(),
+    turnType: 'edit'
+  });
+  const turnStartedAt = durableTurn?.created_at || new Date().toISOString();
+  debugTimeline.setContext({
+    userId: authUserId,
+    sessionId: durableSession?.id,
+    turnId: durableTurn?.id
+  });
+  debugTimeline.event('turn_start', {
+    historyLength: session.conversationHistory.length,
+    undoDepth: session.snapshots.length,
+    durableSession: Boolean(durableSession?.id),
+    durableTurn: Boolean(durableTurn?.id)
+  });
 
   console.log(`\n[agent-route] POST /api/agent/message`);
   console.log(`[agent-route]   sandbox: ${activeSandboxId || 'global'}`);
+  console.log(`[agent-route]   project: ${activeProjectId || 'none'}`);
   console.log(`[agent-route]   model: ${model}`);
   console.log(`[agent-route]   prompt: "${prompt.trim().slice(0, 80)}${prompt.length > 80 ? '...' : ''}"`);
   console.log(`[agent-route]   history: ${session.conversationHistory.length} messages`);
@@ -118,20 +208,54 @@ router.post('/message', async (req, res) => {
         timestamp: Date.now(),
         ...payload
       };
+      debugTimeline.event('sse_event', {
+        eventType,
+        toolName: payload.toolName,
+        success: payload.success,
+        payload
+      });
       res.write(`event: ${eventType}\n`);
       res.write(`data: ${JSON.stringify(data)}\n\n`);
+      if ((eventType === 'tool_start' || eventType === 'tool_result') && durableSession?.id && durableTurn?.id) {
+        persistLater(appendAgentToolEvent({
+          sessionId: durableSession.id,
+          turnId: durableTurn.id,
+          toolName: payload.toolName,
+          eventType: eventType === 'tool_start' ? 'start' : 'result',
+          args: payload.args,
+          result: payload.result,
+          success: payload.success
+        }), 'append tool event');
+      }
     } catch (e) {
       console.error('[agent] SSE send failed:', e.message);
     }
   };
 
   try {
+    debugTimeline.event('context_assembly_start', {
+      projectId: activeProjectId,
+      sandboxId: activeSandboxId
+    });
+    const agentContextBlock = await buildAgentContextEnvelope({
+      projectId: activeProjectId,
+      userId: authUserId,
+      sessionId: durableSession?.id,
+      sandboxId: activeSandboxId,
+      excludeTurnId: durableTurn?.id
+    });
+    debugTimeline.event('context_ready', {
+      contextChars: agentContextBlock.length
+    });
+
     const result = await runAgentLoop({
       prompt: prompt.trim(),
       modelId: model,
       sandboxId: activeSandboxId,
       conversationHistory: session.conversationHistory,
-      onEvent: sendEvent
+      onEvent: sendEvent,
+      projectContextBlock: agentContextBlock,
+      debugTimeline
     });
 
     // Update session
@@ -154,14 +278,91 @@ router.post('/message', async (req, res) => {
     // Final summary event
     sendEvent('agent_done', {
       response: result.response,
+      responseEnvelope: result.responseEnvelope,
+      toolCallCount: result.toolCalls.length,
+      mutationCount: result.mutations.length,
+      rounds: result.rounds,
+      buildStatus: result.buildStatus,
+      canUndo: session.snapshots.length > 0
+    });
+
+    const changedFiles = summarizeChangedFiles(result.mutations);
+    const componentIds = extractComponentIds(result.toolCalls);
+    debugTimeline.final({
+      route: 'message',
+      model,
+      response: result.response,
+      toolsUsed: result.toolCalls.map((call) => call.name || call.toolName || call.tool).filter(Boolean),
+      changedFiles,
+      componentIds,
+      buildStatus: result.buildStatus,
       toolCallCount: result.toolCalls.length,
       mutationCount: result.mutations.length,
       rounds: result.rounds,
       canUndo: session.snapshots.length > 0
     });
 
+    persistLater(finalizeAgentTurn({
+      sessionId: durableSession?.id,
+      turnId: durableTurn?.id,
+      response: result.response,
+      summary: {
+        canUndo: session.snapshots.length > 0,
+        route: 'message',
+        response: result.responseEnvelope || null
+      },
+      changedFiles,
+      componentIds,
+      buildStatus: result.buildStatus,
+      toolCallCount: result.toolCalls.length,
+      mutationCount: result.mutations.length,
+      rounds: result.rounds,
+      status: 'completed',
+      startedAt: turnStartedAt
+    }), 'finalize turn');
+
+    persistLater(persistTurnMemories({
+      projectId: activeProjectId,
+      userId: authUserId,
+      turnId: durableTurn?.id,
+      prompt: prompt.trim(),
+      response: result.response,
+      changedFiles,
+      componentIds,
+      buildStatus: result.buildStatus,
+      mutationCount: result.mutations.length,
+      toolCallCount: result.toolCalls.length,
+      rounds: result.rounds,
+      route: 'message',
+      turnType: 'edit',
+      status: 'completed'
+    }), 'persist turn memories');
+
   } catch (error) {
     console.error('[agent] Loop error:', error);
+    debugTimeline.error('turn_error', error, {
+      route: 'message',
+      projectId: activeProjectId,
+      sandboxId: activeSandboxId
+    });
+    persistLater(finalizeAgentTurn({
+      sessionId: durableSession?.id,
+      turnId: durableTurn?.id,
+      status: 'failed',
+      error: error.message || 'Agent loop failed',
+      startedAt: turnStartedAt
+    }), 'finalize failed turn');
+    persistLater(persistTurnMemories({
+      projectId: activeProjectId,
+      userId: authUserId,
+      turnId: durableTurn?.id,
+      prompt: prompt.trim(),
+      response: '',
+      status: 'failed',
+      error: error.message || 'Agent loop failed',
+      route: 'message',
+      turnType: 'edit'
+    }), 'persist failed turn memory');
     sendEvent('agent_error', {
       message: error.message || 'Agent loop failed',
       stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
@@ -180,8 +381,17 @@ router.post('/undo', async (req, res) => {
   const { sandboxId } = req.body;
   const activeSandboxId = sandboxId || global.sandboxData?.sandboxId;
   const session = getSession(activeSandboxId || 'default');
+  const debugTimeline = createAgentDebugTimeline({
+    route: 'undo',
+    sandboxId: activeSandboxId,
+    prompt: 'undo last agent turn'
+  });
+  debugTimeline.event('undo_start', {
+    undoDepth: session.snapshots.length
+  });
 
   if (session.snapshots.length === 0) {
+    debugTimeline.event('undo_empty', { undoDepth: 0 });
     return res.status(400).json({ success: false, error: 'Nothing to undo' });
   }
 
@@ -193,6 +403,11 @@ router.post('/undo', async (req, res) => {
     if (session.conversationHistory.length >= 2) {
       session.conversationHistory = session.conversationHistory.slice(0, -2);
     }
+    debugTimeline.event('undo_done', {
+      restoredFileCount: result.restoredFiles?.length || 0,
+      restoredFiles: result.restoredFiles || [],
+      canUndo: session.snapshots.length > 0
+    });
 
     res.json({
       success: true,
@@ -202,6 +417,7 @@ router.post('/undo', async (req, res) => {
     });
   } catch (error) {
     console.error('[agent] Undo error:', error);
+    debugTimeline.error('undo_error', error);
     res.status(500).json({ success: false, error: error.message });
   }
 });
@@ -209,17 +425,41 @@ router.post('/undo', async (req, res) => {
 // ─── GET /api/agent/session ──────────────────────────────────
 // Returns current session state (for UI hydration on reconnect).
 
-router.get('/session', (req, res) => {
+router.get('/session', async (req, res) => {
   const sandboxId = req.query.sandboxId || global.sandboxData?.sandboxId;
+  const projectId = req.query.projectId || req.query.buildId || null;
+  const shouldHydrate = req.query.hydrate === '1' || req.query.hydrate === 'true';
   const session = getSession(sandboxId || 'default');
 
-  res.json({
+  const response = {
     success: true,
     conversationLength: session.conversationHistory.length,
     canUndo: session.snapshots.length > 0,
     undoDepth: session.snapshots.length,
     lastActivity: session.lastActivity
-  });
+  };
+
+  if (shouldHydrate) {
+    const authUserId = await resolveAuthUserId(req);
+    const hydration = await loadAgentSessionHydration({
+      userId: authUserId,
+      projectId,
+      sandboxId,
+      limit: req.query.limit
+    });
+
+    if (hydration?.conversationHistory?.length && session.conversationHistory.length === 0) {
+      session.conversationHistory = hydration.conversationHistory;
+    }
+
+    response.hydrated = Boolean(hydration?.session);
+    response.durableSession = hydration?.session || null;
+    response.turns = hydration?.turns || [];
+    response.messages = hydration?.messages || [];
+    response.conversationLength = Math.max(response.conversationLength, hydration?.conversationHistory?.length || 0);
+  }
+
+  res.json(response);
 });
 
 // ─── POST /api/agent/reset ───────────────────────────────────
@@ -229,6 +469,10 @@ router.post('/reset', (req, res) => {
   const { sandboxId } = req.body;
   const activeSandboxId = sandboxId || global.sandboxData?.sandboxId || 'default';
   agentSessions.delete(activeSandboxId);
+  logAgentDebugEvent('session_reset', {
+    route: 'reset',
+    sandboxId: activeSandboxId
+  });
   res.json({ success: true, message: 'Agent session cleared' });
 });
 
@@ -241,7 +485,7 @@ Your goal is to build a complete, high-end website from scratch based on a user'
 
 CAPABILITIES:
 1. Browse Community Components: Use 'browse_components' to find existing premium components that match the user's industry/style.
-2. Fetch Component Code: Use 'fetch_component_bundle' to get the raw JSX/CSS for pre-selected or newly found components.
+2. Fetch Component Code: Use 'fetch_component_bundle' to get raw JSX/CSS for pre-selected or newly found components. It returns files only; write them with create_file or replace_file before importing them.
 3. File Management: Use 'create_file', 'edit_file', and 'replace_file' to build the project structure (src/App.jsx, src/components, etc.).
 4. Vision: You can see images provided by the user to match their design aesthetic.
 
@@ -252,9 +496,12 @@ OBJECTIVES:
 - Verification: Call 'get_build_errors' to ensure everything compiles.
 - Completeness: Build a functional, beautiful site. Don't leave placeholders.
 
-If the user has pre-selected components, your first priority is to fetch their code and integrate them. 
+If the user has pre-selected components, your first priority is to fetch their code, write the returned files with create_file or replace_file, and integrate them.
 Then, browse for missing sections (e.g., if there's no Footer, find one).
 Finally, write the glue code (App.jsx, siteMap.js) and refine the design.
+
+VISIBLE RESPONSE STYLE:
+After the build is complete, keep the user-facing response short and calm. Tool cards already show detail. Use one concise sentence or up to 3 clear bullets.
 
 You have a 25-step limit. Work efficiently.`;
 
@@ -263,6 +510,7 @@ router.post('/initial-build', async (req, res) => {
     prompt,
     sandboxId,
     buildId,
+    projectId: requestProjectId,
     model = 'google/gemini-3.1-pro-preview',
     initialComponents = [],
     manualSelectionIds = [],
@@ -275,39 +523,98 @@ router.post('/initial-build', async (req, res) => {
 
   // ─── Credit Deduction ────
   const token = req.headers.authorization?.split(' ')[1];
-  if (token) {
+  const activeProjectId = requestProjectId || buildId || null;
+  const debugTimeline = createAgentDebugTimeline({
+    route: 'initial-build',
+    projectId: activeProjectId,
+    sandboxId,
+    model,
+    prompt: prompt.trim(),
+    turnType: 'initial_build'
+  });
+  debugTimeline.event('request_received', {
+    buildId,
+    initialComponentCount: initialComponents.length,
+    manualSelectionCount: manualSelectionIds.length,
+    imageCount: images.length
+  });
+  let authUserId = req.user?.id || null;
+  if (token && supabaseAdmin) {
     try {
       const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token);
       if (user && !authError) {
+        authUserId = user.id;
         const { data: deductData, error: deductError } = await supabaseAdmin.rpc('deduct_credits_safe', {
           p_user_id: user.id,
           p_amount: 1,
           p_description: 'Agent Mode Initial Build',
-          p_project_id: buildId || null
+          p_project_id: activeProjectId
         });
 
         if (deductError || !deductData || !deductData.success) {
           console.warn(`[agent-initial] Credit deduction failed for user ${user.id}: ${deductError?.message || deductData?.error}`);
+          debugTimeline.event('credit_check_failed', {
+            userId: user.id,
+            error: deductError?.message || deductData?.error || 'credit deduction failed'
+          });
           return res.status(402).json({ success: false, error: 'Creative Energy Depleted. Please recharge your credits.' });
         }
+        debugTimeline.setContext({ userId: user.id });
+        debugTimeline.event('credit_deducted', { userId: user.id, amount: 1 });
         console.log(`[agent-initial] Successfully deducted 1 credit for user ${user.id}`);
       }
     } catch (e) {
+      debugTimeline.error('credit_check_error', e);
       console.warn('[agent-initial] Credit check error (non-fatal):', e.message);
     }
+  } else {
+    debugTimeline.event('credit_check_skipped', {
+      reason: token ? 'supabase_admin_unavailable' : 'no_auth_token'
+    });
   }
 
   // Resolve or use existing sandbox
   const activeSandboxId = sandboxId || global.sandboxData?.sandboxId;
+  debugTimeline.setContext({ sandboxId: activeSandboxId });
 
   if (!activeSandboxId && !global.activeSandboxProvider) {
+    debugTimeline.event('provider_missing', { sandboxId: activeSandboxId });
     return res.status(400).json({ success: false, error: 'No active sandbox. Create one first.' });
   }
 
   const session = getSession(activeSandboxId || 'default');
+  const durableSession = await getOrCreateAgentSession({
+    userId: authUserId,
+    projectId: activeProjectId,
+    sandboxId: activeSandboxId,
+    model,
+    metadata: { route: 'initial-build' }
+  });
+  const durableTurn = await startAgentTurn({
+    sessionId: durableSession?.id,
+    userId: authUserId,
+    projectId: activeProjectId,
+    sandboxId: activeSandboxId,
+    model,
+    prompt: prompt.trim(),
+    turnType: 'initial_build'
+  });
+  const turnStartedAt = durableTurn?.created_at || new Date().toISOString();
+  debugTimeline.setContext({
+    userId: authUserId,
+    sessionId: durableSession?.id,
+    turnId: durableTurn?.id
+  });
+  debugTimeline.event('turn_start', {
+    historyLength: session.conversationHistory.length,
+    undoDepth: session.snapshots.length,
+    durableSession: Boolean(durableSession?.id),
+    durableTurn: Boolean(durableTurn?.id)
+  });
 
   console.log(`\n[agent-initial] POST /api/agent/initial-build`);
   console.log(`[agent-initial]   sandbox: ${activeSandboxId || 'global'}`);
+  console.log(`[agent-initial]   project: ${activeProjectId || 'none'}`);
   console.log(`[agent-initial]   model: ${model}`);
   console.log(`[agent-initial]   buildId: ${buildId || 'none'}`);
   console.log(`[agent-initial]   prompt: "${prompt.trim().slice(0, 80)}${prompt.length > 80 ? '...' : ''}"`);
@@ -324,7 +631,24 @@ router.post('/initial-build', async (req, res) => {
 
   const sendEvent = (event, data) => {
     try {
+      debugTimeline.event('sse_event', {
+        eventType: event,
+        toolName: data?.toolName,
+        success: data?.success,
+        payload: data
+      });
       res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
+      if ((event === 'tool_start' || event === 'tool_result') && durableSession?.id && durableTurn?.id) {
+        persistLater(appendAgentToolEvent({
+          sessionId: durableSession.id,
+          turnId: durableTurn.id,
+          toolName: data.toolName,
+          eventType: event === 'tool_start' ? 'start' : 'result',
+          args: data.args,
+          result: data.result,
+          success: data.success
+        }), 'append initial tool event');
+      }
     } catch { /* stream closed */ }
   };
 
@@ -336,10 +660,30 @@ router.post('/initial-build', async (req, res) => {
   let finalPrompt = prompt.trim();
   if (initialComponents.length > 0 || manualSelectionIds.length > 0) {
     const list = initialComponents.map(c => `- ${c.name} (ID: ${c.id})`).join('\n');
-    finalPrompt = `User has pre-selected the following components for this build:\n${list}\n\nUser's Vision: ${finalPrompt}\n\nPlease fetch these pre-selected components FIRST using 'fetch_component_bundle' and integrate them into the project.`;
+    finalPrompt = `User has pre-selected the following components for this build:\n${list}\n\nUser's Vision: ${finalPrompt}\n\nPlease fetch these pre-selected components FIRST using 'fetch_component_bundle', write the returned files with create_file or replace_file, and integrate them into the project.`;
+    debugTimeline.event('initial_components_attached', {
+      initialComponentCount: initialComponents.length,
+      manualSelectionCount: manualSelectionIds.length,
+      finalPromptChars: finalPrompt.length
+    });
   }
 
   try {
+    debugTimeline.event('context_assembly_start', {
+      projectId: activeProjectId,
+      sandboxId: activeSandboxId
+    });
+    const agentContextBlock = await buildAgentContextEnvelope({
+      projectId: activeProjectId,
+      userId: authUserId,
+      sessionId: durableSession?.id,
+      sandboxId: activeSandboxId,
+      excludeTurnId: durableTurn?.id
+    });
+    debugTimeline.event('context_ready', {
+      contextChars: agentContextBlock.length
+    });
+
     const result = await runAgentLoop({
       prompt: finalPrompt,
       images, // Pass user-provided images to the agent
@@ -349,7 +693,9 @@ router.post('/initial-build', async (req, res) => {
       onEvent: sendEvent,
       systemPromptOverride: INITIAL_BUILD_SYSTEM_PROMPT,
       maxStepsOverride: 25,
-      enableCatalogTools: true
+      enableCatalogTools: true,
+      projectContextBlock: agentContextBlock,
+      debugTimeline
     });
 
     // Update conversation history
@@ -370,15 +716,93 @@ router.post('/initial-build', async (req, res) => {
     // Final summary event
     sendEvent('agent_done', {
       response: result.response,
+      responseEnvelope: result.responseEnvelope,
       toolCallCount: result.toolCalls.length,
       mutationCount: result.mutations.length,
       rounds: result.rounds,
+      buildStatus: result.buildStatus,
       canUndo: session.snapshots.length > 0,
       isInitialBuild: true
     });
 
+    const changedFiles = summarizeChangedFiles(result.mutations);
+    const componentIds = extractComponentIds(result.toolCalls);
+    debugTimeline.final({
+      route: 'initial-build',
+      model,
+      response: result.response,
+      toolsUsed: result.toolCalls.map((call) => call.name || call.toolName || call.tool).filter(Boolean),
+      changedFiles,
+      componentIds,
+      buildStatus: result.buildStatus,
+      toolCallCount: result.toolCalls.length,
+      mutationCount: result.mutations.length,
+      rounds: result.rounds,
+      canUndo: session.snapshots.length > 0
+    });
+
+    persistLater(finalizeAgentTurn({
+      sessionId: durableSession?.id,
+      turnId: durableTurn?.id,
+      response: result.response,
+      summary: {
+        canUndo: session.snapshots.length > 0,
+        route: 'initial-build',
+        isInitialBuild: true,
+        response: result.responseEnvelope || null
+      },
+      changedFiles,
+      componentIds,
+      buildStatus: result.buildStatus,
+      toolCallCount: result.toolCalls.length,
+      mutationCount: result.mutations.length,
+      rounds: result.rounds,
+      status: 'completed',
+      startedAt: turnStartedAt
+    }), 'finalize initial turn');
+
+    persistLater(persistTurnMemories({
+      projectId: activeProjectId,
+      userId: authUserId,
+      turnId: durableTurn?.id,
+      prompt: prompt.trim(),
+      response: result.response,
+      changedFiles,
+      componentIds,
+      buildStatus: result.buildStatus,
+      mutationCount: result.mutations.length,
+      toolCallCount: result.toolCalls.length,
+      rounds: result.rounds,
+      route: 'initial-build',
+      turnType: 'initial_build',
+      status: 'completed'
+    }), 'persist initial turn memories');
+
   } catch (error) {
     console.error('[agent-initial] Loop error:', error);
+    debugTimeline.error('turn_error', error, {
+      route: 'initial-build',
+      projectId: activeProjectId,
+      sandboxId: activeSandboxId
+    });
+    persistLater(finalizeAgentTurn({
+      sessionId: durableSession?.id,
+      turnId: durableTurn?.id,
+      status: 'failed',
+      error: error.message || 'Agent initial build failed',
+      startedAt: turnStartedAt
+    }), 'finalize failed initial turn');
+    persistLater(persistTurnMemories({
+      projectId: activeProjectId,
+      userId: authUserId,
+      turnId: durableTurn?.id,
+      prompt: prompt.trim(),
+      response: '',
+      status: 'failed',
+      error: error.message || 'Agent initial build failed',
+      route: 'initial-build',
+      turnType: 'initial_build'
+    }), 'persist failed initial turn memory');
     sendEvent('agent_error', {
       message: error.message || 'Agent initial build failed',
       stack: process.env.NODE_ENV === 'development' ? error.stack : undefined

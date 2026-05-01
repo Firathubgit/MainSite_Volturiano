@@ -18,8 +18,8 @@ import { builderSupabase } from '../../../../../lib/builderSupabaseClient';
 import styles from './Generation.module.css';
 import { OpenAIIcon, AnthropicIcon, GeminiIcon } from '../BuilderIcons2';
 import { useAgentMode } from './useAgentMode';
-import { AgentToolCard, AgentSummaryBadge, AgentThinkingPill, AgentActivityRow, AgentShimmerIcon } from './AgentChatCards';
-import AgentTurnClump from './AgentTurnClump';
+import { mergeHydratedAgentMessages } from './agentChatHydration';
+import { AgentShimmerIcon } from './AgentChatCards';
 
 
 
@@ -461,7 +461,18 @@ function ThinkingRow({ status, dots, logoState, volturianoLogo, components = [],
   return (
     <div className={styles.thinkingRowMessage}>
       <div className={styles.activityHeader}>
-        <AgentShimmerIcon volturianoLogo={volturianoLogo} />
+        <div
+          className={
+            logoState === 1 ? styles.tornadoLogoPulse :
+              logoState === 2 ? styles.tornadoLogoTikiTaka :
+                logoState === 3 ? styles.tornadoLogoScanner :
+                  styles.tornadoLogoShimmer
+          }
+          style={{
+            width: 20, height: 20,
+            '--logo-url': `url(${volturianoLogo})`
+          }}
+        />
         <span className={styles.activityHeaderText}>
           {activeName}{!isFoundComponents ? dots : ''}
         </span>
@@ -484,6 +495,52 @@ function ThinkingRow({ status, dots, logoState, volturianoLogo, components = [],
   );
 }
 
+function AgentProgressLine({ text, metadata }) {
+  if (!text) return null;
+  const stats = getAgentProgressStats(metadata);
+
+  return (
+    <motion.div
+      className={styles.agentProgressLine}
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
+    >
+      <span className={styles.agentProgressText}>{text}</span>
+      {stats && (
+        <span className={styles.agentProgressStats} aria-label={`${stats.added} lines added, ${stats.removed} lines removed`}>
+          {stats.added > 0 && <span className={styles.agentProgressAdded}>+{formatAgentStatNumber(stats.added)}</span>}
+          {stats.removed > 0 && <span className={styles.agentProgressRemoved}>-{formatAgentStatNumber(stats.removed)}</span>}
+        </span>
+      )}
+    </motion.div>
+  );
+}
+
+function getAgentProgressStats(metadata) {
+  if (metadata?.kind !== 'edit') return null;
+  const added = Math.max(0, Number(metadata.linesAdded || 0));
+  const removed = Math.max(0, Number(metadata.linesRemoved || 0));
+  if (!Number.isFinite(added) || !Number.isFinite(removed)) return null;
+  if (added === 0 && removed === 0) return null;
+  return { added, removed };
+}
+
+function formatAgentStatNumber(value) {
+  return new Intl.NumberFormat('en-US').format(value);
+}
+
+function getAgentLiveStatus(text) {
+  return String(text || '').replace(/\.\.\.$/, '').trim();
+}
+
+function getAgentLiveDots(text, statusDots = '') {
+  const value = String(text || '').trim();
+  if (!value.endsWith('...')) return '';
+  if (value.toLowerCase().startsWith('build failed')) return '...';
+  return statusDots;
+}
+
 
 const VIEWPORT_SIZES = {
   desktop: { label: 'Desktop', width: '100%', height: '100%', icon: FiMonitor },
@@ -501,6 +558,7 @@ export default function Generation() {
   const chatEndRef = useRef(null);
   const sandboxCreationRef = useRef(null);
   const initStartedRef = useRef(false);
+  const agentSessionHydrationRef = useRef(new Set());
 
   // Auth Context & Credits
   const { session } = useBuilderAuth();
@@ -2495,13 +2553,17 @@ Just position the new components in a logical order (e.g. after the Hero or befo
   // ─── Agent Mode Hook ─────────────────────────────────────
   const {
     agentLoading,
+    agentProgressText,
+    setAgentProgressText,
     canUndo: agentCanUndo,
     sendAgentMessage,
     sendAgentInitialBuild,
+    hydrateAgentSession,
     undoLastTurn: agentUndoLastTurn,
   } = useAgentMode({
     sandboxId: sandboxData?.sandboxId,
     sandboxUrl: sandboxData?.url,
+    projectId: currentProjectId,
     model: aiModel,
     addChatMessage,
     authFetch,
@@ -2566,6 +2628,30 @@ Just position the new components in a logical order (e.g. after the Hero or befo
     }
   });
 
+  useEffect(() => {
+    if (!isAgentMode || !currentProjectId) return;
+
+    const hydrationKey = `${currentProjectId}:${sandboxData?.sandboxId || 'project-only'}`;
+    if (agentSessionHydrationRef.current.has(hydrationKey)) return;
+    agentSessionHydrationRef.current.add(hydrationKey);
+
+    let cancelled = false;
+    (async () => {
+      const data = await hydrateAgentSession({
+        projectId: currentProjectId,
+        sandboxId: sandboxData?.sandboxId,
+        limit: 12
+      });
+
+      if (cancelled || !data?.messages?.length) return;
+      setChatMessages(prev => mergeHydratedAgentMessages(prev, data.messages));
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isAgentMode, currentProjectId, sandboxData?.sandboxId, hydrateAgentSession]);
+
   const sendChatMessage = useCallback(async () => {
     const msg = aiChatInput.trim();
     if (!msg && pendingImages.length === 0 && pendingComponents.length === 0) return;
@@ -2623,12 +2709,17 @@ Just position the new components in a logical order (e.g. after the Hero or befo
           // 2. Create sandbox if needed
           let sandbox = sandboxData;
           if (!sandbox) {
+            setAgentProgressText('Preparing sandbox...');
             const createData = await createSandbox();
             sandbox = { sandboxId: createData.sandboxId, url: createData.url };
           }
 
           // 3. Run agent initial build
-          await sendAgentInitialBuild(msg, buildId);
+          setAgentProgressText('Starting agent...');
+          await sendAgentInitialBuild(msg, buildId, {
+            sandboxId: sandbox.sandboxId,
+            sandboxUrl: sandbox.url
+          });
 
           // 4. Mark as having applied code so subsequent messages route through edit mode
           setConversationContext(prev => ({
@@ -2642,6 +2733,7 @@ Just position the new components in a logical order (e.g. after the Hero or befo
           addChatMessage(`Agent build failed: ${error.message}`, 'error');
         } finally {
           setLoading(false);
+          setAgentProgressText('');
           setGenerationProgress(prev => ({ ...prev, isGenerating: false, status: '' }));
         }
         return;
@@ -2738,7 +2830,7 @@ Just position the new components in a logical order (e.g. after the Hero or befo
         setGenerationProgress(prev => ({ ...prev, isGenerating: false, status: '', isEdit: false }));
       }
     }
-  }, [aiChatInput, pendingImages, pendingComponents, loading, agentLoading, isAgentMode, conversationContext, sandboxData, currentProjectId, handleAIGeneratedEdit, createSandbox, addChatMessage, startGeneration, applyGeneratedCode, strictMode, sendAgentMessage]);
+  }, [aiChatInput, pendingImages, pendingComponents, loading, agentLoading, isAgentMode, conversationContext, sandboxData, currentProjectId, handleAIGeneratedEdit, createSandbox, addChatMessage, startGeneration, applyGeneratedCode, strictMode, sendAgentMessage, sendAgentInitialBuild, setAgentProgressText]);
 
   // ─── Restore Snapshot (Silent Time-Travel) ──────────────
   const restoreSnapshot = useCallback(async (snapshot, revertTargetIndex, revertedPromptText, revertedComponents = []) => {
@@ -2812,6 +2904,20 @@ Just position the new components in a logical order (e.g. after the Hero or befo
         addChatMessage('Preparing environment...', 'system');
       }
 
+      // 1b. Hydrate agent session turns into chat (agent writes to agent_turns, not chat_history)
+      try {
+        const agentData = await hydrateAgentSession({
+          projectId,
+          sandboxId: latestSnapshot?.sandbox_id || undefined,
+          limit: 12
+        });
+        if (agentData?.messages?.length) {
+          setChatMessages(prev => mergeHydratedAgentMessages(prev, agentData.messages));
+        }
+      } catch (e) {
+        console.warn('[LoadProject] Agent session hydration skipped:', e);
+      }
+
       // 2. Restore Design System & Plan
       if (project.design_system) designSystemRef.current = project.design_system;
       if (project.component_plan) componentPlanRef.current = project.component_plan;
@@ -2870,7 +2976,7 @@ Just position the new components in a logical order (e.g. after the Hero or befo
       // Final scroll — loading state just changed so DOM will re-render
       setTimeout(() => chatEndRef.current?.scrollIntoView({ behavior: 'instant' }), 200);
     }
-  }, [session, addChatMessage, applyGeneratedCode, saveProjectUpdates, setCurrentProjectId, setChatMessages, setGenerationProgress, setConversationContext]);
+  }, [session, addChatMessage, applyGeneratedCode, saveProjectUpdates, setCurrentProjectId, setChatMessages, setGenerationProgress, setConversationContext, hydrateAgentSession]);
 
   // --- Sandbox Keepalive Polling ---
   useEffect(() => {
@@ -2935,8 +3041,10 @@ Just position the new components in a logical order (e.g. after the Hero or befo
 
             // Ensure sandbox exists for agent to write to
             setGenerationProgress(prev => ({ ...prev, status: 'Creating sandbox...' }));
+            setAgentProgressText('Preparing sandbox...');
             const sb = await createSandbox();
 
+            setAgentProgressText('Starting agent...');
             await sendAgentInitialBuild("Build from community components", buildId, {
               manualSelectionIds: ids,
               sandboxId: sb.sandboxId,
@@ -2945,6 +3053,7 @@ Just position the new components in a logical order (e.g. after the Hero or befo
           } catch (err) {
             addChatMessage(`Failed to initialize: ${err.message}`, 'error');
             setLoading(false);
+            setAgentProgressText('');
           }
         })();
       } else {
@@ -2992,9 +3101,11 @@ Just position the new components in a logical order (e.g. after the Hero or befo
             });
 
             setGenerationProgress(prev => ({ ...prev, status: 'Creating sandbox...' }));
+            setAgentProgressText('Preparing sandbox...');
             const sb = await createSandbox();
 
             // Send the HIDDEN agent_prompt through the agent pipeline
+            setAgentProgressText('Starting agent...');
             await sendAgentInitialBuild(agentPrompt, buildId, {
               images: initialImages,
               sandboxId: sb.sandboxId,
@@ -3003,6 +3114,7 @@ Just position the new components in a logical order (e.g. after the Hero or befo
           } catch (err) {
             addChatMessage(`Failed to initialize: ${err.message}`, 'error');
             setLoading(false);
+            setAgentProgressText('');
           }
         })();
       } else {
@@ -3039,9 +3151,11 @@ Just position the new components in a logical order (e.g. after the Hero or befo
 
             // Ensure sandbox exists for agent to write to
             setGenerationProgress(prev => ({ ...prev, status: 'Creating sandbox...' }));
+            setAgentProgressText('Preparing sandbox...');
             const sb = await createSandbox();
 
             // Trigger the autonomous Agent Build pipeline
+            setAgentProgressText('Starting agent...');
             await sendAgentInitialBuild(finalPrompt, buildId, {
               images: initialImages,
               manualSelectionIds,
@@ -3052,6 +3166,7 @@ Just position the new components in a logical order (e.g. after the Hero or befo
           } catch (err) {
             addChatMessage(`Failed to initialize: ${err.message}`, 'error');
             setLoading(false);
+            setAgentProgressText('');
           }
         })();
       } else {
@@ -3068,7 +3183,7 @@ Just position the new components in a logical order (e.g. after the Hero or befo
       setAiChatInput('');
       setPendingImages([]);
     }
-  }, [location.state, location.search, location.pathname, startGeneration, loadProject, useAgentBuild, sendAgentInitialBuild]); // Added dependencies for safety
+  }, [location.state, location.search, location.pathname, startGeneration, loadProject, useAgentBuild, sendAgentInitialBuild, setAgentProgressText]); // Added dependencies for safety
 
   // ─── Sandbox Status Polling ──────────────
   useEffect(() => {
@@ -3592,7 +3707,7 @@ Just position the new components in a logical order (e.g. after the Hero or befo
                   // ─── Antigravity-style turn grouping ───────────────────
                   // Group consecutive agent messages into "turns" that get
                   // clumped into a collapsible row once the turn completes.
-                  const AGENT_MSG_TYPES = new Set(['agent-tool', 'agent-tool-result', 'agent-thinking', 'agent-summary']);
+                  const AGENT_MSG_TYPES = new Set([]);
                   const groups = [];
                   let currentAgentGroup = null;
 
@@ -3755,6 +3870,14 @@ Just position the new components in a logical order (e.g. after the Hero or befo
                   // Special component for planning phases
                   if ((msg.type === 'system' || msg.type === 'ai') && msg.content.includes('Planning') && msg.content.includes('components:')) {
                     return <PlanningRevolver key={i} message={msg.content} isLast={isLast} />;
+                  }
+
+                  if (msg.type === 'agent-progress') {
+                    return <AgentProgressLine key={`agent-progress-${i}`} text={msg.content} metadata={msg.metadata} />;
+                  }
+
+                  if (msg.type?.startsWith('agent-')) {
+                    return null;
                   }
 
                   // File write logs
@@ -3963,14 +4086,15 @@ Just position the new components in a logical order (e.g. after the Hero or befo
                     boxed={false}
                   />
                 )}
-                {isAgentMode && generationProgress.isGenerating && !isTextStreaming && !chatMessages.some(m => m.type?.startsWith('agent-')) && (
-                  <div style={{ marginTop: '30px' }}>
-                    <AgentActivityRow 
-                      status={generationProgress.status || 'Initializing...'} 
-                      volturianoLogo={volturianoLogo} 
-                      isLive={true}
-                    />
-                  </div>
+                {isAgentMode && agentProgressText && !isTextStreaming && (
+                  <ThinkingRow
+                    status={getAgentLiveStatus(agentProgressText)}
+                    dots={getAgentLiveDots(agentProgressText, statusDots)}
+                    logoState={logoState}
+                    volturianoLogo={volturianoLogo}
+                    isStreaming={false}
+                    boxed={false}
+                  />
                 )}
                 <div ref={chatEndRef} />
               </div>

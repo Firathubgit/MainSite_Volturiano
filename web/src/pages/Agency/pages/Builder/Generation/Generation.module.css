@@ -269,6 +269,52 @@
   margin: 4px 0;
 }
 
+.agentProgressLine {
+  align-self: flex-start;
+  display: block;
+  max-width: 95%;
+  padding: 8px 0;
+  margin-bottom: 12px;
+  font-size: 0.95rem;
+  font-family: 'Inter', system-ui, sans-serif;
+  font-weight: 300;
+  line-height: 1.6;
+  letter-spacing: 0.01em;
+  word-break: break-word;
+  white-space: normal;
+}
+
+.agentProgressText {
+  display: inline;
+  color: transparent;
+  background: linear-gradient(90deg, #ffffff 0%, #d8d8d8 58%, #999999 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+  -webkit-text-fill-color: transparent;
+}
+
+.agentProgressStats {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  margin-left: 10px;
+  font-size: 0.72em;
+  font-weight: 500;
+  letter-spacing: 0;
+  vertical-align: baseline;
+  white-space: nowrap;
+}
+
+.agentProgressAdded {
+  color: #57d878;
+}
+
+.agentProgressRemoved {
+  color: #ef5f56;
+}
+
 .activityHeader {
   display: flex;
   align-items: center;
@@ -276,26 +322,36 @@
 }
 
 .activityLogo {
-  width: 12px;
-  height: 14px;
-  background-image: var(--logo-url);
-  background-size: contain;
-  background-repeat: no-repeat;
-  background-position: center;
-  background-color: transparent;
-  filter: brightness(0) invert(1);
-  border: 0.05px solid rgba(255, 255, 255, 0.4);
-  background: linear-gradient(180deg, #000 0%, #666 100%);
+  width: 20px;
+  height: 20px;
+  background: linear-gradient(0deg,
+      rgba(45, 45, 45, 0.7) 0%,
+      rgba(220, 220, 220, 0.95) 50%,
+      rgba(45, 45, 45, 0.7) 100%);
+  background-size: 140% 220%;
+  animation: logoWave 3.8s ease-in-out infinite;
+  mask-image: var(--logo-url);
+  mask-repeat: no-repeat;
+  mask-position: center;
+  mask-size: contain;
+  -webkit-mask-image: var(--logo-url);
+  -webkit-mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  -webkit-mask-size: contain;
   flex-shrink: 0;
 }
 
 .activityHeaderText {
-  color: white;
-  font-size: 13px;
-  font-family: 'Inter', sans-serif;
-  font-weight: 400;
-  letter-spacing: 0.02em;
+  background: linear-gradient(90deg, #9ca3af 0%, #ffffff 50%, #9ca3af 100%);
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: shimmer 3s linear infinite;
+  font-weight: 500;
+  font-size: 11px;
 }
+
 
 .typingDots {
   opacity: 1;
@@ -497,11 +553,6 @@ svg.shimmerText {
   opacity: 0.3;
 }
 
-
-.agentWrapperActive {
-  background: rgba(8, 8, 12, 1) !important;
-  box-shadow: 0 0 35px rgba(129, 140, 248, 0.1) !important;
-}
 
 .chatInputArea {
   padding: 10px 23px 30px 23px;

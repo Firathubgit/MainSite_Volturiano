@@ -55,7 +55,7 @@ export default async function selectComponents(req, res) {
         console.log('[select-components] Fetching catalog and categories for LLM selection...');
         const [categories, catalog] = await Promise.all([
             getCategoriesAsync(),
-            getCatalogForPromptAsync([], maxItems)
+            getCatalogForPromptAsync(prompt, maxItems)
         ]);
 
         console.log(`[select-components] Supabase SUCCESS: Found ${catalog.components.length} components and ${categories.length} categories.`);

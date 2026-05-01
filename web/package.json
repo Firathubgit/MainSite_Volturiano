@@ -7,7 +7,8 @@
     "dev": "concurrently \"vite\" \"npm run dev:server\"",
     "dev:server": "cd server && npm run dev",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test:agent-harness": "node server/scripts/agent-harness-regression.js"
   },
   "dependencies": {
     "@codesandbox/sandpack-react": "^2.20.0",

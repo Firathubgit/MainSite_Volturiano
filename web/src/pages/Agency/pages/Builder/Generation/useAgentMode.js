@@ -7,8 +7,7 @@
 import { useState, useCallback, useRef } from 'react';
 
 const API_BASE = import.meta.env?.VITE_API_URL || '';
-const MUTATING_TOOLS = new Set(['create_file', 'edit_file', 'replace_file', 'delete_file']);
-const CATALOG_TOOLS = new Set(['browse_components', 'fetch_component_bundle']);
+const MUTATING_TOOLS = new Set(['create_file', 'edit_file', 'replace_file', 'delete_file', 'install_component_bundle']);
 const FILE_READ_TOOLS = new Set(['read_file']);
 const MAX_VISIBLE_RESPONSE_CHARS = 520;
 
@@ -36,14 +35,19 @@ export function useAgentMode({ sandboxId, sandboxUrl, projectId, model, addChatM
    * Send a message through the agentic loop (SSE streamed).
    * Emits chat messages as tool events arrive.
    */
-  const sendAgentMessage = useCallback(async (prompt) => {
-    if (!prompt?.trim() || agentLoading) return;
+  const sendAgentMessage = useCallback(async (prompt, options = {}) => {
+    const images = Array.isArray(options.images) ? options.images : [];
+    const promptText = prompt?.trim() || (images.length > 0 ? 'Use the attached image as the reference for this edit.' : '');
+    if (!promptText || agentLoading) return;
 
     setAgentLoading(true);
     setAgentProgressText('Thinking...');
 
     // Add user message to chat immediately
-    addChatMessage(prompt, 'user');
+    addChatMessage(promptText, 'user', {
+      images,
+      stagedComponents: options.stagedComponents
+    });
 
     try {
       abortControllerRef.current = new AbortController();
@@ -53,7 +57,8 @@ export function useAgentMode({ sandboxId, sandboxUrl, projectId, model, addChatM
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          prompt: prompt.trim(),
+          prompt: promptText,
+          images,
           sandboxId: sandboxId, // Uses the latest reactive id
           projectId,
           model
@@ -80,7 +85,7 @@ export function useAgentMode({ sandboxId, sandboxUrl, projectId, model, addChatM
           toolCallCount: turnMeta.toolCallCount,
           response: turnMeta.response,
           buildStatus: turnMeta.buildStatus,
-          prompt: prompt.trim(),
+          prompt: promptText,
           sandboxId: sandboxId,
           sandboxUrl: sandboxUrl
         });
@@ -420,6 +425,7 @@ function createAgentProgressTracker({ addChatMessage, setAgentProgressText }) {
     filesEdited: new Set(),
     linesAdded: 0,
     linesRemoved: 0,
+    lastReadText: '',
     readCommitted: false,
     editCommitted: false,
     buildTimer: null
@@ -437,17 +443,18 @@ function createAgentProgressTracker({ addChatMessage, setAgentProgressText }) {
   };
 
   const commitReadProgress = () => {
-    if (state.readCommitted) return;
     const readText = formatReadProgress({
       categories: state.categoriesRead,
       files: getTotalFilesRead(state)
     });
-    if (!readText) return;
+    if (!readText || readText === state.lastReadText) return;
     state.readCommitted = true;
+    state.lastReadText = readText;
     addProgress(readText, {
       kind: 'read',
       categories: state.categoriesRead,
-      files: getTotalFilesRead(state)
+      files: getTotalFilesRead(state),
+      replaceProgressKind: 'read'
     });
   };
 
@@ -504,8 +511,13 @@ function createAgentProgressTracker({ addChatMessage, setAgentProgressText }) {
         const toolName = data.toolName;
         const args = data.args || {};
 
-        if (CATALOG_TOOLS.has(toolName)) {
+        if (toolName === 'browse_components') {
           setLive(formatReadingLive(state.categoriesRead + 1, getTotalFilesRead(state)));
+          return;
+        }
+
+        if (toolName === 'fetch_component_bundle') {
+          setLive(formatReadingLive(state.categoriesRead, getTotalFilesRead(state) + 1));
           return;
         }
 
@@ -522,6 +534,10 @@ function createAgentProgressTracker({ addChatMessage, setAgentProgressText }) {
 
         if (MUTATING_TOOLS.has(toolName)) {
           commitReadProgress();
+          if (toolName === 'install_component_bundle') {
+            setLive('Installing component...');
+            return;
+          }
           const fileName = getFileName(args.path || args.filePath);
           setLive(fileName ? `Editing ${fileName} file...` : 'Editing file...');
           return;
@@ -543,9 +559,20 @@ function createAgentProgressTracker({ addChatMessage, setAgentProgressText }) {
         const toolName = data.toolName;
         if (!data.success) return;
 
-        if (CATALOG_TOOLS.has(toolName)) {
+        if (toolName === 'browse_components') {
           state.categoriesRead += 1;
           setLive(formatReadingLive(state.categoriesRead, getTotalFilesRead(state)));
+          if (state.readCommitted) commitReadProgress();
+          return;
+        }
+
+        if (toolName === 'fetch_component_bundle') {
+          const files = getCatalogBundleFileCount(data.result);
+          if (files > 0) {
+            state.filesScanned += files;
+          }
+          setLive(formatReadingLive(state.categoriesRead, getTotalFilesRead(state)));
+          if (state.readCommitted) commitReadProgress();
           return;
         }
 
@@ -553,6 +580,7 @@ function createAgentProgressTracker({ addChatMessage, setAgentProgressText }) {
           const filePath = data.result?.filePath || data.args?.path || data.args?.filePath;
           if (filePath) state.filesRead.add(filePath);
           setLive(formatReadingLive(state.categoriesRead, getTotalFilesRead(state)));
+          if (state.readCommitted) commitReadProgress();
           return;
         }
 
@@ -562,14 +590,17 @@ function createAgentProgressTracker({ addChatMessage, setAgentProgressText }) {
             state.filesScanned += files;
           }
           setLive(formatReadingLive(state.categoriesRead, getTotalFilesRead(state)));
+          if (state.readCommitted) commitReadProgress();
           return;
         }
 
         if (MUTATING_TOOLS.has(toolName)) {
-          const filePath = data.result?.filePath || data.args?.path || data.args?.filePath;
-          state.filesEdited.add(filePath || `${toolName}:${state.filesEdited.size + 1}`);
+          const filePaths = getMutationFilePaths(toolName, data.result, data.args);
+          for (const filePath of filePaths) {
+            state.filesEdited.add(filePath || `${toolName}:${state.filesEdited.size + 1}`);
+          }
           addMutationLineStats(state, toolName, data.result);
-          setLive(formatEditedProgress(state.filesEdited.size));
+          setLive(formatEditingProgress(state.filesEdited.size));
           return;
         }
 
@@ -615,10 +646,29 @@ function formatEditedProgress(count) {
   return `Edited ${count} ${pluralize('file', count)}`;
 }
 
+function formatEditingProgress(count) {
+  return `Editing ${count} ${pluralize('file', count)}...`;
+}
+
+function getCatalogBundleFileCount(result = {}) {
+  const count = Number(result.fileCount || result.totalFiles || 0);
+  if (Number.isFinite(count) && count > 0) return count;
+  if (Array.isArray(result.files)) return result.files.length;
+  return 0;
+}
+
 function addMutationLineStats(state, toolName, result = {}) {
   const stats = getMutationLineStats(toolName, result);
   state.linesAdded += stats.added;
   state.linesRemoved += stats.removed;
+}
+
+function getMutationFilePaths(toolName, result = {}, args = {}) {
+  if (toolName === 'install_component_bundle' && Array.isArray(result.installedFiles)) {
+    const paths = result.installedFiles.map((file) => file.path || file.filePath).filter(Boolean);
+    if (paths.length > 0) return paths;
+  }
+  return [result.filePath || args.path || args.filePath].filter(Boolean);
 }
 
 function getMutationLineStats(toolName, result = {}) {
@@ -664,6 +714,7 @@ function getFileName(path) {
 }
 
 function pluralize(word, count) {
+  if (word === 'category') return count === 1 ? 'category' : 'categories';
   return count === 1 ? word : `${word}s`;
 }
 

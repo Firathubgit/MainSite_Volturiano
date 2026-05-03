@@ -355,7 +355,7 @@ export function extractComponentIds(toolCalls = []) {
     const name = typeof call?.toolName === 'object'
       ? call.toolName.name
       : call?.name || call?.toolName || call?.tool;
-    if (name !== 'fetch_component_bundle') continue;
+    if (name !== 'fetch_component_bundle' && name !== 'install_component_bundle') continue;
     const args = call?.args || call?.input || {};
     const result = call?.result || call?.response || call?.output || {};
     const componentId = args.component_id

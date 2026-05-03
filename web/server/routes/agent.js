@@ -17,6 +17,10 @@
 import express from 'express';
 import { runAgentLoop, undoLastTurn } from '../shared/agent-loop.js';
 import { supabaseAdmin } from '../lib/supabase-admin.js';
+import {
+  buildInitialComponentPrompt,
+  shouldEnableCatalogToolsForEdit
+} from '../lib/agent/component-turn-policy.js';
 import { buildAgentContextEnvelope } from '../lib/agent/context-assembler.js';
 import { createAgentDebugTimeline, logAgentDebugEvent } from '../lib/agent/debug-timeline.js';
 import { persistTurnMemories } from '../lib/agent/memory-manager.js';
@@ -96,6 +100,11 @@ router.post('/message', async (req, res) => {
 
   const activeSandboxId = sandboxId || global.sandboxData?.sandboxId;
   const activeProjectId = requestProjectId || buildId || null;
+  const enableCatalogTools = shouldEnableCatalogToolsForEdit({
+    prompt,
+    initialComponents,
+    manualSelectionIds
+  });
   const debugTimeline = createAgentDebugTimeline({
     route: 'message',
     projectId: activeProjectId,
@@ -108,7 +117,12 @@ router.post('/message', async (req, res) => {
     buildId,
     initialComponentCount: initialComponents.length,
     manualSelectionCount: manualSelectionIds.length,
-    imageCount: images.length
+    imageCount: images.length,
+    enableCatalogTools
+  });
+  debugTimeline.event('catalog_tool_gate', {
+    enabled: enableCatalogTools,
+    reason: enableCatalogTools ? 'component_or_section_intent' : 'ordinary_edit_prompt'
   });
 
   // ─── Credit Deduction (same pattern as apply-ai-code-stream) ────
@@ -250,10 +264,12 @@ router.post('/message', async (req, res) => {
 
     const result = await runAgentLoop({
       prompt: prompt.trim(),
+      images,
       modelId: model,
       sandboxId: activeSandboxId,
       conversationHistory: session.conversationHistory,
       onEvent: sendEvent,
+      enableCatalogTools,
       projectContextBlock: agentContextBlock,
       debugTimeline
     });
@@ -485,18 +501,22 @@ Your goal is to build a complete, high-end website from scratch based on a user'
 
 CAPABILITIES:
 1. Browse Community Components: Use 'browse_components' to find existing premium components that match the user's industry/style.
-2. Fetch Component Code: Use 'fetch_component_bundle' to get raw JSX/CSS for pre-selected or newly found components. It returns files only; write them with create_file or replace_file before importing them.
-3. File Management: Use 'create_file', 'edit_file', and 'replace_file' to build the project structure (src/App.jsx, src/components, etc.).
-4. Vision: You can see images provided by the user to match their design aesthetic.
+2. Fetch Component Code: Use 'fetch_component_bundle' for small components when you need to inspect/adapt source. Large shader/WebGL files may be summarized to protect context.
+3. Install Component Bundles: Use 'install_component_bundle' for large visual/shader components or pre-selected components you want to use mostly as-is. It writes files directly into the sandbox without loading huge source into your context.
+4. File Management: Use 'create_file', 'edit_file', and 'replace_file' to build the project structure (src/App.jsx, src/components, etc.).
+5. Vision: You can see images provided by the user to match their design aesthetic.
+If images are attached, they are primary visual context. When the user says "the following website" or similar, replicate the screenshot's real structure, domain, colors, spacing, product hierarchy, and visible content direction instead of substituting a generic catalog theme.
 
 OBJECTIVES:
 - Standard Structure: Always create a clean React + Tailwind structure. Use 'src/App.jsx' as the main entry point and 'src/index.css' for styles.
 - Tailored Design: Match the industry, colors, and fonts requested by the user. Use modern CSS (glassmorphism, animations).
-- Component Integration: If components are provided or found, fetch them and integrate them into App.jsx. Ensure all imports are correct.
+- Component Plan: Think in page sections first. Browse by section, install or fetch only the best-fit bundle for that section, avoid duplicate bundles, and custom-code missing gaps when the catalog fit is weak.
+- Component Integration: If components are provided or found, install or fetch them and integrate them into App.jsx. Ensure all imports are correct.
 - Verification: Call 'get_build_errors' to ensure everything compiles.
 - Completeness: Build a functional, beautiful site. Don't leave placeholders.
 
-If the user has pre-selected components, your first priority is to fetch their code, write the returned files with create_file or replace_file, and integrate them.
+If the user has pre-selected components, your first priority is to install them with install_component_bundle when available, or fetch their code and write the returned files with create_file or replace_file when the source is small enough to inspect safely.
+If source is clipped or omitted, do not repeatedly fetch/read the same huge file. Use the installed paths and only read targeted line windows if you must edit internals.
 Then, browse for missing sections (e.g., if there's no Footer, find one).
 Finally, write the glue code (App.jsx, siteMap.js) and refine the design.
 
@@ -657,10 +677,12 @@ router.post('/initial-build', async (req, res) => {
   }, 15000);
 
   // Prepare final prompt with context about pre-selected components
-  let finalPrompt = prompt.trim();
-  if (initialComponents.length > 0 || manualSelectionIds.length > 0) {
-    const list = initialComponents.map(c => `- ${c.name} (ID: ${c.id})`).join('\n');
-    finalPrompt = `User has pre-selected the following components for this build:\n${list}\n\nUser's Vision: ${finalPrompt}\n\nPlease fetch these pre-selected components FIRST using 'fetch_component_bundle', write the returned files with create_file or replace_file, and integrate them into the project.`;
+  const finalPrompt = buildInitialComponentPrompt({
+    prompt,
+    initialComponents,
+    manualSelectionIds
+  });
+  if (finalPrompt !== prompt.trim()) {
     debugTimeline.event('initial_components_attached', {
       initialComponentCount: initialComponents.length,
       manualSelectionCount: manualSelectionIds.length,

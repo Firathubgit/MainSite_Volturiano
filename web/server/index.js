@@ -51,6 +51,7 @@ import resolveBlueprintRoute from './routes/resolve-blueprint.js';
 import communityRoutes from './routes/community/index.js';
 import trackRetention from './routes/track-retention.js';
 import submitFeedback from './routes/feedback.js';
+import submitIssue from './routes/issues.js';
 import billingRoutes from './routes/billing.js';
 import webhookRoutes from './routes/webhooks.js';
 import dashboardRoutes from './routes/dashboard.js';
@@ -157,6 +158,7 @@ app.post('/api/analyze-edit-intent', aiProtections, analyzeEditIntent);
 app.post('/api/create-zip', aiProtections, createZip);
 
 app.post('/api/feedback', optionalAuth, submitFeedback);
+app.post('/api/issues', optionalAuth, submitIssue);
 
 // Premium component registry routes
 app.get('/api/component-catalog', relaxedLimiter, componentCatalog);

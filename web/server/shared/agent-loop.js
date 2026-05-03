@@ -19,6 +19,10 @@ import {
 import { sandboxManager } from '../lib/sandbox/sandbox-manager.js';
 import { normalizeAgentResponse } from '../lib/agent/response-normalizer.js';
 import {
+  buildMultimodalUserContent,
+  toGeminiPartsFromContent
+} from '../lib/agent/image-attachments.js';
+import {
   bundleToFiles as runtimeBundleToFiles,
   createAgentToolRuntime,
   toGeminiToolExecutors,
@@ -59,6 +63,17 @@ const AGENT_SYSTEM_PROMPT = `You are an expert frontend developer working inside
 - **Never experiment or trial-and-error.** Do not make a change just to test a theory, then revert it. Understand the code first, then make the correct fix once.
 - **Never revert your own changes.** If you realize a previous edit was wrong, fix it forward — don't undo and retry.
 - Read a file ONCE at the start. Do not re-read the same file between every edit.
+- If images are attached, treat them as visual ground truth. The image overrides vague text such as "make the following website"; infer the real site type, layout, colors, spacing, content hierarchy, and product/domain cues from the screenshot before using catalog components.
+
+## Community Component Catalog
+- When catalog tools are enabled for this turn, you have access to a **Community Component Database** via tools such as \`browse_components\`, \`fetch_component_bundle\`, and when available \`install_component_bundle\`.
+- This catalog is a community-driven library where developers submit new, high-quality React/Tailwind UI components daily.
+- You can search the catalog for relevant keywords (e.g., "hero", "gaming", "cards") to discover pre-made sections. Small fetched bundles may include source code. Large shader/WebGL files may be summarized to protect context.
+- Prefer \`install_component_bundle\` for large visual/shader components or pre-selected components you want to use mostly as-is. It writes the files directly into the sandbox without loading huge source into the model context.
+- Feel free to use these components to quickly assemble premium interfaces, or write custom code from scratch — whichever approach fits the project best.
+- **Context Warning:** Try to avoid fetching more than 2-3 component bundles in a single turn to prevent context overload. If you need more, process them in batches across multiple turns.
+- If source is clipped or omitted, do not repeatedly fetch/read the same huge file. Use the installed file paths and only read targeted line windows if you must edit internals.
+- Component plan: think by section first (Header/Nav, Hero, Features, Pricing, Testimonials, Footer, or dashboard/admin panels when relevant). Browse with section-specific keywords, fetch/install only the best-fit bundle for each section, avoid duplicate bundles for the same role, and custom-code missing gaps when the catalog fit is weak.
 - Use edit_file for targeted changes with exact string matching. Use replace_file only for major rewrites.
 - After ALL edits are done, call get_build_errors exactly once. Do not build-check after every single edit.
 - If a build fails, read the error carefully and fix it in one targeted edit.
@@ -110,7 +125,7 @@ async function runNativeGeminiLoop({ modelId, systemPrompt, messages, toolExecut
   // Convert messages to Google GenAI format
   const googleMessages = messages.map(m => ({
     role: m.role === 'assistant' ? 'model' : 'user',
-    parts: [{ text: typeof m.content === 'string' ? m.content : JSON.stringify(m.content) }]
+    parts: toGeminiPartsFromContent(m.content)
   }));
 
   // Use chat session for automatic thought signature handling
@@ -127,8 +142,11 @@ async function runNativeGeminiLoop({ modelId, systemPrompt, messages, toolExecut
 
   // Send the last message to start
   const lastMsg = googleMessages[googleMessages.length - 1];
+  const initialMessage = lastMsg.parts.length === 1 && lastMsg.parts[0]?.text
+    ? lastMsg.parts[0].text
+    : lastMsg.parts;
   let response = await chat.sendMessage(
-    { message: lastMsg.parts[0].text }, 
+    { message: initialMessage }, 
     { timeout: 120000 } // AI_STABILITY_FIX_V7: Increase timeout for heavy initial planning
   );
 
@@ -217,7 +235,7 @@ async function runNativeGeminiLoop({ modelId, systemPrompt, messages, toolExecut
 /**
  * Build the initial context for the agent.
  */
-function assembleMessages(userPrompt, conversationHistory = [], fileTree = null, projectContextBlock = '') {
+function assembleMessages(userPrompt, conversationHistory = [], fileTree = null, projectContextBlock = '', images = []) {
   const messages = [];
 
   // Add conversation history (last 20 messages max)
@@ -243,13 +261,19 @@ function assembleMessages(userPrompt, conversationHistory = [], fileTree = null,
     contextPrefix += `[Current project files]\n${fileListStr}\n\n`;
   }
 
-  // Add user's new message
-  messages.push({
-    role: 'user',
-    content: contextPrefix + userPrompt
+  const { content, attachments } = buildMultimodalUserContent({
+    text: contextPrefix + userPrompt,
+    images
   });
 
-  return messages;
+  // Add user's new message. Images are attached only to the current turn so
+  // screenshots do not get replayed forever in long-running project memory.
+  messages.push({
+    role: 'user',
+    content
+  });
+
+  return { messages, attachments };
 }
 
 // ─── Main Agent Loop ─────────────────────────────────────────
@@ -277,6 +301,7 @@ export async function runAgentLoop(options) {
     maxStepsOverride = null,
     enableCatalogTools = false,
     projectContextBlock = '',
+    images = [],
     debugTimeline = null
   } = options;
 
@@ -288,7 +313,8 @@ export async function runAgentLoop(options) {
     maxSteps: effectiveMaxSteps,
     enableCatalogTools,
     conversationHistoryLength: conversationHistory.length,
-    projectContextChars: projectContextBlock.length
+    projectContextChars: projectContextBlock.length,
+    imageCount: Array.isArray(images) ? images.length : 0
   });
 
   // Resolve sandbox provider
@@ -349,16 +375,18 @@ export async function runAgentLoop(options) {
   let { tools, getMutations, getBuildChecks } = buildTools(provider, activeSandboxId, onEvent, { enableCatalogTools, debugTimeline });
 
   // Assemble messages
-  const messages = assembleMessages(prompt, conversationHistory, fileTree, projectContextBlock);
+  const { messages, attachments } = assembleMessages(prompt, conversationHistory, fileTree, projectContextBlock, images);
   debugTimeline?.event?.('messages_assembled', {
     messageCount: messages.length,
-    lastMessageChars: String(messages[messages.length - 1]?.content || '').length
+    lastMessageChars: String(messages[messages.length - 1]?.content || '').length,
+    imageAttachmentCount: attachments.length
   });
 
   onEvent('agent_start', {
     prompt,
     modelId,
-    fileCount: fileTree?.totalFiles || 0
+    fileCount: fileTree?.totalFiles || 0,
+    imageCount: attachments.length
   });
 
   // ─── Call model with auto tool execution ─────────────────

@@ -2,7 +2,8 @@ import React, { useState, useRef, useEffect } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { motion } from "framer-motion";
 import FeedbackModal from "../../../../../components/Modals/FeedbackModal/FeedbackModal";
-import { UserIcon, LogOutIcon, LayoutDashboardIcon, ChevronDownIcon, SparklesIcon, ZapIcon, MessageSquareIcon } from "lucide-react";
+import IssueModal from "../../../../../components/Modals/IssueModal/IssueModal";
+import { UserIcon, LogOutIcon, LayoutDashboardIcon, ChevronDownIcon, SparklesIcon, ZapIcon, MessageSquareIcon, AlertCircleIcon } from "lucide-react";
 import { useBuilderAuth } from "../../../../../contexts/BuilderAuthContext";
 import { useCredits } from "../../../../../hooks/useCredits";
 import navStyles from "../../../../../components/NavBar/NavBar.module.css";
@@ -19,6 +20,7 @@ export function BuilderNavBar() {
   const { user, profile, isAuthenticated, signOut, loading } = useBuilderAuth();
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [isFeedbackOpen, setIsFeedbackOpen] = useState(false);
+  const [isIssueOpen, setIsIssueOpen] = useState(false);
   const [isCinematic, setIsCinematic] = useState(false);
   const dropdownRef = useRef(null);
 
@@ -232,6 +234,12 @@ export function BuilderNavBar() {
                       onClick={() => { setDropdownOpen(false); setIsFeedbackOpen(true); }} 
                     />
 
+                    <DropdownItem 
+                      icon={<AlertCircleIcon size={15} />} 
+                      label="Report Issue" 
+                      onClick={() => { setDropdownOpen(false); setIsIssueOpen(true); }} 
+                    />
+
                     {/* Separator + Logout */}
                     <div style={{ height: '1px', background: 'rgba(255,255,255,0.06)', margin: '4px 0' }} />
                     <DropdownItem
@@ -260,6 +268,11 @@ export function BuilderNavBar() {
       <FeedbackModal 
         isOpen={isFeedbackOpen} 
         onClose={() => setIsFeedbackOpen(false)} 
+        pageSource="builder_navbar" 
+      />
+      <IssueModal 
+        isOpen={isIssueOpen} 
+        onClose={() => setIsIssueOpen(false)} 
         pageSource="builder_navbar" 
       />
     </header>

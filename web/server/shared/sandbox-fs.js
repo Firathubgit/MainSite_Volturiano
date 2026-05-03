@@ -216,7 +216,7 @@ async function readFile(provider, filePath, options = {}) {
 
   if (startLine !== undefined || endLine !== undefined) {
     const start = Math.max(0, (startLine || 1) - 1); // Convert to 0-indexed
-    const end = endLine !== undefined ? Math.min(totalLines, endLine) : totalLines;
+    const end = (endLine !== undefined && endLine !== null) ? Math.min(totalLines, endLine) : totalLines;
     
     const selectedLines = allLines.slice(start, end);
     selectedContent = selectedLines.join('\n');

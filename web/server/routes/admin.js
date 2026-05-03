@@ -279,4 +279,36 @@ router.post('/create-template', requireAuth, requireBuilderAdmin, async (req, re
     }
 });
 
+// ═══ GET /api/admin/feedback — Fetch platform feedback ═══
+router.get('/feedback', requireAuth, requireBuilderAdmin, async (req, res) => {
+    try {
+        const { data, error } = await supabaseAdmin
+            .from('platform_feedback')
+            .select('*')
+            .order('created_at', { ascending: false });
+
+        if (error) throw error;
+        res.json({ success: true, feedback: data || [] });
+    } catch (err) {
+        console.error('[Admin] Fetch feedback failed:', err);
+        res.status(500).json({ success: false, error: err.message });
+    }
+});
+
+// ═══ GET /api/admin/issues — Fetch platform issues ═══
+router.get('/issues', requireAuth, requireBuilderAdmin, async (req, res) => {
+    try {
+        const { data, error } = await supabaseAdmin
+            .from('platform_issues')
+            .select('*')
+            .order('created_at', { ascending: false });
+
+        if (error) throw error;
+        res.json({ success: true, issues: data || [] });
+    } catch (err) {
+        console.error('[Admin] Fetch issues failed:', err);
+        res.status(500).json({ success: false, error: err.message });
+    }
+});
+
 export default router;

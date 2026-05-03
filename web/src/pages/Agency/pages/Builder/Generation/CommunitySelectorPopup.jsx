@@ -241,6 +241,7 @@ export default function CommunitySelectorPopup({ isOpen, onClose, onConfirm, max
     }, [observerRefElement, loading, page, totalPages]);
 
     const handleToggleSelect = (id, itemObject) => {
+        let activatingSelectMode = false;
         setSelectedItemsMap(prev => {
             const newMap = { ...prev };
             if (newMap[id]) {
@@ -249,9 +250,14 @@ export default function CommunitySelectorPopup({ isOpen, onClose, onConfirm, max
                 // Check limit
                 if (Object.keys(prev).length >= maxItems) return prev;
                 newMap[id] = itemObject;
+                activatingSelectMode = true;
             }
             return newMap;
         });
+        
+        if (activatingSelectMode && !isSelectMode) {
+            setIsSelectMode(true);
+        }
     };
 
     const handleConfirm = () => {

@@ -84,6 +84,78 @@ function parseFilesFromCode(code) {
   return files;
 }
 
+function normalizeSandboxFilePath(path) {
+  return String(path || '')
+    .replace(/\\/g, '/')
+    .replace(/^\/home\/user\/app\//, '')
+    .replace(/^\/+/, '');
+}
+
+function getFileType(path) {
+  if (path.endsWith('.css')) return 'css';
+  if (path.endsWith('.json')) return 'json';
+  if (path.endsWith('.html')) return 'html';
+  if (path.endsWith('.md')) return 'markdown';
+  if (path.endsWith('.svg') || path.endsWith('.xml')) return 'xml';
+  if (path.endsWith('.yml') || path.endsWith('.yaml')) return 'yaml';
+  return 'jsx';
+}
+
+function getUnavailableFileContent(file = {}) {
+  const path = normalizeSandboxFilePath(file.path);
+  const ext = file.extension ? `.${file.extension}` : '';
+  const reason = file.readError
+    ? `Could not read this file: ${file.readError}`
+    : `This ${ext || 'asset'} file is part of the project, but it is not a readable text file.`;
+
+  return [
+    `// ${path}`,
+    `// ${reason}`,
+    '// It will still be included when exporting/downloading the project.'
+  ].join('\n');
+}
+
+function filesMapToGeneratedFiles(filesMap = {}, manifestFiles = []) {
+  const contentFiles = Object.entries(filesMap)
+    .map(([path, content]) => ({
+      path: normalizeSandboxFilePath(path),
+      content: String(content ?? ''),
+      type: getFileType(normalizeSandboxFilePath(path)),
+      readable: true,
+      completed: true
+    }))
+    .filter(file => file.path && !file.path.includes('node_modules/'));
+
+  const seenPaths = new Set(contentFiles.map(file => file.path));
+  const manifestOnlyFiles = (Array.isArray(manifestFiles) ? manifestFiles : [])
+    .map(file => ({
+      ...file,
+      path: normalizeSandboxFilePath(file.path)
+    }))
+    .filter(file => file.path && !seenPaths.has(file.path) && !file.path.includes('node_modules/'))
+    .map(file => ({
+      path: file.path,
+      content: getUnavailableFileContent(file),
+      type: getFileType(file.path),
+      readable: Boolean(file.readable),
+      binary: Boolean(file.binary),
+      completed: true
+    }));
+
+  return [...contentFiles, ...manifestOnlyFiles].sort((a, b) => a.path.localeCompare(b.path));
+}
+
+function mergeGeneratedFiles(primaryFiles = [], incomingFiles = []) {
+  const merged = new Map();
+  for (const file of primaryFiles) {
+    if (file?.path) merged.set(normalizeSandboxFilePath(file.path), { ...file, path: normalizeSandboxFilePath(file.path) });
+  }
+  for (const file of incomingFiles) {
+    if (file?.path) merged.set(normalizeSandboxFilePath(file.path), { ...file, path: normalizeSandboxFilePath(file.path) });
+  }
+  return [...merged.values()].sort((a, b) => a.path.localeCompare(b.path));
+}
+
 function getFileIcon(fileName) {
   if (fileName.endsWith('.jsx') || fileName.endsWith('.tsx')) return <SiReact size={14} />;
   if (fileName.endsWith('.js') || fileName.endsWith('.ts')) return <SiJavascript size={14} />;
@@ -95,6 +167,9 @@ function getLanguage(path) {
   if (path.endsWith('.css')) return 'css';
   if (path.endsWith('.json')) return 'json';
   if (path.endsWith('.html')) return 'html';
+  if (path.endsWith('.md')) return 'markdown';
+  if (path.endsWith('.svg') || path.endsWith('.xml')) return 'xml';
+  if (path.endsWith('.yml') || path.endsWith('.yaml')) return 'yaml';
   return 'jsx';
 }
 
@@ -135,6 +210,9 @@ function buildFileTree(files) {
     const dir = parts.join('/') || '.';
     if (!tree[dir]) tree[dir] = [];
     tree[dir].push({ name: fileName, path: file.path, edited: file.edited });
+  }
+  for (const dir of Object.keys(tree)) {
+    tree[dir].sort((a, b) => a.name.localeCompare(b.name));
   }
   return tree;
 }
@@ -666,6 +744,7 @@ export default function Generation() {
   const chatInputAreaRef = useRef(null);
   const fileInputRef = useRef(null);
   const [sandboxFiles, setSandboxFiles] = useState({});
+  const [sandboxFileManifest, setSandboxFileManifest] = useState([]);
   const [isDownloading, setIsDownloading] = useState(false);
   const [isPublishing, setIsPublishing] = useState(false);
   const [publishUrl, setPublishUrl] = useState(null);
@@ -795,7 +874,29 @@ export default function Generation() {
 
   const addChatMessage = useCallback((content, type, metadata) => {
     setChatMessages(prev => {
-      const newMessages = [...prev, { content, type, timestamp: new Date(), metadata }];
+      const nextMessage = { content, type, timestamp: new Date(), metadata };
+      let newMessages = null;
+
+      if (type === 'agent-progress' && metadata?.replaceProgressKind) {
+        const targetKind = metadata.replaceProgressKind;
+        let replaceIndex = -1;
+        for (let idx = prev.length - 1; idx >= 0; idx -= 1) {
+          if (prev[idx]?.type === 'agent-progress' && prev[idx]?.metadata?.kind === targetKind) {
+            replaceIndex = idx;
+            break;
+          }
+        }
+
+        if (replaceIndex >= 0) {
+          newMessages = [...prev];
+          newMessages[replaceIndex] = nextMessage;
+        }
+      }
+
+      if (!newMessages) {
+        newMessages = [...prev, nextMessage];
+      }
+
       // Phase S13: Auto-save chat history
       saveProjectUpdates({ chat_history: newMessages });
       return newMessages;
@@ -885,14 +986,46 @@ export default function Generation() {
   const isProcessingQueue = useRef(false);
 
   // ─── Fetch Sandbox Files ──────────────
-  const fetchSandboxFiles = useCallback(async () => {
-    if (!sandboxData?.sandboxId) return;
+  const syncSandboxFilesToCodePanel = useCallback((filesMap = {}, manifestFiles = []) => {
+    const sandboxGeneratedFiles = filesMapToGeneratedFiles(filesMap, manifestFiles);
+    if (sandboxGeneratedFiles.length === 0) return;
+
+    setGenerationProgress(prev => ({
+      ...prev,
+      files: mergeGeneratedFiles(prev.files, sandboxGeneratedFiles)
+    }));
+
+    setSelectedFile(prev => {
+      if (prev && sandboxGeneratedFiles.some(file => file.path === prev)) return prev;
+      return sandboxGeneratedFiles.find(file => file.path === 'src/App.jsx')?.path
+        || sandboxGeneratedFiles.find(file => file.path.endsWith('/App.jsx'))?.path
+        || sandboxGeneratedFiles[0]?.path
+        || prev;
+    });
+  }, []);
+
+  const fetchSandboxFiles = useCallback(async (sandboxIdOverride = null) => {
+    const targetSandboxId = sandboxIdOverride || sandboxData?.sandboxId;
+    if (!targetSandboxId) return null;
     try {
-      const res = await fetch(`/api/get-sandbox-files?sandboxId=${sandboxData.sandboxId}`);
+      const res = await fetch(`/api/get-sandbox-files?sandboxId=${targetSandboxId}`);
       const data = await res.json();
-      if (data.success) setSandboxFiles(data.files || {});
+      if (data.success) {
+        const files = data.files || {};
+        const manifestFiles = data.manifest?.files || [];
+        setSandboxFiles(files);
+        setSandboxFileManifest(manifestFiles);
+        syncSandboxFilesToCodePanel(files, manifestFiles);
+      }
+      return data;
     } catch (e) { console.warn('Failed to fetch sandbox files:', e); }
-  }, [sandboxData?.sandboxId]);
+    return null;
+  }, [sandboxData?.sandboxId, syncSandboxFilesToCodePanel]);
+
+  useEffect(() => {
+    if (activeTab !== 'generation' || !sandboxData?.sandboxId) return;
+    fetchSandboxFiles(sandboxData.sandboxId);
+  }, [activeTab, sandboxData?.sandboxId, fetchSandboxFiles]);
 
   // Listen for console logs from sandbox
   useEffect(() => {
@@ -2588,6 +2721,10 @@ Just position the new components in a logical order (e.g. after the Hero or befo
         }, 1200);
       }
 
+      const latestSandboxFilesData = activeSandboxId
+        ? await fetchSandboxFiles(activeSandboxId)
+        : null;
+
       // If this was an undo or no mutations occurred, skip persistence
       if (isUndo || !hadMutations) return;
 
@@ -2602,9 +2739,10 @@ Just position the new components in a logical order (e.g. after the Hero or befo
       try {
         if (!activeSandboxId) throw new Error('No sandbox ID available for persistence');
 
-        const filesRes = await fetch(`/api/get-sandbox-files?sandboxId=${activeSandboxId}`);
-        const filesData = await filesRes.json();
-        if (filesData.success) {
+        const filesData = latestSandboxFilesData?.success
+          ? latestSandboxFilesData
+          : await fetchSandboxFiles(activeSandboxId);
+        if (filesData?.success) {
           await authFetch('/api/snapshots', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -2657,20 +2795,26 @@ Just position the new components in a logical order (e.g. after the Hero or befo
     if (!msg && pendingImages.length === 0 && pendingComponents.length === 0) return;
     if (loading || agentLoading) return;
 
+    const currentImages = [...pendingImages];
+    const currentComponents = [...pendingComponents];
+
     // ─── AGENT MODE: Route through agentic loop ───────────
     if (isAgentMode && sandboxData?.sandboxId) {
       // Dispatch optimistic deduction animation (same as legacy flow)
       window.dispatchEvent(new CustomEvent('optimistic-credit-deduction'));
       setAiChatInput('');
-      await sendAgentMessage(msg);
+      setPendingImages([]);
+      setPendingComponents([]);
+      await sendAgentMessage(msg, {
+        images: currentImages,
+        stagedComponents: currentComponents
+      });
       return;
     }
 
     // Dispatch optimistic deduction animation for generation edits
     window.dispatchEvent(new CustomEvent('optimistic-credit-deduction'));
 
-    const currentImages = [...pendingImages];
-    const currentComponents = [...pendingComponents];
     setAiChatInput('');
     setPendingImages([]);
     setPendingComponents([]);
@@ -2680,7 +2824,8 @@ Just position the new components in a logical order (e.g. after the Hero or befo
     if (!isEdit) {
       // ─── AGENT INITIAL BUILD: Use agent pipeline ⭐ ────────
       if (useAgentBuild) {
-        addChatMessage(msg || 'Build website', 'user', { images: currentImages });
+        const initialBuildPrompt = msg || 'Build the website from the attached image.';
+        addChatMessage(initialBuildPrompt, 'user', { images: currentImages });
         setLoading(true);
         setGenerationProgress(prev => ({ ...prev, isGenerating: true, status: 'Agent building...', isEdit: false }));
 
@@ -2698,7 +2843,7 @@ Just position the new components in a logical order (e.g. after the Hero or befo
           const initRes = await authFetch('/api/projects/init', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ prompt: msg, buildId })
+            body: JSON.stringify({ prompt: initialBuildPrompt, buildId })
           });
           const initData = await safeParseJson(initRes, 'project-init');
           if (initData.success && initData.projectId) {
@@ -2716,7 +2861,8 @@ Just position the new components in a logical order (e.g. after the Hero or befo
 
           // 3. Run agent initial build
           setAgentProgressText('Starting agent...');
-          await sendAgentInitialBuild(msg, buildId, {
+          await sendAgentInitialBuild(initialBuildPrompt, buildId, {
+            images: currentImages,
             sandboxId: sandbox.sandboxId,
             sandboxUrl: sandbox.url
           });
@@ -3291,7 +3437,10 @@ Just position the new components in a logical order (e.g. after the Hero or befo
     });
   };
 
-  const fileTree = buildFileTree(generationProgress.files);
+  const codeFiles = useMemo(() => {
+    return mergeGeneratedFiles(generationProgress.files, filesMapToGeneratedFiles(sandboxFiles, sandboxFileManifest));
+  }, [generationProgress.files, sandboxFiles, sandboxFileManifest]);
+  const fileTree = useMemo(() => buildFileTree(codeFiles), [codeFiles]);
 
   // ─── Download Project ──────────────
   const downloadProject = useCallback(async () => {
@@ -4469,7 +4618,7 @@ Just position the new components in a logical order (e.g. after the Hero or befo
                           ))}
                         </div>
                       ))}
-                      {generationProgress.files.length === 0 && !generationProgress.isGenerating && (
+                      {codeFiles.length === 0 && !generationProgress.isGenerating && (
                         <div className={styles.emptyState}>No code generated yet. Describe your website to get started.</div>
                       )}
                     </div>
@@ -4482,7 +4631,7 @@ Just position the new components in a logical order (e.g. after the Hero or befo
                           showLineNumbers
                           customStyle={{ margin: 0, height: '100%', fontSize: '13px', background: '#030304' }}
                         >
-                          {generationProgress.files.find(f => f.path === selectedFile)?.content
+                          {codeFiles.find(f => f.path === selectedFile)?.content
                             || sandboxFiles[selectedFile]
                             || '// File not found'}
                         </SyntaxHighlighter>

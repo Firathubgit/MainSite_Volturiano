@@ -138,16 +138,76 @@ function ImageUploadField({ value, onChange, componentId, label, session, bucket
     );
 }
 
-// ═══ Video Upload Field (URL-based) ═══
-function VideoField({ value, onChange, label }) {
+// ═══ Video Upload Field ═══
+function VideoUploadField({ value, onChange, componentId, label, session, bucket = 'builder-assets' }) {
+    const [uploading, setUploading] = useState(false);
+    const fileRef = useRef(null);
+
+    const handleFileChange = async (e) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        setUploading(true);
+
+        try {
+            const reader = new FileReader();
+            reader.onload = async (ev) => {
+                const base64 = ev.target.result.split(',')[1];
+                const res = await fetch('/api/admin/upload-asset', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${session?.access_token}`,
+                    },
+                    body: JSON.stringify({
+                        fileName: file.name,
+                        fileData: base64,
+                        contentType: file.type,
+                        componentId,
+                        bucket
+                    }),
+                });
+                const data = await res.json();
+                if (data.success) {
+                    onChange(data.url);
+                }
+                setUploading(false);
+            };
+            reader.readAsDataURL(file);
+        } catch (err) {
+            console.error('Upload failed:', err);
+            setUploading(false);
+        }
+    };
+
     return (
-        <div className={styles.fieldGroup}>
+        <div className={styles.imageUploadGroup}>
             <span className={styles.fieldLabel}>{label}</span>
+            <div className={styles.imagePreviewRow}>
+                {value && (
+                    <video src={value} className={styles.imagePreviewThumb} muted playsInline />
+                )}
+                <input
+                    type="file"
+                    ref={fileRef}
+                    style={{ display: 'none' }}
+                    accept="video/*"
+                    onChange={handleFileChange}
+                />
+                <button
+                    className={styles.uploadBtn}
+                    onClick={() => fileRef.current?.click()}
+                    disabled={uploading}
+                >
+                    {uploading ? '⏳ Uploading...' : '🎥 Upload'}
+                </button>
+            </div>
+            {/* Fallback to text input for manual entry */}
             <input
                 className={styles.fieldInput}
+                style={{ marginTop: '8px' }}
                 value={value || ''}
                 onChange={(e) => onChange(e.target.value)}
-                placeholder="Video URL..."
+                placeholder="Or paste video URL..."
             />
         </div>
     );
@@ -444,10 +504,12 @@ function ComponentCard({ component, session, onUpdate }) {
                             componentId={component.id}
                             session={session}
                         />
-                        <VideoField
+                        <VideoUploadField
                             label="Preview Video URL"
                             value={local.preview_video_url}
                             onChange={(url) => updateField('preview_video_url', url)}
+                            session={session}
+                            componentId={component.id}
                         />
                     </div>
 
@@ -797,11 +859,13 @@ export default function AdminPanel() {
     const { session, profile, loading: authLoading, isAuthenticated } = useBuilderAuth();
     const [components, setComponents] = useState([]);
     const [templates, setTemplates] = useState([]);
+    const [feedbackItems, setFeedbackItems] = useState([]);
+    const [issuesItems, setIssuesItems] = useState([]);
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState('');
     const [categoryFilter, setCategoryFilter] = useState('');
     const [toast, setToast] = useState(null); // { message, type }
-    const [activeTab, setActiveTab] = useState('components'); // 'components' | 'templates'
+    const [activeTab, setActiveTab] = useState('components'); // 'components' | 'templates' | 'feedback' | 'issues'
     const [showCreateTemplate, setShowCreateTemplate] = useState(false);
 
     // ─── Access Control ───
@@ -835,20 +899,34 @@ export default function AdminPanel() {
         }
     }, [authLoading, isAuthenticated, profile, navigate]);
 
-    // ─── Fetch Components ───
+    // ─── Fetch Data ───
     useEffect(() => {
         if (!session?.access_token || !accessChecked) return;
 
-        const fetchComponents = async () => {
+        const fetchData = async () => {
             setLoading(true);
             try {
-                const res = await fetch('/api/admin/components', {
-                    headers: { 'Authorization': `Bearer ${session.access_token}` },
-                });
-                const data = await res.json();
-                if (data.success) {
-                    setComponents(data.components);
-                }
+                const headers = { 'Authorization': `Bearer ${session.access_token}` };
+                
+                // Fetch all data in parallel
+                const [compRes, tmplRes, feedRes, issueRes] = await Promise.all([
+                    fetch('/api/admin/components', { headers }),
+                    fetch('/api/admin/templates', { headers }),
+                    fetch('/api/admin/feedback', { headers }),
+                    fetch('/api/admin/issues', { headers })
+                ]);
+
+                const [compData, tmplData, feedData, issueData] = await Promise.all([
+                    compRes.json(),
+                    tmplRes.json(),
+                    feedRes.json(),
+                    issueRes.json()
+                ]);
+
+                if (compData.success) setComponents(compData.components);
+                if (tmplData.success) setTemplates(tmplData.templates);
+                if (feedData.success) setFeedbackItems(feedData.feedback || []);
+                if (issueData.success) setIssuesItems(issueData.issues || []);
             } catch (err) {
                 console.error('[Admin] Fetch failed:', err);
             } finally {
@@ -856,28 +934,7 @@ export default function AdminPanel() {
             }
         };
 
-        fetchComponents();
-    }, [session?.access_token, accessChecked]);
-
-    // ─── Fetch Templates ───
-    useEffect(() => {
-        if (!session?.access_token || !accessChecked) return;
-
-        const fetchTemplates = async () => {
-            try {
-                const res = await fetch('/api/admin/templates', {
-                    headers: { 'Authorization': `Bearer ${session.access_token}` },
-                });
-                const data = await res.json();
-                if (data.success) {
-                    setTemplates(data.templates);
-                }
-            } catch (err) {
-                console.error('[Admin] Fetch templates failed:', err);
-            }
-        };
-
-        fetchTemplates();
+        fetchData();
     }, [session?.access_token, accessChecked]);
 
     // ─── Update Handler ───
@@ -997,6 +1054,20 @@ export default function AdminPanel() {
                 >
                     📋 Templates
                 </button>
+                <button
+                    className={`${styles.popupBtn} ${activeTab === 'feedback' ? styles.popupBtnHasContent : ''}`}
+                    onClick={() => setActiveTab('feedback')}
+                    style={{ padding: '8px 18px', fontSize: '0.82rem' }}
+                >
+                    💬 Feedback
+                </button>
+                <button
+                    className={`${styles.popupBtn} ${activeTab === 'issues' ? styles.popupBtnHasContent : ''}`}
+                    onClick={() => setActiveTab('issues')}
+                    style={{ padding: '8px 18px', fontSize: '0.82rem' }}
+                >
+                    🚨 Issues
+                </button>
                 <div style={{ flex: 1 }} />
                 
                 {activeTab === 'templates' && (
@@ -1053,7 +1124,7 @@ export default function AdminPanel() {
                             />
                         ))
                     )
-                ) : (
+                ) : activeTab === 'templates' ? (
                     // ═══ Templates Tab ═══
                     templates.length === 0 ? (
                         <div className={styles.emptyState}>
@@ -1068,6 +1139,52 @@ export default function AdminPanel() {
                                 onUpdate={handleTemplateUpdate}
                             />
                         ))
+                    )
+                ) : activeTab === 'feedback' ? (
+                    // ═══ Feedback Tab ═══
+                    feedbackItems.length === 0 ? (
+                        <div className={styles.emptyState}>
+                            No feedback found.
+                        </div>
+                    ) : (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                            {feedbackItems.map(item => (
+                                <div key={item.id} className={styles.componentCard} style={{ padding: 16 }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 12 }}>
+                                        <span style={{ fontSize: '0.85rem', color: '#888' }}>{new Date(item.created_at).toLocaleString()}</span>
+                                        <span style={{ fontSize: '0.8rem', padding: '2px 8px', borderRadius: 4, background: 'rgba(255,255,255,0.1)' }}>Status: {item.status || 'open'}</span>
+                                    </div>
+                                    <div style={{ marginBottom: 16, lineHeight: 1.6, color: '#e0e0e0', fontSize: '0.95rem' }}>{item.content}</div>
+                                    <div style={{ fontSize: '0.85rem', color: '#aaa', display: 'flex', justifyContent: 'space-between', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: 12 }}>
+                                        <span>User ID: {item.user_id}</span>
+                                        {item.page_source && <span>Source: {item.page_source}</span>}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )
+                ) : (
+                    // ═══ Issues Tab ═══
+                    issuesItems.length === 0 ? (
+                        <div className={styles.emptyState}>
+                            No issues reported.
+                        </div>
+                    ) : (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                            {issuesItems.map(item => (
+                                <div key={item.id} className={styles.componentCard} style={{ padding: 16, borderLeft: '4px solid #ef4444' }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 12 }}>
+                                        <span style={{ fontSize: '0.85rem', color: '#888' }}>{new Date(item.created_at).toLocaleString()}</span>
+                                        <span style={{ fontSize: '0.8rem', padding: '2px 8px', borderRadius: 4, background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444' }}>Status: {item.status || 'open'}</span>
+                                    </div>
+                                    <div style={{ marginBottom: 16, lineHeight: 1.6, color: '#e0e0e0', fontSize: '0.95rem' }}>{item.content}</div>
+                                    <div style={{ fontSize: '0.85rem', color: '#aaa', display: 'flex', justifyContent: 'space-between', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: 12 }}>
+                                        <span>User ID: {item.user_id}</span>
+                                        {item.page_source && <span>Source: {item.page_source}</span>}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
                     )
                 )}
             </div>

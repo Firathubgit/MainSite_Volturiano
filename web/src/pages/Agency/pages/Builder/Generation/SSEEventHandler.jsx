@@ -215,8 +215,6 @@ const PremiumStreamedText = ({ text, onStreamEnd, instant = false }) => {
 };
 
 export const AIMessage = ({ message, style = 'casual', context, onRestore, isStreamingEligible, onStreamStateChange }) => {
-    const isPremium = style === 'premium-success';
-
     React.useEffect(() => {
         if (isStreamingEligible && onStreamStateChange) {
             onStreamStateChange(true);
@@ -232,30 +230,6 @@ export const AIMessage = ({ message, style = 'casual', context, onRestore, isStr
     return (
         <div className={`ai-message-bubble ${style}`} style={{ position: 'relative' }}>
             <div className="ai-content">
-                {isPremium && (
-                    <motion.div
-                        initial={{ opacity: 0, y: 5 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
-                        style={{ display: 'flex', alignItems: 'center', marginBottom: '4px' }}
-                    >
-                        <span style={{
-                            fontSize: '0.72rem',
-                            fontWeight: 800,
-                            textTransform: 'uppercase',
-                            letterSpacing: '0.18em',
-                            background: 'linear-gradient(90deg, #64748b 0%, #cbd5e1 35%, #bae6fd 50%, #cbd5e1 65%, #64748b 100%)',
-                            backgroundSize: '200% auto',
-                            WebkitBackgroundClip: 'text',
-                            backgroundClip: 'text',
-                            WebkitTextFillColor: 'transparent',
-                            animation: 'shimmer 5s linear infinite',
-                            display: 'inline-block'
-                        }}>
-                            Manifestation Complete
-                        </span>
-                    </motion.div>
-                )}
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <div className="ai-text" style={{ flex: 1, margin: 0 }}>
                         {isStreamingEligible ? (
@@ -272,7 +246,7 @@ export const AIMessage = ({ message, style = 'casual', context, onRestore, isStr
                 {/* Action icons are now handled by parent to be under user bubbles */}
 
                 {/* Optional Context Metrics */}
-                {context && !isPremium && (
+                {context && (
                     <div className="ai-metrics">
                         {context.filesCount && <span className="ai-metric-badge">{context.filesCount} files</span>}
                         {context.durationMs && <span className="ai-metric-badge">{(context.durationMs / 1000).toFixed(1)}s</span>}

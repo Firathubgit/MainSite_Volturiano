@@ -4,6 +4,7 @@ import styles from './CommunityHub.module.css';
 import ComponentCard from './ComponentCard';
 import SandpackPreviewPopup from './SandpackPreviewPopup';
 import FeedbackModal from '../../../../../components/Modals/FeedbackModal/FeedbackModal';
+import IssueModal from '../../../../../components/Modals/IssueModal/IssueModal';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useBuilderAuth } from '../../../../../contexts/BuilderAuthContext';
 import tornadoLogo from '../../../../../assets/Logo/TornadoLogo.png';
@@ -46,6 +47,7 @@ export default function CommunityHub() {
     const [page, setPage] = useState(1);
     const [totalPages, setTotalPages] = useState(1);
     const [isFeedbackOpen, setIsFeedbackOpen] = useState(false);
+    const [isIssueOpen, setIsIssueOpen] = useState(false);
 
     const abortControllerRef = useRef(null);
 
@@ -207,15 +209,23 @@ export default function CommunityHub() {
     };
 
     const handleToggleSelect = (id, item) => {
+        let activatingSelectMode = false;
         setSelectedForBuild(prev => {
             const next = { ...prev };
             if (next[id]) {
                 delete next[id];
             } else {
                 next[id] = item;
+                activatingSelectMode = true;
             }
             return next;
         });
+        
+        if (activatingSelectMode && !isBuilderSelectMode) {
+            const params = new URLSearchParams(location.search);
+            params.set('mode', 'select');
+            navigate(`${location.pathname}?${params.toString()}`);
+        }
     };
 
     const proceedToBuilder = () => {
@@ -312,9 +322,9 @@ export default function CommunityHub() {
 
                 </div>
 
-                <div className={styles.sidebarFooter}>
-                    <div className={styles.sidebarFooterInner}>
-                        <button className={styles.sidebarSubmitBtn} title="Submit Component" onClick={() => navigate('/community/studio')}>
+                <div className={styles.sidebarFooter} style={{ height: '88px', alignItems: 'flex-start' }}>
+                    <div className={styles.sidebarFooterInner} style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', width: '100%' }}>
+                        <button className={styles.sidebarSubmitBtn} title="Submit Component" onClick={() => navigate('/community/studio')} style={{ margin: 0, flex: '1 1 calc(50% - 4px)' }}>
                             <svg width="14" height="14" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
                                 <path d="M8 3V13" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                                 <path d="M3 8H13" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
@@ -324,7 +334,7 @@ export default function CommunityHub() {
 
                         <button 
                             className={styles.sidebarSubmitBtn} 
-                            style={{ marginLeft: '8px', background: 'transparent', border: '1px solid rgba(255,255,255,0.1)' }} 
+                            style={{ background: 'transparent', border: '1px solid rgba(255,255,255,0.1)', margin: 0, flex: '1 1 calc(50% - 4px)' }} 
                             title="Provide Feedback" 
                             onClick={() => setIsFeedbackOpen(true)}
                         >
@@ -332,6 +342,20 @@ export default function CommunityHub() {
                                 <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path>
                             </svg>
                             <span>Feedback</span>
+                        </button>
+
+                        <button 
+                            className={styles.sidebarSubmitBtn} 
+                            style={{ background: 'transparent', border: '1px solid rgba(255,255,255,0.1)', margin: 0, flex: '1 1 100%', justifyContent: 'center' }} 
+                            title="Report an Issue" 
+                            onClick={() => setIsIssueOpen(true)}
+                        >
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <circle cx="12" cy="12" r="10"></circle>
+                                <line x1="12" y1="8" x2="12" y2="12"></line>
+                                <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                            </svg>
+                            <span>Report Issue</span>
                         </button>
                     </div>
                 </div>
@@ -430,7 +454,7 @@ export default function CommunityHub() {
             </div>
 
             {/* Builder Sticky Bar (global screen bottom center just in case) */}
-            {isBuilderSelectMode && Object.keys(selectedForBuild).filter(k => selectedForBuild[k]).length > 0 && (
+            {Object.keys(selectedForBuild).filter(k => selectedForBuild[k]).length > 0 && (
                 <div className={styles.stickyCartBar}>
                     <div className={styles.stickyCartInfo}>
                         {Object.keys(selectedForBuild).filter(k => selectedForBuild[k]).length} component(s) selected
@@ -455,6 +479,13 @@ export default function CommunityHub() {
             <FeedbackModal 
                 isOpen={isFeedbackOpen} 
                 onClose={() => setIsFeedbackOpen(false)} 
+                pageSource="community" 
+            />
+
+            {/* Platform Issue Modal */}
+            <IssueModal 
+                isOpen={isIssueOpen} 
+                onClose={() => setIsIssueOpen(false)} 
                 pageSource="community" 
             />
         </div>

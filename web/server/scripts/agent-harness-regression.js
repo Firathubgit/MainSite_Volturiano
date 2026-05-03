@@ -2,9 +2,22 @@ import assert from 'node:assert/strict';
 import { createAgentDebugTimeline, sanitizeDebugValue } from '../lib/agent/debug-timeline.js';
 import { normalizeAgentResponse } from '../lib/agent/response-normalizer.js';
 import { composeAgentContextBlock } from '../lib/agent/context-assembler.js';
+import {
+  buildInitialComponentPrompt,
+  buildInitialComponentSelectionList,
+  shouldEnableCatalogToolsForEdit
+} from '../lib/agent/component-turn-policy.js';
+import {
+  buildImageReferenceInstruction,
+  buildMultimodalUserContent,
+  normalizeImageAttachments,
+  toGeminiPartsFromContent,
+  toVercelImageParts
+} from '../lib/agent/image-attachments.js';
 import { deriveTurnMemories, formatAgentMemoryBlock } from '../lib/agent/memory-manager.js';
 import {
   createAgentToolRuntime,
+  SOURCE_SAFETY_LIMITS,
   toGeminiToolExecutors,
   toVercelTools,
   validatePackageNames
@@ -30,7 +43,11 @@ const tests = [
   ['hydration_dedupe_contract', testHydrationDedupeContract],
   ['turn_memory_derivation_contract', testTurnMemoryDerivationContract],
   ['context_envelope_contract', testContextEnvelopeContract],
+  ['image_attachment_multimodal_contract', testImageAttachmentMultimodalContract],
   ['tool_runtime_adapter_shape_contract', testToolRuntimeAdapterShapeContract],
+  ['tool_runtime_read_source_safety_contract', testToolRuntimeReadSourceSafetyContract],
+  ['tool_runtime_large_bundle_source_safety_contract', testToolRuntimeLargeBundleSourceSafetyContract],
+  ['tool_runtime_install_component_bundle_contract', testToolRuntimeInstallComponentBundleContract],
   ['agent_debug_timeline_contract', testAgentDebugTimelineContract],
   ['tool_runtime_debug_timeline_contract', testToolRuntimeDebugTimelineContract],
   ['tool_policy_exposure_contract', testToolPolicyExposureContract],
@@ -40,6 +57,8 @@ const tests = [
   ['tool_runtime_package_install_guard_contract', testToolRuntimePackageInstallGuardContract],
   ['tool_runtime_reset_guard_contract', testToolRuntimeResetGuardContract],
   ['tool_runtime_catalog_fetch_parity_contract', testToolRuntimeCatalogFetchParityContract],
+  ['component_turn_policy_catalog_gate_contract', testComponentTurnPolicyCatalogGateContract],
+  ['initial_component_prompt_manual_ids_contract', testInitialComponentPromptManualIdsContract],
   ['tool_runtime_build_check_contract', testToolRuntimeBuildCheckContract],
   ['component_intent_dashboard_contract', testComponentIntentDashboardContract],
   ['component_fit_ranking_contract', testComponentFitRankingContract],
@@ -142,32 +161,49 @@ async function testSseInitialBuildContract() {
 async function testSseAgentProgressLineContract() {
   const messages = [];
   const liveRows = [];
+  const addProgressAwareMessage = (content, type, metadata) => {
+    if (type === 'agent-progress' && metadata?.replaceProgressKind) {
+      const index = messages.findLastIndex((message) => (
+        message.type === 'agent-progress' &&
+        message.metadata?.kind === metadata.replaceProgressKind
+      ));
+      if (index >= 0) {
+        messages[index] = { content, type, metadata };
+        return;
+      }
+    }
+    messages.push({ content, type, metadata });
+  };
 
   const meta = await consumeAgentEventStream(chunkedSseStream([
     sseEvent('agent_start', { prompt: 'use premium components and edit the hero' }),
     sseEvent('tool_start', { toolName: 'browse_components', args: { keywords: 'hero' } }),
     sseEvent('tool_result', { toolName: 'browse_components', result: { count: 12 }, success: true }),
+    sseEvent('tool_start', { toolName: 'browse_components', args: { keywords: 'pricing' } }),
+    sseEvent('tool_result', { toolName: 'browse_components', result: { count: 8 }, success: true }),
     sseEvent('tool_start', { toolName: 'read_file', args: { path: 'src/App.jsx' } }),
     sseEvent('tool_result', { toolName: 'read_file', result: { filePath: 'src/App.jsx' }, success: true }),
     sseEvent('tool_start', { toolName: 'edit_file', args: { path: 'src/App.jsx' } }),
     sseEvent('tool_result', { toolName: 'edit_file', result: { filePath: 'src/App.jsx', diff: { linesAdded: 12, linesRemoved: 4 } }, success: true }),
+    sseEvent('tool_start', { toolName: 'read_file', args: { path: 'src/theme.css' } }),
+    sseEvent('tool_result', { toolName: 'read_file', result: { filePath: 'src/theme.css' }, success: true }),
     sseEvent('tool_start', { toolName: 'get_build_errors', args: {} }),
     sseEvent('tool_result', { toolName: 'get_build_errors', result: { buildPassed: false }, success: true }),
     sseEvent('agent_done', {
       response: 'Done - I adjusted the hero.',
-      toolCallCount: 4,
+      toolCallCount: 6,
       mutationCount: 1,
       buildStatus: 'failed',
       canUndo: true
     })
   ].join('')), {
-    addChatMessage: (content, type, metadata) => messages.push({ content, type, metadata }),
+    addChatMessage: addProgressAwareMessage,
     setAgentProgressText: (text) => liveRows.push(text)
   });
 
   assert.equal(meta.mutationCount, 1);
   assert.deepEqual(messages.filter((message) => message.type === 'agent-progress').map((message) => message.content), [
-    'Read through 1 category, 1 file',
+    'Read through 2 categories, 2 files',
     'Edited 1 file'
   ]);
   assert.deepEqual(messages.find((message) => message.metadata?.kind === 'edit').metadata, {
@@ -177,8 +213,12 @@ async function testSseAgentProgressLineContract() {
     linesRemoved: 4
   });
   assert.ok(liveRows.includes('Reading through 1 category...'));
+  assert.ok(liveRows.includes('Reading through 2 categories, 1 file...'));
   assert.ok(liveRows.includes('Reading App.jsx file...'));
   assert.ok(liveRows.includes('Editing App.jsx file...'));
+  assert.ok(liveRows.includes('Editing 1 file...'));
+  assert.ok(!liveRows.includes('Edited 1 file'));
+  assert.equal(liveRows.some((row) => row.includes('categorys')), false);
   assert.ok(liveRows.includes('Building...'));
   assert.ok(liveRows.includes('Build failed...'));
   assert.equal(messages.filter((message) => message.type === 'agent-tool').length, 0);
@@ -267,6 +307,45 @@ function testContextEnvelopeContract() {
   assert.match(block, /\[\/Volturiano continuity envelope\]/);
 }
 
+function testImageAttachmentMultimodalContract() {
+  const dataUrl = 'data:image/png;base64,aGVsbG8=';
+  const attachments = normalizeImageAttachments([dataUrl]);
+
+  assert.equal(attachments.length, 1);
+  assert.equal(attachments[0].mimeType, 'image/png');
+  assert.equal(attachments[0].base64, 'aGVsbG8=');
+  assert.ok(attachments[0].binary instanceof Uint8Array);
+
+  const instruction = buildImageReferenceInstruction(1);
+  assert.match(instruction, /visual ground truth/);
+  assert.match(instruction, /generic catalog concept/);
+
+  const multimodal = buildMultimodalUserContent({
+    text: 'Make the following website',
+    images: [dataUrl]
+  });
+
+  assert.equal(Array.isArray(multimodal.content), true);
+  assert.equal(multimodal.content[0].type, 'text');
+  assert.match(multimodal.content[0].text, /Attached reference images: 1/);
+  assert.equal(multimodal.content[1].type, 'image');
+  assert.equal(multimodal.content[1].mimeType, 'image/png');
+
+  const vercelParts = toVercelImageParts(attachments);
+  assert.equal(vercelParts[0].type, 'image');
+  assert.equal(vercelParts[0].mimeType, 'image/png');
+  assert.ok(vercelParts[0].image instanceof Uint8Array);
+
+  const geminiParts = toGeminiPartsFromContent(multimodal.content);
+  assert.equal(geminiParts[0].text.includes('Make the following website'), true);
+  assert.deepEqual(geminiParts[1], {
+    inlineData: {
+      data: 'aGVsbG8=',
+      mimeType: 'image/png'
+    }
+  });
+}
+
 function testToolRuntimeAdapterShapeContract() {
   const runtime = createAgentToolRuntime({
     provider: createFakeProvider(),
@@ -286,6 +365,116 @@ function testToolRuntimeAdapterShapeContract() {
   assert.deepEqual(geminiDeclarationNames, vercelToolNames);
   assert.ok(vercelToolNames.includes('browse_components'));
   assert.ok(vercelToolNames.includes('fetch_component_bundle'));
+  assert.ok(vercelToolNames.includes('install_component_bundle'));
+}
+
+async function testToolRuntimeReadSourceSafetyContract() {
+  const largeSource = Array.from({ length: SOURCE_SAFETY_LIMITS.readDefaultLineLimit + 90 }, (_, index) => {
+    return `const shaderLine${index} = "vec3 color${index} = vec3(${index}.0); gl_FragColor = vec4(color${index}, 1.0);";`;
+  }).join('\n');
+  const runtime = createAgentToolRuntime({
+    provider: createFakeProvider({ 'src/components/ShaderHero.jsx': largeSource }),
+    sandboxId: 'sandbox-tool-read-safety',
+    verifyBuild: async () => ({ success: true })
+  });
+
+  const result = await runtime.execute('read_file', {
+    path: 'src/components/ShaderHero.jsx',
+    start_line: null,
+    end_line: null
+  });
+
+  assert.equal(result.ok, true);
+  assert.equal(result.result.content, largeSource);
+  assert.equal(result.modelResult.sourceSafety.truncated, true);
+  assert.ok(result.modelResult.content.length < largeSource.length);
+  assert.ok(result.modelResult.lineCount <= SOURCE_SAFETY_LIMITS.readDefaultLineLimit);
+  assert.equal(result.modelResult.sourceSafety.suggestedNextRead.path, 'src/components/ShaderHero.jsx');
+}
+
+async function testToolRuntimeLargeBundleSourceSafetyContract() {
+  const largeShader = [
+    'export const fragmentShader = `',
+    ...Array.from({ length: 900 }, (_, index) => `vec3 color${index} = vec3(${index}.0); gl_FragColor = vec4(color${index}, 1.0);`),
+    '`;'
+  ].join('\n');
+  const componentBundle = {
+    files: [
+      {
+        path: 'src/components/ShaderHero.jsx',
+        content: largeShader
+      },
+      {
+        path: 'src/components/ShaderCaption.jsx',
+        content: 'export default function ShaderCaption() {\n  return <p>Fast cinematic motion</p>;\n}\n'
+      }
+    ]
+  };
+  const runtime = createAgentToolRuntime({
+    provider: createFakeProvider(),
+    sandboxId: 'sandbox-tool-large-bundle',
+    enableCatalogTools: true,
+    getCatalog: async () => ({ components: [] }),
+    getBundle: async (componentId) => componentId === 'shader.hero.v1' ? componentBundle : null,
+    verifyBuild: async () => ({ success: true })
+  });
+
+  const result = await runtime.execute('fetch_component_bundle', {
+    component_id: 'shader.hero.v1'
+  });
+
+  assert.equal(result.ok, true);
+  assert.equal(result.result.files[0].content, largeShader);
+  assert.equal(result.modelResult.sourceSafety.fullSourceReturned, false);
+  assert.equal(result.modelResult.sourceSafety.omittedFileCount, 1);
+  assert.equal(result.modelResult.files[0].omitted, true);
+  assert.equal(Object.prototype.hasOwnProperty.call(result.modelResult.files[0], 'content'), false);
+  assert.equal(result.modelResult.files[0].exportHints.suggestedImportName, 'ShaderHero');
+  assert.equal(result.modelResult.files[1].omitted, false);
+  assert.match(result.modelResult.files[0].sourceSafety.guidance, /install_component_bundle/);
+}
+
+async function testToolRuntimeInstallComponentBundleContract() {
+  const largeShader = [
+    'export default function ShaderHero() {',
+    '  const fragmentShader = `',
+    ...Array.from({ length: 260 }, (_, index) => `    vec3 color${index} = vec3(${index}.0); gl_FragColor = vec4(color${index}, 1.0);`),
+    '  `;',
+    '  return <section data-shader={fragmentShader}>Shader</section>;',
+    '}'
+  ].join('\n');
+  const componentBundle = {
+    files: [
+      { path: 'src/components/ShaderHero.jsx', content: largeShader },
+      { path: 'src/components/ShaderHero.css', content: '.shader-hero { min-height: 100vh; }\n' },
+      { path: 'package.json', content: '{"dependencies":{}}\n' }
+    ]
+  };
+  const provider = createFakeProvider();
+  const runtime = createAgentToolRuntime({
+    provider,
+    sandboxId: 'sandbox-tool-install-component',
+    enableCatalogTools: true,
+    getCatalog: async () => ({ components: [] }),
+    getBundle: async (componentId) => componentId === 'shader.hero.v1' ? componentBundle : null,
+    verifyBuild: async () => ({ success: true })
+  });
+
+  const result = await runtime.execute('install_component_bundle', {
+    component_id: 'shader.hero.v1',
+    reason: 'large shader source should not enter model context'
+  });
+
+  assert.equal(result.ok, true);
+  assert.equal(result.modelResult.success, true);
+  assert.equal(result.modelResult.fileCount, 2);
+  assert.equal(result.modelResult.skippedFiles[0].path, 'package.json');
+  assert.equal(result.modelResult.sourceSafety.installedWithoutModelSource, true);
+  assert.equal(runtime.getMutations().length, 2);
+  assert.equal(runtime.getSideEffects()[0].type, 'component_install');
+  assert.equal(await provider.readFile('src/components/ShaderHero.jsx'), largeShader);
+  assert.equal(result.modelResult.installedFiles[0].exportHints.defaultExport, 'ShaderHero');
+  assert.equal(Object.prototype.hasOwnProperty.call(result.modelResult.installedFiles[0], 'content'), false);
 }
 
 function testAgentDebugTimelineContract() {
@@ -392,6 +581,7 @@ function testToolPolicyExposureContract() {
 
   assert.ok(elevatedNames.includes('browse_components'));
   assert.ok(elevatedNames.includes('fetch_component_bundle'));
+  assert.ok(elevatedNames.includes('install_component_bundle'));
   assert.ok(elevatedNames.includes('delete_file'));
   assert.ok(elevatedNames.includes('install_packages'));
   assert.ok(elevatedNames.includes('reset_sandbox_app'));
@@ -609,6 +799,39 @@ async function testToolRuntimeCatalogFetchParityContract() {
   assert.deepEqual(geminiResult, directResult.modelResult);
   assert.equal(geminiResult.files[0].path, 'src/components/PremiumHero.jsx');
   assert.equal(runtime.getMutations().length, 0);
+}
+
+function testComponentTurnPolicyCatalogGateContract() {
+  assert.equal(shouldEnableCatalogToolsForEdit({ prompt: 'make it darker' }), false);
+  assert.equal(shouldEnableCatalogToolsForEdit({ prompt: 'fix mobile spacing' }), false);
+  assert.equal(shouldEnableCatalogToolsForEdit({ prompt: 'add pricing section' }), true);
+  assert.equal(shouldEnableCatalogToolsForEdit({ prompt: 'use stronger components for the hero' }), true);
+  assert.equal(shouldEnableCatalogToolsForEdit({ prompt: 'replace the dashboard cards' }), true);
+  assert.equal(shouldEnableCatalogToolsForEdit({
+    prompt: 'small color tweak',
+    manualSelectionIds: ['component.manual.v1']
+  }), true);
+}
+
+function testInitialComponentPromptManualIdsContract() {
+  const list = buildInitialComponentSelectionList(
+    [{ id: 'hero.premium.v1', name: 'Premium Hero' }],
+    ['hero.premium.v1', 'footer.luxury.v1']
+  );
+
+  assert.match(list, /Premium Hero \(ID: hero\.premium\.v1\)/);
+  assert.match(list, /Component ID: footer\.luxury\.v1/);
+  assert.equal((list.match(/hero\.premium\.v1/g) || []).length, 1);
+
+  const prompt = buildInitialComponentPrompt({
+    prompt: 'Build a cinematic gaming landing page',
+    manualSelectionIds: ['shader.hero.v1']
+  });
+
+  assert.match(prompt, /shader\.hero\.v1/);
+  assert.match(prompt, /install_component_bundle/);
+  assert.match(prompt, /Component plan:/);
+  assert.match(prompt, /custom-code missing gaps/i);
 }
 
 async function testToolRuntimeBuildCheckContract() {

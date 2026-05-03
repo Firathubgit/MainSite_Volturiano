@@ -46,66 +46,7 @@ export default function SandpackPreviewPopup({
   const [isLiked, setIsLiked] = useState(false);
   const [copied, setCopied] = useState(false);
 
-  // Temp Upload refs
-  const imageInputRef = useRef(null);
-  const videoInputRef = useRef(null);
-  const [uploadingMedia, setUploadingMedia] = useState(false);
-
-  const handleMediaUpload = async (event, type) => {
-    const file = event.target.files?.[0];
-    if (!file) {
-      console.log("[UPLOAD DEBUG] No file selected.");
-      return;
-    }
-
-    console.log(
-      `[UPLOAD DEBUG] Started Native upload process for ${type}. File: ${file.name} (${file.size} bytes)`,
-    );
-    setUploadingMedia(true);
-    try {
-      // 1. Convert to base64 the standard way
-      const reader = new FileReader();
-      const base64Promise = new Promise((resolve, reject) => {
-        reader.onload = (e) => resolve(e.target.result);
-        reader.onerror = (e) => reject(e);
-        reader.readAsDataURL(file);
-      });
-
-      const base64Data = await base64Promise;
-      const payload = {
-        type, // 'image' or 'video'
-        fileData: base64Data, // raw original file data
-        fileName: file.name,
-      };
-
-      console.log("[UPLOAD DEBUG] Sending RAW data to backend to bypass RLS...");
-      const res = await fetch(
-        `${API_BASE}/components/${item.id}/update-media`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        },
-      );
-
-      const data = await res.json();
-      if (data.success) {
-        console.log("[UPLOAD DEBUG] FINISHED: Successfully updated!");
-        alert(`SUCCESS! Uploaded ${type} natively. Refresh hub to see changes.`);
-      } else {
-        throw new Error(data.error || "Backend failed to update");
-      }
-    } catch (err) {
-      console.error("[UPLOAD DEBUG] CATCH BLOCK Error:", err);
-      alert(`Failed to upload ${type}: ` + err.message);
-    } finally {
-      console.log("[UPLOAD DEBUG] Finally block: resetting state");
-      setUploadingMedia(false);
-      if (event.target) event.target.value = ""; // reset input
-    }
-  };
-
-  // ─── Fetch full component data when opened ───
+// ─── Fetch full component data when opened ───
   useEffect(() => {
     if (!isOpen || !item?.id) return;
 
@@ -666,14 +607,35 @@ root.render(
                 )}
               </div>
               <div className={styles.popupActions}>
-                {isSelectMode && (
-                  <button
-                    className={styles.actionBtnPrimary}
-                    onClick={() => onToggleSelect && onToggleSelect(item.id)}
-                  >
-                    {isSelected ? "✅ Selected" : "Select for Build"}
-                  </button>
-                )}
+                <motion.button
+                  whileTap={{ scale: 0.8 }}
+                  animate={isSelected ? { scale: [1, 1.3, 1] } : { scale: 1 }}
+                  transition={{ type: "spring", stiffness: 1000, damping: 10 }}
+                  className={styles.actionBtnSecondary}
+                  onClick={() => onToggleSelect && onToggleSelect(item.id, item)}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "6px",
+                    color: isSelected ? "#ffffff" : "rgba(255, 255, 255, 0.6)",
+                    borderColor: isSelected ? "rgba(255, 255, 255, 0.8)" : "rgba(255, 255, 255, 0.1)"
+                  }}
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    {isSelected ? (
+                      <>
+                        <polyline points="20 6 9 17 4 12"></polyline>
+                      </>
+                    ) : (
+                      <>
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <line x1="12" y1="8" x2="12" y2="16"></line>
+                        <line x1="8" y1="12" x2="16" y2="12"></line>
+                      </>
+                    )}
+                  </svg>
+                  <span>{isSelected ? "Selected" : "Select"}</span>
+                </motion.button>
                 <motion.button
                   whileTap={{ scale: 0.8 }}
                   animate={isLiked ? { scale: [1, 1.5, 1], transition: { duration: 0.15 } } : { scale: 1 }}
@@ -714,40 +676,6 @@ root.render(
                 >
                   {showCode ? "Preview" : "{ } View Code"}
                 </button>
-
-                {/* TEMPORARY ADMIN UPLOAD BUTTONS */}
-                <button
-                  className={styles.actionBtnSecondary}
-                  onClick={() => imageInputRef.current?.click()}
-                  disabled={uploadingMedia}
-                  title="Upload Thumbnail Image"
-                >
-                  {uploadingMedia ? "Uploading Image..." : "🖼️ +"}
-                </button>
-                <button
-                  className={styles.actionBtnSecondary}
-                  onClick={() => videoInputRef.current?.click()}
-                  disabled={uploadingMedia}
-                  title="Upload Video Preview"
-                >
-                  {uploadingMedia ? "Uploading Video..." : "🎥 +"}
-                </button>
-
-                {/* Hidden Inputs */}
-                <input
-                  type="file"
-                  accept="image/*"
-                  style={{ display: "none" }}
-                  ref={imageInputRef}
-                  onChange={(e) => handleMediaUpload(e, "image")}
-                />
-                <input
-                  type="file"
-                  accept="video/*"
-                  style={{ display: "none" }}
-                  ref={videoInputRef}
-                  onChange={(e) => handleMediaUpload(e, "video")}
-                />
               </div>
             </div>
           </motion.div>

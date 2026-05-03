@@ -53,7 +53,7 @@ Rules:
             return `${base}\nTask: Announce rollback. Example: "critical error. rolling back changes."`;
 
         case 'complete':
-            return `${base}\nTask: Final success message. Be evocative and premium. Example: "manifestation complete. your vision is live in the preview."`;
+            return `${base}\nTask: Final success message. Keep it short, calm, and clear. Example: "Done - your site is live in the preview."`;
 
         default:
             return `${base}\nTask: Brief status update.`;

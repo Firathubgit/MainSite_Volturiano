@@ -3,6 +3,7 @@
 // Returns submission_id in <500ms. LLM analysis runs async via job queue.
 
 import { supabaseAdmin } from '../../lib/supabase-admin.js';
+import { parseDataUriMedia } from '../../lib/community/media-validation.js';
 
 /**
  * POST /api/community/submit-template
@@ -30,7 +31,16 @@ export default async function submitTemplate(req, res) {
         }
         console.log('[submit-template] ✅ Auth passed, userId:', userId);
 
-        const { name, description, componentIdsInOrder, source_mode, thumbnail } = req.body;
+        const {
+            name,
+            description,
+            componentIdsInOrder,
+            source_mode,
+            thumbnail,
+            ipAttestationAccepted,
+            licenseGrantAccepted,
+            attestationVersion = 'community-template-submission-v1'
+        } = req.body;
 
         // ─── VALIDATION ───
 
@@ -51,6 +61,29 @@ export default async function submitTemplate(req, res) {
         }
 
         console.log('[submit-template] ✅ Validation passed —', componentIdsInOrder.length, 'components, source_mode:', source_mode);
+
+        if (!ipAttestationAccepted || !licenseGrantAccepted) {
+            console.error('[submit-template] VALIDATION - Missing rights/license attestation');
+            console.groupEnd();
+            return res.status(400).json({
+                success: false,
+                error: 'You must confirm that you have rights to submit this template and license it for community reuse.'
+            });
+        }
+
+        try {
+            parseDataUriMedia(thumbnail, {
+                label: 'Template thumbnail',
+                allowedTypes: ['image/png', 'image/jpeg', 'image/webp'],
+                maxBytes: 5 * 1024 * 1024
+            });
+        } catch (mediaError) {
+            console.groupEnd();
+            return res.status(mediaError.status || 400).json({
+                success: false,
+                error: mediaError.message
+            });
+        }
 
         if (componentIdsInOrder.length < 2) {
             return res.status(400).json({
@@ -137,11 +170,16 @@ export default async function submitTemplate(req, res) {
                 user_id: userId,
                 submission_type: 'template',
                 name: name,
+                description: description || null,
                 code: JSON.stringify({ componentIdsInOrder, source_mode: finalSourceMode }),
                 content_hash: null, // Templates don't need dedup by hash
                 thumbnail_base64: thumbnail || null,
                 quality_score: null,
                 status: 'processing',
+                ip_attestation_accepted_at: new Date().toISOString(),
+                license_grant_accepted_at: new Date().toISOString(),
+                attestation_version: attestationVersion,
+                license_type: 'MIT',
             })
             .select('id')
             .single();
@@ -189,6 +227,17 @@ export default async function submitTemplate(req, res) {
 
         // ─── INSERT TEMPLATE_SECTIONS (ordered junction records) ───
         console.log('[submit-template] 📝 Inserting', componentIdsInOrder.length, 'template_sections...');
+        await supabaseAdmin
+            .from('community_submissions')
+            .update({
+                moderation_metadata: {
+                    template_id: templateRow.id,
+                    source_mode: finalSourceMode,
+                    component_ids: componentIdsInOrder
+                }
+            })
+            .eq('id', submission.id);
+
         const sectionRows = componentIdsInOrder.map((compId, index) => {
             const comp = validComponents.find(c => c.id === compId);
             return {
@@ -231,15 +280,7 @@ export default async function submitTemplate(req, res) {
             console.log('[submit-template] ✅ Async job enqueued for submission:', submission.id);
         }
 
-        // ─── REPUTATION: +8 for submitting a template ───
-        try {
-            await supabaseAdmin.rpc('increment_reputation', {
-                p_user_id: userId,
-                p_points: 8,
-            });
-        } catch (repErr) {
-            console.warn('[submit-template] Reputation increment failed (non-fatal):', repErr.message);
-        }
+        // Reputation is awarded only after explicit admin approval.
 
         console.log('[submit-template] ✅✅✅ TEMPLATE SUBMISSION COMPLETE');
         console.log('[submit-template] submissionId:', submission.id);
@@ -251,7 +292,7 @@ export default async function submitTemplate(req, res) {
             success: true,
             submissionId: submission.id,
             templateId: templateRow.id,
-            message: 'Template submitted! Analysis in progress...',
+            message: 'Template submitted. Analysis will prepare it for admin review.',
             statusEndpoint: `/api/community/submission-status/${submission.id}`
         });
     } catch (err) {

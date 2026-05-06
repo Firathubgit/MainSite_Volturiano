@@ -1,4 +1,5 @@
-import { updateProject } from '../lib/db/projects.js';
+import { updateProjectForUser } from '../lib/db/projects.js';
+import { sendOwnershipError } from '../lib/security/project-access.js';
 import { createHash } from 'node:crypto';
 
 const IDEMPOTENCY_WINDOW_MS = 1000;
@@ -27,7 +28,7 @@ export default async function updateProjectRoute(req, res) {
     console.log('[API] /projects/update called');
     try {
         const { buildId, updates } = req.body;
-        const userId = req.user?.id; // from optionalAuth
+        const userId = req.userId || req.user?.id;
 
         if (!buildId) {
             return res.status(400).json({ success: false, error: 'buildId is required' });
@@ -52,12 +53,15 @@ export default async function updateProjectRoute(req, res) {
             if (ts < cleanupCutoff) recentUpdateHashes.delete(key);
         }
 
-        // Phase S2: We update the project data dynamically as it generates
-        await updateProject(buildId, cleanUpdates);
+        // Phase S2: Update only after confirming this build belongs to the caller.
+        await updateProjectForUser(buildId, userId, cleanUpdates);
 
         return res.status(200).json({ success: true, message: 'Project updated successfully.' });
 
     } catch (err) {
+        if (err?.name === 'OwnershipError') {
+            return sendOwnershipError(res, err);
+        }
         console.error('[API] /projects/update error:', err);
         res.status(500).json({ success: false, error: 'Internal server error updating project.' });
     }

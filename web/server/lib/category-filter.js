@@ -18,6 +18,7 @@ export async function filterComponentsByCategories(categories, options = {}) {
 
     let query = sb.from('components').select('*')
         .in('category', categories)
+        .eq('status', 'active')
         .range(offset, offset + limit - 1);
 
     if (!includeVariants) {

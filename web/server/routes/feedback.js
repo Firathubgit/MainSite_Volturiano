@@ -1,23 +1,30 @@
 import { supabaseAdmin } from '../lib/supabase-admin.js';
 
+const MAX_CONTENT_CHARS = 4000;
+const MAX_PAGE_SOURCE_CHARS = 200;
+
 /**
  * POST /api/feedback
- * Allows users to submit platform feedback from various pages.
+ * Allows authenticated users to submit platform feedback from various pages.
  */
 export default async function submitFeedback(req, res) {
     try {
-        const { content, pageSource } = req.body;
+        const rawContent = req.body?.content;
+        const rawPageSource = req.body?.pageSource;
         const userId = req.user?.id; // Supplied by optionalAuth middleware
 
-        if (!content || typeof content !== 'string') {
+        if (typeof rawContent !== 'string' || !rawContent.trim()) {
             return res.status(400).json({ success: false, error: 'Feedback content is required' });
         }
-        if (!pageSource) {
-             return res.status(400).json({ success: false, error: 'pageSource is required' });
+        if (typeof rawPageSource !== 'string' || !rawPageSource.trim()) {
+            return res.status(400).json({ success: false, error: 'pageSource is required' });
         }
         if (!userId) {
-             return res.status(401).json({ success: false, error: 'You must be logged in to submit feedback' });
+            return res.status(401).json({ success: false, error: 'You must be logged in to submit feedback' });
         }
+
+        const content = rawContent.trim().slice(0, MAX_CONTENT_CHARS);
+        const pageSource = rawPageSource.trim().slice(0, MAX_PAGE_SOURCE_CHARS);
 
         if (!supabaseAdmin) {
             console.error('[Feedback API] supabaseAdmin is not initialized');
@@ -28,7 +35,7 @@ export default async function submitFeedback(req, res) {
             .from('platform_feedback')
             .insert({
                 user_id: userId,
-                content: content.trim(),
+                content,
                 page_source: pageSource
             })
             .select('id')
@@ -40,7 +47,7 @@ export default async function submitFeedback(req, res) {
         }
 
         console.log(`[Feedback API] Captured new feedback from user ${userId} on ${pageSource}`);
-        
+
         res.status(200).json({ success: true, feedbackId: data.id });
     } catch (error) {
         console.error('[Feedback API] Fatal Error:', error);

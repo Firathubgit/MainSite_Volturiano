@@ -561,8 +561,10 @@ function testToolPolicyExposureContract() {
   assert.ok(defaultNames.includes('read_file'));
   assert.ok(defaultNames.includes('create_file'));
   assert.ok(defaultNames.includes('get_build_errors'));
+  // delete_file is a normal authoring tool now, gated only by its
+  // confirmation-token requirement (DELETE_FILE), not by a feature flag.
+  assert.ok(defaultNames.includes('delete_file'));
   assert.ok(!defaultNames.includes('browse_components'));
-  assert.ok(!defaultNames.includes('delete_file'));
   assert.ok(!defaultNames.includes('install_packages'));
   assert.ok(!defaultNames.includes('reset_sandbox_app'));
 
@@ -635,45 +637,43 @@ async function testToolRuntimeErrorContract() {
 }
 
 async function testToolRuntimeDeleteGuardContract() {
+  // delete_file is exposed by default. The model can call it freely as a
+  // normal workspace-write authoring tool, but must include the literal
+  // confirmation token DELETE_FILE so it can't fire on a borderline read.
   const provider = createFakeProvider({
     'src/OldPanel.jsx': 'export default function OldPanel() { return null; }\n'
   });
-  const hiddenRuntime = createAgentToolRuntime({
+  const runtime = createAgentToolRuntime({
     provider,
-    sandboxId: 'sandbox-tool-delete-hidden',
+    sandboxId: 'sandbox-tool-delete-default',
     verifyBuild: async () => ({ success: true })
   });
 
-  const hiddenResult = await hiddenRuntime.execute('delete_file', {
+  const missingConfirmation = await runtime.execute('delete_file', {
     path: 'src/OldPanel.jsx',
-    confirmation: 'DELETE_FILE'
-  });
-
-  assert.equal(hiddenResult.ok, false);
-  assert.equal(hiddenResult.modelResult.code, 'TOOL_NOT_EXPOSED');
-
-  const guardedRuntime = createAgentToolRuntime({
-    provider,
-    sandboxId: 'sandbox-tool-delete-guarded',
-    enableDestructiveTools: true,
-    permissionMode: TOOL_PERMISSION_MODES.DESTRUCTIVE,
-    verifyBuild: async () => ({ success: true })
-  });
-
-  const missingConfirmation = await guardedRuntime.execute('delete_file', {
-    path: 'src/OldPanel.jsx'
+    reason: 'no longer used'
   });
   assert.equal(missingConfirmation.ok, false);
   assert.equal(missingConfirmation.modelResult.code, 'TOOL_CONFIRMATION_REQUIRED');
 
-  const deleteResult = await guardedRuntime.execute('delete_file', {
+  const wrongConfirmation = await runtime.execute('delete_file', {
     path: 'src/OldPanel.jsx',
+    reason: 'no longer used',
+    confirmation: 'yes please'
+  });
+  assert.equal(wrongConfirmation.ok, false);
+  assert.equal(wrongConfirmation.modelResult.code, 'TOOL_CONFIRMATION_REQUIRED');
+
+  const deleteResult = await runtime.execute('delete_file', {
+    path: 'src/OldPanel.jsx',
+    reason: 'user asked to remove it',
     confirmation: 'DELETE_FILE'
   });
 
   assert.equal(deleteResult.ok, true);
   assert.equal(deleteResult.modelResult.success, true);
-  assert.equal(guardedRuntime.getMutations().length, 1);
+  assert.equal(runtime.getMutations().length, 1);
+  assert.equal(runtime.getMutations()[0].type, 'delete');
   await assert.rejects(() => provider.readFile('src/OldPanel.jsx'), /ENOENT/);
 }
 

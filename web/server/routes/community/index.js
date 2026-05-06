@@ -10,12 +10,33 @@ import suggestFix from './suggest-fix.js';
 import mySubmissions from './my-submissions.js';
 import { createHash } from 'crypto';
 import { supabaseAdmin } from '../../lib/supabase-admin.js';
+import { requireAuth, optionalAuth } from '../../middleware/authMiddleware.js';
+import { requireBuilderAdmin } from '../../lib/security/admin-access.js';
 
 const router = Router();
 
+function submissionStatusMessage(status) {
+    if (status === 'active' || status === 'approved') return 'Component approved and live!';
+    if (status === 'rejected') return 'Component did not meet quality standards.';
+    if (status === 'flagged') return 'Component is flagged for review.';
+    return 'Component is prepared and pending admin review.';
+}
+
+async function getActiveComponent(componentId, select = 'id') {
+    const { data, error } = await supabaseAdmin
+        .from('components')
+        .select(select)
+        .eq('id', componentId)
+        .eq('status', 'active')
+        .maybeSingle();
+
+    if (error) throw error;
+    return data || null;
+}
+
 // TEMPORARY Admin route to update component media
 // TEMPORARY Admin route to update component media (Native Upload)
-router.post('/components/:id/update-media', async (req, res) => {
+router.post('/components/:id/update-media', requireAuth, requireBuilderAdmin, async (req, res) => {
     try {
         const { id } = req.params;
         const {
@@ -99,9 +120,6 @@ router.post('/components/:id/update-media', async (req, res) => {
 });
 
 // ═══════════════════════════════════════════════════════════════
-import { requireAuth, optionalAuth } from '../../middleware/authMiddleware.js';
-
-// ═══════════════════════════════════════════════════════════════
 // 2. POST /api/community/submit-component
 // Body: { name, description?, categoryHint?, code, thumbnail?, video? }
 // ═══════════════════════════════════════════════════════════════
@@ -127,138 +145,87 @@ router.post('/extract-template', requireAuth, extractTemplate);
 router.get('/my-submissions', requireAuth, mySubmissions);
 
 // ═══════════════════════════════════════════════════════════════
-// 2. GET /api/community/submission-status/:id (SSE)
-// Real-time progress updates during the 10-30s analysis window
+// 2. GET /api/community/submission-status/:id  (JSON snapshot)
+//
+// NOTE — Why this is JSON and not SSE:
+//   The browser's native EventSource cannot attach an Authorization
+//   header, so SSE clients are forced to put the JWT in the query
+//   string. Our auth middleware (correctly) rejects query-string
+//   tokens because they leak through browser history, server logs,
+//   and Referer headers. So we hand back a one-shot JSON snapshot
+//   per request and let the client poll with a normal Bearer header.
+//   The shape mirrors what the SSE event stream used to emit so
+//   nothing else needs to change.
 // ═══════════════════════════════════════════════════════════════
 router.get('/submission-status/:id', requireAuth, async (req, res) => {
     const userId = req.user.id;
     const submissionId = req.params.id;
 
-    // Verify ownership
-    const { data: submission, error } = await supabaseAdmin
-        .from('community_submissions')
-        .select('id, user_id, status, quality_score, name')
-        .eq('id', submissionId)
-        .single();
+    try {
+        const { data: submission, error } = await supabaseAdmin
+            .from('community_submissions')
+            .select('id, user_id, status, quality_score, name')
+            .eq('id', submissionId)
+            .single();
 
-    if (error || !submission) {
-        return res.status(404).json({ success: false, error: 'Submission not found' });
-    }
-    if (submission.user_id !== userId) {
-        return res.status(403).json({ success: false, error: 'Not your submission' });
-    }
-
-    // Set up SSE headers
-    res.writeHead(200, {
-        'Content-Type': 'text/event-stream',
-        'Cache-Control': 'no-cache',
-        'Connection': 'keep-alive',
-        'X-Accel-Buffering': 'no',
-    });
-
-    const sendEvent = (data) => {
-        res.write(`data: ${JSON.stringify(data)}\n\n`);
-    };
-
-    // If already finished, send final status and close
-    if (['active', 'approved', 'rejected', 'flagged', 'pending'].includes(submission.status)) {
-        sendEvent({
-            step: 'complete',
-            status: submission.status,
-            qualityScore: submission.quality_score,
-            message: submission.status === 'active' ? 'Component approved and live!' :
-                submission.status === 'rejected' ? 'Component did not meet quality standards.' :
-                    'Component is pending admin review.',
-        });
-        res.end();
-        return;
-    }
-
-    // Poll for updates every 2 seconds
-    let pollCount = 0;
-    const maxPolls = 60; // 120 seconds max
-
-    const pollInterval = setInterval(async () => {
-        pollCount++;
-
-        try {
-            // Check submission status
-            const { data: current } = await supabaseAdmin
-                .from('community_submissions')
-                .select('status, quality_score')
-                .eq('id', submissionId)
-                .single();
-
-            // Check job status
-            const { data: job } = await supabaseAdmin
-                .from('submission_jobs')
-                .select('status, attempts, error_log')
-                .eq('submission_id', submissionId)
-                .order('created_at', { ascending: false })
-                .limit(1)
-                .maybeSingle();
-
-            // Determine progress step
-            let step = 'queued';
-            let progress = 10;
-
-            if (job?.status === 'running') {
-                step = 'analyzing';
-                progress = 50;
-            }
-
-            if (current?.status === 'processing' && job?.status === 'running') {
-                step = 'analyzing';
-                progress = 65;
-            }
-
-            const isFinished = ['active', 'approved', 'rejected', 'flagged', 'pending'].includes(current?.status);
-
-            if (isFinished) {
-                sendEvent({
-                    step: 'complete',
-                    progress: 100,
-                    status: current.status,
-                    qualityScore: current.quality_score,
-                    message: current.status === 'active' ? 'Component approved and live!' :
-                        current.status === 'rejected' ? 'Component did not meet quality standards.' :
-                            'Component is pending admin review.',
-                });
-                clearInterval(pollInterval);
-                res.end();
-                return;
-            }
-
-            if (job?.status === 'failed') {
-                sendEvent({
-                    step: 'failed',
-                    progress: 0,
-                    status: 'failed',
-                    message: job.error_log || 'Processing failed. Please try again.',
-                });
-                clearInterval(pollInterval);
-                res.end();
-                return;
-            }
-
-            // Send progress update
-            sendEvent({ step, progress, status: current?.status || 'processing' });
-
-            // Timeout
-            if (pollCount >= maxPolls) {
-                sendEvent({ step: 'timeout', progress: 0, message: 'Refresh to check status.' });
-                clearInterval(pollInterval);
-                res.end();
-            }
-        } catch (err) {
-            console.error('[community-sse] Poll error:', err.message);
+        if (error || !submission) {
+            return res.status(404).json({ success: false, error: 'Submission not found' });
         }
-    }, 2000);
+        if (submission.user_id !== userId) {
+            return res.status(403).json({ success: false, error: 'Not your submission' });
+        }
 
-    // Clean up on client disconnect
-    req.on('close', () => {
-        clearInterval(pollInterval);
-    });
+        const FINISHED = ['active', 'approved', 'rejected', 'flagged', 'pending', 'pending_review'];
+
+        if (FINISHED.includes(submission.status)) {
+            return res.json({
+                success: true,
+                step: 'complete',
+                progress: 100,
+                status: submission.status,
+                qualityScore: submission.quality_score,
+                message: submissionStatusMessage(submission.status),
+                done: true,
+            });
+        }
+
+        const { data: job } = await supabaseAdmin
+            .from('submission_jobs')
+            .select('status, attempts, error_log')
+            .eq('submission_id', submissionId)
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .maybeSingle();
+
+        if (job?.status === 'failed') {
+            return res.json({
+                success: true,
+                step: 'failed',
+                progress: 0,
+                status: 'failed',
+                message: job.error_log || 'Processing failed. Please try again.',
+                done: true,
+            });
+        }
+
+        let step = 'queued';
+        let progress = 15;
+        if (job?.status === 'running') {
+            step = 'analyzing';
+            progress = 65;
+        }
+
+        return res.json({
+            success: true,
+            step,
+            progress,
+            status: submission.status || 'processing',
+            done: false,
+        });
+    } catch (err) {
+        console.error('[community] submission-status error:', err.message);
+        return res.status(500).json({ success: false, error: 'Failed to fetch submission status' });
+    }
 });
 
 // ═══════════════════════════════════════════════════════════════
@@ -406,6 +373,10 @@ router.post('/submissions/:id/edit', requireAuth, async (req, res) => {
                 code: code,
                 content_hash: contentHash,
                 status: 'processing',
+                ip_attestation_accepted_at: new Date().toISOString(),
+                license_grant_accepted_at: new Date().toISOString(),
+                attestation_version: 'community-version-update-v1',
+                license_type: 'MIT',
             })
             .select('id')
             .single();
@@ -503,6 +474,11 @@ router.post('/rate/:componentId', requireAuth, async (req, res) => {
     }
 
     try {
+        const activeComponent = await getActiveComponent(componentId, 'id, author_id');
+        if (!activeComponent) {
+            return res.status(404).json({ success: false, error: 'Component not found' });
+        }
+
         // Upsert: update if exists, insert if new
         const { error } = await supabaseAdmin
             .from('component_ratings')
@@ -527,16 +503,10 @@ router.post('/rate/:componentId', requireAuth, async (req, res) => {
 
         // Reputation: +3 for the component author if rating >= 4
         if (rating >= 4) {
-            const { data: comp } = await supabaseAdmin
-                .from('components')
-                .select('author_id')
-                .eq('id', componentId)
-                .single();
-
-            if (comp?.author_id) {
+            if (activeComponent?.author_id) {
                 try {
                     await supabaseAdmin.rpc('increment_reputation', {
-                        p_user_id: comp.author_id,
+                        p_user_id: activeComponent.author_id,
                         p_points: 3,
                     });
                 } catch (repErr) {
@@ -605,7 +575,7 @@ router.post('/report/:componentId', requireAuth, async (req, res) => {
     const componentId = req.params.componentId;
     const { reason, details } = req.body;
 
-    const validReasons = ['copyright', 'malicious', 'nsfw', 'low-quality'];
+    const validReasons = ['copyright', 'malicious', 'nsfw', 'low-quality', 'other'];
     if (!reason || !validReasons.includes(reason)) {
         return res.status(400).json({
             success: false,
@@ -614,7 +584,33 @@ router.post('/report/:componentId', requireAuth, async (req, res) => {
     }
 
     try {
-        // Flag the component
+        const { data: comp } = await supabaseAdmin
+            .from('components')
+            .select('id, author_id, status')
+            .eq('id', componentId)
+            .eq('status', 'active')
+            .single();
+
+        if (!comp) {
+            return res.status(404).json({ success: false, error: 'Component not found' });
+        }
+
+        const { error: reportError } = await supabaseAdmin
+            .from('component_reports')
+            .insert({
+                component_id: componentId,
+                reported_by: userId,
+                reason,
+                details: details ? String(details).slice(0, 2000) : null,
+                status: 'open',
+                metadata: { source: 'community_report_endpoint' }
+            });
+
+        if (reportError && !/duplicate|unique/i.test(reportError.message || '')) {
+            throw reportError;
+        }
+
+        // Hide from catalog while an admin reviews the report.
         await supabaseAdmin.from('components')
             .update({
                 status: 'flagged',
@@ -623,12 +619,6 @@ router.post('/report/:componentId', requireAuth, async (req, res) => {
             .eq('id', componentId);
 
         // Reputation: -5 for the author (flagged for review)
-        const { data: comp } = await supabaseAdmin
-            .from('components')
-            .select('author_id')
-            .eq('id', componentId)
-            .single();
-
         if (comp?.author_id) {
             try {
                 await supabaseAdmin.rpc('increment_reputation', {
@@ -646,6 +636,64 @@ router.post('/report/:componentId', requireAuth, async (req, res) => {
     } catch (err) {
         console.error('[community] report error:', err.message);
         return res.status(500).json({ success: false, error: 'Failed to report component' });
+    }
+});
+
+// ═══════════════════════════════════════════════════════════════
+// 10b. POST /api/community/takedown
+// Public notice intake for copyright/IP claims.
+// Body: { componentId?, submissionId?, requesterEmail, requesterName?, claimSummary, evidence? }
+// ═══════════════════════════════════════════════════════════════
+router.post('/takedown', async (req, res) => {
+    const {
+        componentId = null,
+        submissionId = null,
+        requesterEmail,
+        requesterName = null,
+        claimSummary,
+        evidence = []
+    } = req.body || {};
+
+    const cleanEmail = String(requesterEmail || '').trim().slice(0, 320);
+    const cleanSummary = String(claimSummary || '').trim().slice(0, 4000);
+
+    if (!cleanEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) {
+        return res.status(400).json({ success: false, error: 'A valid requester email is required.' });
+    }
+    if (!cleanSummary) {
+        return res.status(400).json({ success: false, error: 'A claim summary is required.' });
+    }
+
+    try {
+        const { data: requestRow, error } = await supabaseAdmin
+            .from('copyright_takedown_requests')
+            .insert({
+                component_id: componentId || null,
+                submission_id: submissionId || null,
+                requester_email: cleanEmail,
+                requester_name: requesterName ? String(requesterName).trim().slice(0, 200) : null,
+                claim_summary: cleanSummary,
+                evidence: Array.isArray(evidence) ? evidence.slice(0, 20) : [],
+                status: 'open',
+                metadata: { source: 'community_takedown_endpoint' }
+            })
+            .select('id,status,created_at')
+            .single();
+
+        if (error) throw error;
+
+        if (componentId) {
+            await supabaseAdmin
+                .from('components')
+                .update({ status: 'flagged', updated_at: new Date().toISOString() })
+                .eq('id', componentId)
+                .eq('status', 'active');
+        }
+
+        return res.json({ success: true, takedownRequest: requestRow });
+    } catch (err) {
+        console.error('[community] takedown request error:', err.message);
+        return res.status(500).json({ success: false, error: 'Failed to submit takedown request' });
     }
 });
 
@@ -800,6 +848,11 @@ router.post('/like/:componentId', requireAuth, async (req, res) => {
     const componentId = req.params.componentId;
 
     try {
+        const activeComponent = await getActiveComponent(componentId);
+        if (!activeComponent) {
+            return res.status(404).json({ success: false, error: 'Component not found' });
+        }
+
         // Check if already liked
         const { data: existing } = await supabaseAdmin
             .from('component_likes')
@@ -842,7 +895,7 @@ router.get('/liked-components', requireAuth, async (req, res) => {
         if (error) throw error;
         
         // Flatten structure: extract the components from the join
-        const items = (data || []).map(d => d.components).filter(c => c !== null);
+        const items = (data || []).map(d => d.components).filter(c => c?.status === 'active');
         
         return res.json({ success: true, items });
     } catch (err) {

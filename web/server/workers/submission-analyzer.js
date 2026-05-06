@@ -5,10 +5,18 @@
 import { supabaseAdmin } from '../lib/supabase-admin.js';
 import { analyzeCommunityComponent, basicMetadataExtraction } from '../lib/community-analyzer.js';
 import { analyzeTemplate, basicTemplateMetadata } from '../lib/template-analyzer.js';
+import { decodeDataUriMedia } from '../lib/community/media-validation.js';
 import puppeteer from 'puppeteer';
 
 const POLL_INTERVAL_MS = 5000; // 5 seconds
 const DAILY_LLM_BUDGET = 50.00; // $50/day cap
+const ENABLE_COMMUNITY_AUTO_SCREENSHOTS = process.env.ENABLE_COMMUNITY_AUTO_SCREENSHOTS === 'true';
+const CHROMIUM_NO_SANDBOX = process.env.CHROMIUM_NO_SANDBOX === 'true';
+const SCREENSHOT_ALLOWED_HOSTS = new Set([
+    'cdn.tailwindcss.com',
+    'esm.sh',
+    'unpkg.com'
+]);
 
 // ═══════════════════════════════════════════════════════════════
 // HELPER: Capture Component Screenshot via Headless Browser
@@ -76,10 +84,29 @@ async function captureComponentScreenshot(code, options = {}) {
     try {
         browser = await puppeteer.launch({
             headless: 'new',
-            args: ['--no-sandbox', '--disable-setuid-sandbox']
+            args: CHROMIUM_NO_SANDBOX
+                ? ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage']
+                : ['--disable-dev-shm-usage']
         });
         const page = await browser.newPage();
         await page.setViewport({ width, height });
+
+        await page.setRequestInterception(true);
+        page.on('request', (request) => {
+            const url = request.url();
+            if (url === 'about:blank' || url.startsWith('data:') || url.startsWith('blob:')) {
+                return request.continue();
+            }
+
+            try {
+                const host = new URL(url).hostname;
+                if (SCREENSHOT_ALLOWED_HOSTS.has(host)) return request.continue();
+            } catch {
+                // Fall through to abort malformed URLs.
+            }
+
+            return request.abort();
+        });
 
         page.on('console', msg => console.log('[Puppeteer]', msg.type(), msg.text()));
         page.on('pageerror', err => console.log('[Puppeteer Page Error]', err.message));
@@ -149,7 +176,7 @@ function generateBundleCode(componentId, componentName, code, language) {
 
 // ═══════════════════════════════════════════════════════════════
 // CORE: Process a single submission job
-// Pipeline: Fetch → Screenshot → LLM Analysis → Quality Gate → Insert Component → Reputation
+// Pipeline: Fetch -> Screenshot -> LLM Analysis -> Metadata -> Pending Review
 // ═══════════════════════════════════════════════════════════════
 
 async function processSubmissionJob(job) {
@@ -186,14 +213,16 @@ async function processSubmissionJob(job) {
         if (submission.thumbnail_base64) {
             console.log(`[Analyzer] Processing user-provided thumbnail for ${submission.id}...`);
             try {
-                // Strip data URI prefix if present (e.g. data:image/png;base64,...)
-                const base64Data = submission.thumbnail_base64.replace(/^data:[a-zA-Z0-9\/+-._;=\"\s]+;base64,/, "");
-                const thumbBuffer = Buffer.from(base64Data, 'base64');
+                const media = decodeDataUriMedia(submission.thumbnail_base64, {
+                    label: 'Submission thumbnail',
+                    allowedTypes: ['image/png', 'image/jpeg', 'image/webp'],
+                    maxBytes: 5 * 1024 * 1024
+                });
 
                 const { error: uploadError } = await supabaseAdmin.storage
                     .from('component-previews')
-                    .upload(`submissions/${submission.id}/preview.png`, thumbBuffer, {
-                        contentType: 'image/png',
+                    .upload(`submissions/${submission.id}/preview.png`, media.buffer, {
+                        contentType: media.contentType,
                         upsert: true,
                     });
 
@@ -212,7 +241,7 @@ async function processSubmissionJob(job) {
         }
 
         // B. Fallback to Puppeteer Screenshot if no custom thumbnail
-        if (!thumbnailUrl) {
+        if (!thumbnailUrl && ENABLE_COMMUNITY_AUTO_SCREENSHOTS) {
             console.log(`[Analyzer] Generating Puppeteer screenshot for ${submission.id}...`);
             const screenshotBuffer = await captureComponentScreenshot(submission.code);
 
@@ -239,22 +268,24 @@ async function processSubmissionJob(job) {
             } else {
                 console.warn(`[Analyzer] ⚠️ Screenshot generation returned null.`);
             }
+        } else if (!thumbnailUrl) {
+            console.log(`[Analyzer] Auto-screenshot skipped for ${submission.id}; ENABLE_COMMUNITY_AUTO_SCREENSHOTS is not true.`);
         }
 
         // C. Handle User-Uploaded Video (Hover Preview)
         if (submission.video_base64) {
             console.log(`[Analyzer] Processing user-provided preview video for ${submission.id}...`);
             try {
-                // Strip data URI prefix cleanly
-                const base64Data = submission.video_base64.includes(',')
-                    ? submission.video_base64.split(',')[1]
-                    : submission.video_base64;
-                const videoBuffer = Buffer.from(base64Data, 'base64');
+                const media = decodeDataUriMedia(submission.video_base64, {
+                    label: 'Submission video',
+                    allowedTypes: ['video/mp4', 'video/webm'],
+                    maxBytes: 15 * 1024 * 1024
+                });
 
                 const { error: uploadError } = await supabaseAdmin.storage
                     .from('component-previews')
-                    .upload(`submissions/${submission.id}/preview.mp4`, videoBuffer, {
-                        contentType: 'video/mp4', // Safe default, overrides if it was webm
+                    .upload(`submissions/${submission.id}/preview.mp4`, media.buffer, {
+                        contentType: media.contentType,
                         upsert: true,
                     });
 
@@ -322,12 +353,11 @@ async function processSubmissionJob(job) {
             }
         }
 
-        // 5. Quality Gate Decision
+        // 5. Quality metadata. Community code never goes live automatically.
         const qualityScore = llmAnalysis.quality_score || 0;
-        let componentStatus = 'active'; // Every component goes live immediately
-        let reputationPoints = qualityScore >= 8.0 ? 15 : 5; // Reward based on internal score, but no rejection
+        const componentStatus = 'pending_review';
 
-        console.log(`[Analyzer] Quality score computed: ${qualityScore}. Status set to active.`);
+        console.log(`[Analyzer] Quality score computed: ${qualityScore}. Status set to pending_review.`);
 
         // 6. Build component_id with version
         const slugifiedName = submission.name
@@ -422,7 +452,7 @@ async function processSubmissionJob(job) {
                 // Don't throw — still update submission status
             } else {
                 componentDbId = componentRow.id;
-                console.log(`[Analyzer] Component created: ${componentId} (DB id: ${componentDbId})`);
+                console.log(`[Analyzer] Component prepared for review: ${componentId} (DB id: ${componentDbId})`);
             }
         }
 
@@ -430,7 +460,8 @@ async function processSubmissionJob(job) {
         const processingTimeMs = Date.now() - startTime;
         const { error: subUpdateErr } = await supabaseAdmin.from('community_submissions')
             .update({
-                status: 'active',
+                status: 'pending_review',
+                component_id: componentDbId,
                 quality_score: qualityScore,
                 cleaned_code: llmAnalysis.cleaned_code || null,
                 rejection_reason: null,
@@ -452,15 +483,7 @@ async function processSubmissionJob(job) {
             })
             .eq('id', job.id);
 
-        // 10. Update author reputation
-        try {
-            await supabaseAdmin.rpc('increment_reputation', {
-                p_user_id: submission.user_id,
-                p_points: reputationPoints,
-            });
-        } catch (repErr) {
-            console.warn(`[Analyzer] Reputation update failed (non-fatal):`, repErr.message);
-        }
+        // Approval reputation is awarded by the explicit moderation action.
 
         console.log(`[Analyzer] Submission ${submission_id} processed in ${processingTimeMs}ms → ${componentStatus} (score: ${qualityScore})`);
 
@@ -551,13 +574,16 @@ async function processTemplateJob(job) {
         let thumbnailUrl = null;
         if (submission?.thumbnail_base64) {
             try {
-                const base64Data = submission.thumbnail_base64.replace(/^data:[a-zA-Z0-9\/+-._;="\s]+;base64,/, "");
-                const thumbBuffer = Buffer.from(base64Data, 'base64');
+                const media = decodeDataUriMedia(submission.thumbnail_base64, {
+                    label: 'Template thumbnail',
+                    allowedTypes: ['image/png', 'image/jpeg', 'image/webp'],
+                    maxBytes: 5 * 1024 * 1024
+                });
 
                 const { error: uploadError } = await supabaseAdmin.storage
                     .from('component-previews')
-                    .upload(`templates/${templateId}/preview.png`, thumbBuffer, {
-                        contentType: 'image/png',
+                    .upload(`templates/${templateId}/preview.png`, media.buffer, {
+                        contentType: media.contentType,
                         upsert: true,
                     });
 
@@ -614,23 +640,11 @@ async function processTemplateJob(job) {
             }
         }
 
-        // 7. Quality Gate Decision
+        // 7. Quality metadata. Community templates also wait for review.
         const qualityScore = llmAnalysis.quality_score || 0;
-        let templateStatus;
-        let reputationPoints;
+        const templateStatus = 'pending_review';
 
-        if (qualityScore >= 8.0) {
-            templateStatus = 'active';     // Auto-approve
-            reputationPoints = 15;         // +15 for auto-approved
-        } else if (qualityScore >= 4.0) {
-            templateStatus = 'pending_review';  // Needs admin review
-            reputationPoints = 5;
-        } else {
-            templateStatus = 'rejected';
-            reputationPoints = -2;
-        }
-
-        console.log(`[Analyzer] Template quality gate: score=${qualityScore}, decision=${templateStatus}`);
+        console.log(`[Analyzer] Template metadata prepared: score=${qualityScore}, decision=${templateStatus}`);
 
         // 8. Update template record with LLM metadata
         const { error: updateErr } = await supabaseAdmin
@@ -660,11 +674,15 @@ async function processTemplateJob(job) {
         // 9. Update submission status
         await supabaseAdmin.from('community_submissions')
             .update({
-                status: templateStatus === 'active' ? 'active' :
-                    templateStatus === 'pending_review' ? 'approved' : 'rejected',
+                status: 'pending_review',
                 quality_score: qualityScore,
-                rejection_reason: templateStatus === 'rejected' ? (llmAnalysis.improvement_suggestions?.[0] || 'Quality standards not met.') : null,
+                rejection_reason: null,
                 thumbnail_url: thumbnailUrl || null,
+                moderation_metadata: {
+                    template_id: templateId,
+                    source_mode: template?.source_mode || 'community-composed',
+                    component_ids: componentIds
+                },
             })
             .eq('id', submission_id);
 
@@ -673,19 +691,7 @@ async function processTemplateJob(job) {
             .update({ status: 'completed', completed_at: new Date().toISOString() })
             .eq('id', job.id);
 
-        // 11. Update author reputation
-        try {
-            const { data: sub } = await supabaseAdmin.from('community_submissions')
-                .select('user_id').eq('id', submission_id).single();
-            if (sub?.user_id) {
-                await supabaseAdmin.rpc('increment_reputation', {
-                    p_user_id: sub.user_id,
-                    p_points: reputationPoints,
-                });
-            }
-        } catch (repErr) {
-            console.warn(`[Analyzer] Template reputation update failed (non-fatal):`, repErr.message);
-        }
+        // Approval reputation is awarded by the explicit moderation action.
 
         const processingTimeMs = Date.now() - startTime;
         console.log(`[Analyzer] Template ${templateId} processed in ${processingTimeMs}ms → ${templateStatus} (score: ${qualityScore})`);

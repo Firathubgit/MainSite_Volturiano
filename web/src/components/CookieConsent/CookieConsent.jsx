@@ -1,15 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useBuilderAuth } from '../../contexts/BuilderAuthContext';
 import styles from './CookieConsent.module.css';
 
 const CONSENT_KEY = 'volturiano_gdpr_consent';
-const CONSENT_VERSION = '1.0';
+const CONSENT_VERSION = '2026-05-03.0005';
 
 /**
  * CookieConsent banner for GDPR compliance.
  * Blocks non-essential analytics and tracking until consent is given.
  */
 const CookieConsent = () => {
+  const { getAccessToken } = useBuilderAuth();
   const [isVisible, setIsVisible] = useState(false);
   const [showPreferences, setShowPreferences] = useState(false);
   const [preferences, setPreferences] = useState({
@@ -36,6 +38,34 @@ const CookieConsent = () => {
     }
   }, []);
 
+  const recordServerConsent = async (payload) => {
+    const token = getAccessToken?.();
+    if (!token) return;
+
+    try {
+      await fetch('/api/settings/consent', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          consent_type: 'cookies_analytics',
+          consent_version: CONSENT_VERSION,
+          accepted: Boolean(payload.analytics || payload.performance),
+          metadata: {
+            source: 'cookie_banner',
+            analytics: Boolean(payload.analytics),
+            performance: Boolean(payload.performance),
+            timestamp: payload.timestamp
+          }
+        })
+      });
+    } catch (err) {
+      console.warn('[CookieConsent] Server consent log skipped:', err?.message || err);
+    }
+  };
+
   const handleSave = (newPrefs) => {
     const payload = {
       ...newPrefs,
@@ -43,6 +73,7 @@ const CookieConsent = () => {
       timestamp: new Date().toISOString()
     };
     localStorage.setItem(CONSENT_KEY, JSON.stringify(payload));
+    void recordServerConsent(payload);
     setIsVisible(false);
     
     // Dispatch event so App.jsx or other components can react
@@ -83,7 +114,7 @@ const CookieConsent = () => {
               <p className={styles.description}>
                 We use cookies to improve your experience and analyze our traffic. 
                 Essential cookies are required for core features like authentication. 
-                Read our <span className={styles.link} onClick={() => window.open('/privacy', '_blank')}>Privacy Policy</span> for details.
+                Read our <span className={styles.link} onClick={() => window.open('/builder/privacy', '_blank')}>Privacy Policy</span> for details.
               </p>
             </div>
 

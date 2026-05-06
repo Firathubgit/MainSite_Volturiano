@@ -8,7 +8,20 @@
     "dev:server": "cd server && npm run dev",
     "build": "vite build",
     "preview": "vite preview",
-    "test:agent-harness": "node server/scripts/agent-harness-regression.js"
+    "test:unit": "vitest run",
+    "test:server": "vitest run tests/server",
+    "test:e2e": "playwright test",
+    "test:ci": "npm run test:server && npm run test:agent-harness && npm run test:core-access && npm run test:audit-retention && npm run test:stripe-billing && npm run test:community-moderation && npm run test:admin-review-queue && npm run test:gdpr-settings && npm run test:backup-ops && npm run test:launch-testnet",
+    "test:agent-harness": "node server/scripts/agent-harness-regression.js",
+    "test:core-access": "node server/scripts/core-access-regression.js",
+    "test:audit-retention": "node server/scripts/audit-retention-regression.js",
+    "test:stripe-billing": "node server/scripts/stripe-billing-regression.js",
+    "test:community-moderation": "node server/scripts/community-moderation-regression.js",
+    "test:admin-review-queue": "node server/scripts/admin-review-queue-regression.js",
+    "test:gdpr-settings": "node server/scripts/gdpr-settings-regression.js",
+    "test:backup-ops": "node server/scripts/backup-ops-regression.js",
+    "test:launch-testnet": "node server/scripts/launch-testnet-regression.js",
+    "test:staging-smoke": "node server/scripts/staging-launch-smoke.js --plan"
   },
   "dependencies": {
     "@codesandbox/sandpack-react": "^2.20.0",
@@ -46,9 +59,11 @@
     "zustand": "^4.5.2"
   },
   "devDependencies": {
+    "@playwright/test": "^1.54.2",
     "autoprefixer": "^10.4.20",
     "concurrently": "^9.1.0",
     "postcss": "^8.4.47",
-    "vite": "^5.4.2"
+    "vite": "^5.4.2",
+    "vitest": "^2.1.9"
   }
 }

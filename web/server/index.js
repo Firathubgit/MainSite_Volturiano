@@ -3,6 +3,7 @@ import express from 'express';
 import cors from 'cors';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { randomUUID } from 'crypto';
 import rateLimit from 'express-rate-limit';
 import { logger } from './lib/logger.js';
 
@@ -40,6 +41,7 @@ import verifyBuildRoute from './routes/verify-build.js';
 import finalizeCodebase from './routes/finalize-codebase.js';
 import lovableReplayStatus from './routes/lovable-replay-status.js';
 import { optionalAuth, requireAuth, requireUnrestricted } from './middleware/authMiddleware.js';
+import { logLaunchReadinessChecks } from './lib/launch-readiness.js';
 import initProject from './routes/init-project.js';
 import updateProjectRoute from './routes/update-project.js';
 import getProject from './routes/get-project.js';
@@ -60,33 +62,77 @@ import adminRoutes from './routes/admin.js';
 import agentRoutes from './routes/agent.js';
 
 const app = express();
+app.disable('x-powered-by');
 
 // Trust Railway's reverse proxy for correct IP identification
 // Fixes "ERR_ERL_UNEXPECTED_X_FORWARDED_FOR" in express-rate-limit
 app.set('trust proxy', 1);
 
 const PORT = process.env.PORT || 3001;
+const isProduction = process.env.NODE_ENV === 'production';
+const configuredCorsOrigin = process.env.CORS_ORIGIN;
+
+if (isProduction && !configuredCorsOrigin) {
+  throw new Error('CORS_ORIGIN is required in production.');
+}
+
+const corsOrigin = (configuredCorsOrigin || 'http://127.0.0.1:5173,http://localhost:5173')
+  .split(',')
+  .map((origin) => origin.trim())
+  .filter(Boolean);
+
+// Security headers for API/backend responses. Published sites keep their own frame policy.
+app.use((req, res, next) => {
+  const requestId = req.headers['x-request-id'] || randomUUID();
+  req.id = Array.isArray(requestId) ? requestId[0] : String(requestId);
+  res.setHeader('X-Request-Id', req.id);
+  next();
+});
 
 // Early Request Logger (before body parsing)
 app.use((req, res, next) => {
-  logger.info('Server', `INCOMING: ${req.method} ${req.url}`);
+  logger.info('Server', `INCOMING: ${req.method} ${req.url}`, { requestId: req.id });
   next();
 });
 
 // Middleware
 app.use(cors({ 
-  origin: process.env.CORS_ORIGIN || 'https://volturiano.com',
+  origin: corsOrigin.length === 1 ? corsOrigin[0] : corsOrigin,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
   credentials: true 
 }));
+
+app.use((req, res, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+  if (!req.path.startsWith('/sites/')) {
+    res.setHeader('X-Frame-Options', 'SAMEORIGIN');
+    res.setHeader('Cross-Origin-Resource-Policy', 'same-origin');
+  }
+  next();
+});
 
 // ═══ CRITICAL: Stripe Webhook needs RAW body BEFORE express.json() ═══
 // Stripe signature verification requires the raw request bytes.
 // If express.json() parses it first, the signature check will fail.
 app.use('/api/webhooks/stripe', express.raw({ type: 'application/json' }));
 
-app.use(express.json({ limit: '50mb' }));
+const heavyJsonRoutes = [
+  '/api/generate-ai-code-stream',
+  '/api/apply-ai-code-stream',
+  '/api/create-ai-sandbox-v2',
+  '/api/render-app',
+  '/api/finalize-codebase',
+  '/api/publish-site',
+  '/api/community/submit-component',
+  '/api/community/submit-template',
+  '/api/admin/upload-asset'
+];
+
+app.use(heavyJsonRoutes, express.json({ limit: process.env.LARGE_JSON_BODY_LIMIT || '60mb' }));
+app.use(express.json({ limit: process.env.JSON_BODY_LIMIT || '8mb' }));
 
 // Final JSON Logger
 app.use((req, res, next) => {
@@ -113,12 +159,20 @@ const strictLimiter = rateLimit({ windowMs: 60000, max: 10, message: { error: 'T
 const aiLimiter = rateLimit({ windowMs: 60000, max: 50, message: { error: 'AI generation rate limited' } });
 const standardLimiter = rateLimit({ windowMs: 60000, max: 30, message: { error: 'Rate limit exceeded' } });
 const relaxedLimiter = rateLimit({ windowMs: 60000, max: 60, message: { error: 'Rate limit exceeded' } });
+const publishLimiter = rateLimit({ windowMs: 5 * 60000, max: 8, message: { error: 'Publishing rate limited' } });
+const communitySubmitLimiter = rateLimit({ windowMs: 60 * 60000, max: 20, message: { error: 'Community submission rate limited' } });
+const publicNoticeLimiter = rateLimit({ windowMs: 60 * 60000, max: 12, message: { error: 'Notice intake rate limited' } });
+const feedbackLimiter = rateLimit({ windowMs: 60 * 60000, max: 30, message: { error: 'Feedback submission rate limited' } });
 
 // Apply AI Limiters
 app.use(['/api/enhance-prompt', '/api/classify-intent', '/api/derive-design-system', '/api/plan-website-components', '/api/generate-single-component', '/api/generate-ai-code-stream', '/api/apply-ai-code-stream', '/api/hydrate-premium-copy', '/api/create-ai-sandbox-v2'], aiLimiter);
 
 // Apply Standard Limiters
 app.use(['/api/projects', '/api/snapshots', '/api/publish-site'], standardLimiter);
+app.use('/api/publish-site', publishLimiter);
+app.use(['/api/community/submit-component', '/api/community/submit-template'], communitySubmitLimiter);
+app.use('/api/community/takedown', publicNoticeLimiter);
+app.use('/api/billing/refund-request', strictLimiter);
 
 // Global Prompt Bloat & Denial of Wallet Protection
 const promptTruncationMiddleware = (req, res, next) => {
@@ -157,8 +211,8 @@ app.post('/api/install-packages', aiProtections, installPackages);
 app.post('/api/analyze-edit-intent', aiProtections, analyzeEditIntent);
 app.post('/api/create-zip', aiProtections, createZip);
 
-app.post('/api/feedback', optionalAuth, submitFeedback);
-app.post('/api/issues', optionalAuth, submitIssue);
+app.post('/api/feedback', feedbackLimiter, optionalAuth, submitFeedback);
+app.post('/api/issues', feedbackLimiter, optionalAuth, submitIssue);
 
 // Premium component registry routes
 app.get('/api/component-catalog', relaxedLimiter, componentCatalog);
@@ -217,7 +271,8 @@ app.use('/api/settings', settingsRoutes);
 app.use('/api/admin', strictLimiter, adminRoutes);
 
 // Phase A1: Agentic Builder (AI agent loop with tool calling)
-app.use('/api/agent', aiLimiter, optionalAuth, agentRoutes);
+// requireUnrestricted blocks AI calls when the user has restricted processing in Settings.
+app.use('/api/agent', aiLimiter, optionalAuth, requireUnrestricted, agentRoutes);
 
 // List published sites API (User specific or all depending on auth)
 app.get('/api/published-sites', optionalAuth, async (req, res) => {
@@ -256,6 +311,39 @@ app.get('/sites/:slug', (req, res, next) => {
   next();
 });
 
+// Cache published_sites.status lookups briefly so each asset request doesn't hit the DB.
+const sitesStatusCache = new Map(); // slug -> { status, expiresAt }
+const SITES_STATUS_TTL_MS = 60 * 1000; // 60s
+async function getPublishedSiteStatus(slug) {
+  if (!slug) return null;
+  const cached = sitesStatusCache.get(slug);
+  if (cached && cached.expiresAt > Date.now()) {
+    return cached.status;
+  }
+  if (!global.__supabaseAdminCached) {
+    try {
+      const mod = await import('./lib/supabase-admin.js');
+      global.__supabaseAdminCached = mod.supabaseAdmin || null;
+    } catch {
+      global.__supabaseAdminCached = null;
+    }
+  }
+  const client = global.__supabaseAdminCached;
+  if (!client) return 'active'; // Fail-open if DB is down so we don't break live sites.
+  try {
+    const { data } = await client
+      .from('published_sites')
+      .select('status')
+      .eq('slug', slug)
+      .maybeSingle();
+    const status = data?.status || null;
+    sitesStatusCache.set(slug, { status, expiresAt: Date.now() + SITES_STATUS_TTL_MS });
+    return status;
+  } catch {
+    return 'active'; // Fail-open on unexpected errors to preserve availability.
+  }
+}
+
 // 2. Serve static assets for published sites (proxy to Supabase Storage)
 // This handler handles both the root /sites/:slug/ and all sub-paths /sites/:slug/*
 app.use('/sites/:slug', async (req, res, next) => {
@@ -265,6 +353,18 @@ app.use('/sites/:slug', async (req, res, next) => {
 
   if (!process.env.SUPABASE_URL) {
     return res.status(500).send('Storage configuration missing');
+  }
+
+  // Refuse to serve sites that are paused, deleted, or not registered.
+  // The DB row is the source of truth for "is this site live?". Without
+  // this check, a `paused` slug whose storage objects still exist would
+  // continue to be reachable via direct URL.
+  const siteStatus = await getPublishedSiteStatus(slug);
+  if (siteStatus === 'paused') {
+    return res.status(410).send('This site is currently unavailable.');
+  }
+  if (siteStatus === 'deleted' || siteStatus === null) {
+    return res.status(404).send('Site not found');
   }
 
   const supabaseUrl = process.env.SUPABASE_URL.replace(/\/$/, '');
@@ -374,6 +474,9 @@ const server = app.listen(PORT, () => {
   console.log(`[Volturiano Builder Server] Supabase Service Key: ${process.env.SUPABASE_SERVICE_ROLE_KEY ? 'Set' : 'MISSING'}`);
 
   // Start background worker to process Community submissions in same thread
+  logLaunchReadinessChecks().catch(err => logger.error('LaunchReadiness', 'Readiness checks crashed unexpectedly', {
+    error: err?.message || String(err)
+  }));
   runWorker().catch(err => console.error('[Analyzer] Background Worker fatally crashed:', err));
 });
 

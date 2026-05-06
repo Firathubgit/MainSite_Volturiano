@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { Link } from 'react-router-dom';
 import { useBuilderAuth } from '../../../../../../contexts/BuilderAuthContext';
 import { formatDistanceToNow, subHours, isAfter, format } from 'date-fns';
 import { Loader2 } from 'lucide-react';
@@ -21,6 +22,12 @@ export default function CreditsPanel() {
     const [loading, setLoading] = useState(true);
     const [actionLoading, setActionLoading] = useState(false);
     const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+    const [refundFormOpen, setRefundFormOpen] = useState(false);
+    const [refundReason, setRefundReason] = useState('');
+    const [refundDetails, setRefundDetails] = useState('');
+    const [refundTransactionId, setRefundTransactionId] = useState('');
+    const [refundSubmitting, setRefundSubmitting] = useState(false);
+    const [refundFeedback, setRefundFeedback] = useState(null);
 
     const fetchHistory = async () => {
         setLoading(true);
@@ -53,6 +60,48 @@ export default function CreditsPanel() {
         );
     }, [history]);
 
+    const submitRefundRequest = async (e) => {
+        e?.preventDefault?.();
+        if (refundSubmitting) return;
+        const reason = (refundReason || '').trim();
+        if (reason.length < 4) {
+            setRefundFeedback({ ok: false, text: 'Please provide a brief reason (at least 4 characters).' });
+            return;
+        }
+        setRefundSubmitting(true);
+        setRefundFeedback(null);
+        try {
+            const token = await getAccessToken();
+            const res = await fetch('/api/billing/refund-request', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${token}`
+                },
+                body: JSON.stringify({
+                    reason: reason.slice(0, 160),
+                    details: (refundDetails || '').trim().slice(0, 2000),
+                    creditTransactionId: refundTransactionId || null
+                })
+            });
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok || !data.success) {
+                throw new Error(data.error || 'Failed to submit refund request.');
+            }
+            setRefundFeedback({
+                ok: true,
+                text: `Refund request received (status: ${data.refundRequest?.status || 'open'}). We will follow up via email.`
+            });
+            setRefundReason('');
+            setRefundDetails('');
+            setRefundTransactionId('');
+        } catch (err) {
+            setRefundFeedback({ ok: false, text: err.message || 'Failed to submit refund request.' });
+        } finally {
+            setRefundSubmitting(false);
+        }
+    };
+
     const handleManageSubscription = async () => {
         setActionLoading(true);
         try {
@@ -82,6 +131,18 @@ export default function CreditsPanel() {
         letterSpacing: '0.08em',
         marginBottom: '10px',
         display: 'block'
+    };
+
+    const refundInputStyle = {
+        background: 'rgba(255,255,255,0.04)',
+        border: '1px solid rgba(255,255,255,0.08)',
+        color: '#fff',
+        padding: '10px 12px',
+        borderRadius: '10px',
+        fontSize: '13px',
+        fontFamily: 'Inter',
+        outline: 'none',
+        width: '100%'
     };
 
     if (loading || !creditsLoaded) {
@@ -241,6 +302,106 @@ export default function CreditsPanel() {
                         >
                             Upgrade
                         </button>
+                    )}
+                </div>
+
+                {/* Refund Request */}
+                <div style={{
+                    padding: '24px 28px',
+                    background: 'rgba(255,255,255,0.02)',
+                    borderRadius: '20px',
+                    border: '1px solid rgba(255,255,255,0.05)'
+                }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
+                        <div>
+                            <label style={{ ...labelStyle, marginBottom: 0 }}>Refunds &amp; Billing Issues</label>
+                            <p style={{ color: '#666', fontSize: '13px', margin: '6px 0 0 0', maxWidth: 520 }}>
+                                Request a refund for unused credits or billing issues. Each request is logged and reviewed against your purchase history. See the{' '}
+                                <Link to="/builder/refunds" style={{ color: '#fff', textDecoration: 'underline' }}>Refund Policy</Link>.
+                            </p>
+                        </div>
+                        <button
+                            type="button"
+                            onClick={() => {
+                                setRefundFormOpen((v) => !v);
+                                setRefundFeedback(null);
+                            }}
+                            style={{
+                                background: 'rgba(255, 255, 255, 0.08)',
+                                border: '1px solid rgba(255, 255, 255, 0.1)',
+                                color: '#fff',
+                                padding: '10px 20px',
+                                borderRadius: '12px',
+                                fontSize: '13px',
+                                fontWeight: 600,
+                                cursor: 'pointer',
+                                fontFamily: 'Inter'
+                            }}
+                        >
+                            {refundFormOpen ? 'Close' : 'Request a refund'}
+                        </button>
+                    </div>
+
+                    {refundFormOpen && (
+                        <form onSubmit={submitRefundRequest} style={{ marginTop: 18, display: 'flex', flexDirection: 'column', gap: 12 }}>
+                            <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                                <span style={{ color: '#aaa', fontSize: 12, fontWeight: 600, letterSpacing: '0.04em' }}>Reason (required)</span>
+                                <input
+                                    type="text"
+                                    value={refundReason}
+                                    onChange={(e) => setRefundReason(e.target.value)}
+                                    placeholder="e.g. Charged twice, unused credits, technical issue"
+                                    maxLength={160}
+                                    style={refundInputStyle}
+                                />
+                            </label>
+                            <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                                <span style={{ color: '#aaa', fontSize: 12, fontWeight: 600, letterSpacing: '0.04em' }}>Transaction ID (optional)</span>
+                                <input
+                                    type="text"
+                                    value={refundTransactionId}
+                                    onChange={(e) => setRefundTransactionId(e.target.value)}
+                                    placeholder="Copy from Recent Activities or your Stripe receipt"
+                                    style={refundInputStyle}
+                                />
+                            </label>
+                            <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                                <span style={{ color: '#aaa', fontSize: 12, fontWeight: 600, letterSpacing: '0.04em' }}>Details (optional)</span>
+                                <textarea
+                                    value={refundDetails}
+                                    onChange={(e) => setRefundDetails(e.target.value)}
+                                    placeholder="Any context that helps us review (max 2000 characters)"
+                                    maxLength={2000}
+                                    rows={4}
+                                    style={{ ...refundInputStyle, minHeight: 96, resize: 'vertical' }}
+                                />
+                            </label>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                                <button
+                                    type="submit"
+                                    disabled={refundSubmitting}
+                                    style={{
+                                        background: '#fff',
+                                        border: 'none',
+                                        color: '#000',
+                                        padding: '10px 20px',
+                                        borderRadius: '12px',
+                                        fontSize: '13px',
+                                        fontWeight: 700,
+                                        cursor: refundSubmitting ? 'not-allowed' : 'pointer',
+                                        fontFamily: 'Inter',
+                                        opacity: refundSubmitting ? 0.7 : 1
+                                    }}
+                                >
+                                    {refundSubmitting ? 'Submitting…' : 'Submit refund request'}
+                                </button>
+                                {refundFeedback && (
+                                    <span style={{ color: refundFeedback.ok ? '#86efac' : '#fca5a5', fontSize: 12 }}>
+                                        {refundFeedback.text}
+                                    </span>
+                                )}
+                            </div>
+                        </form>
                     )}
                 </div>
 

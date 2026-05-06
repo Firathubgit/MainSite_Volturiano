@@ -334,10 +334,26 @@
     color: #fff;
 }
 
+.socialButton[aria-disabled="true"] {
+    border-color: rgba(255, 255, 255, 0.18);
+    color: rgba(255, 255, 255, 0.48);
+}
+
 .socialIcon {
     width: 20px;
     height: 20px;
     flex-shrink: 0;
+}
+
+.legalPrompt {
+    margin: -10px 0 18px;
+    padding: 10px 12px;
+    border: 1px solid rgba(255, 210, 128, 0.28);
+    border-radius: 8px;
+    background: rgba(255, 210, 128, 0.08);
+    color: rgba(255, 236, 198, 0.92);
+    font-size: 0.8125rem;
+    line-height: 1.45;
 }
 
 /* Divider */

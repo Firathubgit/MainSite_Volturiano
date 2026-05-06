@@ -1,6 +1,9 @@
 import { sandboxManager } from '../lib/sandbox/sandbox-manager.js';
 import { verifySandboxBuild } from '../lib/verify-sandbox-build.js';
 import { supabaseAdmin } from '../lib/supabase-admin.js';
+import { assertProjectOwner, sendOwnershipError } from '../lib/security/project-access.js';
+import { updateProjectForUser } from '../lib/db/projects.js';
+import { logAuditEvent } from '../lib/audit/audit-logger.js';
 import fs from 'fs/promises';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -39,7 +42,8 @@ export default async function publishSite(req, res) {
 
     try {
         log('Request received');
-        const { buildId, sandboxId, slug: rawSlug, siteTitle, siteDescription, siteIconUrl, iconBase64, iconFileName } = req.body;
+        const { buildId, sandboxId, slug: rawSlug, siteIconUrl, iconBase64, iconFileName } = req.body;
+        let { siteTitle, siteDescription } = req.body;
         const userId = req.user?.id;
 
         if (!sandboxId || !rawSlug) {
@@ -51,6 +55,14 @@ export default async function publishSite(req, res) {
         if (slug.length < 2) {
             await log('[Publish] Error: slug too short');
             return res.status(400).json({ success: false, error: 'Slug too short' });
+        }
+
+        // Verify project ownership before uploading icons, building, or reserving a slug.
+        let ownedProject = null;
+        if (buildId) {
+            ownedProject = await assertProjectOwner(buildId, userId, {
+                select: 'id,user_id,thumbnail_url'
+            });
         }
 
         let finalSiteIconUrl = siteIconUrl || null;
@@ -393,26 +405,29 @@ export default async function publishSite(req, res) {
 
         console.log(`[Publish] Supabase Payload -> Project: ${buildId}, User: ${userId}, Slug: ${slug}, Files: ${uploadedCount}, Size: ${totalSize}`);
 
-        // Get project thumbnail if available
-        let projectThumbnail = null;
-        if (buildId) {
-            const { data: projectData } = await supabaseAdmin.from('projects').select('thumbnail_url').eq('id', buildId).single();
-            if (projectData && projectData.thumbnail_url) {
-                projectThumbnail = projectData.thumbnail_url;
-            }
-        }
+        // Get project thumbnail from the ownership-verified project row.
+        const projectThumbnail = ownedProject?.thumbnail_url || null;
 
         // Check if this project already has a published site (update vs insert)
-        const { data: existingSite } = await supabaseAdmin
-            .from('published_sites')
-            .select('id, slug')
-            .eq('project_id', buildId)
-            .limit(1)
-            .single();
+        let existingSite = null;
+        let publishedSiteId = null;
+        let publishAuditAction = 'published_site_published';
+        if (buildId) {
+            const { data } = await supabaseAdmin
+                .from('published_sites')
+                .select('id, slug')
+                .eq('project_id', buildId)
+                .eq('user_id', userId)
+                .limit(1)
+                .maybeSingle();
+            existingSite = data || null;
+        }
 
         if (existingSite) {
             // UPDATE existing published site
             console.log(`[Publish] 🔄 UPDATING existing site (id: ${existingSite.id}, slug: ${existingSite.slug})`);
+            publishedSiteId = existingSite.id;
+            publishAuditAction = 'published_site_republished';
             const { error: updateErr } = await supabaseAdmin
                 .from('published_sites')
                 .update({
@@ -424,7 +439,8 @@ export default async function publishSite(req, res) {
                     site_icon_url: finalSiteIconUrl || null,
                     updated_at: new Date().toISOString()
                 })
-                .eq('id', existingSite.id);
+                .eq('id', existingSite.id)
+                .eq('user_id', userId);
 
             if (updateErr) {
                 console.error('[Publish] DB Update Failed!', updateErr);
@@ -433,7 +449,7 @@ export default async function publishSite(req, res) {
         } else {
             // INSERT new published site
             console.log(`[Publish] 🆕 INSERTING new site record`);
-            const { error: dbErr } = await supabaseAdmin
+            const { data: insertedSite, error: dbErr } = await supabaseAdmin
                 .from('published_sites')
                 .insert({
                     slug,
@@ -450,13 +466,17 @@ export default async function publishSite(req, res) {
                     site_title: siteTitle || null,
                     site_description: siteDescription || 'Published with Volturiano',
                     site_icon_url: finalSiteIconUrl || null
-                });
+                })
+                .select('id')
+                .single();
             if (dbErr) {
                 // If the slug is taken, verify if it actually belongs to THIS project (handling the case where project lost its published_slug state)
                 if (dbErr.code === '23505') {
-                    const { data: conflictSite } = await supabaseAdmin.from('published_sites').select('id, project_id').eq('slug', slug).single();
-                    if (conflictSite && conflictSite.project_id === buildId) {
+                    const { data: conflictSite } = await supabaseAdmin.from('published_sites').select('id, project_id, user_id').eq('slug', slug).single();
+                    if (conflictSite && conflictSite.project_id === buildId && conflictSite.user_id === userId) {
                         console.log(`[Publish] 🔄 Recovered lost slug connection for ${slug}. Updating instead of inserting.`);
+                        publishedSiteId = conflictSite.id;
+                        publishAuditAction = 'published_site_republished_recovered';
                         const { error: recoveryUpdateErr } = await supabaseAdmin.from('published_sites').update({
                             file_count: uploadedCount,
                             total_size_bytes: totalSize,
@@ -465,7 +485,7 @@ export default async function publishSite(req, res) {
                             site_description: siteDescription || 'Published with Volturiano',
                             site_icon_url: finalSiteIconUrl || null,
                             updated_at: new Date().toISOString()
-                        }).eq('id', conflictSite.id);
+                        }).eq('id', conflictSite.id).eq('user_id', userId);
                         
                         if (recoveryUpdateErr) return res.status(500).json({ success: false, error: 'Database error updating recovered site.' });
                     } else {
@@ -477,17 +497,19 @@ export default async function publishSite(req, res) {
                     });
                     return res.status(500).json({ success: false, error: `Database error reserving site slug: ${dbErr.message}` });
                 }
+            } else {
+                publishedSiteId = insertedSite?.id || null;
             }
         }
 
         // 7. Update Project record
         if (buildId) {
-            await supabaseAdmin.from('projects').update({
+            await updateProjectForUser(buildId, userId, {
                 published_url: liveUrl,
                 published_slug: slug,
                 published_at: new Date().toISOString(),
                 build_status: 'published'
-            }).eq('id', buildId);
+            });
         }
 
         // 8. Cleanup
@@ -498,6 +520,18 @@ export default async function publishSite(req, res) {
         }
 
         const duration = ((Date.now() - startTime) / 1000).toFixed(1);
+        void logAuditEvent(req, {
+            action: publishAuditAction,
+            entityType: 'published_site',
+            entityId: publishedSiteId || slug,
+            projectId: buildId || null,
+            metadata: {
+                slug,
+                filesCount: uploadedCount,
+                totalSizeBytes: totalSize,
+                durationSeconds: duration
+            }
+        });
         return res.json({
             success: true,
             url: liveUrl,
@@ -507,6 +541,9 @@ export default async function publishSite(req, res) {
         });
 
     } catch (error) {
+        if (error?.name === 'OwnershipError') {
+            return sendOwnershipError(res, error);
+        }
         log(`[Publish] CRITICAL CATCH: ${error.message}`);
         if (error.stack) log(error.stack);
 

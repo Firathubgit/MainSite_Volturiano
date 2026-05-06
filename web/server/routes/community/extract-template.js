@@ -159,6 +159,9 @@ export default async function extractTemplate(req, res) {
             componentIdsInOrder,
             source_mode: 'community-extracted',
             thumbnail: null,
+            ipAttestationAccepted: true,
+            licenseGrantAccepted: true,
+            attestationVersion: 'community-template-extraction-v1',
         };
 
         console.log('[extract-template] 🔄 Delegating to submit-template with body:', {

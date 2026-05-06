@@ -21,25 +21,47 @@ export const RouteTransitionProvider = ({ children }) => {
         setTransitionData(stateToPass);
         setPhase('outro');
 
-        // Fire the cinematic response API call as early as possible (in parallel with transitions)
+        // Fire the cinematic response API call as early as possible (in parallel with transitions).
+        // The cinematic LLM is "fire-and-forget" for the user experience: if it
+        // hangs (cold model, transient provider issue, server restart), we must
+        // never let the transition stall on it. We use AbortController + a
+        // hard timeout so the transition is bounded regardless of backend state.
         const fetchStartTime = Date.now();
+        const CINEMATIC_TIMEOUT_MS = 6000;
         let cinematicPromise = null;
-        
+        let cinematicController = null;
+
         if (!stateToPass?.isProjectRevisit && !stateToPass?.templateId && !stateToPass?.templateData && stateToPass?.prompt) {
             let cineModel = 'google/gemini-2.5-flash';
             if (stateToPass.model) {
                 if (stateToPass.model.includes('openai/')) cineModel = 'openai/gpt-5.4-mini';
                 if (stateToPass.model.includes('anthropic/')) cineModel = 'anthropic/claude-haiku-4-5-20251001';
             }
-            
+
+            cinematicController = typeof AbortController !== 'undefined' ? new AbortController() : null;
+            const abortTimer = cinematicController
+                ? setTimeout(() => {
+                    try { cinematicController.abort(); } catch { /* noop */ }
+                }, CINEMATIC_TIMEOUT_MS)
+                : null;
+
             cinematicPromise = fetch('/api/cinematic-response', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ prompt: stateToPass.prompt, model: cineModel })
-            }).catch(e => {
-                console.error('Initial fetch failed:', e);
-                return null;
-            });
+                body: JSON.stringify({ prompt: stateToPass.prompt, model: cineModel }),
+                signal: cinematicController?.signal
+            })
+                .catch((e) => {
+                    if (e?.name === 'AbortError') {
+                        console.warn('[Cinematic] Request aborted after timeout — using fallback line.');
+                    } else {
+                        console.error('[Cinematic] Fetch failed:', e?.message || e);
+                    }
+                    return null;
+                })
+                .finally(() => {
+                    if (abortTimer) clearTimeout(abortTimer);
+                });
         }
 
         // Wait for Builder screen to fade out

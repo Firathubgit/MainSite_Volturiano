@@ -143,52 +143,101 @@ function ProgressStepper({ submissionId, token, onClose }) {
     const [currentStep, setCurrentStep] = useState('queued');
     const [progress, setProgress] = useState(10);
     const [result, setResult] = useState(null);
-    const eventSourceRef = useRef(null);
+    const pollTimerRef = useRef(null);
+    const cancelledRef = useRef(false);
 
     useEffect(() => {
         if (!submissionId) return;
         setCurrentStep('validate');
         setProgress(25);
 
-        const url = `/api/community/submission-status/${submissionId}?token=${token || ''}`;
-        const es = new EventSource(url);
-        eventSourceRef.current = es;
+        cancelledRef.current = false;
+        let pollCount = 0;
+        const MAX_POLLS = 60;
+        const POLL_INTERVAL_MS = 2000;
 
-        es.onmessage = (event) => {
+        // JSON polling with Bearer header. EventSource can't attach
+        // Authorization headers and the backend rejects query-string
+        // tokens, so SSE isn't viable for an authenticated endpoint.
+        const pollOnce = async () => {
+            if (cancelledRef.current) return;
+            pollCount++;
             try {
-                const data = JSON.parse(event.data);
-                if (data.progress) setProgress(data.progress);
+                const res = await fetch(`/api/community/submission-status/${submissionId}`, {
+                    method: 'GET',
+                    headers: token ? { Authorization: `Bearer ${token}` } : {},
+                });
+
+                if (!res.ok) {
+                    if (res.status === 401 || res.status === 403) {
+                        setCurrentStep('failed');
+                        setResult({ status: 'failed', message: 'Session expired. Please refresh and sign in again.' });
+                        return;
+                    }
+                    if (res.status === 404) {
+                        setCurrentStep('failed');
+                        setResult({ status: 'failed', message: 'Submission not found.' });
+                        return;
+                    }
+                    throw new Error(`HTTP ${res.status}`);
+                }
+
+                const data = await res.json();
+                if (typeof data.progress === 'number') setProgress(data.progress);
+
                 if (data.step === 'analyzing') {
                     setCurrentStep('analyze');
-                    setProgress(data.progress || 65);
+                    if (typeof data.progress === 'number') setProgress(data.progress);
+                    else setProgress(65);
                 }
-                if (data.step === 'complete') {
+
+                if (data.step === 'complete' || data.done === true) {
                     setCurrentStep('complete');
                     setProgress(100);
                     setResult({ status: data.status, qualityScore: data.qualityScore, message: data.message });
-                    es.close();
+                    return;
                 }
+
                 if (data.step === 'failed' || data.step === 'timeout') {
                     setCurrentStep('failed');
                     setResult({ status: 'failed', message: data.message || 'Processing failed.' });
-                    es.close();
+                    return;
                 }
+
+                if (pollCount >= MAX_POLLS) {
+                    setCurrentStep('failed');
+                    setResult({
+                        status: 'failed',
+                        message: 'Analysis is taking longer than expected. Check "My Submissions" later.',
+                    });
+                    return;
+                }
+
+                pollTimerRef.current = setTimeout(pollOnce, POLL_INTERVAL_MS);
             } catch (err) {
-                console.warn('SSE parse error:', err);
+                console.warn('[ComponentStudio] Poll error:', err.message || err);
+                if (pollCount >= MAX_POLLS) {
+                    setCurrentStep('failed');
+                    setResult({ status: 'failed', message: 'Connection lost. Please refresh.' });
+                    return;
+                }
+                pollTimerRef.current = setTimeout(pollOnce, POLL_INTERVAL_MS);
             }
         };
 
-        es.onerror = () => console.warn('[ComponentStudio] SSE error');
+        pollOnce();
 
         const screenshotTimer = setTimeout(() => {
-            if (!result) { setCurrentStep('screenshot'); setProgress(40); }
+            setCurrentStep((prev) => (prev === 'validate' ? 'screenshot' : prev));
+            setProgress((prev) => (prev < 40 ? 40 : prev));
         }, 3000);
 
         return () => {
+            cancelledRef.current = true;
             clearTimeout(screenshotTimer);
-            if (eventSourceRef.current) eventSourceRef.current.close();
+            if (pollTimerRef.current) clearTimeout(pollTimerRef.current);
         };
-    }, [submissionId]);
+    }, [submissionId, token]);
 
     function getStepStatus(stepId) {
         const order = ['validate', 'screenshot', 'analyze', 'complete'];
@@ -224,7 +273,7 @@ function ProgressStepper({ submissionId, token, onClose }) {
                 {result && (
                     <>
                         <div className={`${styles.resultBadge} ${styles.success}`}>
-                            {result.message || 'Component successfully published to the community!'}
+                            {result.message || 'Component prepared for admin review.'}
                         </div>
                         <button className={styles.closeButton} onClick={onClose}>Close</button>
                     </>
@@ -356,6 +405,9 @@ export default function ComponentStudio() {
                 cssCode: cssCode || undefined,
                 thumbnail: thumbnailBase64 || undefined,
                 video: videoBase64 || undefined,
+                ipAttestationAccepted: agreedToLicense,
+                licenseGrantAccepted: agreedToLicense,
+                attestationVersion: 'community-submission-v1',
             };
 
             let res, data, retryCount = 0;

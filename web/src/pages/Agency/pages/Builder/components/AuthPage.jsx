@@ -28,6 +28,9 @@ export function AuthPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
   const [agreedToTerms, setAgreedToTerms] = useState(false);
+  const [legalPrompt, setLegalPrompt] = useState(false);
+  const requiresLegalAcceptance = authMode === "magic-link" || isSignUp;
+  const showLegalAcceptance = true;
 
   // Redirect if already logged in
   React.useEffect(() => {
@@ -37,6 +40,10 @@ export function AuthPage() {
   }, [isAuthenticated, authLoading, navigate]);
 
   const handleGoogleLogin = async () => {
+    if (!agreedToTerms) {
+      setLegalPrompt(true);
+      return;
+    }
     setIsSubmitting(true);
     clearError();
     setSuccessMessage("");
@@ -44,15 +51,19 @@ export function AuthPage() {
     // but the simplest way is to handle the redirect in Supabase settings or just check if it's a first-time login on the dashboard.
     // For now, I'll pass the redirectTo with the new=true flag.
     const redirectTo = `${window.location.origin}/builder/profile?tab=Websites&new=true`;
-    await signInWithGoogle(redirectTo);
+    await signInWithGoogle(redirectTo, { legalAccepted: true });
   };
 
   const handleGithubLogin = async () => {
+    if (!agreedToTerms) {
+      setLegalPrompt(true);
+      return;
+    }
     setIsSubmitting(true);
     clearError();
     setSuccessMessage("");
     const redirectTo = `${window.location.origin}/builder/profile?tab=Websites&new=true`;
-    await signInWithGithub(redirectTo);
+    await signInWithGithub(redirectTo, { legalAccepted: true });
   };
 
   const handleEmailSubmit = async (e) => {
@@ -64,7 +75,12 @@ export function AuthPage() {
 
     try {
       if (authMode === "magic-link") {
-        const { error } = await signInWithEmail(email);
+        if (!agreedToTerms) {
+          setLegalPrompt(true);
+          setIsSubmitting(false);
+          return;
+        }
+        const { error } = await signInWithEmail(email, { legalAccepted: true });
         if (!error) {
           setSuccessMessage("Check your email for the login link!");
         }
@@ -180,6 +196,7 @@ export function AuthPage() {
               className={s.socialButton}
               onClick={handleGoogleLogin}
               disabled={isSubmitting}
+              aria-disabled={!agreedToTerms}
             >
               <GoogleIcon className={s.socialIcon} />
               Continue with Google
@@ -189,11 +206,18 @@ export function AuthPage() {
               className={s.socialButton}
               onClick={handleGithubLogin}
               disabled={isSubmitting}
+              aria-disabled={!agreedToTerms}
             >
               <GithubIcon className={s.socialIcon} />
               Continue with GitHub
             </button>
           </div>
+
+          {legalPrompt && !agreedToTerms && (
+            <div className={s.legalPrompt}>
+              Accept the Terms and Privacy Policy below before continuing with Google, GitHub, or magic link.
+            </div>
+          )}
 
           <div className={s.divider}>
             <div className={s.dividerLine} />
@@ -273,14 +297,17 @@ export function AuthPage() {
               </div>
             )}
 
-            {isSignUp && (
+            {showLegalAcceptance && (
               <div className={s.termsCheckboxGroup}>
                 <label className={s.termsCheckboxLabel}>
                   <input
                     type="checkbox"
                     className={s.termsCheckbox}
                     checked={agreedToTerms}
-                    onChange={(e) => setAgreedToTerms(e.target.checked)}
+                    onChange={(e) => {
+                      setAgreedToTerms(e.target.checked);
+                      if (e.target.checked) setLegalPrompt(false);
+                    }}
                     required
                   />
                   <span>
@@ -293,7 +320,7 @@ export function AuthPage() {
             <button 
               className={s.submitButton} 
               type="submit" 
-              disabled={isSubmitting || (isSignUp && !agreedToTerms)}
+              disabled={isSubmitting || (requiresLegalAcceptance && !agreedToTerms)}
             >
               {isSubmitting ? (
                 <><Loader2Icon size={16} className={s.spinnerIcon} /> Processing...</>

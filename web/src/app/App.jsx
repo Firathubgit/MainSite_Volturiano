@@ -18,6 +18,7 @@ import { Analytics } from "@vercel/analytics/react";
 import { SpeedInsights } from "@vercel/speed-insights/react";
 import { PAUSE_MODE_ENABLED } from "../config/pauseMode";
 import { BuilderAuthProvider } from "../contexts/BuilderAuthContext";
+import RequireBuilderAdmin from "../pages/Agency/pages/Builder/components/RequireBuilderAdmin";
 import { RouteTransitionProvider } from "../contexts/RouteTransitionContext";
 import { RouteTransitionOverlay } from "../components/RouteTransitionOverlay/RouteTransitionOverlay";
 import CookieConsent from "../components/CookieConsent/CookieConsent";
@@ -131,6 +132,14 @@ const RoleManagement = lazy(
 const Infotainment = lazy(() => import("../pages/Infotainment/Infotainment"));
 const PrivacyPolicy = lazy(() => import("../pages/Legal/PrivacyPolicy"));
 const TermsOfService = lazy(() => import("../pages/Legal/TermsOfService"));
+const AcceptableUsePolicy = lazy(() => import("../pages/Legal/AcceptableUsePolicy"));
+const DataProcessingAddendum = lazy(() => import("../pages/Legal/DataProcessingAddendum"));
+const Subprocessors = lazy(() => import("../pages/Legal/Subprocessors"));
+const TakedownRequest = lazy(() => import("../pages/Legal/TakedownRequest"));
+const RefundPolicy = lazy(() => import("../pages/Legal/RefundPolicy"));
+const CustomerResponsibilities = lazy(() => import("../pages/Legal/CustomerResponsibilities"));
+const SecurityContact = lazy(() => import("../pages/Legal/SecurityContact"));
+const LegalIndex = lazy(() => import("../pages/Legal/LegalIndex"));
 const LoadingOverlayTest = import.meta.env.DEV
   ? lazy(() => import("../pages/Debug/LoadingOverlayTest"))
   : null;
@@ -380,6 +389,27 @@ export default function App() {
     }
   }, [location.pathname]);
 
+  // Case-insensitive comparison — React Router matches routes case-insensitively
+  // by default, so the pathname can come back in any casing (e.g. /builder/atalmoretti
+  // vs /builder/Atalmoretti). Without normalizing, the navbar leaks into the admin page.
+  const normalizedPath = location.pathname.toLowerCase().replace(/\/+$/, "");
+  const hidePrimaryNav = [
+    "/builder/generation",
+    "/builder/login",
+    "/builder/profile",
+    "/builder/privacy",
+    "/builder/terms",
+    "/builder/acceptable-use",
+    "/builder/dpa",
+    "/builder/subprocessors",
+    "/builder/takedown",
+    "/builder/refunds",
+    "/builder/customer-responsibilities",
+    "/builder/security",
+    "/builder/billing",
+    "/builder/atalmoretti",
+  ].includes(normalizedPath) || normalizedPath.startsWith("/community") || normalizedPath.startsWith("/guidelines");
+
   return (
     <BuilderAuthProvider>
       <RouteTransitionProvider>
@@ -394,7 +424,7 @@ export default function App() {
               (!session && (status === "loading" || status === "idle"))
             }
           />
-          {location.pathname !== "/builder/generation" && location.pathname !== "/builder/login" && location.pathname !== "/builder/profile" && location.pathname !== "/builder/privacy" && location.pathname !== "/builder/terms" && location.pathname !== "/builder/billing" && location.pathname !== "/builder/Atalmoretti" && !location.pathname.startsWith("/community") && !location.pathname.startsWith("/guidelines") && (
+          {!hidePrimaryNav && (
             <>
               {(location.pathname.startsWith("/builder")) ? (
                 <Suspense fallback={null}>
@@ -435,7 +465,15 @@ export default function App() {
                 <Route path="/builder/profile" element={<ProfileSettings />} />
                 <Route path="/builder/dashboard" element={<Navigate to="/builder/profile?tab=Websites" replace />} />
                 <Route path="/builder/settings" element={<Navigate to="/builder/profile?tab=Settings" replace />} />
-                <Route path="/builder/Atalmoretti" element={<AdminPanel />} />
+                <Route path="/builder/Atalmoretti" element={<RequireBuilderAdmin><AdminPanel /></RequireBuilderAdmin>} />
+                <Route path="/builder/acceptable-use" element={<AcceptableUsePolicy />} />
+                <Route path="/builder/dpa" element={<DataProcessingAddendum />} />
+                <Route path="/builder/subprocessors" element={<Subprocessors />} />
+                <Route path="/builder/takedown" element={<TakedownRequest />} />
+                <Route path="/builder/refunds" element={<RefundPolicy />} />
+                <Route path="/builder/customer-responsibilities" element={<CustomerResponsibilities />} />
+                <Route path="/builder/security" element={<SecurityContact />} />
+                <Route path="/builder/legal" element={<LegalIndex />} />
                 <Route path="/community" element={<CommunityHub />} />
                 <Route path="/community/studio" element={<ComponentStudio />} />
                 <Route path="/guidelines" element={<Guidelines />} />

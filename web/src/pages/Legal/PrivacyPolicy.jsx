@@ -25,7 +25,7 @@ export default function PrivacyPolicy() {
             <ShieldIcon size={32} className={s.icon} />
           </div>
           <h1 className={s.title}>Privacy Policy & Cookie Policy</h1>
-          <p className={s.lastUpdated}>Last updated: March 2026</p>
+          <p className={s.lastUpdated}>Last updated: May 2026</p>
         </header>
 
         <section className={s.section}>
@@ -51,6 +51,8 @@ export default function PrivacyPolicy() {
             <li><strong>Transaction Data:</strong> Details about payments to and from you and other details of products and services you have purchased from us (e.g. Credit Packs, Subscriptions).</li>
             <li><strong>Technical Data:</strong> Internet protocol (IP) address, your login data, browser type and version, time zone setting, location, security fingerprints, and usage patterns for rate limiting.</li>
             <li><strong>Usage Data:</strong> Information about how you use our website, products and services, including chat prompts sent to our AI models.</li>
+            <li><strong>Builder and Agent Data:</strong> Project prompts, generated files, snapshots, selected components, agent messages, tool events, build status, and audit events needed to provide, debug, secure, and improve the Builder.</li>
+            <li><strong>Consent and Rights Request Data:</strong> Records of terms/privacy acceptance, data export requests, deletion requests, and processing restriction requests.</li>
           </ul>
         </section>
 
@@ -59,20 +61,24 @@ export default function PrivacyPolicy() {
           <p>We will only use your personal data when the law allows us to. Most commonly, we will use your personal data in the following circumstances:</p>
           <ul>
             <li><strong>Performance of Contract:</strong> Where we need to perform the contract we are about to enter into or have entered into with you (e.g., providing AI website generation).</li>
-            <li><strong>Legal Obligation:</strong> Where we need to comply with a legal obligation (e.g., retaining transaction data for 7 years according to the Swedish Accounting Act / Bokföringslagen).</li>
+            <li><strong>Legal Obligation:</strong> Where we need to comply with a legal obligation, including retaining accounting evidence where required by Swedish bookkeeping rules.</li>
             <li><strong>Legitimate Interests:</strong> Where it is necessary for our legitimate interests (or those of a third party) and your interests and fundamental rights do not override those interests.</li>
+            <li><strong>Consent:</strong> Where we rely on your acceptance for terms/privacy records, optional analytics, and specific community-submission attestations.</li>
           </ul>
         </section>
 
         <section className={s.section}>
           <h2>4. Third-Party Data Processors</h2>
-          <p>We utilize trusted third-party services to operate Volturiano. We have signed Data Processing Agreements with these sub-processors:</p>
+          <p>We utilize third-party services to operate Volturiano. We keep a separate subprocessor register and verify provider terms, regions, and retention settings as part of production readiness:</p>
           <ul>
             <li><strong>Supabase:</strong> For secure database hosting and user authentication (EU/Global).</li>
             <li><strong>Stripe:</strong> For payment processing.</li>
-            <li><strong>Vercel:</strong> For frontend hosting and global content delivery.</li>
-            <li><strong>AI Providers (Anthropic, OpenAI, Google):</strong> For executing AI generation based on your prompts. Our agreements specify a <strong>Zero Data Retention</strong> policy, meaning your prompts are not used to train their public AI models.</li>
+            <li><strong>Railway/Vercel:</strong> For backend/frontend hosting, deployment, and content delivery.</li>
+            <li><strong>AI Providers and Sandbox Providers:</strong> For executing AI generation, analysis, previews, and code sandboxing based on your prompts and project context. Provider retention and training settings depend on the configured provider agreements and product settings.</li>
           </ul>
+          <p>
+            See the <Link to="/builder/subprocessors">Subprocessor Register</Link> for the current operational list.
+          </p>
         </section>
 
         <section className={s.section}>
@@ -82,6 +88,9 @@ export default function PrivacyPolicy() {
           </p>
           <p>
             We will only retain your personal data for as long as reasonably necessary to fulfill the purposes we collected it for. If you delete your account, your projects, websites, and profile data are securely wiped. Financial transaction records are retained for 7 years strictly for tax and accounting purposes.
+          </p>
+          <p>
+            Data exports and deletion requests are logged so we can prove when a request was received and completed. Agent/session data, snapshots, and generated project data are included in account exports where available. Account deletion removes or anonymizes user-scoped data while preserving financial ledger evidence where legally required.
           </p>
         </section>
 
@@ -118,6 +127,18 @@ export default function PrivacyPolicy() {
             <li><strong>Essential Cookies:</strong> Used for keeping you logged in securely (Supabase session tokens). Cannot be disabled.</li>
             <li><strong>Analytics Cookies:</strong> (E.g., Vercel Analytics). These are only active if you explicitly click "Accept" in the cookie banner.</li>
           </ul>
+        </section>
+
+        <section className={s.section}>
+          <h2>9. Customer Website Data</h2>
+          <p>
+            If you use Volturiano to create or publish a site that collects personal data from your own visitors,
+            you are responsible for the privacy notice, cookie choices, form purposes, and lawful basis for that
+            visitor data. Volturiano may act as your processor for that customer-controlled processing.
+          </p>
+          <p>
+            See the <Link to="/builder/dpa">Data Processing Addendum</Link> and <Link to="/builder/customer-responsibilities">Customer Responsibilities</Link>.
+          </p>
         </section>
       </main>
     </div>

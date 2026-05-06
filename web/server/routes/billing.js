@@ -26,6 +26,8 @@ import { Router } from 'express';
 import Stripe from 'stripe';
 import { requireAuth } from '../middleware/authMiddleware.js';
 import { supabaseAdmin } from '../lib/supabase-admin.js';
+import { logAuditEvent } from '../lib/audit/audit-logger.js';
+import { requireBuilderAdmin } from '../lib/security/admin-access.js';
 
 const router = Router();
 
@@ -488,6 +490,175 @@ router.get('/history', requireAuth, async (req, res) => {
   } catch (err) {
     console.error('[Billing] ❌ History endpoint error:', err.message);
     res.status(500).json({ success: false, error: 'Internal server error.' });
+  }
+});
+
+// POST /api/billing/refund-request
+// Creates an auditable support-side refund request without changing Stripe state.
+router.post('/refund-request', requireAuth, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const {
+      creditTransactionId = null,
+      stripePaymentId = null,
+      stripeInvoiceId = null,
+      reason,
+      details = ''
+    } = req.body || {};
+
+    const cleanReason = String(reason || '').trim().slice(0, 160);
+    const cleanDetails = String(details || '').trim().slice(0, 2000);
+
+    if (!cleanReason) {
+      return res.status(400).json({
+        success: false,
+        error: 'A refund reason is required.'
+      });
+    }
+
+    let transaction = null;
+    if (creditTransactionId) {
+      const { data, error } = await supabaseAdmin
+        .from('credit_transactions')
+        .select('id,user_id,stripe_payment_id,stripe_invoice_id,type,amount,description')
+        .eq('id', creditTransactionId)
+        .eq('user_id', userId)
+        .maybeSingle();
+
+      if (error) throw error;
+      if (!data) {
+        return res.status(404).json({
+          success: false,
+          error: 'Transaction not found.'
+        });
+      }
+      transaction = data;
+    }
+
+    const requestPayload = {
+      user_id: userId,
+      credit_transaction_id: transaction?.id || null,
+      stripe_payment_id: transaction?.stripe_payment_id || stripePaymentId || null,
+      stripe_invoice_id: transaction?.stripe_invoice_id || stripeInvoiceId || null,
+      reason: cleanReason,
+      details: cleanDetails || null,
+      status: 'open',
+      metadata: {
+        source: 'billing_panel',
+        transactionType: transaction?.type || null,
+        transactionAmount: transaction?.amount || null,
+        transactionDescription: transaction?.description || null
+      }
+    };
+
+    const { data: refundRequest, error: insertError } = await supabaseAdmin
+      .from('refund_requests')
+      .insert(requestPayload)
+      .select('id,status,created_at')
+      .single();
+
+    if (insertError) throw insertError;
+
+    void logAuditEvent(req, {
+      action: 'refund_request_created',
+      entityType: 'refund_request',
+      entityId: refundRequest.id,
+      metadata: {
+        creditTransactionId: transaction?.id || null,
+        stripePaymentId: requestPayload.stripe_payment_id,
+        stripeInvoiceId: requestPayload.stripe_invoice_id,
+        reason: cleanReason
+      }
+    });
+
+    return res.json({
+      success: true,
+      refundRequest
+    });
+  } catch (err) {
+    console.error('[Billing] Refund request failed:', err.message);
+    return res.status(500).json({
+      success: false,
+      error: 'Failed to create refund request.'
+    });
+  }
+});
+
+// GET /api/billing/finance-export?from=YYYY-MM-DD&to=YYYY-MM-DD
+// Admin-only bookkeeping packet for Stripe/Revolut/accounting reconciliation.
+router.get('/finance-export', requireAuth, requireBuilderAdmin, async (req, res) => {
+  try {
+    const from = req.query.from ? new Date(String(req.query.from)) : new Date(Date.now() - 30 * 86400000);
+    const to = req.query.to ? new Date(String(req.query.to)) : new Date();
+
+    if (Number.isNaN(from.getTime()) || Number.isNaN(to.getTime()) || from > to) {
+      return res.status(400).json({ success: false, error: 'Invalid from/to date range.' });
+    }
+
+    const fromIso = from.toISOString();
+    const toIso = to.toISOString();
+
+    const rangeQuery = (table, select = '*') => supabaseAdmin
+      .from(table)
+      .select(select)
+      .gte('created_at', fromIso)
+      .lte('created_at', toIso)
+      .order('created_at', { ascending: true });
+
+    const [
+      transactionsResult,
+      refundsResult,
+      webhookEventsResult
+    ] = await Promise.all([
+      rangeQuery('credit_transactions'),
+      rangeQuery('refund_requests'),
+      rangeQuery('stripe_webhook_events', 'id,stripe_event_id,event_type,livemode,status,error_message,processed_at,created_at')
+    ]);
+
+    for (const result of [transactionsResult, refundsResult, webhookEventsResult]) {
+      if (result.error) throw result.error;
+    }
+
+    const transactions = transactionsResult.data || [];
+    const refunds = refundsResult.data || [];
+    const webhookEvents = webhookEventsResult.data || [];
+    const totals = transactions.reduce((acc, tx) => {
+      const type = tx.type || 'unknown';
+      acc.by_type[type] = (acc.by_type[type] || 0) + Number(tx.amount || 0);
+      acc.net_credits += Number(tx.amount || 0);
+      return acc;
+    }, { net_credits: 0, by_type: {} });
+
+    const exportPacket = {
+      success: true,
+      export_version: 'finance-export-2026-05',
+      generated_at: new Date().toISOString(),
+      period: { from: fromIso, to: toIso },
+      accounting_note: 'Use this together with Stripe balance transaction reports, Stripe payout reports, invoices/receipts, and Revolut bank statements.',
+      totals,
+      credit_transactions: transactions,
+      refund_requests: refunds,
+      stripe_webhook_events: webhookEvents
+    };
+
+    void logAuditEvent(req, {
+      action: 'finance_export_generated',
+      entityType: 'finance_export',
+      entityId: `${fromIso}_${toIso}`,
+      metadata: {
+        from: fromIso,
+        to: toIso,
+        transactionCount: transactions.length,
+        refundRequestCount: refunds.length,
+        webhookEventCount: webhookEvents.length
+      }
+    });
+
+    res.setHeader('Content-Disposition', `attachment; filename="volturiano-finance-${fromIso.slice(0, 10)}-${toIso.slice(0, 10)}.json"`);
+    return res.json(exportPacket);
+  } catch (err) {
+    console.error('[Billing] Finance export failed:', err.message);
+    return res.status(500).json({ success: false, error: 'Failed to generate finance export.' });
   }
 });
 

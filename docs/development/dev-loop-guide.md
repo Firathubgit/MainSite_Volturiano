@@ -2,7 +2,7 @@
 
 **Purpose**: Step-by-step guide for daily development workflow  
 **Audience**: All developers working on the VOLTURIANO project  
-**Last Updated**: 2025-01-XX
+**Last Updated**: 2026-05-04
 
 ---
 
@@ -356,6 +356,10 @@ supabase db push --db staging
 3. **Backup Before Production**
    - Supabase auto-backups
    - Manual backup for major changes
+   - Run `scripts/backups/backup-db.sh --plan` before you run it for real
+   - Run `scripts/backups/backup-storage-manifest.sh --plan` because database backups do not include Supabase Storage objects
+   - Run `scripts/backups/backup-storage-objects.sh --plan` before enabling actual Supabase Storage object copying
+   - Follow `docs/ops/backup-restore-runbook.md` for restore drills
 
 4. **Document Changes**
    - Add migration notes
@@ -698,6 +702,7 @@ How was this tested?
 **2. Build Errors**
 - Clear `node_modules` and reinstall
 - Check Node.js version
+- On Windows, `npm run build` can fail with `spawn EPERM` from esbuild if the local binary is blocked by antivirus, execution policy, or a locked install. Reinstall dependencies, unblock the esbuild binary, or verify the build in CI/Ubuntu before treating it as an application regression.
 - Verify all dependencies installed
 - Check for syntax errors
 

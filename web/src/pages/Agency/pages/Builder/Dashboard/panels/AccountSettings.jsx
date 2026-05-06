@@ -1,10 +1,10 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useBuilderAuth } from '../../../../../../contexts/BuilderAuthContext';
 import { builderSupabase } from '../../../../../../lib/builderSupabaseClient';
 import styles from '../ProfileSettings.module.css';
 
 export default function AccountSettings() {
-    const { user, profile, refreshProfile } = useBuilderAuth();
+    const { user, profile, refreshProfile, getAccessToken } = useBuilderAuth();
     
     // Form state
     const [displayName, setDisplayName] = useState(profile?.display_name || "");
@@ -20,8 +20,14 @@ export default function AccountSettings() {
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
     const [success, setSuccess] = useState(false);
     const [error, setError] = useState("");
-    
-    const { getAccessToken } = useBuilderAuth();
+    useEffect(() => {
+        if (!profile) return;
+        setDisplayName(profile.display_name || "");
+        setUsername(profile.username || "");
+        setBio(profile.bio || "");
+        setLocation(profile.location || "");
+        setProcessingRestricted(Boolean(profile.processing_restricted));
+    }, [profile]);
     
     const handleSave = async () => {
         setLoading(true);
@@ -36,12 +42,27 @@ export default function AccountSettings() {
                     username,
                     bio,
                     location,
-                    processing_restricted: processingRestricted,
                     updated_at: new Date().toISOString(),
                 })
                 .eq('id', user.id);
 
             if (updateError) throw updateError;
+
+            if (Boolean(profile?.processing_restricted) !== Boolean(processingRestricted)) {
+                const token = await getAccessToken();
+                const restrictionRes = await fetch('/api/settings/processing-restriction', {
+                    method: 'PATCH',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({ processing_restricted: processingRestricted })
+                });
+                const restrictionData = await restrictionRes.json();
+                if (!restrictionRes.ok || restrictionData?.success === false) {
+                    throw new Error(restrictionData?.error || 'Failed to update processing restriction');
+                }
+            }
 
             setSuccess(true);
             await refreshProfile();
@@ -266,6 +287,9 @@ export default function AccountSettings() {
                         <h3 style={{ color: '#fff', fontSize: '20px', fontWeight: '600', margin: '0', fontFamily: 'Outfit, sans-serif' }}>
                             Data Subject Rights (GDPR)
                         </h3>
+                        <p style={{ color: '#888', fontSize: '14px', lineHeight: 1.6, maxWidth: '720px', margin: 0 }}>
+                            Data exports include your profile, projects, published sites, component activity, credit ledger references, and agent session history. Account deletion removes or anonymizes user-scoped data while retaining financial ledger evidence where legally required.
+                        </p>
                         
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                             <label style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer' }}>

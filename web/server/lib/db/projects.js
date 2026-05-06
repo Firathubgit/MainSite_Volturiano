@@ -1,4 +1,6 @@
 import { supabaseAdmin } from '../supabase-admin.js';
+import { assertProjectOwner } from '../security/project-access.js';
+import { RETENTION_DAYS, retentionUntil } from '../retention.js';
 
 // checkGuestLimit removed - no longer supporting guest builds
 
@@ -110,6 +112,14 @@ export async function updateProject(projectId, updates) {
 }
 
 /**
+ * Updates a project only after verifying that the authenticated user owns it.
+ */
+export async function updateProjectForUser(projectId, userId, updates) {
+    await assertProjectOwner(projectId, userId);
+    return updateProject(projectId, updates);
+}
+
+/**
  * Saves a chat history checkpoint snapshot.
  */
 export async function createSnapshot({ projectId, userId, chatIndex, text, files, packages, designSystem, componentPlan }) {
@@ -124,7 +134,8 @@ export async function createSnapshot({ projectId, userId, chatIndex, text, files
             packages: packages || [],
             design_system: designSystem || null,
             component_plan: componentPlan || null,
-            user_id: userId
+            user_id: userId,
+            retention_until: retentionUntil(RETENTION_DAYS.snapshots)
         };
 
         // Convert string size roughly to bytes (2 bytes per char generally, simplified)
@@ -143,4 +154,12 @@ export async function createSnapshot({ projectId, userId, chatIndex, text, files
     } catch (err) {
         console.error('[DB] createSnapshot exception:', err);
     }
+}
+
+/**
+ * Saves a snapshot only after verifying that the authenticated user owns the project.
+ */
+export async function createSnapshotForUser(snapshot) {
+    await assertProjectOwner(snapshot?.projectId, snapshot?.userId);
+    return createSnapshot(snapshot);
 }

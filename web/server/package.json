@@ -4,7 +4,8 @@
   "type": "module",
   "scripts": {
     "start": "node index.js",
-    "dev": "node --watch index.js"
+    "dev": "node --watch index.js",
+    "check:syntax": "node --check index.js"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^1.1.0",

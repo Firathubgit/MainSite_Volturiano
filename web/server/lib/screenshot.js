@@ -1,6 +1,11 @@
 import puppeteer from 'puppeteer';
 import { supabaseAdmin } from './supabase-admin.js';
 
+const CHROMIUM_NO_SANDBOX = process.env.CHROMIUM_NO_SANDBOX === 'true';
+const chromiumArgs = CHROMIUM_NO_SANDBOX
+    ? ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage']
+    : ['--disable-dev-shm-usage'];
+
 export async function captureAndUploadScreenshot(url, projectId) {
     if (!supabaseAdmin || !url || !projectId) return null;
     let browser = null;
@@ -15,7 +20,7 @@ export async function captureAndUploadScreenshot(url, projectId) {
         console.log(`[Screenshot Agent] 🌐 8s elapsed. Launching Headless Chromium...`);
         browser = await puppeteer.launch({
             headless: true,
-            args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
+            args: chromiumArgs,
         });
         const page = await browser.newPage();
         await page.setViewport({ width: 1440, height: 900 });
@@ -83,7 +88,7 @@ export async function captureForVerification(sandboxUrl, options = {}) {
     try {
         browser = await puppeteer.launch({
             headless: true,
-            args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage']
+            args: chromiumArgs
         });
         const page = await browser.newPage();
         await page.setViewport({ width: 1440, height: 900 });

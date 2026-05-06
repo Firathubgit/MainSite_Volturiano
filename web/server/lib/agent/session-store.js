@@ -1,5 +1,6 @@
 import crypto from 'node:crypto';
 import { supabaseAdmin } from '../supabase-admin.js';
+import { RETENTION_DAYS, retentionUntil } from '../retention.js';
 
 const MAX_CONTENT_CHARS = 12000;
 const MAX_JSON_CHARS = 20000;
@@ -89,7 +90,8 @@ export async function appendAgentMessage({ sessionId = null, turnId = null, role
         role,
         content: trimText(content),
         blocks: sanitizeJson(blocks, []),
-        token_usage: sanitizeJson(tokenUsage, null)
+        token_usage: sanitizeJson(tokenUsage, null),
+        retention_until: retentionUntil(RETENTION_DAYS.agentMessages)
       })
       .select('id')
       .single();
@@ -116,7 +118,8 @@ export async function appendAgentToolEvent({ sessionId = null, turnId = null, to
         args: sanitizeJson(args, {}),
         result: sanitizeJson(result, null),
         success,
-        duration_ms: durationMs
+        duration_ms: durationMs,
+        retention_until: retentionUntil(RETENTION_DAYS.agentToolEvents)
       })
       .select('id')
       .single();

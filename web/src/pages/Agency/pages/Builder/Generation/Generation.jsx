@@ -145,13 +145,38 @@ function filesMapToGeneratedFiles(filesMap = {}, manifestFiles = []) {
   return [...contentFiles, ...manifestOnlyFiles].sort((a, b) => a.path.localeCompare(b.path));
 }
 
-function mergeGeneratedFiles(primaryFiles = [], incomingFiles = []) {
+/**
+ * Merge two file lists for the code/file-tree panel.
+ *
+ * `primaryFiles` is the locally-accumulated state (e.g. the agent's streaming
+ * output, or the cached generation history). `incomingFiles` is the freshly
+ * fetched authoritative state (e.g. the sandbox listing after a turn).
+ *
+ * When `authoritativePathSet` is provided, primary entries whose path is NOT
+ * in that set are pruned UNLESS they are still streaming. This is what makes
+ * file deletions in the sandbox actually disappear from the UI tree — without
+ * it, the union would keep the stale entry forever.
+ *
+ * When `authoritativePathSet` is null (e.g. while a stream is in-flight and
+ * we haven't yet refetched the sandbox), the merge is a plain union so we
+ * don't drop files mid-stream.
+ */
+function mergeGeneratedFiles(primaryFiles = [], incomingFiles = [], { authoritativePathSet = null } = {}) {
   const merged = new Map();
   for (const file of primaryFiles) {
-    if (file?.path) merged.set(normalizeSandboxFilePath(file.path), { ...file, path: normalizeSandboxFilePath(file.path) });
+    if (!file?.path) continue;
+    const path = normalizeSandboxFilePath(file.path);
+    if (authoritativePathSet && !authoritativePathSet.has(path)) {
+      const isStreaming = file.streaming === true || file.completed === false;
+      if (!isStreaming) continue;
+    }
+    merged.set(path, { ...file, path });
   }
   for (const file of incomingFiles) {
-    if (file?.path) merged.set(normalizeSandboxFilePath(file.path), { ...file, path: normalizeSandboxFilePath(file.path) });
+    if (file?.path) {
+      const path = normalizeSandboxFilePath(file.path);
+      merged.set(path, { ...file, path });
+    }
   }
   return [...merged.values()].sort((a, b) => a.path.localeCompare(b.path));
 }
@@ -596,7 +621,7 @@ function AgentProgressLine({ text, metadata }) {
 }
 
 function getAgentProgressStats(metadata) {
-  if (metadata?.kind !== 'edit') return null;
+  if (metadata?.kind !== 'edit' && metadata?.kind !== 'delete') return null;
   const added = Math.max(0, Number(metadata.linesAdded || 0));
   const removed = Math.max(0, Number(metadata.linesRemoved || 0));
   if (!Number.isFinite(added) || !Number.isFinite(removed)) return null;
@@ -990,17 +1015,22 @@ export default function Generation() {
     const sandboxGeneratedFiles = filesMapToGeneratedFiles(filesMap, manifestFiles);
     if (sandboxGeneratedFiles.length === 0) return;
 
+    // The sandbox listing is authoritative on every refresh: anything we still
+    // have in `prev.files` that isn't in this snapshot (and isn't actively
+    // streaming) was deleted in the sandbox and must disappear from the UI.
+    const authoritativePathSet = new Set(sandboxGeneratedFiles.map(f => f.path));
+
     setGenerationProgress(prev => ({
       ...prev,
-      files: mergeGeneratedFiles(prev.files, sandboxGeneratedFiles)
+      files: mergeGeneratedFiles(prev.files, sandboxGeneratedFiles, { authoritativePathSet })
     }));
 
     setSelectedFile(prev => {
-      if (prev && sandboxGeneratedFiles.some(file => file.path === prev)) return prev;
+      if (prev && authoritativePathSet.has(prev)) return prev;
       return sandboxGeneratedFiles.find(file => file.path === 'src/App.jsx')?.path
         || sandboxGeneratedFiles.find(file => file.path.endsWith('/App.jsx'))?.path
         || sandboxGeneratedFiles[0]?.path
-        || prev;
+        || null;
     });
   }, []);
 
@@ -3438,7 +3468,22 @@ Just position the new components in a logical order (e.g. after the Hero or befo
   };
 
   const codeFiles = useMemo(() => {
-    return mergeGeneratedFiles(generationProgress.files, filesMapToGeneratedFiles(sandboxFiles, sandboxFileManifest));
+    const sandboxGeneratedFiles = filesMapToGeneratedFiles(sandboxFiles, sandboxFileManifest);
+    // Once the sandbox has been fetched at least once, treat its listing as
+    // authoritative for what still exists. Any path in generationProgress.files
+    // that is not in the sandbox AND isn't actively streaming is stale and
+    // must be pruned (otherwise deleted files keep showing in the file tree).
+    const sandboxKnowsState =
+      Object.keys(sandboxFiles || {}).length > 0
+      || (Array.isArray(sandboxFileManifest) && sandboxFileManifest.length > 0);
+    const authoritativePathSet = sandboxKnowsState
+      ? new Set(sandboxGeneratedFiles.map(f => f.path))
+      : null;
+    return mergeGeneratedFiles(
+      generationProgress.files,
+      sandboxGeneratedFiles,
+      { authoritativePathSet }
+    );
   }, [generationProgress.files, sandboxFiles, sandboxFileManifest]);
   const fileTree = useMemo(() => buildFileTree(codeFiles), [codeFiles]);
 
@@ -4557,6 +4602,9 @@ Just position the new components in a logical order (e.g. after the Hero or befo
                           exit={{ opacity: 0, scale: 0.95, y: 10 }}
                           transition={{ duration: 0.2, ease: "easeOut" }}
                         >
+                          {/* PUBLISH FEATURE TEMPORARILY DISABLED — UI hidden, backend untouched.
+                              To re-enable, simply un-comment the button below. */}
+                          {/*
                           <button
                             className={styles.viewportOption}
                             disabled={isPublishing}
@@ -4571,6 +4619,7 @@ Just position the new components in a logical order (e.g. after the Hero or befo
                             <svg stroke="currentColor" fill="none" strokeWidth="2" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round" height="16" width="16" xmlns="http://www.w3.org/2000/svg"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
                             <span>{isPublishing ? 'Publishing...' : (existingPublishedSlug ? 'Update' : 'Publish')}</span>
                           </button>
+                          */}
 
                           <button
                             className={styles.viewportOption}

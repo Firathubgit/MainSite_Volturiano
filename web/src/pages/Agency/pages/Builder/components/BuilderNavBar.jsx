@@ -153,26 +153,7 @@ export function BuilderNavBar() {
                   aria-expanded={dropdownOpen}
                   style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
                 >
-                  {avatarUrl ? (
-                    <img
-                      src={avatarUrl}
-                      alt="Profile"
-                      style={{
-                        width: 32, height: 32, borderRadius: '50%',
-                        objectFit: 'cover', border: '2px solid rgba(255,255,255,0.15)',
-                      }}
-                    />
-                  ) : (
-                    <div style={{
-                      width: 32, height: 32, borderRadius: '50%',
-                      background: 'linear-gradient(135deg, #f97316, #ea580c)',
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      fontSize: '14px', fontWeight: '700', color: '#fff',
-                      border: '2px solid rgba(255,255,255,0.15)',
-                    }}>
-                      {(displayName || displayEmail || '?')[0].toUpperCase()}
-                    </div>
-                  )}
+                  <AvatarBadge avatarUrl={avatarUrl} displayName={displayName} displayEmail={displayEmail} />
                   <ChevronDownIcon
                     size={14}
                     style={{
@@ -279,6 +260,68 @@ export function BuilderNavBar() {
   );
 }
 
+
+// ─────────────────────────────────────────────────────────────
+// Avatar Badge
+// Renders the user's profile picture with a robust letter fallback.
+// Browsers don't auto-fall back when an <img> 404s/CORS-fails — they
+// just show the broken-image icon and the alt text ("Profile"). We
+// listen for onError and a few "obviously not a URL" cases so any
+// dead/blocked avatar URL cleanly degrades to the gradient initial.
+// ─────────────────────────────────────────────────────────────
+function isValidAvatarUrl(value) {
+  if (typeof value !== 'string') return false;
+  const trimmed = value.trim();
+  if (!trimmed) return false;
+  return /^(https?:\/\/|\/\/|\/|data:image\/|blob:)/i.test(trimmed);
+}
+
+function AvatarBadge({ avatarUrl, displayName, displayEmail }) {
+  const [imageBroken, setImageBroken] = useState(false);
+  const lastTriedUrlRef = useRef(null);
+
+  // If the profile changes its avatar URL, give the new URL a chance.
+  useEffect(() => {
+    if (lastTriedUrlRef.current !== avatarUrl) {
+      lastTriedUrlRef.current = avatarUrl;
+      setImageBroken(false);
+    }
+  }, [avatarUrl]);
+
+  const showImage = isValidAvatarUrl(avatarUrl) && !imageBroken;
+  const initial = (displayName || displayEmail || '?').trim().charAt(0).toUpperCase() || '?';
+
+  if (showImage) {
+    return (
+      <img
+        src={avatarUrl}
+        alt=""
+        referrerPolicy="no-referrer"
+        onError={() => setImageBroken(true)}
+        style={{
+          width: 32, height: 32, borderRadius: '50%',
+          objectFit: 'cover', border: '2px solid rgba(255,255,255,0.15)',
+          background: 'rgba(255,255,255,0.05)',
+        }}
+      />
+    );
+  }
+
+  return (
+    <div
+      aria-label={`Avatar for ${displayName || displayEmail || 'account'}`}
+      style={{
+        width: 32, height: 32, borderRadius: '50%',
+        background: 'linear-gradient(135deg, #f97316, #ea580c)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        fontSize: '14px', fontWeight: '700', color: '#fff',
+        border: '2px solid rgba(255,255,255,0.15)',
+      }}
+    >
+      {initial}
+    </div>
+  );
+}
 
 // ─────────────────────────────────────────────────────────────
 // Credit Badge — Glassmorphism "Creative Energy" Indicator

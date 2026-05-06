@@ -960,26 +960,41 @@ function buildToolDefinitions() {
       {
         name: 'delete_file',
         policy: makeToolPolicy({
-          permission: TOOL_PERMISSION_MODES.DESTRUCTIVE,
+          // Treated as a normal workspace-write authoring tool. The
+          // confirmation token below is the only deliberate-act guard so the
+          // model can't delete a file by accident on a borderline read.
+          // Protected core files (package.json, vite.config.js, src/main.jsx,
+          // src/App.jsx, index.html, etc.) are still rejected at the
+          // sandbox-fs layer regardless of what the model passes.
+          permission: TOOL_PERMISSION_MODES.WORKSPACE_WRITE,
           category: TOOL_CATEGORIES.FILE_DELETE,
           mutating: true,
           sideEffect: true,
-          requiresFeature: 'destructive',
           requiresConfirmation: true,
           confirmationToken: 'DELETE_FILE'
         }),
-        description: 'Delete an obsolete generated project file. Only use when the user explicitly asked to remove that file and you have confirmation.',
+        description: [
+          'Permanently remove a project file from the sandbox (rm -f).',
+          'USE THIS — instead of replace_file with an empty/placeholder stub —',
+          'whenever the user asks to delete, remove, or get rid of a file, OR',
+          'when a generated component is no longer referenced anywhere.',
+          'After deleting, also remove any `import` statements and JSX usages',
+          'that referenced the file in other source files (use edit_file).',
+          'Pass confirmation: "DELETE_FILE" exactly. Core build files',
+          '(package.json, vite.config.js, src/main.jsx, src/App.jsx,',
+          'index.html, etc.) are protected and cannot be deleted.'
+        ].join(' '),
         parameters: z.object({
-          path: z.string().describe('Relative path to the file to delete.'),
-          reason: z.string().nullable().describe('Short reason the file is obsolete.'),
-          confirmation: z.string().describe('Must be exactly DELETE_FILE.')
+          path: z.string().describe('Relative path to the file to delete (e.g. "src/components/Footer.jsx").'),
+          reason: z.string().nullable().describe('Short reason for deletion (e.g. "User asked to remove the footer").'),
+          confirmation: z.string().describe('Must be the exact string DELETE_FILE.')
         }),
         jsonSchema: {
           type: 'object',
           properties: {
             path: { type: 'string', description: 'Relative file path' },
-            reason: { type: 'string', description: 'Reason the file is obsolete' },
-            confirmation: { type: 'string', description: 'Must be exactly DELETE_FILE' }
+            reason: { type: 'string', description: 'Reason the file is being removed' },
+            confirmation: { type: 'string', description: 'Must be the exact string DELETE_FILE' }
           },
           required: ['path', 'reason', 'confirmation']
         },

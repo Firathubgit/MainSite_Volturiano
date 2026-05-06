@@ -2,25 +2,91 @@ name: CI
 
 on:
   push:
-    branches: [ main, develop ]
+    branches: [main, develop]
   pull_request:
-    branches: [ main, develop ]
+    branches: [main, develop]
 
 jobs:
-  build-web:
+  launch-safety:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: web
+    timeout-minutes: 25
+    env:
+      NODE_ENV: test
+      CI: true
+      PLAYWRIGHT_PORT: 5173
+      PLAYWRIGHT_BASE_URL: http://127.0.0.1:5173
+      CORS_ORIGIN: http://127.0.0.1:5173
+      VITE_BUILDER_SUPABASE_URL: ${{ secrets.VITE_BUILDER_SUPABASE_URL }}
+      VITE_BUILDER_SUPABASE_ANON_KEY: ${{ secrets.VITE_BUILDER_SUPABASE_ANON_KEY }}
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
+      STRIPE_WEBHOOK_SECRET: ${{ secrets.STRIPE_WEBHOOK_SECRET }}
+
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: 'npm'
-          cache-dependency-path: web/package.json
-      - name: Install
-        run: npm ci || npm i --no-fund --no-audit
-      - name: Build
-        run: npm run build --if-present
+          cache: npm
+          cache-dependency-path: |
+            web/package-lock.json
+            web/package.json
+            web/server/package-lock.json
+            web/server/package.json
 
+      - name: Install web dependencies
+        working-directory: web
+        run: npm install --no-fund --no-audit
+
+      - name: Install server dependencies
+        working-directory: web/server
+        run: npm install --no-fund --no-audit
+
+      - name: Backup scripts smoke plan
+        run: |
+          bash scripts/backups/backup-db.sh --plan
+          bash scripts/backups/backup-storage-manifest.sh --plan
+          bash scripts/backups/backup-storage-objects.sh --plan
+          bash scripts/backups/restore-db.sh --plan --backup-file backups/db/example.dump
+          bash scripts/backups/test-restore.sh --plan
+
+      - name: Server syntax smoke
+        working-directory: web/server
+        run: npm run check:syntax
+
+      - name: Build frontend
+        working-directory: web
+        run: npm run build
+
+      - name: Run launch safety tests
+        working-directory: web
+        run: npm run test:ci
+
+      - name: Install Playwright browsers
+        working-directory: web
+        run: npx playwright install --with-deps chromium
+
+      - name: Run Playwright smoke tests
+        working-directory: web
+        run: npm run test:e2e
+
+      - name: Upload Vitest results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: vitest-results
+          path: |
+            web/test-results
+          if-no-files-found: ignore
+
+      - name: Upload Playwright artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-artifacts
+          path: |
+            web/playwright-report
+            web/test-results
+          if-no-files-found: ignore

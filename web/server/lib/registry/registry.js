@@ -560,7 +560,7 @@ export async function getBundleAsync(componentId, format = 'fileblocks') {
                 const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(componentId);
                 console.log(`[Registry] Querying ${isUuid ? 'UUID ID' : 'SLUG component_id'}: "${componentId}"`);
 
-                let query = supabase.from('components').select('bundle_code');
+                let query = supabase.from('components').select('bundle_code,status').eq('status', 'active');
                 if (isUuid) {
                     query = query.eq('id', componentId);
                 } else {
@@ -782,6 +782,7 @@ export async function getTemplateAsync(templateId) {
                 .from('templates')
                 .select('*')
                 .eq('template_id', templateId)
+                .eq('status', 'active')
                 .single();
 
             if (error) {

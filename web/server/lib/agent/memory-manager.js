@@ -1,4 +1,5 @@
 import { supabaseAdmin } from '../supabase-admin.js';
+import { RETENTION_DAYS, retentionUntil } from '../retention.js';
 
 const DEFAULT_MEMORY_LIMIT = 12;
 const MAX_MEMORY_CONTENT = 420;
@@ -120,7 +121,8 @@ export async function persistTurnMemories({
           .update({
             importance: Math.max(existing.importance, importance),
             metadata,
-            updated_at: new Date().toISOString()
+            updated_at: new Date().toISOString(),
+            retention_until: retentionUntil(RETENTION_DAYS.agentMemory)
           })
           .eq('id', existing.id)
           .select('id, memory_type');
@@ -135,7 +137,8 @@ export async function persistTurnMemories({
             memory_type: memoryType,
             content,
             metadata,
-            importance
+            importance,
+            retention_until: retentionUntil(RETENTION_DAYS.agentMemory)
           })
           .select('id, memory_type');
         if (inserted) results.push(inserted);

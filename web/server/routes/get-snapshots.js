@@ -1,4 +1,5 @@
 import { supabaseAdmin } from '../lib/supabase-admin.js';
+import { assertProjectOwner, sendOwnershipError } from '../lib/security/project-access.js';
 
 export default async function getSnapshots(req, res) {
     try {
@@ -8,6 +9,8 @@ export default async function getSnapshots(req, res) {
         if (!projectId) {
             return res.status(400).json({ success: false, error: 'projectId is required' });
         }
+
+        await assertProjectOwner(projectId, userId);
 
         let query = supabaseAdmin
             .from('snapshots')
@@ -31,6 +34,9 @@ export default async function getSnapshots(req, res) {
         return res.status(200).json({ success: true, snapshots: data });
 
     } catch (err) {
+        if (err?.name === 'OwnershipError') {
+            return sendOwnershipError(res, err);
+        }
         console.error('[API] /snapshots get exception:', err);
         res.status(500).json({ success: false, error: 'Internal server error.' });
     }

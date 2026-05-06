@@ -77,7 +77,8 @@ function ProgressStepper({ submissionId, token, onClose }) {
     const [currentStep, setCurrentStep] = useState('queued');
     const [progress, setProgress] = useState(10);
     const [result, setResult] = useState(null);
-    const eventSourceRef = useRef(null);
+    const pollTimerRef = useRef(null);
+    const cancelledRef = useRef(false);
 
     useEffect(() => {
         if (!submissionId) return;
@@ -85,70 +86,106 @@ function ProgressStepper({ submissionId, token, onClose }) {
         // Step 1 is immediate (we already validated client-side)
         setCurrentStep('validate');
         setProgress(25);
-        const setupEventSource = () => {
-            const url = `/api/community/submission-status/${submissionId}?token=${token || ''}`;
 
-            const es = new EventSource(url);
-            eventSourceRef.current = es;
+        cancelledRef.current = false;
+        let pollCount = 0;
+        const MAX_POLLS = 60; // ~120s @ 2s interval
+        const POLL_INTERVAL_MS = 2000;
 
-            es.onmessage = (event) => {
-                try {
-                    const data = JSON.parse(event.data);
+        // We poll a JSON endpoint with a Bearer token. We can't use
+        // EventSource here because it can't attach Authorization
+        // headers, and the server (correctly) refuses query-string
+        // tokens for security.
+        const pollOnce = async () => {
+            if (cancelledRef.current) return;
+            pollCount++;
+            try {
+                const res = await fetch(`/api/community/submission-status/${submissionId}`, {
+                    method: 'GET',
+                    headers: token ? { Authorization: `Bearer ${token}` } : {},
+                });
 
-                    if (data.progress) setProgress(data.progress);
-
-                    if (data.step === 'analyzing') {
-                        setCurrentStep('analyze');
-                        setProgress(data.progress || 65);
-                    }
-
-                    if (data.step === 'complete') {
-                        setCurrentStep('complete');
-                        setProgress(100);
-                        setResult({
-                            status: data.status,
-                            qualityScore: data.qualityScore,
-                            message: data.message,
-                        });
-                        es.close();
-                    }
-
-                    if (data.step === 'failed' || data.step === 'timeout') {
+                if (!res.ok) {
+                    // 401/403/404 — surface as failure so the user isn't stuck
+                    if (res.status === 401 || res.status === 403) {
                         setCurrentStep('failed');
-                        setResult({
-                            status: 'failed',
-                            message: data.message || 'Processing failed.',
-                        });
-                        es.close();
+                        setResult({ status: 'failed', message: 'Session expired. Please refresh and sign in again.' });
+                        return;
                     }
-                } catch (err) {
-                    console.warn('SSE parse error:', err);
+                    if (res.status === 404) {
+                        setCurrentStep('failed');
+                        setResult({ status: 'failed', message: 'Submission not found.' });
+                        return;
+                    }
+                    throw new Error(`HTTP ${res.status}`);
                 }
-            };
 
-            es.onerror = () => {
-                // SSE reconnects automatically, but set a fallback
-                console.warn('[ComponentSubmit] SSE connection error');
-            };
+                const data = await res.json();
+                if (typeof data.progress === 'number') setProgress(data.progress);
+
+                if (data.step === 'analyzing') {
+                    setCurrentStep('analyze');
+                    if (typeof data.progress === 'number') setProgress(data.progress);
+                    else setProgress(65);
+                }
+
+                if (data.step === 'complete' || data.done === true) {
+                    setCurrentStep('complete');
+                    setProgress(100);
+                    setResult({
+                        status: data.status,
+                        qualityScore: data.qualityScore,
+                        message: data.message,
+                    });
+                    return;
+                }
+
+                if (data.step === 'failed' || data.step === 'timeout') {
+                    setCurrentStep('failed');
+                    setResult({
+                        status: 'failed',
+                        message: data.message || 'Processing failed.',
+                    });
+                    return;
+                }
+
+                if (pollCount >= MAX_POLLS) {
+                    setCurrentStep('failed');
+                    setResult({
+                        status: 'failed',
+                        message: 'Analysis is taking longer than expected. Check "My Submissions" later.',
+                    });
+                    return;
+                }
+
+                pollTimerRef.current = setTimeout(pollOnce, POLL_INTERVAL_MS);
+            } catch (err) {
+                console.warn('[ComponentSubmit] Poll error:', err.message || err);
+                if (pollCount >= MAX_POLLS) {
+                    setCurrentStep('failed');
+                    setResult({ status: 'failed', message: 'Connection lost. Please refresh.' });
+                    return;
+                }
+                // Transient error — retry on next tick
+                pollTimerRef.current = setTimeout(pollOnce, POLL_INTERVAL_MS);
+            }
         };
 
-        setupEventSource();
+        // Kick off the first poll right away
+        pollOnce();
 
-        // Simulate step 2 (screenshot) after a short delay
+        // Visual hint that we've moved past validation while we wait
         const screenshotTimer = setTimeout(() => {
-            if (!result) {
-                setCurrentStep('screenshot');
-                setProgress(40);
-            }
+            setCurrentStep((prev) => (prev === 'validate' ? 'screenshot' : prev));
+            setProgress((prev) => (prev < 40 ? 40 : prev));
         }, 3000);
 
         return () => {
+            cancelledRef.current = true;
             clearTimeout(screenshotTimer);
-            if (eventSourceRef.current) {
-                eventSourceRef.current.close();
-            }
+            if (pollTimerRef.current) clearTimeout(pollTimerRef.current);
         };
-    }, [submissionId]);
+    }, [submissionId, token]);
 
     function getStepStatus(stepId) {
         const stepOrder = ['validate', 'screenshot', 'analyze', 'complete'];
@@ -188,7 +225,7 @@ function ProgressStepper({ submissionId, token, onClose }) {
                 {result && (
                     <>
                         <div className={`${styles.resultBadge} ${styles.success}`}>
-                            {result.message || 'Component successfully published to the community!'}
+                            {result.message || 'Component prepared for admin review.'}
                         </div>
                         <button className={styles.closeButton} onClick={onClose}>
                             Close
@@ -309,6 +346,9 @@ export default function ComponentSubmit() {
                 cssCode: cssCode || undefined,
                 thumbnail: thumbnailBase64 || undefined,
                 video: videoBase64 || undefined,
+                ipAttestationAccepted: agreedToLicense,
+                licenseGrantAccepted: agreedToLicense,
+                attestationVersion: 'community-submission-v1',
             };
 
             console.log(`[DEBUG-SUBMIT] -> Payload JSON length: ${JSON.stringify(payload).length} bytes`);

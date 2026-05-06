@@ -1,6 +1,7 @@
-import { createSnapshot } from '../lib/db/projects.js';
+import { createSnapshotForUser } from '../lib/db/projects.js';
 import { captureAndUploadScreenshot } from '../lib/screenshot.js';
-import { updateProject } from '../lib/db/projects.js';
+import { updateProjectForUser } from '../lib/db/projects.js';
+import { sendOwnershipError } from '../lib/security/project-access.js';
 
 export default async function saveSnapshot(req, res) {
     try {
@@ -23,7 +24,7 @@ export default async function saveSnapshot(req, res) {
             return res.status(200).json({ success: true, skipped: true, reason: 'Empty snapshot blocked' });
         }
 
-        await createSnapshot({
+        await createSnapshotForUser({
             projectId,
             userId,
             chatIndex,
@@ -40,8 +41,9 @@ export default async function saveSnapshot(req, res) {
             console.log(`[Snapshot Endpoint] Firing background screenshot job for url: ${sandboxUrl}`);
             captureAndUploadScreenshot(sandboxUrl, projectId).then(thumbnailUrl => {
                 if (thumbnailUrl) {
-                    updateProject(projectId, { thumbnail_url: thumbnailUrl });
+                    return updateProjectForUser(projectId, userId, { thumbnail_url: thumbnailUrl });
                 }
+                return null;
             }).catch(e => console.error('[API] Screenshot background job failed:', e));
         } else {
             console.log(`[Snapshot Endpoint] ⚠️ No sandboxUrl provided! Skipping screenshot generation.`);
@@ -50,6 +52,9 @@ export default async function saveSnapshot(req, res) {
         return res.status(200).json({ success: true });
 
     } catch (err) {
+        if (err?.name === 'OwnershipError') {
+            return sendOwnershipError(res, err);
+        }
         console.error('[API] /snapshots error:', err);
         res.status(500).json({ success: false, error: 'Internal server error saving snapshot.' });
     }

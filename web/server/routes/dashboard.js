@@ -1,6 +1,9 @@
 import { Router } from 'express';
 import { supabaseAdmin } from '../lib/supabase-admin.js';
 import { requireAuth } from '../middleware/authMiddleware.js';
+import { assertPublishedSiteOwner, sendOwnershipError } from '../lib/security/project-access.js';
+import { updateProjectForUser } from '../lib/db/projects.js';
+import { logAuditEvent } from '../lib/audit/audit-logger.js';
 
 const router = Router();
 
@@ -173,6 +176,17 @@ router.delete('/projects/:id', requireAuth, async (req, res) => {
         }
 
         console.log(`[Dashboard] ✅ COMPLETE: Project ${projectId} totally vaporized.\n`);
+        void logAuditEvent(req, {
+            action: 'project_deleted',
+            entityType: 'project',
+            entityId: projectId,
+            projectId,
+            metadata: {
+                projectName: project.name,
+                publishedSiteCount: publishedSites?.length || 0,
+                hadThumbnail: Boolean(project.thumbnail_url)
+            }
+        });
         res.json({ success: true, message: 'Project and all associated data deleted successfully' });
     } catch (err) {
         console.error('\n[Dashboard] ❌ DELETION SEQUENCE FAILED:', err.message);
@@ -190,6 +204,8 @@ router.post('/sites/:id/toggle', requireAuth, async (req, res) => {
         const siteId = req.params.id;
         const { status } = req.body;
 
+        const site = await assertPublishedSiteOwner(siteId, userId);
+
         const { error } = await supabaseAdmin
             .from('published_sites')
             .update({ status })
@@ -198,8 +214,18 @@ router.post('/sites/:id/toggle', requireAuth, async (req, res) => {
 
         if (error) throw error;
 
+        void logAuditEvent(req, {
+            action: status === 'active' ? 'published_site_enabled' : 'published_site_unpublished',
+            entityType: 'published_site',
+            entityId: siteId,
+            projectId: site.project_id || null,
+            metadata: { status }
+        });
         res.json({ success: true, message: `Site status updated to ${status}` });
     } catch (err) {
+        if (err?.name === 'OwnershipError') {
+            return sendOwnershipError(res, err);
+        }
         console.error('[Dashboard] Error toggling site status:', err.message);
         res.status(500).json({ success: false, error: 'Failed to toggle site status' });
     }
@@ -214,17 +240,8 @@ router.delete('/sites/:id', requireAuth, async (req, res) => {
         const userId = req.user.id;
         const siteId = req.params.id;
 
-        // 1. Fetch site to verify ownership
-        const { data: site, error: fetchErr } = await supabaseAdmin
-            .from('published_sites')
-            .select('*')
-            .eq('id', siteId)
-            .eq('user_id', userId)
-            .single();
-
-        if (fetchErr || !site) {
-            return res.status(404).json({ success: false, error: 'Site not found or not owned by user' });
-        }
+        // 1. Fetch site and verify ownership
+        const site = await assertPublishedSiteOwner(siteId, userId, { select: '*' });
 
         const bucketName = site.storage_bucket || 'published-sites';
         const folderSlug = site.storage_path ? site.storage_path.replace(/\/$/, '') : site.slug;
@@ -246,21 +263,36 @@ router.delete('/sites/:id', requireAuth, async (req, res) => {
         const { error: deleteErr } = await supabaseAdmin
             .from('published_sites')
             .delete()
-            .eq('id', siteId);
+            .eq('id', siteId)
+            .eq('user_id', userId);
 
         if (deleteErr) throw deleteErr;
 
         // 4. Update the related project record, if it exists
         if (site.project_id) {
-            await supabaseAdmin.from('projects').update({
+            await updateProjectForUser(site.project_id, userId, {
                 build_status: 'draft',
                 published_url: null,
                 published_slug: null
-            }).eq('id', site.project_id);
+            });
         }
 
+        void logAuditEvent(req, {
+            action: 'published_site_deleted',
+            entityType: 'published_site',
+            entityId: siteId,
+            projectId: site.project_id || null,
+            metadata: {
+                slug: site.slug,
+                storageBucket: bucketName,
+                storagePath: site.storage_path || null
+            }
+        });
         res.json({ success: true, message: 'Site unpublished and deleted successfully' });
     } catch (err) {
+        if (err?.name === 'OwnershipError') {
+            return sendOwnershipError(res, err);
+        }
         console.error('[Dashboard] Error deleting live site:', err.message);
         res.status(500).json({ success: false, error: 'Failed to delete site' });
     }

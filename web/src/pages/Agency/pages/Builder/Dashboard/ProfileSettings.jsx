@@ -292,8 +292,11 @@ export default function ProfileSettings() {
                     </div>
 
                     {/* Right Side Navigation Menu */}
+                    {/* NOTE: 'Projects' tab is temporarily hidden while the publish feature is disabled.
+                        To re-enable, add 'Projects' back into the array below (between 'Websites' and 'Components')
+                        and un-comment the matching `activeTab === 'Projects'` content block lower in this file. */}
                     <div className={styles.rightNavMenu}>
-                        {['Websites', 'Projects', 'Components', 'Billing', 'Profile', 'Settings'].map((item) => (
+                        {['Websites', /* 'Projects', */ 'Components', 'Billing', 'Profile', 'Settings'].map((item) => (
                             <button
                                 key={item}
                                 onClick={() => setActiveTab(item)}
@@ -331,11 +334,16 @@ export default function ProfileSettings() {
                         </div>
                     )}
 
+                    {/* PUBLISHED SITES TAB ("Projects") TEMPORARILY DISABLED.
+                        Un-comment this block (and the 'Projects' entry in the tab list above)
+                        to restore the UI when the publish feature is re-enabled. */}
+                    {/*
                     {activeTab === 'Projects' && (
                         <div style={{ width: '100%', padding: '20px' }}>
                             <PublishedSites onDelete={(id) => handleDeleteWebsite(id, 'published')} />
                         </div>
                     )}
+                    */}
 
                     {activeTab === 'Billing' && (
                         <div style={{ width: '100%', padding: '20px' }}>

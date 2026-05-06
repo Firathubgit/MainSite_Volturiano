@@ -4,6 +4,7 @@
 
 import { createHash } from 'crypto';
 import { supabaseAdmin } from '../../lib/supabase-admin.js';
+import { parseDataUriMedia } from '../../lib/community/media-validation.js';
 
 // ═══════════════════════════════════════════════════════════════
 // ALLOWED_PACKAGES: Must exactly match apply-ai-code-stream.js (Phase S5)
@@ -60,7 +61,18 @@ export default async function submitComponent(req, res) {
             return res.status(401).json({ success: false, error: 'Authentication required' });
         }
 
-        const { name, description, categoryHint, code, cssCode, thumbnail, video } = req.body;
+        const {
+            name,
+            description,
+            categoryHint,
+            code,
+            cssCode,
+            thumbnail,
+            video,
+            ipAttestationAccepted,
+            licenseGrantAccepted,
+            attestationVersion = 'community-submission-v1'
+        } = req.body;
 
         // ─── VALIDATION (all sync, <50ms) ───
 
@@ -76,6 +88,30 @@ export default async function submitComponent(req, res) {
         }
         if (code.length > 100000) {
             return res.status(400).json({ success: false, error: 'Code must be under 100KB' });
+        }
+        if (!ipAttestationAccepted || !licenseGrantAccepted) {
+            return res.status(400).json({
+                success: false,
+                error: 'You must confirm that you own or have rights to submit this component and license it for community reuse.'
+            });
+        }
+
+        try {
+            parseDataUriMedia(thumbnail, {
+                label: 'Thumbnail',
+                allowedTypes: ['image/png', 'image/jpeg', 'image/webp'],
+                maxBytes: 5 * 1024 * 1024
+            });
+            parseDataUriMedia(video, {
+                label: 'Preview video',
+                allowedTypes: ['video/mp4', 'video/webm'],
+                maxBytes: 15 * 1024 * 1024
+            });
+        } catch (mediaError) {
+            return res.status(mediaError.status || 400).json({
+                success: false,
+                error: mediaError.message
+            });
         }
 
         // 2. Must contain a valid JSX export
@@ -200,6 +236,8 @@ export default async function submitComponent(req, res) {
                 user_id: userId,
                 submission_type: 'component',
                 name: name,
+                description: description || null,
+                category_hint: categoryHint || null,
                 code: code,
                 css_code: cssCode || null,
                 content_hash: contentHash,
@@ -207,6 +245,10 @@ export default async function submitComponent(req, res) {
                 video_base64: video || null,
                 quality_score: null,
                 status: 'processing',
+                ip_attestation_accepted_at: new Date().toISOString(),
+                license_grant_accepted_at: new Date().toISOString(),
+                attestation_version: attestationVersion,
+                license_type: 'MIT',
             })
             .select('id')
             .single();
@@ -230,22 +272,14 @@ export default async function submitComponent(req, res) {
             // Submission exists but job failed — mark for retry
         }
 
-        // ─── REPUTATION: +5 for submitting ───
-        try {
-            await supabaseAdmin.rpc('increment_reputation', {
-                p_user_id: userId,
-                p_points: 5,
-            });
-        } catch (repErr) {
-            console.warn('[submit-component] Reputation increment failed (non-fatal):', repErr.message);
-        }
+        // Reputation is awarded only after explicit admin approval.
 
         console.log(`[submit-component] Submission ${submission.id} created, job enqueued for async analysis`);
 
         return res.json({
             success: true,
             submissionId: submission.id,
-            message: 'Component submitted! Analysis in progress...',
+            message: 'Component submitted. Analysis will prepare it for admin review.',
             statusEndpoint: `/api/community/submission-status/${submission.id}`
         });
     } catch (err) {

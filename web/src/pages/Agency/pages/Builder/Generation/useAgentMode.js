@@ -423,11 +423,14 @@ function createAgentProgressTracker({ addChatMessage, setAgentProgressText }) {
     filesRead: new Set(),
     filesScanned: 0,
     filesEdited: new Set(),
+    filesDeleted: new Set(),
     linesAdded: 0,
     linesRemoved: 0,
+    linesRemovedByDelete: 0,
     lastReadText: '',
     readCommitted: false,
     editCommitted: false,
+    deleteCommitted: false,
     buildTimer: null
   };
 
@@ -466,6 +469,17 @@ function createAgentProgressTracker({ addChatMessage, setAgentProgressText }) {
       files: state.filesEdited.size,
       linesAdded: state.linesAdded,
       linesRemoved: state.linesRemoved
+    });
+  };
+
+  const commitDeleteProgress = () => {
+    if (state.deleteCommitted || state.filesDeleted.size === 0) return;
+    state.deleteCommitted = true;
+    addProgress(formatDeletedProgress(state.filesDeleted.size), {
+      kind: 'delete',
+      files: state.filesDeleted.size,
+      linesAdded: 0,
+      linesRemoved: state.linesRemovedByDelete
     });
   };
 
@@ -538,6 +552,11 @@ function createAgentProgressTracker({ addChatMessage, setAgentProgressText }) {
             setLive('Installing component...');
             return;
           }
+          if (toolName === 'delete_file') {
+            const fileName = getFileName(args.path || args.filePath);
+            setLive(fileName ? `Deleting ${fileName} file...` : 'Deleting file...');
+            return;
+          }
           const fileName = getFileName(args.path || args.filePath);
           setLive(fileName ? `Editing ${fileName} file...` : 'Editing file...');
           return;
@@ -596,6 +615,15 @@ function createAgentProgressTracker({ addChatMessage, setAgentProgressText }) {
 
         if (MUTATING_TOOLS.has(toolName)) {
           const filePaths = getMutationFilePaths(toolName, data.result, data.args);
+          if (toolName === 'delete_file') {
+            for (const filePath of filePaths) {
+              state.filesDeleted.add(filePath || `delete_file:${state.filesDeleted.size + 1}`);
+            }
+            const stats = getMutationLineStats(toolName, data.result);
+            state.linesRemovedByDelete += stats.removed;
+            setLive(formatDeletingProgress(state.filesDeleted.size));
+            return;
+          }
           for (const filePath of filePaths) {
             state.filesEdited.add(filePath || `${toolName}:${state.filesEdited.size + 1}`);
           }
@@ -612,6 +640,7 @@ function createAgentProgressTracker({ addChatMessage, setAgentProgressText }) {
       if (eventType === 'agent_done') {
         commitReadProgress();
         commitEditProgress();
+        commitDeleteProgress();
         clearBuildTimer();
         setLive('');
       }
@@ -648,6 +677,14 @@ function formatEditedProgress(count) {
 
 function formatEditingProgress(count) {
   return `Editing ${count} ${pluralize('file', count)}...`;
+}
+
+function formatDeletedProgress(count) {
+  return `Deleted ${count} ${pluralize('file', count)}`;
+}
+
+function formatDeletingProgress(count) {
+  return `Deleting ${count} ${pluralize('file', count)}...`;
 }
 
 function getCatalogBundleFileCount(result = {}) {

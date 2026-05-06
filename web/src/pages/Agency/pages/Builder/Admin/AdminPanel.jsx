@@ -5,8 +5,13 @@
  * Requires admin_role = true on the user's profile.
  * Non-admins are silently redirected to /builder.
  */
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import {
+    SandpackProvider,
+    SandpackPreview,
+    SandpackLayout,
+} from '@codesandbox/sandpack-react';
 import { useBuilderAuth } from '../../../../../contexts/BuilderAuthContext';
 import { builderSupabase } from '../../../../../lib/builderSupabaseClient';
 import styles from './AdminPanel.module.css';
@@ -388,6 +393,8 @@ function ComponentCard({ component, session, onUpdate }) {
                             >
                                 <option value="active">Active</option>
                                 <option value="pending">Pending</option>
+                                <option value="pending_review">Pending Review</option>
+                                <option value="flagged">Flagged</option>
                                 <option value="rejected">Rejected</option>
                                 <option value="deprecated">Deprecated</option>
                                 <option value="archived">Archived</option>
@@ -854,6 +861,549 @@ function CreateTemplateModal({ isOpen, onClose, onCreate, session }) {
 }
 
 // ═══ Main Admin Panel ═══
+function getReviewPreviewUrl(item) {
+    const direct =
+        item?.thumbnail_url ||
+        item?.preview_image_url ||
+        item?.thumbnail_base64 ||
+        item?.component?.thumbnail_url ||
+        item?.component?.preview_image_url ||
+        item?.template?.thumbnail_url ||
+        item?.template?.preview_image_url;
+
+    if (!direct) return null;
+    const source = String(direct);
+    if (source.startsWith('http') || source.startsWith('data:')) return source;
+    if (source.length > 500) return `data:image/png;base64,${source}`;
+    if (!builderSupabase) return direct;
+
+    const { data } = builderSupabase.storage.from('builder-assets').getPublicUrl(source);
+    return data?.publicUrl || source;
+}
+
+function ReviewMeta({ label, value }) {
+    return (
+        <div className={styles.fieldGroup}>
+            <span className={styles.fieldLabel}>{label}</span>
+            <span style={{ fontSize: '0.82rem', color: 'rgba(255,255,255,0.72)', overflowWrap: 'anywhere' }}>
+                {value || '-'}
+            </span>
+        </div>
+    );
+}
+
+function ReviewActionButton({ children, onClick, danger, disabled }) {
+    return (
+        <button
+            className={danger ? styles.modalCancelBtn : styles.popupBtnHasContent}
+            onClick={onClick}
+            disabled={disabled}
+            style={{
+                padding: '8px 12px',
+                fontSize: '0.78rem',
+                opacity: disabled ? 0.5 : 1,
+                cursor: disabled ? 'not-allowed' : 'pointer',
+                borderColor: danger ? 'rgba(239,68,68,0.35)' : undefined,
+                color: danger ? '#f87171' : undefined
+            }}
+        >
+            {children}
+        </button>
+    );
+}
+
+function ReviewListCard({ title, subtitle, status, selected, onClick }) {
+    return (
+        <button
+            onClick={onClick}
+            style={{
+                width: '100%',
+                textAlign: 'left',
+                padding: 12,
+                borderRadius: 10,
+                border: selected ? '1px solid rgba(34,197,94,0.45)' : '1px solid rgba(255,255,255,0.07)',
+                background: selected ? 'rgba(34,197,94,0.08)' : 'rgba(255,255,255,0.025)',
+                color: '#e4e4e7',
+                cursor: 'pointer'
+            }}
+        >
+            <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}>
+                <strong style={{ fontSize: '0.86rem', color: '#fff' }}>{title}</strong>
+                <span style={{ fontSize: '0.68rem', color: 'rgba(255,255,255,0.45)', textTransform: 'uppercase' }}>{status}</span>
+            </div>
+            <div style={{ marginTop: 6, fontSize: '0.74rem', color: 'rgba(255,255,255,0.42)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {subtitle}
+            </div>
+        </button>
+    );
+}
+
+// ═══ Submission Sandpack Modal — Admin live preview of pending submissions ═══
+//
+// Mirrors the dependency auto-detection logic from SandpackPreviewPopup but
+// works on raw submission code (no DB component needed) so admins can
+// preview a component while it's still in pending_review / flagged status.
+const SAFE_BASE_DEPS = {
+    'lucide-react': 'latest',
+    'framer-motion': 'latest',
+    'clsx': 'latest',
+    'tailwind-merge': 'latest',
+    'color-bits': 'latest',
+    'react-router-dom': 'latest',
+};
+const SAFE_HEAVY_PACKAGES = new Set([
+    'three', '@react-three/fiber', '@react-three/drei',
+    'ogl', 'cobe', 'react-icons', '@radix-ui/react-icons',
+    'recharts', 'zustand', 'react-router-dom',
+]);
+
+function detectSandpackDeps(code) {
+    const deps = { ...SAFE_BASE_DEPS };
+    if (typeof code !== 'string' || !code) return deps;
+    const importRx = /from\s+['"]([^'"]+)['"]/g;
+    let im;
+    while ((im = importRx.exec(code)) !== null) {
+        const raw = im[1];
+        if (raw.startsWith('.') || raw.startsWith('/')) continue;
+        const pkg = raw.startsWith('@') ? raw.split('/').slice(0, 2).join('/') : raw.split('/')[0];
+        if (SAFE_HEAVY_PACKAGES.has(pkg)) deps[pkg] = 'latest';
+    }
+    return deps;
+}
+
+function SubmissionSandpackModal({ submission, isOpen, onClose }) {
+    const [themeMode, setThemeMode] = useState('dark');
+    const [showCode, setShowCode] = useState(false);
+
+    useEffect(() => {
+        if (!isOpen) return;
+        const handler = (e) => { if (e.key === 'Escape') onClose(); };
+        window.addEventListener('keydown', handler);
+        return () => window.removeEventListener('keydown', handler);
+    }, [isOpen, onClose]);
+
+    const code = useMemo(() => {
+        if (!submission) return '';
+        return submission.cleaned_code || submission.code || '';
+    }, [submission]);
+
+    const cssCode = useMemo(() => submission?.css_code || '', [submission]);
+
+    const dependencies = useMemo(() => detectSandpackDeps(code), [code]);
+
+    const sandpackFiles = useMemo(() => ({
+        '/App.jsx': code || '// No code stored for this submission.\nexport default function App(){return <div>No code</div>}',
+        '/style.css': cssCode || '',
+        '/index.js': `import React, { StrictMode } from "react";
+import { createRoot } from "react-dom/client";
+${'react-router-dom' in dependencies ? 'import { BrowserRouter } from "react-router-dom";' : ''}
+import "./style.css";
+import App from "./App.jsx";
+
+const root = createRoot(document.getElementById("root"));
+document.body.style.backgroundColor = "${themeMode === 'light' ? '#ffffff' : '#000000'}";
+document.body.style.color = "${themeMode === 'light' ? '#000000' : '#ffffff'}";
+
+const isRouterNeeded = ${'react-router-dom' in dependencies ? 'true' : 'false'};
+const hasOwnRouter = App.toString && (App.toString().includes('BrowserRouter') || App.toString().includes('MemoryRouter') || App.toString().includes('HashRouter') || App.toString().includes('Router>'));
+const AppWrapper = (isRouterNeeded && !hasOwnRouter) ? BrowserRouter : React.Fragment;
+
+root.render(
+  <StrictMode>
+    <AppWrapper>
+      <div className="${themeMode === 'light' ? 'bg-white' : 'bg-transparent'} min-h-screen w-full">
+        <App />
+      </div>
+    </AppWrapper>
+  </StrictMode>
+);`,
+    }), [code, cssCode, dependencies, themeMode]);
+
+    if (!isOpen || !submission) return null;
+
+    return (
+        <div
+            onClick={onClose}
+            style={{
+                position: 'fixed', inset: 0, zIndex: 1100,
+                background: 'rgba(0,0,0,0.72)', backdropFilter: 'blur(6px)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                padding: 24,
+            }}
+        >
+            <div
+                onClick={(e) => e.stopPropagation()}
+                style={{
+                    width: '100%', maxWidth: 1280, height: '88vh',
+                    background: '#0F0F0F', borderRadius: 18,
+                    border: '1px solid rgba(255,255,255,0.08)',
+                    display: 'flex', flexDirection: 'column', overflow: 'hidden',
+                }}
+            >
+                {/* Header */}
+                <div style={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                    padding: '14px 20px', borderBottom: '1px solid rgba(255,255,255,0.06)',
+                }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                        <span style={{ color: '#fff', fontSize: '0.95rem', fontWeight: 500 }}>
+                            {submission.name || 'Untitled submission'}
+                        </span>
+                        <span style={{ color: 'rgba(255,255,255,0.45)', fontSize: '0.72rem' }}>
+                            {submission.submission_type || 'submission'} · {submission.status} · {submission.id}
+                        </span>
+                    </div>
+                    <div style={{ display: 'flex', gap: 8 }}>
+                        <button
+                            className={styles.popupBtn}
+                            onClick={() => setShowCode((v) => !v)}
+                            style={{ padding: '6px 14px', fontSize: '0.78rem' }}
+                        >
+                            {showCode ? 'Preview' : '{ } Code'}
+                        </button>
+                        <button
+                            className={styles.popupBtn}
+                            onClick={() => setThemeMode((m) => (m === 'dark' ? 'light' : 'dark'))}
+                            style={{ padding: '6px 14px', fontSize: '0.78rem' }}
+                            title="Toggle theme"
+                        >
+                            {themeMode === 'dark' ? '☀️ Light' : '🌙 Dark'}
+                        </button>
+                        <button
+                            className={styles.modalCancelBtn}
+                            onClick={onClose}
+                            style={{ padding: '6px 12px', fontSize: '0.85rem' }}
+                        >
+                            ✕
+                        </button>
+                    </div>
+                </div>
+
+                {/* Body */}
+                <div
+                    className={!showCode && code ? styles.sandpackPreviewArea : ''}
+                    style={{
+                        flex: 1,
+                        minHeight: 0,
+                        position: 'relative',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        background: themeMode === 'dark' ? '#000' : '#fff',
+                    }}
+                >
+                    {showCode ? (
+                        <pre style={{
+                            margin: 0, flex: 1, minHeight: 0, overflow: 'auto',
+                            padding: 20,
+                            background: 'rgba(0,0,0,0.55)',
+                            color: 'rgba(255,255,255,0.85)',
+                            fontSize: '0.78rem', lineHeight: 1.55,
+                            whiteSpace: 'pre-wrap', wordBreak: 'break-word',
+                        }}>
+                            {code || 'No source code stored for this submission.'}
+                        </pre>
+                    ) : code ? (
+                        <SandpackProvider
+                            key={`${submission.id}-${themeMode}`}
+                            template="react"
+                            files={sandpackFiles}
+                            customSetup={{ dependencies }}
+                            theme={themeMode}
+                            options={{
+                                autoRun: true,
+                                externalResources: ['https://cdn.tailwindcss.com'],
+                            }}
+                        >
+                            <SandpackLayout style={{
+                                display: 'flex', flexDirection: 'column',
+                                height: '100%', width: '100%',
+                                border: 'none', background: 'transparent',
+                            }}>
+                                <SandpackPreview
+                                    showNavigator={false}
+                                    showRefreshButton={true}
+                                    showOpenInCodeSandbox={false}
+                                    style={{ flex: 1, minHeight: 0, border: 'none', background: 'transparent' }}
+                                />
+                            </SandpackLayout>
+                        </SandpackProvider>
+                    ) : (
+                        <div style={{
+                            flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            color: 'rgba(255,255,255,0.45)', fontSize: '0.9rem',
+                        }}>
+                            No code stored for this submission.
+                        </div>
+                    )}
+                </div>
+            </div>
+        </div>
+    );
+}
+
+function ReviewQueuePanel({ queue, selectedItem, onSelect, onSubmissionAction, onReportAction, onTakedownAction, busyId, onPreviewSubmission, filters, onFiltersChange }) {
+    const allSubmissions = queue?.submissions || [];
+    const reports = queue?.reports || [];
+    const takedowns = queue?.takedowns || [];
+
+    // ── Apply filters to submissions only ──
+    const submissions = allSubmissions.filter((s) => {
+        if (filters.status !== 'all' && s.status !== filters.status) return false;
+        if (filters.type !== 'all' && s.submission_type !== filters.type) return false;
+        if (filters.search) {
+            const q = filters.search.toLowerCase();
+            const haystack = [
+                s.name, s.description, s.category_hint, s.id,
+                s.author?.username, s.author?.display_name, s.user_id,
+            ].filter(Boolean).join(' ').toLowerCase();
+            if (!haystack.includes(q)) return false;
+        }
+        return true;
+    });
+
+    const selectedKey = selectedItem ? `${selectedItem.kind}:${selectedItem.item.id}` : '';
+    const selected = selectedItem?.item || null;
+    const previewUrl = selected ? getReviewPreviewUrl(selected) : null;
+
+    const askReason = (action) => {
+        if (!['reject', 'flag', 'archive', 'accept'].includes(action)) return '';
+        return window.prompt('Optional moderation note:', '') || '';
+    };
+
+    const renderSubmissionDetails = (submission) => {
+        const code = submission.cleaned_code || submission.code || '';
+        const isBusy = busyId === `submission:${submission.id}`;
+        return (
+            <>
+                <div className={styles.fieldsGrid}>
+                    <ReviewMeta label="Type" value={submission.submission_type} />
+                    <ReviewMeta label="Status" value={submission.status} />
+                    <ReviewMeta label="Quality" value={submission.quality_score ?? '-'} />
+                    <ReviewMeta label="Author" value={submission.author?.username || submission.author?.display_name || submission.user_id} />
+                    <ReviewMeta label="IP Attested" value={submission.ip_attestation_accepted_at ? new Date(submission.ip_attestation_accepted_at).toLocaleString() : 'No'} />
+                    <ReviewMeta label="License Grant" value={submission.license_grant_accepted_at ? `${submission.license_type || 'MIT'} accepted` : 'No'} />
+                </div>
+
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 16 }}>
+                    <ReviewActionButton disabled={isBusy} onClick={() => onPreviewSubmission && onPreviewSubmission(submission)}>
+                        ▶ Open in Sandpack
+                    </ReviewActionButton>
+                    <ReviewActionButton disabled={isBusy} onClick={() => onSubmissionAction(submission, 'approve', askReason('approve'))}>Approve</ReviewActionButton>
+                    <ReviewActionButton disabled={isBusy} danger onClick={() => onSubmissionAction(submission, 'reject', askReason('reject'))}>Reject</ReviewActionButton>
+                    <ReviewActionButton disabled={isBusy} danger onClick={() => onSubmissionAction(submission, 'flag', askReason('flag'))}>Flag</ReviewActionButton>
+                    <ReviewActionButton disabled={isBusy} danger onClick={() => onSubmissionAction(submission, 'archive', askReason('archive'))}>Archive</ReviewActionButton>
+                    <ReviewActionButton disabled={isBusy} onClick={() => onSubmissionAction(submission, 'restore', askReason('restore'))}>Restore</ReviewActionButton>
+                </div>
+
+                {(submission.reports?.length > 0 || submission.takedowns?.length > 0) && (
+                    <div style={{ marginTop: 18, display: 'grid', gap: 8 }}>
+                        {submission.reports?.map(report => (
+                            <div key={report.id} style={{ padding: 10, borderRadius: 8, background: 'rgba(239,68,68,0.08)', fontSize: '0.78rem' }}>
+                                Report: {report.reason} {report.details ? `- ${report.details}` : ''}
+                            </div>
+                        ))}
+                        {submission.takedowns?.map(takedown => (
+                            <div key={takedown.id} style={{ padding: 10, borderRadius: 8, background: 'rgba(245,158,11,0.08)', fontSize: '0.78rem' }}>
+                                Takedown: {takedown.requester_email} - {takedown.claim_summary}
+                            </div>
+                        ))}
+                    </div>
+                )}
+
+                <pre style={{
+                    marginTop: 18,
+                    maxHeight: 320,
+                    overflow: 'auto',
+                    padding: 14,
+                    borderRadius: 10,
+                    background: 'rgba(0,0,0,0.42)',
+                    border: '1px solid rgba(255,255,255,0.08)',
+                    color: 'rgba(255,255,255,0.76)',
+                    fontSize: '0.75rem',
+                    lineHeight: 1.55
+                }}>{code || 'No source code stored for this submission.'}</pre>
+            </>
+        );
+    };
+
+    const renderReportDetails = (report) => {
+        const isBusy = busyId === `report:${report.id}`;
+        return (
+            <>
+                <div className={styles.fieldsGrid}>
+                    <ReviewMeta label="Reason" value={report.reason} />
+                    <ReviewMeta label="Status" value={report.status} />
+                    <ReviewMeta label="Reporter" value={report.reporter?.username || report.reported_by} />
+                    <ReviewMeta label="Component" value={report.component?.display_name || report.component?.name || report.component_id} />
+                </div>
+                <div style={{ marginTop: 16, lineHeight: 1.6, color: 'rgba(255,255,255,0.72)' }}>
+                    {report.details || 'No extra details.'}
+                </div>
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 16 }}>
+                    <ReviewActionButton disabled={isBusy} onClick={() => onReportAction(report, 'triage', askReason('triage'))}>Triage</ReviewActionButton>
+                    <ReviewActionButton disabled={isBusy} onClick={() => onReportAction(report, 'resolve', askReason('resolve'))}>Resolve</ReviewActionButton>
+                    <ReviewActionButton disabled={isBusy} danger onClick={() => onReportAction(report, 'reject', askReason('reject'))}>Reject Report</ReviewActionButton>
+                    <ReviewActionButton disabled={isBusy} danger onClick={() => onReportAction(report, 'archive', askReason('archive'))}>Archive Component</ReviewActionButton>
+                    <ReviewActionButton disabled={isBusy} onClick={() => onReportAction(report, 'restore', askReason('restore'))}>Restore Component</ReviewActionButton>
+                </div>
+            </>
+        );
+    };
+
+    const renderTakedownDetails = (takedown) => {
+        const isBusy = busyId === `takedown:${takedown.id}`;
+        return (
+            <>
+                <div className={styles.fieldsGrid}>
+                    <ReviewMeta label="Requester" value={takedown.requester_email} />
+                    <ReviewMeta label="Status" value={takedown.status} />
+                    <ReviewMeta label="Component" value={takedown.component?.display_name || takedown.component?.name || takedown.component_id} />
+                    <ReviewMeta label="Submission" value={takedown.submission?.name || takedown.submission_id} />
+                </div>
+                <div style={{ marginTop: 16, lineHeight: 1.6, color: 'rgba(255,255,255,0.72)' }}>
+                    {takedown.claim_summary}
+                </div>
+                <pre style={{ marginTop: 12, whiteSpace: 'pre-wrap', color: 'rgba(255,255,255,0.55)', fontSize: '0.75rem' }}>
+                    {JSON.stringify(takedown.evidence || [], null, 2)}
+                </pre>
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 16 }}>
+                    <ReviewActionButton disabled={isBusy} onClick={() => onTakedownAction(takedown, 'under_review', askReason('under_review'))}>Mark Reviewing</ReviewActionButton>
+                    <ReviewActionButton disabled={isBusy} danger onClick={() => onTakedownAction(takedown, 'accept', askReason('accept'))}>Accept + Archive</ReviewActionButton>
+                    <ReviewActionButton disabled={isBusy} danger onClick={() => onTakedownAction(takedown, 'reject', askReason('reject'))}>Reject Claim</ReviewActionButton>
+                    <ReviewActionButton disabled={isBusy} onClick={() => onTakedownAction(takedown, 'restore', askReason('restore'))}>Restore Component</ReviewActionButton>
+                </div>
+            </>
+        );
+    };
+
+    return (
+        <div style={{ display: 'grid', gridTemplateColumns: '360px 1fr', gap: 18, paddingTop: 12 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                <section style={{ display: 'grid', gap: 8 }}>
+                    <span className={styles.fieldLabel}>
+                        Submissions ({submissions.length}{submissions.length !== allSubmissions.length ? ` / ${allSubmissions.length}` : ''})
+                    </span>
+
+                    {/* ── Filters ── */}
+                    <div style={{ display: 'grid', gap: 8, padding: '10px 12px', borderRadius: 10, background: 'rgba(255,255,255,0.025)', border: '1px solid rgba(255,255,255,0.06)' }}>
+                        <input
+                            className={styles.searchInput}
+                            placeholder="Search by name, author, ID..."
+                            value={filters.search}
+                            onChange={(e) => onFiltersChange({ ...filters, search: e.target.value })}
+                            style={{ width: '100%' }}
+                        />
+                        <div style={{ display: 'flex', gap: 6 }}>
+                            <select
+                                className={styles.filterSelect}
+                                value={filters.status}
+                                onChange={(e) => onFiltersChange({ ...filters, status: e.target.value })}
+                                style={{ flex: 1, minWidth: 0 }}
+                            >
+                                <option value="all">All statuses</option>
+                                <option value="pending_review">Pending review</option>
+                                <option value="flagged">Flagged</option>
+                            </select>
+                            <select
+                                className={styles.filterSelect}
+                                value={filters.type}
+                                onChange={(e) => onFiltersChange({ ...filters, type: e.target.value })}
+                                style={{ flex: 1, minWidth: 0 }}
+                            >
+                                <option value="all">All types</option>
+                                <option value="component">Components</option>
+                                <option value="template">Templates</option>
+                            </select>
+                        </div>
+                        {(filters.status !== 'all' || filters.type !== 'all' || filters.search) && (
+                            <button
+                                className={styles.popupBtn}
+                                onClick={() => onFiltersChange({ status: 'all', type: 'all', search: '' })}
+                                style={{ padding: '6px 10px', fontSize: '0.72rem' }}
+                            >
+                                Clear filters
+                            </button>
+                        )}
+                    </div>
+
+                    {submissions.length === 0 ? (
+                        <div className={styles.emptyState} style={{ padding: 20 }}>
+                            {allSubmissions.length === 0
+                                ? 'No pending submissions.'
+                                : 'No submissions match the current filters.'}
+                        </div>
+                    ) : submissions.map(submission => (
+                        <ReviewListCard
+                            key={submission.id}
+                            title={submission.name}
+                            subtitle={`${submission.submission_type} - ${submission.author?.username || submission.user_id}`}
+                            status={submission.status}
+                            selected={selectedKey === `submission:${submission.id}`}
+                            onClick={() => onSelect({ kind: 'submission', item: submission })}
+                        />
+                    ))}
+                </section>
+                <section style={{ display: 'grid', gap: 8 }}>
+                    <span className={styles.fieldLabel}>Reports ({reports.length})</span>
+                    {reports.map(report => (
+                        <ReviewListCard
+                            key={report.id}
+                            title={report.reason}
+                            subtitle={report.component?.display_name || report.component?.name || report.component_id}
+                            status={report.status}
+                            selected={selectedKey === `report:${report.id}`}
+                            onClick={() => onSelect({ kind: 'report', item: report })}
+                        />
+                    ))}
+                </section>
+                <section style={{ display: 'grid', gap: 8 }}>
+                    <span className={styles.fieldLabel}>Takedowns ({takedowns.length})</span>
+                    {takedowns.map(takedown => (
+                        <ReviewListCard
+                            key={takedown.id}
+                            title={takedown.requester_email}
+                            subtitle={takedown.component?.display_name || takedown.submission?.name || takedown.component_id || takedown.submission_id}
+                            status={takedown.status}
+                            selected={selectedKey === `takedown:${takedown.id}`}
+                            onClick={() => onSelect({ kind: 'takedown', item: takedown })}
+                        />
+                    ))}
+                </section>
+            </div>
+
+            <div className={styles.componentCard} style={{ display: 'block', marginTop: 0, minHeight: 520 }}>
+                {!selectedItem ? (
+                    <div className={styles.emptyState}>Select a submission, report, or takedown.</div>
+                ) : (
+                    <>
+                        <div style={{ display: 'flex', gap: 18, alignItems: 'flex-start' }}>
+                            <div className={styles.cardThumb}>
+                                {previewUrl ? <img src={previewUrl} alt="" /> : <div className={styles.cardThumbFallback}>{(selected.name || selected.reason || selected.requester_email || '?')[0]}</div>}
+                            </div>
+                            <div style={{ minWidth: 0 }}>
+                                <div className={styles.cardHeader}>
+                                    <span className={styles.cardName}>{selected.name || selected.reason || selected.requester_email}</span>
+                                    <span className={styles.cardCategory}>{selectedItem.kind}</span>
+                                    <span className={styles.cardId}>{selected.id}</span>
+                                </div>
+                                <p style={{ margin: '8px 0 0', color: 'rgba(255,255,255,0.55)', lineHeight: 1.55 }}>
+                                    {selected.description || selected.claim_summary || selected.details || 'No description.'}
+                                </p>
+                            </div>
+                        </div>
+
+                        <div style={{ marginTop: 20 }}>
+                            {selectedItem.kind === 'submission' && renderSubmissionDetails(selected)}
+                            {selectedItem.kind === 'report' && renderReportDetails(selected)}
+                            {selectedItem.kind === 'takedown' && renderTakedownDetails(selected)}
+                        </div>
+                    </>
+                )}
+            </div>
+        </div>
+    );
+}
+
 export default function AdminPanel() {
     const navigate = useNavigate();
     const { session, profile, loading: authLoading, isAuthenticated } = useBuilderAuth();
@@ -861,11 +1411,16 @@ export default function AdminPanel() {
     const [templates, setTemplates] = useState([]);
     const [feedbackItems, setFeedbackItems] = useState([]);
     const [issuesItems, setIssuesItems] = useState([]);
+    const [reviewQueue, setReviewQueue] = useState({ submissions: [], reports: [], takedowns: [] });
+    const [selectedReviewItem, setSelectedReviewItem] = useState(null);
+    const [reviewBusyId, setReviewBusyId] = useState(null);
+    const [reviewFilters, setReviewFilters] = useState({ status: 'all', type: 'all', search: '' });
+    const [previewSubmission, setPreviewSubmission] = useState(null);
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState('');
     const [categoryFilter, setCategoryFilter] = useState('');
     const [toast, setToast] = useState(null); // { message, type }
-    const [activeTab, setActiveTab] = useState('components'); // 'components' | 'templates' | 'feedback' | 'issues'
+    const [activeTab, setActiveTab] = useState('components'); // components | templates | review | feedback | issues
     const [showCreateTemplate, setShowCreateTemplate] = useState(false);
 
     // ─── Access Control ───
@@ -877,6 +1432,28 @@ export default function AdminPanel() {
     //   3. authLoading=false, isAuthenticated=true, profile={...} → check admin_role
     //   4. authLoading=false, isAuthenticated=false → redirect (not logged in)
     const [accessChecked, setAccessChecked] = useState(false);
+
+    const fetchReviewQueue = useCallback(async () => {
+        if (!session?.access_token) return;
+        const res = await fetch('/api/admin/review-queue', {
+            headers: { 'Authorization': `Bearer ${session.access_token}` }
+        });
+        const data = await res.json();
+        if (data.success) {
+            const nextQueue = {
+                submissions: data.submissions || [],
+                reports: data.reports || [],
+                takedowns: data.takedowns || []
+            };
+            setReviewQueue(nextQueue);
+            setSelectedReviewItem(prev => {
+                if (!prev) return prev;
+                const list = nextQueue[`${prev.kind}s`] || [];
+                const refreshed = list.find(item => item.id === prev.item.id);
+                return refreshed ? { kind: prev.kind, item: refreshed } : null;
+            });
+        }
+    }, [session?.access_token]);
 
     useEffect(() => {
         // Still loading auth → wait
@@ -909,24 +1486,33 @@ export default function AdminPanel() {
                 const headers = { 'Authorization': `Bearer ${session.access_token}` };
                 
                 // Fetch all data in parallel
-                const [compRes, tmplRes, feedRes, issueRes] = await Promise.all([
+                const [compRes, tmplRes, feedRes, issueRes, reviewRes] = await Promise.all([
                     fetch('/api/admin/components', { headers }),
                     fetch('/api/admin/templates', { headers }),
                     fetch('/api/admin/feedback', { headers }),
-                    fetch('/api/admin/issues', { headers })
+                    fetch('/api/admin/issues', { headers }),
+                    fetch('/api/admin/review-queue', { headers })
                 ]);
 
-                const [compData, tmplData, feedData, issueData] = await Promise.all([
+                const [compData, tmplData, feedData, issueData, reviewData] = await Promise.all([
                     compRes.json(),
                     tmplRes.json(),
                     feedRes.json(),
-                    issueRes.json()
+                    issueRes.json(),
+                    reviewRes.json()
                 ]);
 
                 if (compData.success) setComponents(compData.components);
                 if (tmplData.success) setTemplates(tmplData.templates);
                 if (feedData.success) setFeedbackItems(feedData.feedback || []);
                 if (issueData.success) setIssuesItems(issueData.issues || []);
+                if (reviewData.success) {
+                    setReviewQueue({
+                        submissions: reviewData.submissions || [],
+                        reports: reviewData.reports || [],
+                        takedowns: reviewData.takedowns || []
+                    });
+                }
             } catch (err) {
                 console.error('[Admin] Fetch failed:', err);
             } finally {
@@ -994,6 +1580,59 @@ export default function AdminPanel() {
     }, [session?.access_token]);
 
     // ─── Filtering ───
+    const postReviewAction = useCallback(async (url, body, busyKey, successMessage) => {
+        setReviewBusyId(busyKey);
+        try {
+            const res = await fetch(url, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${session?.access_token}`,
+                },
+                body: JSON.stringify(body),
+            });
+            const data = await res.json();
+            if (!data.success) {
+                setToast({ message: `Error: ${data.error}`, type: 'error' });
+                return;
+            }
+            setToast({ message: successMessage, type: 'success' });
+            await fetchReviewQueue();
+        } catch (err) {
+            setToast({ message: `Review action failed: ${err.message}`, type: 'error' });
+        } finally {
+            setReviewBusyId(null);
+            setTimeout(() => setToast(null), 2200);
+        }
+    }, [session?.access_token, fetchReviewQueue]);
+
+    const handleSubmissionReview = useCallback((submission, decision, reason) => {
+        return postReviewAction(
+            '/api/admin/review-submission',
+            { submissionId: submission.id, decision, reason },
+            `submission:${submission.id}`,
+            `Submission ${decision} complete`
+        );
+    }, [postReviewAction]);
+
+    const handleReportReview = useCallback((report, action, reason) => {
+        return postReviewAction(
+            '/api/admin/review-report',
+            { reportId: report.id, action, reason },
+            `report:${report.id}`,
+            `Report ${action} complete`
+        );
+    }, [postReviewAction]);
+
+    const handleTakedownReview = useCallback((takedown, action, reason) => {
+        return postReviewAction(
+            '/api/admin/review-takedown',
+            { takedownId: takedown.id, action, reason },
+            `takedown:${takedown.id}`,
+            `Takedown ${action} complete`
+        );
+    }, [postReviewAction]);
+
     const categories = [...new Set(components.map(c => c.category).filter(Boolean))].sort();
     const filteredComponents = components.filter(c => {
         const matchSearch = !search ||
@@ -1004,6 +1643,25 @@ export default function AdminPanel() {
         const matchCategory = !categoryFilter || c.category === categoryFilter;
         return matchSearch && matchCategory;
     });
+    const reviewCount = (reviewQueue.submissions?.length || 0) + (reviewQueue.reports?.length || 0) + (reviewQueue.takedowns?.length || 0);
+    const headerTitle = activeTab === 'components'
+        ? 'Component Admin'
+        : activeTab === 'templates'
+            ? 'Template Admin'
+            : activeTab === 'review'
+                ? 'Review Queue'
+                : activeTab === 'feedback'
+                    ? 'Feedback'
+                    : 'Issues';
+    const headerCount = activeTab === 'components'
+        ? `${filteredComponents.length} / ${components.length} components`
+        : activeTab === 'templates'
+            ? `${templates.length} templates`
+            : activeTab === 'review'
+                ? `${reviewCount} review items`
+                : activeTab === 'feedback'
+                    ? `${feedbackItems.length} feedback`
+                    : `${issuesItems.length} issues`;
 
     // Guard: show spinner until access is confirmed
     if (!accessChecked) {
@@ -1025,15 +1683,12 @@ export default function AdminPanel() {
                     <button className={styles.backBtn} onClick={() => navigate('/builder')}>
                         ←
                     </button>
-                    <span className={styles.headerTitle}>{activeTab === 'components' ? 'Component Admin' : 'Template Admin'}</span>
+                    <span className={styles.headerTitle}>{headerTitle}</span>
                     <span className={styles.headerBadge}>ADMIN</span>
                 </div>
                 <div className={styles.headerRight}>
                     <span className={styles.componentCount}>
-                        {activeTab === 'components'
-                            ? `${filteredComponents.length} / ${components.length} components`
-                            : `${templates.length} templates`
-                        }
+                        {headerCount}
                     </span>
                 </div>
             </div>
@@ -1060,6 +1715,13 @@ export default function AdminPanel() {
                     style={{ padding: '8px 18px', fontSize: '0.82rem' }}
                 >
                     💬 Feedback
+                </button>
+                <button
+                    className={`${styles.popupBtn} ${activeTab === 'review' ? styles.popupBtnHasContent : ''}`}
+                    onClick={() => setActiveTab('review')}
+                    style={{ padding: '8px 18px', fontSize: '0.82rem' }}
+                >
+                    Review ({reviewCount})
                 </button>
                 <button
                     className={`${styles.popupBtn} ${activeTab === 'issues' ? styles.popupBtnHasContent : ''}`}
@@ -1140,6 +1802,26 @@ export default function AdminPanel() {
                             />
                         ))
                     )
+                ) : activeTab === 'review' ? (
+                    loading ? (
+                        <div className={styles.loadingState}>
+                            <div className={styles.spinner} />
+                            <span>Loading review queue...</span>
+                        </div>
+                    ) : (
+                        <ReviewQueuePanel
+                            queue={reviewQueue}
+                            selectedItem={selectedReviewItem}
+                            onSelect={setSelectedReviewItem}
+                            onSubmissionAction={handleSubmissionReview}
+                            onReportAction={handleReportReview}
+                            onTakedownAction={handleTakedownReview}
+                            busyId={reviewBusyId}
+                            filters={reviewFilters}
+                            onFiltersChange={setReviewFilters}
+                            onPreviewSubmission={setPreviewSubmission}
+                        />
+                    )
                 ) : activeTab === 'feedback' ? (
                     // ═══ Feedback Tab ═══
                     feedbackItems.length === 0 ? (
@@ -1199,6 +1881,13 @@ export default function AdminPanel() {
                     setTimeout(() => setToast(null), 2000);
                 }}
                 session={session}
+            />
+
+            {/* Live Sandpack preview of a pending submission */}
+            <SubmissionSandpackModal
+                submission={previewSubmission}
+                isOpen={!!previewSubmission}
+                onClose={() => setPreviewSubmission(null)}
             />
 
             {/* Toast Notification */}

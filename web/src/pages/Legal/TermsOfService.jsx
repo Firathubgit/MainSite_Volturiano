@@ -24,7 +24,7 @@ export default function TermsOfService() {
             <FileTextIcon size={32} className={s.icon} />
           </div>
           <h1 className={s.title}>Terms of Service</h1>
-          <p className={s.lastUpdated}>Last updated: May 2026</p>
+          <p className={s.lastUpdated}>Last updated: 6 May 2026</p>
         </header>
 
         <section className={s.section}>
@@ -152,6 +152,28 @@ export default function TermsOfService() {
             sublicensable license to host, store, display, modify, distribute, run, analyze, categorize,
             translate, and recombine the contribution as part of the Service, including making it
             available to other users of the Service through the AI agent and component catalog.
+          </p>
+          <h3>7.4 GitHub Publishing &amp; Vercel Deployment</h3>
+          <p>
+            The Builder offers an optional &ldquo;Publish to Vercel&rdquo; flow. By connecting your GitHub
+            account through this flow, you authorize Volturiano to (a) create one or more repositories under
+            your GitHub account on your behalf, (b) push the contents of your active sandbox to those
+            repositories using the OAuth token you provide, and (c) construct a Vercel import URL pointing
+            to that repository so you can complete the deployment yourself on Vercel.
+          </p>
+          <p>
+            This authorization is limited to the actions you initiate by clicking &ldquo;Publish to
+            Vercel&rdquo; or its equivalent. Volturiano does not browse, modify, or read other
+            repositories on your account, does not deploy on your behalf, and does not retain ongoing
+            access beyond what is needed to perform the publish action you requested. You may revoke this
+            authorization at any time via the &ldquo;Disconnect&rdquo; control inside the Builder or
+            directly at github.com/settings/applications.
+          </p>
+          <p>
+            You retain full ownership of all code, content, and configuration that you push to GitHub or
+            deploy via Vercel through this flow. You are solely responsible for the content you publish,
+            including its compliance with the GitHub and Vercel terms of service, applicable export
+            controls, and any laws governing the content of the deployed site.
           </p>
         </section>
 

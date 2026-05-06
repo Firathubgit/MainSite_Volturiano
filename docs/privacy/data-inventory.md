@@ -16,6 +16,8 @@ This is the operational data map for Volturiano Builder. It is a technical recor
 | Feedback/issues | `platform_feedback`, `platform_issues` | user id, message, route/source | support and product improvement | legitimate interest | support retention | yes | yes |
 | Consent/rights | `consent_events`, `gdpr_requests` | consent state, request history, metadata | compliance evidence | legal obligation, legitimate interest | compliance retention | yes | usually retained/minimized |
 | Security logs | `audit_logs`, server logs | user id, IP, user agent, actions | security, fraud, auditability | legitimate interest, legal obligation | 180 days draft or incident hold | partial | minimize after retention |
+| GitHub publishing connection | `github_connections` | GitHub user id, GitHub username, granted OAuth scopes, AES-256-GCM-encrypted access token | enable user-initiated `Publish to Vercel` flow (create/update GitHub repo + open Vercel import) | contract, consent | until user disconnects or deletes account | yes (metadata; token stays encrypted) | yes — disconnect best-effort revokes the GitHub grant and removes the row |
+| Project publish metadata | `projects.github_repo_owner/name/branch/last_commit_sha`, `projects.vercel_import_url`, `projects.last_github_push_at`, `projects.publish_status` | repo coordinates and last-push reference for the user's own published project | provide an &ldquo;Update GitHub&rdquo; path and link to Vercel import | contract | account lifetime or until project deletion | yes | yes |
 
 ## Open decisions for human review
 

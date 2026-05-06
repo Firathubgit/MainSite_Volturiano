@@ -20,6 +20,7 @@ import { OpenAIIcon, AnthropicIcon, GeminiIcon } from '../BuilderIcons2';
 import { useAgentMode } from './useAgentMode';
 import { mergeHydratedAgentMessages } from './agentChatHydration';
 import { AgentShimmerIcon } from './AgentChatCards';
+import PublishToVercelModal from './PublishToVercelModal';
 
 
 
@@ -771,6 +772,17 @@ export default function Generation() {
   const [sandboxFiles, setSandboxFiles] = useState({});
   const [sandboxFileManifest, setSandboxFileManifest] = useState([]);
   const [isDownloading, setIsDownloading] = useState(false);
+  const [publishVercelOpen, setPublishVercelOpen] = useState(() => {
+    // Auto-open the Publish modal when we land back from the GitHub OAuth callback,
+    // so the user immediately sees "Connected as @username" and can finish the push.
+    if (typeof window === 'undefined') return false;
+    const flag = new URLSearchParams(window.location.search).get('github');
+    return flag === 'connected' || flag === 'error';
+  });
+  // Cached publish metadata so the export dropdown can flip between
+  // "Publish to Vercel" (first time) and "Update on GitHub" (already
+  // linked) without having to wait for the modal to open.
+  const [publishMeta, setPublishMeta] = useState(null); // { owner, repoName } | null
   const [isPublishing, setIsPublishing] = useState(false);
   const [publishUrl, setPublishUrl] = useState(null);
   const [showPublishModal, setShowPublishModal] = useState(false);
@@ -1080,6 +1092,33 @@ export default function Generation() {
   useEffect(() => {
     if (currentProjectId) fetchSnapshots();
   }, [currentProjectId, fetchSnapshots]);
+
+  // Pull the project's GitHub publish metadata so the export dropdown
+  // can show "Update on GitHub" instead of "Publish to Vercel" once
+  // there's already a linked repo.
+  useEffect(() => {
+    if (!currentProjectId) {
+      setPublishMeta(null);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await authFetch(`/api/projects/get?projectId=${encodeURIComponent(currentProjectId)}`);
+        const data = await res.json();
+        if (cancelled) return;
+        if (data?.success && data.project?.github_repo_owner && data.project?.github_repo_name) {
+          setPublishMeta({
+            owner: data.project.github_repo_owner,
+            repoName: data.project.github_repo_name,
+          });
+        } else {
+          setPublishMeta(null);
+        }
+      } catch (_) { /* non-fatal; dropdown falls back to "Publish to Vercel" */ }
+    })();
+    return () => { cancelled = true; };
+  }, [currentProjectId, authFetch]);
 
   const takeManualSnapshot = useCallback(async () => {
     if (!currentProjectId) return;
@@ -4621,6 +4660,38 @@ Just position the new components in a logical order (e.g. after the Hero or befo
                           </button>
                           */}
 
+                          {/* Publish to Vercel (first time) -> Update on GitHub (subsequent).
+                              Once a project has a linked repo, the action is just an
+                              incremental commit + push; nothing user-visible touches Vercel
+                              from then on, so we drop the Vercel branding entirely. */}
+                          <button
+                            className={styles.viewportOption}
+                            disabled={!sandboxData || !currentProjectId}
+                            onClick={() => {
+                              setExportDropdownOpen(false);
+                              setPublishVercelOpen(true);
+                            }}
+                            title={!currentProjectId
+                              ? 'Save the project first before publishing.'
+                              : (publishMeta ? 'Push the latest sandbox to GitHub' : 'Publish to Vercel via GitHub')}
+                          >
+                            {publishMeta ? (
+                              // GitHub mark
+                              <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true">
+                                <path
+                                  fill="currentColor"
+                                  d="M12 .5a11.5 11.5 0 0 0-3.64 22.41c.58.1.79-.25.79-.56v-2.18c-3.2.7-3.88-1.36-3.88-1.36-.52-1.33-1.27-1.69-1.27-1.69-1.04-.71.08-.7.08-.7 1.15.08 1.76 1.18 1.76 1.18 1.02 1.74 2.68 1.24 3.34.95.1-.74.4-1.24.73-1.53-2.55-.29-5.24-1.27-5.24-5.66 0-1.25.45-2.27 1.18-3.07-.12-.29-.51-1.46.11-3.04 0 0 .96-.31 3.15 1.17a10.96 10.96 0 0 1 5.74 0c2.18-1.48 3.14-1.17 3.14-1.17.62 1.58.23 2.75.11 3.04.74.8 1.18 1.82 1.18 3.07 0 4.4-2.7 5.36-5.27 5.65.41.36.78 1.06.78 2.14v3.18c0 .31.21.67.8.55A11.5 11.5 0 0 0 12 .5Z"
+                                />
+                              </svg>
+                            ) : (
+                              // Vercel triangle
+                              <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true">
+                                <path fill="currentColor" d="M12 2 23 21H1L12 2Z" />
+                              </svg>
+                            )}
+                            <span>{publishMeta ? 'Update on GitHub' : 'Publish to Vercel'}</span>
+                          </button>
+
                           <button
                             className={styles.viewportOption}
                             disabled={!sandboxData || isDownloading}
@@ -4991,6 +5062,15 @@ Just position the new components in a logical order (e.g. after the Hero or befo
       <CreditLimitModal
         isOpen={showLimitModal}
         onClose={() => setShowLimitModal(false)}
+      />
+
+      <PublishToVercelModal
+        isOpen={publishVercelOpen}
+        onClose={() => setPublishVercelOpen(false)}
+        projectId={currentProjectId}
+        projectName={conversationContext?.currentProject || ''}
+        authFetch={authFetch}
+        onPublishMetaChange={setPublishMeta}
       />
     </div>
   );

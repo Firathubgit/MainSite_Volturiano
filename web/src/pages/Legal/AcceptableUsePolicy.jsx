@@ -24,7 +24,7 @@ export default function AcceptableUsePolicy() {
             <ShieldAlertIcon size={32} className={s.icon} />
           </div>
           <h1 className={s.title}>Acceptable Use Policy</h1>
-          <p className={s.lastUpdated}>Last updated: May 2026</p>
+          <p className={s.lastUpdated}>Last updated: 6 May 2026</p>
         </header>
 
         <section className={s.section}>
@@ -48,6 +48,7 @@ export default function AcceptableUsePolicy() {
             <li>Attempts to bypass credits, rate limits, moderation, security controls, sandbox boundaries, or audit logging.</li>
             <li>Publishing content that impersonates a company, person, or public authority without permission.</li>
             <li>Use that materially harms other users, third parties, or the integrity of the Service.</li>
+            <li>Using the &ldquo;Publish to Vercel&rdquo; flow to push malware, phishing pages, spam, illegal content, content infringing third-party rights, or anything else prohibited by GitHub&apos;s or Vercel&apos;s terms of service.</li>
           </ul>
         </section>
 

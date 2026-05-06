@@ -60,6 +60,7 @@ import dashboardRoutes from './routes/dashboard.js';
 import settingsRoutes from './routes/settings.js';
 import adminRoutes from './routes/admin.js';
 import agentRoutes from './routes/agent.js';
+import githubIntegrationRoutes from './routes/integrations/github.js';
 
 const app = express();
 app.disable('x-powered-by');
@@ -269,6 +270,11 @@ app.use('/api/settings', settingsRoutes);
 
 // Admin Panel: Component metadata management
 app.use('/api/admin', strictLimiter, adminRoutes);
+
+// Publish to Vercel MVP: GitHub OAuth + repo push integration
+// Each route inside the router handles its own auth (callback is public,
+// status/connect/disconnect/push-project are requireAuth).
+app.use('/api/integrations/github', strictLimiter, githubIntegrationRoutes);
 
 // Phase A1: Agentic Builder (AI agent loop with tool calling)
 // requireUnrestricted blocks AI calls when the user has restricted processing in Settings.

@@ -25,7 +25,7 @@ export default function PrivacyPolicy() {
             <ShieldIcon size={32} className={s.icon} />
           </div>
           <h1 className={s.title}>Privacy Policy & Cookie Policy</h1>
-          <p className={s.lastUpdated}>Last updated: May 2026</p>
+          <p className={s.lastUpdated}>Last updated: 6 May 2026</p>
         </header>
 
         <section className={s.section}>
@@ -53,6 +53,7 @@ export default function PrivacyPolicy() {
             <li><strong>Usage Data:</strong> Information about how you use our website, products and services, including chat prompts sent to our AI models.</li>
             <li><strong>Builder and Agent Data:</strong> Project prompts, generated files, snapshots, selected components, agent messages, tool events, build status, and audit events needed to provide, debug, secure, and improve the Builder.</li>
             <li><strong>Consent and Rights Request Data:</strong> Records of terms/privacy acceptance, data export requests, deletion requests, and processing restriction requests.</li>
+            <li><strong>Publishing Integration Data:</strong> When you connect a GitHub account to publish a project, we store your GitHub user id, GitHub username, the OAuth scopes you granted, and an access token that we encrypt at rest using AES-256-GCM. We also store the repository owner, repository name, branch, last commit SHA, and Vercel import URL associated with each project you publish.</li>
           </ul>
         </section>
 
@@ -73,7 +74,8 @@ export default function PrivacyPolicy() {
           <ul>
             <li><strong>Supabase:</strong> For secure database hosting and user authentication (EU/Global).</li>
             <li><strong>Stripe:</strong> For payment processing.</li>
-            <li><strong>Railway/Vercel:</strong> For backend/frontend hosting, deployment, and content delivery.</li>
+            <li><strong>Railway/Vercel:</strong> For backend/frontend hosting, deployment, and content delivery. Vercel additionally hosts websites that you publish through the &ldquo;Publish to Vercel&rdquo; flow once you complete the import on Vercel&apos;s side.</li>
+            <li><strong>GitHub:</strong> Used only when you opt in to the publish flow. We use GitHub&apos;s OAuth and REST APIs to create or update a repository under your account with your project files. See section 9 below for details.</li>
             <li><strong>AI Providers and Sandbox Providers:</strong> For executing AI generation, analysis, previews, and code sandboxing based on your prompts and project context. Provider retention and training settings depend on the configured provider agreements and product settings.</li>
           </ul>
           <p>
@@ -130,7 +132,36 @@ export default function PrivacyPolicy() {
         </section>
 
         <section className={s.section}>
-          <h2>9. Customer Website Data</h2>
+          <h2>9. GitHub Publishing Integration</h2>
+          <p>
+            Volturiano provides an optional &ldquo;Publish to Vercel&rdquo; flow that requires you to connect a GitHub
+            account so we can create or update a repository on your behalf. This integration uses a dedicated GitHub
+            OAuth App that is separate from any &ldquo;Sign in with GitHub&rdquo; you may have used to log in.
+          </p>
+          <p><strong>What we store:</strong> your GitHub user id, your GitHub username, the OAuth scopes you granted
+            (typically <code>repo</code> and <code>user:email</code>), and an access token that we encrypt with
+            AES-256-GCM before persisting it. For each published project we additionally store the repository owner,
+            repository name, target branch (<code>main</code> by default), the SHA of the last commit we pushed, the
+            Vercel import URL, and the timestamp of the last push.
+          </p>
+          <p><strong>What we do with the access token:</strong> we use it only when you explicitly click
+            &ldquo;Publish to Vercel&rdquo; in the Builder, and only to (a) create a repository under your GitHub
+            account if it does not yet exist, and (b) push the contents of your active sandbox to that repository.
+            We do not browse, modify, or read any other repository on your account.
+          </p>
+          <p><strong>How to disconnect:</strong> the &ldquo;Disconnect&rdquo; control inside the Publish modal
+            removes the encrypted token from our database and best-effort revokes the OAuth grant on
+            github.com so nothing remains on either side. You can revoke the grant directly at any time from
+            <a href="https://github.com/settings/applications" target="_blank" rel="noopener noreferrer"> github.com/settings/applications</a>.
+          </p>
+          <p><strong>What we do not store:</strong> we do not commit, log, or copy any <code>.env</code> files or
+            other secrets you keep locally in your sandbox &mdash; the publish flow excludes them via a
+            generated <code>.gitignore</code>. We also never log your access token in plaintext.
+          </p>
+        </section>
+
+        <section className={s.section}>
+          <h2>10. Customer Website Data</h2>
           <p>
             If you use Volturiano to create or publish a site that collects personal data from your own visitors,
             you are responsible for the privacy notice, cookie choices, form purposes, and lawful basis for that

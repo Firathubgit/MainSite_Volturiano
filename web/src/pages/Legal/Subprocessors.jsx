@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { ChevronLeftIcon, NetworkIcon } from "lucide-react";
 import s from "./LegalLayout.module.css";
 
-const REGISTER_VERSION = "2026-05-04";
+const REGISTER_VERSION = "2026-05-06";
 
 const processors = [
   {
@@ -29,10 +29,17 @@ const processors = [
   },
   {
     name: "Vercel",
-    purpose: "Frontend hosting, edge delivery, optional analytics/speed insights",
+    purpose: "Frontend hosting, edge delivery, optional analytics/speed insights, and the destination of user-initiated deployments via the Builder's \"Publish to Vercel\" flow",
     location: "Vercel global edge",
-    data: "Frontend asset delivery, optional analytics events when explicitly accepted",
+    data: "Frontend asset delivery, optional analytics events when explicitly accepted, and (for user-initiated publish actions) the GitHub repository URL the user chooses to import",
     transfer: "Vercel DPA and Standard Contractual Clauses"
+  },
+  {
+    name: "GitHub, Inc. (Microsoft)",
+    purpose: "Source-code hosting for the Builder's optional \"Publish to Vercel\" flow. Used only when the user explicitly connects a GitHub account and clicks Publish, to create or update a repository under the user's own account.",
+    location: "GitHub global infrastructure (primarily US)",
+    data: "GitHub user id, GitHub username, granted OAuth scopes, an access token (encrypted at rest with AES-256-GCM), and the project files the user chooses to push (excluding .env files and other secrets via a generated .gitignore)",
+    transfer: "GitHub DPA and Standard Contractual Clauses"
   },
   {
     name: "AI providers (Google AI / OpenAI / Anthropic, as configured)",

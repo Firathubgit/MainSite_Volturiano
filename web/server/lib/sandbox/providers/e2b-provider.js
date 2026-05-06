@@ -76,15 +76,35 @@ export class E2BProvider extends SandboxProvider {
     }
   }
 
-  async runCommand(command) {
+  /**
+   * Run a shell command in the active sandbox.
+   *
+   * Backward-compatible signature: `runCommand(command)` still works. The
+   * optional second arg accepts:
+   *   - envs:      object of env vars to inject (e.g. { GH_TOKEN: '...' }).
+   *                Useful for secrets that must NOT appear in the command line.
+   *   - silent:    when true, the command and its stdout/stderr are not
+   *                logged. Use this for any command that handles a secret.
+   *   - timeoutMs: override the default 60s timeout.
+   */
+  async runCommand(command, opts = {}) {
     if (!this.sandbox) throw new Error('No active sandbox');
-    console.log(`[E2BProvider] runCommand: ${command}`);
+    const { envs, silent = false, timeoutMs = 60000 } = opts || {};
+
+    if (!silent) {
+      console.log(`[E2BProvider] runCommand: ${command}`);
+    } else {
+      console.log('[E2BProvider] runCommand: [REDACTED — command handles a secret]');
+    }
 
     try {
-      const result = await this.sandbox.commands.run(command, {
+      const runOpts = {
         cwd: appConfig.e2b.workingDirectory,
-        timeoutMs: 60000
-      });
+        timeoutMs,
+      };
+      if (envs && typeof envs === 'object') runOpts.envs = envs;
+
+      const result = await this.sandbox.commands.run(command, runOpts);
       return {
         stdout: result.stdout || '',
         stderr: result.stderr || '',
@@ -92,10 +112,11 @@ export class E2BProvider extends SandboxProvider {
         success: result.exitCode === 0
       };
     } catch (error) {
-      console.error('[E2BProvider] runCommand error:', error.message);
+      const safeError = silent ? '[REDACTED]' : (error.message || '');
+      console.error('[E2BProvider] runCommand error:', safeError);
       return {
-        stdout: error.stdout || '',
-        stderr: error.stderr || error.message,
+        stdout: silent ? '' : (error.stdout || ''),
+        stderr: silent ? '[REDACTED]' : (error.stderr || error.message),
         exitCode: error.exitCode || 1,
         success: false
       };

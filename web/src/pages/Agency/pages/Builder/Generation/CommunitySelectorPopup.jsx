@@ -93,6 +93,13 @@ export default function CommunitySelectorPopup({ isOpen, onClose, onConfirm, max
     // Data fetching
     const fetchData = useCallback(async () => {
         if (!isOpen || (page > 1 && page > totalPages)) return;
+        if (!isAuthenticated) {
+            setShowAuthModal(true);
+            setItems([]);
+            setLoading(false);
+            setError('Sign in to browse the component library.');
+            return;
+        }
 
         // Abort any existing request to prevent race conditions on fast category switches
         if (abortControllerRef.current) {
@@ -155,16 +162,23 @@ export default function CommunitySelectorPopup({ isOpen, onClose, onConfirm, max
                 setLoading(false);
             }
         }
-    }, [page, activeTab, selectedCategory, debouncedSearch, totalPages, isOpen, sidebarActiveItem, getAccessToken]);
+    }, [page, activeTab, selectedCategory, debouncedSearch, totalPages, isOpen, sidebarActiveItem, getAccessToken, isAuthenticated]);
 
     // Fetch categories and trending on mount
     useEffect(() => {
         if (!isOpen) return;
+        if (!isAuthenticated) {
+            setShowAuthModal(true);
+            setLoading(false);
+            return;
+        }
         async function fetchInitial() {
             try {
+                const token = getAccessToken();
+                const authHeaders = token ? { 'Authorization': `Bearer ${token}` } : {};
                 const [catRes, trendRes] = await Promise.all([
-                    fetch('/api/community/categories'),
-                    fetch('/api/community/browse/trending')
+                    fetch('/api/community/categories', { headers: authHeaders }),
+                    fetch('/api/community/browse/trending', { headers: authHeaders })
                 ]);
 
                 if (catRes.ok) {
@@ -185,7 +199,7 @@ export default function CommunitySelectorPopup({ isOpen, onClose, onConfirm, max
             }
         }
         fetchInitial();
-    }, [isOpen]);
+    }, [isOpen, isAuthenticated, getAccessToken]);
     
     // Sync initial selected items
     useEffect(() => {

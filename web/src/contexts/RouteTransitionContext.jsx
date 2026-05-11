@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { useBuilderAuth } from './BuilderAuthContext';
 
 const RouteTransitionContext = createContext(null);
 
@@ -8,6 +9,7 @@ export const RouteTransitionProvider = ({ children }) => {
     const [transitionData, setTransitionData] = useState(null);
     const navigate = useNavigate();
     const location = useLocation();
+    const { getAccessToken } = useBuilderAuth();
 
     // Reset if we unexpectedly unmount or route changes externally and we are stuck
     useEffect(() => {
@@ -45,9 +47,14 @@ export const RouteTransitionProvider = ({ children }) => {
                 }, CINEMATIC_TIMEOUT_MS)
                 : null;
 
+            const token = getAccessToken();
+
             cinematicPromise = fetch('/api/cinematic-response', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: { 
+                    'Content-Type': 'application/json',
+                    ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+                },
                 body: JSON.stringify({ prompt: stateToPass.prompt, model: cineModel }),
                 signal: cinematicController?.signal
             })
@@ -127,7 +134,7 @@ export const RouteTransitionProvider = ({ children }) => {
             }
         }
 
-    }, [navigate]);
+    }, [navigate, getAccessToken]);
 
     const completeIntro = useCallback(() => {
         setPhase('revealing');

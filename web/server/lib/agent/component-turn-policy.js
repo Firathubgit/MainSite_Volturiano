@@ -178,6 +178,14 @@ export function buildInitialComponentPrompt({
     '',
     "Install these pre-selected components FIRST with 'install_component_bundle' when available. If you need to inspect/adapt a small component, 'fetch_component_bundle' is fine.",
     'If source is clipped or omitted, do not repeatedly fetch/read the same huge file. Use the installed paths and read targeted line windows only if necessary.',
-    'Then browse for missing sections, custom-code weak/missing catalog gaps, and wire everything together cleanly.'
+    'Then browse for missing sections, custom-code weak/missing catalog gaps, and wire everything together cleanly.',
+    '',
+    'CRITICAL — CUSTOMIZE AFTER INSTALLING:',
+    'These components contain GENERIC library defaults. After installing and wiring them, you MUST:',
+    `1. READ each installed component file and REWRITE all user-visible text (headlines, subheadlines, button labels, nav links, descriptions, pricing, testimonials) to match the user's vision: "${basePrompt}"`,
+    '2. Update color tokens, gradients, and Tailwind classes to match any color theme the user specified.',
+    '3. Replace placeholder brand names, generic descriptions, and demo content with industry-appropriate copy.',
+    '4. Do NOT leave components with their original library text — every component must feel tailored to this specific site.',
+    'This customization step is MORE IMPORTANT than installing extra components. A tailored site with 5 customized components beats 7 generic ones.'
   ].join('\n');
 }

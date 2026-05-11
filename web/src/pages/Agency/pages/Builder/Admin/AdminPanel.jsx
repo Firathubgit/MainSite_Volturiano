@@ -269,7 +269,7 @@ function TextPopupModal({ isOpen, title, value, onSave, onClose, isJson }) {
 }
 
 // ═══ Single Component Card ═══
-function ComponentCard({ component, session, onUpdate }) {
+function ComponentCard({ component, session, onUpdate, onDelete, onPreview }) {
     const [local, setLocal] = useState(component);
     const [popup, setPopup] = useState(null); // { field, title, isJson }
     const saveTimerRef = useRef(null);
@@ -522,6 +522,14 @@ function ComponentCard({ component, session, onUpdate }) {
 
                     {/* 2-Step Popup Buttons */}
                     <div className={styles.popupBtnRow}>
+                        {/* Live Sandpack preview — same modal the review queue uses. */}
+                        <button
+                            className={styles.popupBtn}
+                            onClick={() => onPreview && onPreview(component)}
+                            title="Render this component live in a Sandpack iframe"
+                        >
+                            ▶ Preview
+                        </button>
                         <button
                             className={`${styles.popupBtn} ${local.description ? styles.popupBtnHasContent : ''}`}
                             onClick={() => setPopup({ field: 'description', title: `Description — ${local.name}`, isJson: false })}
@@ -545,6 +553,23 @@ function ComponentCard({ component, session, onUpdate }) {
                             onClick={() => setPopup({ field: 'design_personality', title: `Design Personality — ${local.name}`, isJson: true })}
                         >
                             💎 Design Personality
+                        </button>
+
+                        {/* Destructive: hard-delete the component (cascades to
+                            likes/ratings/reports/template_sections, removes
+                            the thumbnail/video files from storage, and
+                            archives the linked submission). */}
+                        <button
+                            className={styles.popupBtn}
+                            onClick={() => onDelete && onDelete(component.id, local.display_name || local.name || component.component_id)}
+                            style={{
+                                marginLeft: 'auto',
+                                color: '#f87171',
+                                borderColor: 'rgba(239, 68, 68, 0.35)',
+                            }}
+                            title="Permanently delete this component (cannot be undone)"
+                        >
+                            🗑️ Delete
                         </button>
                     </div>
                 </div>
@@ -971,28 +996,191 @@ function detectSandpackDeps(code) {
     return deps;
 }
 
-function SubmissionSandpackModal({ submission, isOpen, onClose }) {
+// Components' source lives in `bundle_code`, which can be a plain string,
+// a JSON-stringified single-file object, a multi-file `{ files: [...] }`
+// shape, or an `{ content: '...' }` legacy shape. This normalizes all of
+// those into `{ code, cssCode }` so the same Sandpack modal can render
+// both review-queue submissions AND active-catalog components.
+export function extractBundleCode(bundleCode) {
+    if (!bundleCode) return { code: '', cssCode: '' };
+    let raw = bundleCode;
+    let cssCode = '';
+
+    if (typeof raw === 'string' && (raw.trim().startsWith('{') || raw.trim().startsWith('['))) {
+        try {
+            const parsed = JSON.parse(raw);
+            if (parsed && typeof parsed === 'object') raw = parsed;
+        } catch { /* leave as string */ }
+    }
+
+    if (raw && typeof raw === 'object') {
+        if (typeof raw.css === 'string') cssCode = raw.css;
+        else if (typeof raw.cssCode === 'string') cssCode = raw.cssCode;
+        else if (raw.assets && typeof raw.assets.css === 'string') cssCode = raw.assets.css;
+
+        if (Array.isArray(raw.files)) {
+            const cssFile = raw.files.find((f) => typeof f.path === 'string' && f.path.endsWith('.css'));
+            if (cssFile?.content && !cssCode) cssCode = cssFile.content;
+            const main =
+                raw.files.find((f) =>
+                    typeof f.path === 'string' &&
+                    (f.path.endsWith('.jsx') || f.path.endsWith('.tsx')) &&
+                    typeof f.content === 'string' &&
+                    f.content.includes('export default')
+                ) ||
+                raw.files.find((f) => typeof f.path === 'string' && f.path.endsWith('.jsx')) ||
+                raw.files[0];
+            return { code: main?.content || '', cssCode };
+        }
+
+        if (typeof raw.content === 'string') return { code: raw.content, cssCode };
+
+        return { code: JSON.stringify(raw, null, 2), cssCode };
+    }
+
+    return { code: typeof raw === 'string' ? raw : '', cssCode };
+}
+
+// Builds a normalized preview object that the modal renders directly.
+// Accepts either a community_submissions row OR a components row.
+//
+// `options.onSave(newCode) => Promise<void>` enables the modal's edit
+// mode. When omitted, the modal stays read-only (used for submissions —
+// admins shouldn't rewrite a user's submission from the review queue).
+export function buildPreviewItem(source, options = {}) {
+    if (!source) return null;
+    if ('bundle_code' in source || 'component_id' in source) {
+        const { code, cssCode } = extractBundleCode(source.bundle_code);
+        return {
+            id: source.id,
+            kind: 'component',
+            title: source.display_name || source.name || 'Component',
+            subtitle: `component · ${source.status || 'unknown'} · ${source.component_id || source.id}`,
+            code,
+            cssCode,
+            onSave: typeof options.onSave === 'function' ? options.onSave : null,
+        };
+    }
+    return {
+        id: source.id,
+        kind: 'submission',
+        title: source.name || 'Untitled submission',
+        subtitle: `${source.submission_type || 'submission'} · ${source.status || 'unknown'} · ${source.id}`,
+        code: source.cleaned_code || source.code || '',
+        cssCode: source.css_code || '',
+        onSave: null,
+    };
+}
+
+function SandpackPreviewModal({ preview, isOpen, onClose }) {
     const [themeMode, setThemeMode] = useState('dark');
     const [showCode, setShowCode] = useState(false);
 
+    // ── Editable code state ──
+    // `liveCode` is what the Sandpack actually renders. `draft` is what
+    // the user is currently typing. They diverge while editing and re-
+    // converge after Save (or are reset on Discard). `editVersion` bumps
+    // on save to force a fresh Sandpack mount so the iframe rebuilds.
+    const [liveCode, setLiveCode] = useState('');
+    const [draft, setDraft] = useState('');
+    const [editing, setEditing] = useState(false);
+    const [saving, setSaving] = useState(false);
+    const [saveError, setSaveError] = useState(null);
+    const [editVersion, setEditVersion] = useState(0);
+
+    const canEdit = typeof preview?.onSave === 'function';
+
     useEffect(() => {
         if (!isOpen) return;
-        const handler = (e) => { if (e.key === 'Escape') onClose(); };
+        // Reset everything whenever a new preview opens.
+        setLiveCode(preview?.code || '');
+        setDraft(preview?.code || '');
+        setEditing(false);
+        setSaveError(null);
+        setShowCode(false);
+        setEditVersion(0);
+    }, [isOpen, preview?.id]);
+    // Note: deliberately keying off id, not code, so that loading the modal
+    // for the same item again (e.g. after a parent state refresh) does not
+    // discard an in-progress edit.
+
+    useEffect(() => {
+        if (!isOpen) return;
+        const handler = (e) => {
+            // Don't close on Escape mid-save or while editing — too easy
+            // to lose work. The user can hit Discard or Save explicitly.
+            if (e.key === 'Escape' && !editing && !saving) onClose();
+        };
         window.addEventListener('keydown', handler);
         return () => window.removeEventListener('keydown', handler);
-    }, [isOpen, onClose]);
+    }, [isOpen, onClose, editing, saving]);
 
-    const code = useMemo(() => {
-        if (!submission) return '';
-        return submission.cleaned_code || submission.code || '';
-    }, [submission]);
-
-    const cssCode = useMemo(() => submission?.css_code || '', [submission]);
+    const code = liveCode;
+    const cssCode = preview?.cssCode || '';
 
     const dependencies = useMemo(() => detectSandpackDeps(code), [code]);
 
+    const dirty = editing && draft !== liveCode;
+
+    const handleStartEdit = () => {
+        if (!canEdit) return;
+        setEditing(true);
+        setShowCode(true);
+        setSaveError(null);
+    };
+
+    const handleDiscard = () => {
+        setDraft(liveCode);
+        setEditing(false);
+        setSaveError(null);
+    };
+
+    const handleSave = async () => {
+        if (!preview?.onSave) return;
+        setSaving(true);
+        setSaveError(null);
+        try {
+            await preview.onSave(draft);
+            setLiveCode(draft);
+            setEditing(false);
+            setEditVersion((v) => v + 1);
+        } catch (err) {
+            setSaveError(err.message || 'Save failed');
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    // Tab/Shift-Tab insert two spaces or dedent — basic IDE-like UX.
+    const handleEditorKeyDown = (e) => {
+        if (e.key === 'Tab') {
+            e.preventDefault();
+            const ta = e.target;
+            const start = ta.selectionStart;
+            const end = ta.selectionEnd;
+            if (e.shiftKey) {
+                // Dedent the line starting at `start`.
+                const before = draft.lastIndexOf('\n', start - 1) + 1;
+                const lineStart = draft.slice(before, before + 2);
+                if (lineStart === '  ') {
+                    const next = draft.slice(0, before) + draft.slice(before + 2);
+                    setDraft(next);
+                    requestAnimationFrame(() => { ta.selectionStart = ta.selectionEnd = Math.max(before, start - 2); });
+                }
+            } else {
+                const next = draft.slice(0, start) + '  ' + draft.slice(end);
+                setDraft(next);
+                requestAnimationFrame(() => { ta.selectionStart = ta.selectionEnd = start + 2; });
+            }
+        } else if (e.key === 's' && (e.metaKey || e.ctrlKey)) {
+            // Cmd/Ctrl-S to save while editing.
+            e.preventDefault();
+            if (dirty && !saving) handleSave();
+        }
+    };
+
     const sandpackFiles = useMemo(() => ({
-        '/App.jsx': code || '// No code stored for this submission.\nexport default function App(){return <div>No code</div>}',
+        '/App.jsx': code || '// No source code available.\nexport default function App(){return <div>No code</div>}',
         '/style.css': cssCode || '',
         '/index.js': `import React, { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
@@ -1019,7 +1207,7 @@ root.render(
 );`,
     }), [code, cssCode, dependencies, themeMode]);
 
-    if (!isOpen || !submission) return null;
+    if (!isOpen || !preview) return null;
 
     return (
         <div
@@ -1045,43 +1233,97 @@ root.render(
                     display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                     padding: '14px 20px', borderBottom: '1px solid rgba(255,255,255,0.06)',
                 }}>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 }}>
                         <span style={{ color: '#fff', fontSize: '0.95rem', fontWeight: 500 }}>
-                            {submission.name || 'Untitled submission'}
+                            {preview.title}
                         </span>
-                        <span style={{ color: 'rgba(255,255,255,0.45)', fontSize: '0.72rem' }}>
-                            {submission.submission_type || 'submission'} · {submission.status} · {submission.id}
+                        <span style={{ color: 'rgba(255,255,255,0.45)', fontSize: '0.72rem', overflowWrap: 'anywhere' }}>
+                            {preview.subtitle}
                         </span>
                     </div>
-                    <div style={{ display: 'flex', gap: 8 }}>
-                        <button
-                            className={styles.popupBtn}
-                            onClick={() => setShowCode((v) => !v)}
-                            style={{ padding: '6px 14px', fontSize: '0.78rem' }}
-                        >
-                            {showCode ? 'Preview' : '{ } Code'}
-                        </button>
-                        <button
-                            className={styles.popupBtn}
-                            onClick={() => setThemeMode((m) => (m === 'dark' ? 'light' : 'dark'))}
-                            style={{ padding: '6px 14px', fontSize: '0.78rem' }}
-                            title="Toggle theme"
-                        >
-                            {themeMode === 'dark' ? '☀️ Light' : '🌙 Dark'}
-                        </button>
-                        <button
-                            className={styles.modalCancelBtn}
-                            onClick={onClose}
-                            style={{ padding: '6px 12px', fontSize: '0.85rem' }}
-                        >
-                            ✕
-                        </button>
+                    <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                        {/* Editing state — Save / Discard replace the toggle. */}
+                        {editing ? (
+                            <>
+                                <span style={{
+                                    color: dirty ? '#fbbf24' : 'rgba(255,255,255,0.4)',
+                                    fontSize: '0.72rem',
+                                    marginRight: 4,
+                                }}>
+                                    {dirty ? '● unsaved' : 'no changes'}
+                                </span>
+                                <button
+                                    className={styles.modalCancelBtn}
+                                    onClick={handleDiscard}
+                                    disabled={saving}
+                                    style={{ padding: '6px 14px', fontSize: '0.78rem' }}
+                                >
+                                    Discard
+                                </button>
+                                <button
+                                    className={styles.popupBtnHasContent}
+                                    onClick={handleSave}
+                                    disabled={!dirty || saving}
+                                    style={{ padding: '6px 14px', fontSize: '0.78rem' }}
+                                    title="Save and re-render (⌘/Ctrl+S)"
+                                >
+                                    {saving ? 'Saving…' : '💾 Save'}
+                                </button>
+                            </>
+                        ) : (
+                            <>
+                                <button
+                                    className={styles.popupBtn}
+                                    onClick={() => setShowCode((v) => !v)}
+                                    style={{ padding: '6px 14px', fontSize: '0.78rem' }}
+                                >
+                                    {showCode ? 'Preview' : '{ } Code'}
+                                </button>
+                                {canEdit && (
+                                    <button
+                                        className={styles.popupBtn}
+                                        onClick={handleStartEdit}
+                                        style={{ padding: '6px 14px', fontSize: '0.78rem' }}
+                                        title="Edit this component's source code"
+                                    >
+                                        ✏️ Edit
+                                    </button>
+                                )}
+                                <button
+                                    className={styles.popupBtn}
+                                    onClick={() => setThemeMode((m) => (m === 'dark' ? 'light' : 'dark'))}
+                                    style={{ padding: '6px 14px', fontSize: '0.78rem' }}
+                                    title="Toggle theme"
+                                >
+                                    {themeMode === 'dark' ? '☀️ Light' : '🌙 Dark'}
+                                </button>
+                                <button
+                                    className={styles.modalCancelBtn}
+                                    onClick={onClose}
+                                    style={{ padding: '6px 12px', fontSize: '0.85rem' }}
+                                >
+                                    ✕
+                                </button>
+                            </>
+                        )}
                     </div>
                 </div>
 
+                {saveError && (
+                    <div style={{
+                        padding: '10px 20px',
+                        background: 'rgba(239,68,68,0.08)',
+                        borderBottom: '1px solid rgba(239,68,68,0.25)',
+                        color: '#ff8a8a',
+                        fontSize: '0.78rem',
+                    }}>
+                        Save failed: {saveError}
+                    </div>
+                )}
+
                 {/* Body */}
                 <div
-                    className={!showCode && code ? styles.sandpackPreviewArea : ''}
+                    className={!showCode && code && !editing ? styles.sandpackPreviewArea : ''}
                     style={{
                         flex: 1,
                         minHeight: 0,
@@ -1091,7 +1333,33 @@ root.render(
                         background: themeMode === 'dark' ? '#000' : '#fff',
                     }}
                 >
-                    {showCode ? (
+                    {editing ? (
+                        // Editable source. Plain textarea — light enough to keep
+                        // the modal snappy, with tab-handling for code editing.
+                        <textarea
+                            value={draft}
+                            onChange={(e) => setDraft(e.target.value)}
+                            onKeyDown={handleEditorKeyDown}
+                            spellCheck={false}
+                            autoCorrect="off"
+                            autoCapitalize="off"
+                            style={{
+                                flex: 1,
+                                minHeight: 0,
+                                padding: 20,
+                                background: '#0b0b0d',
+                                color: 'rgba(255,255,255,0.92)',
+                                fontFamily: 'ui-monospace, SFMono-Regular, "JetBrains Mono", Menlo, monospace',
+                                fontSize: '0.8rem',
+                                lineHeight: 1.55,
+                                border: 'none',
+                                outline: 'none',
+                                resize: 'none',
+                                whiteSpace: 'pre',
+                                tabSize: 2,
+                            }}
+                        />
+                    ) : showCode ? (
                         <pre style={{
                             margin: 0, flex: 1, minHeight: 0, overflow: 'auto',
                             padding: 20,
@@ -1100,11 +1368,14 @@ root.render(
                             fontSize: '0.78rem', lineHeight: 1.55,
                             whiteSpace: 'pre-wrap', wordBreak: 'break-word',
                         }}>
-                            {code || 'No source code stored for this submission.'}
+                            {code || 'No source code available.'}
                         </pre>
                     ) : code ? (
                         <SandpackProvider
-                            key={`${submission.id}-${themeMode}`}
+                            // Include editVersion in the key so a saved edit
+                            // forces a fresh Sandpack mount and the iframe
+                            // re-bundles with the new files.
+                            key={`${preview.id}-${themeMode}-${editVersion}`}
                             template="react"
                             files={sandpackFiles}
                             customSetup={{ dependencies }}
@@ -1132,7 +1403,7 @@ root.render(
                             flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center',
                             color: 'rgba(255,255,255,0.45)', fontSize: '0.9rem',
                         }}>
-                            No code stored for this submission.
+                            No source code stored for this item.
                         </div>
                     )}
                 </div>
@@ -1415,7 +1686,10 @@ export default function AdminPanel() {
     const [selectedReviewItem, setSelectedReviewItem] = useState(null);
     const [reviewBusyId, setReviewBusyId] = useState(null);
     const [reviewFilters, setReviewFilters] = useState({ status: 'all', type: 'all', search: '' });
-    const [previewSubmission, setPreviewSubmission] = useState(null);
+    // Single preview slot — feeds the SandpackPreviewModal. Holds a
+    // normalized {id, title, subtitle, code, cssCode} regardless of whether
+    // the source was a community_submission row or an active component row.
+    const [previewItem, setPreviewItem] = useState(null);
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState('');
     const [categoryFilter, setCategoryFilter] = useState('');
@@ -1550,6 +1824,53 @@ export default function AdminPanel() {
 
         // Auto-dismiss toast
         setTimeout(() => setToast(null), 2000);
+    }, [session?.access_token]);
+
+    // ─── Delete Handler ───
+    // Hard-deletes a component and its assets. The backend cascades the
+    // relational cleanup (likes/ratings/reports/template_sections) and
+    // best-effort removes thumbnail/preview files from Supabase Storage.
+    const handleDelete = useCallback(async (componentId, displayName) => {
+        if (!componentId) return;
+        const label = displayName || 'this component';
+        const confirmed = window.confirm(
+            `Permanently delete "${label}"?\n\n` +
+            `This will:\n` +
+            `  • Remove the component from the catalog\n` +
+            `  • Delete its thumbnail, preview image, and preview video\n` +
+            `  • Wipe its likes, ratings, reports, and template links\n` +
+            `  • Archive the linked submission\n\n` +
+            `This cannot be undone.`
+        );
+        if (!confirmed) return;
+
+        try {
+            const res = await fetch('/api/admin/delete-component', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${session?.access_token}`,
+                },
+                body: JSON.stringify({ componentId }),
+            });
+            const data = await res.json();
+            if (data.success) {
+                setComponents(prev => prev.filter(c => c.id !== componentId));
+                const removedFiles = (data.storageRemoved || []).filter(r => r.removed).length;
+                setToast({
+                    message: removedFiles > 0
+                        ? `✓ Deleted (also removed ${removedFiles} file${removedFiles === 1 ? '' : 's'} from storage)`
+                        : '✓ Deleted',
+                    type: 'success',
+                });
+            } else {
+                setToast({ message: `Delete failed: ${data.error}`, type: 'error' });
+            }
+        } catch (err) {
+            setToast({ message: `Delete failed: ${err.message}`, type: 'error' });
+        }
+
+        setTimeout(() => setToast(null), 2400);
     }, [session?.access_token]);
 
     // ─── Template Update Handler ───
@@ -1783,6 +2104,40 @@ export default function AdminPanel() {
                                 component={comp}
                                 session={session}
                                 onUpdate={handleUpdate}
+                                onDelete={handleDelete}
+                                onPreview={(c) => setPreviewItem(buildPreviewItem(c, {
+                                    // The modal calls this from its Save
+                                    // button. We persist via the existing
+                                    // /api/admin/update-component endpoint
+                                    // (now whitelists `bundle_code`) and
+                                    // mirror the change into local state so
+                                    // the card and any future Preview reflect
+                                    // the new source without a refetch.
+                                    onSave: async (newCode) => {
+                                        const res = await fetch('/api/admin/update-component', {
+                                            method: 'POST',
+                                            headers: {
+                                                'Content-Type': 'application/json',
+                                                'Authorization': `Bearer ${session?.access_token}`,
+                                            },
+                                            body: JSON.stringify({
+                                                componentId: c.id,
+                                                updates: { bundle_code: newCode },
+                                            }),
+                                        });
+                                        const data = await res.json();
+                                        if (!data.success) {
+                                            throw new Error(data.error || 'Save failed');
+                                        }
+                                        setComponents((prev) =>
+                                            prev.map((row) => row.id === c.id
+                                                ? { ...row, bundle_code: newCode }
+                                                : row)
+                                        );
+                                        setToast({ message: '✓ Code saved', type: 'success' });
+                                        setTimeout(() => setToast(null), 2000);
+                                    },
+                                }))}
                             />
                         ))
                     )
@@ -1819,7 +2174,7 @@ export default function AdminPanel() {
                             busyId={reviewBusyId}
                             filters={reviewFilters}
                             onFiltersChange={setReviewFilters}
-                            onPreviewSubmission={setPreviewSubmission}
+                            onPreviewSubmission={(submission) => setPreviewItem(buildPreviewItem(submission))}
                         />
                     )
                 ) : activeTab === 'feedback' ? (
@@ -1883,11 +2238,12 @@ export default function AdminPanel() {
                 session={session}
             />
 
-            {/* Live Sandpack preview of a pending submission */}
-            <SubmissionSandpackModal
-                submission={previewSubmission}
-                isOpen={!!previewSubmission}
-                onClose={() => setPreviewSubmission(null)}
+            {/* Live Sandpack preview — handles both pending submissions
+                (Review tab) and active library components (Components tab). */}
+            <SandpackPreviewModal
+                preview={previewItem}
+                isOpen={!!previewItem}
+                onClose={() => setPreviewItem(null)}
             />
 
             {/* Toast Notification */}

@@ -28,7 +28,7 @@ export default function CommunityHub() {
     const queryParams = new URLSearchParams(location.search);
     const isBuilderSelectMode = queryParams.get('mode') === 'select' || queryParams.get('builderSelect') === 'true';
     const returnTo = queryParams.get('returnTo') || '/builder';
-    const { getAccessToken } = useBuilderAuth();
+    const { getAccessToken, isAuthenticated } = useBuilderAuth();
 
     const [activeTab, setActiveTab] = useState('components');
     const [searchQuery, setSearchQuery] = useState('');
@@ -64,6 +64,12 @@ export default function CommunityHub() {
     // Data fetching
     const fetchData = useCallback(async () => {
         if (page > 1 && page > totalPages) return;
+        if (!isAuthenticated) {
+            setItems([]);
+            setLoading(false);
+            setError('Sign in to browse the component library.');
+            return;
+        }
 
         // Abort any existing request to prevent race conditions on fast category switches
         if (abortControllerRef.current) {
@@ -128,15 +134,22 @@ export default function CommunityHub() {
                 setLoading(false);
             }
         }
-    }, [page, activeTab, selectedCategory, debouncedSearch, totalPages, sidebarActiveItem, getAccessToken]);
+    }, [page, activeTab, selectedCategory, debouncedSearch, totalPages, sidebarActiveItem, getAccessToken, isAuthenticated]);
 
     // Fetch categories and trending on mount
     useEffect(() => {
         async function fetchInitial() {
+            if (!isAuthenticated) {
+                setCategories([]);
+                setTrendingItems([]);
+                return;
+            }
             try {
+                const token = getAccessToken();
+                const authHeaders = token ? { 'Authorization': `Bearer ${token}` } : {};
                 const [catRes, trendRes] = await Promise.all([
-                    fetch('/api/community/categories'),
-                    fetch('/api/community/browse/trending')
+                    fetch('/api/community/categories', { headers: authHeaders }),
+                    fetch('/api/community/browse/trending', { headers: authHeaders })
                 ]);
 
                 if (catRes.ok) {
@@ -160,7 +173,7 @@ export default function CommunityHub() {
             }
         }
         fetchInitial();
-    }, []);
+    }, [getAccessToken, isAuthenticated]);
 
     // Trigger fetch when any filter/sidebar item changes
     useEffect(() => {

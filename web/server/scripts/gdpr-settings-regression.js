@@ -99,7 +99,7 @@ assertNotContains(privacy, 'Zero Data Retention', 'unverified zero-retention cla
 const terms = 'src/pages/Legal/TermsOfService.jsx';
 assertContains(terms, 'Account Data, Export, and Deletion', 'account data terms section');
 assertContains(terms, 'Financial transaction records', 'financial retention terms note');
-assertContains(terms, 'AI Output and Published Sites', 'AI output terms section');
-assertContains(terms, 'Moderation and Takedowns', 'moderation terms section');
+assertContains(terms, 'AI Output and No Guarantees', 'AI output terms section');
+assertContains(terms, 'Moderation, Notices, and Takedowns', 'moderation terms section');
 
 console.log('[gdpr-settings-regression] OK');

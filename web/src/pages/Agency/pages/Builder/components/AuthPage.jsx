@@ -91,12 +91,16 @@ export function AuthPage() {
           setIsSubmitting(false);
           return;
         }
-        const { error } = await signUpWithPassword(email, password, fullName);
+        const { data, error } = await signUpWithPassword(email, password, fullName);
         if (!error) {
-          setSuccessMessage("Account created! Redirecting to setup your bonus...");
-          setTimeout(() => {
-            navigate("/builder/profile?tab=Websites&new=true", { replace: true });
-          }, 1500);
+          if (data?.session?.access_token) {
+            setSuccessMessage("Account created! Redirecting to setup your bonus...");
+            setTimeout(() => {
+              navigate("/builder/profile?tab=Websites&new=true", { replace: true });
+            }, 1500);
+          } else {
+            setSuccessMessage("Check your email to confirm your account. After confirming, return here and sign in.");
+          }
         }
       } else {
         const { error } = await signInWithPassword(email, password);

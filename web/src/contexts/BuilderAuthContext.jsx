@@ -73,6 +73,9 @@ export function BuilderAuthProvider({ children }) {
     const consentRecordedRef = useRef(null);
     // Last user id we've fully loaded the profile for.
     const profileLoadedForRef = useRef(null);
+    // Stable ref for current session — allows getAccessToken to be a truly
+    // stable callback that never triggers downstream effect re-fires.
+    const sessionRef = useRef(null);
 
     const ensureServerProfile = useCallback(async (sessionToUse) => {
         const userId = sessionToUse?.user?.id;
@@ -86,23 +89,40 @@ export function BuilderAuthProvider({ children }) {
         }
 
         const promise = (async () => {
-            try {
-                const response = await fetch('/api/settings/ensure-profile', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        Authorization: `Bearer ${sessionToUse.access_token}`
-                    }
-                });
+            const MAX_RETRIES = 3;
+            const BASE_DELAY = 800;
 
-                const data = await response.json().catch(() => ({}));
-                if (!response.ok || !data.success) {
-                    console.warn('[BuilderAuth] Profile bootstrap failed:', data.error || response.statusText);
-                    return null;
+            try {
+                for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+                    try {
+                        const response = await fetch('/api/settings/ensure-profile', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                Authorization: `Bearer ${sessionToUse.access_token}`
+                            }
+                        });
+
+                        const data = await response.json().catch(() => ({}));
+                        if (!response.ok || !data.success) {
+                            // Server responded but with an error — don't retry,
+                            // it's not a connectivity issue.
+                            console.warn('[BuilderAuth] Profile bootstrap failed:', data.error || response.statusText);
+                            return null;
+                        }
+                        return data.profile || null;
+                    } catch (err) {
+                        // Network-level failure (ECONNRESET, fetch refused, etc.)
+                        // — the backend is probably still booting. Retry with backoff.
+                        const isLastAttempt = attempt === MAX_RETRIES;
+                        if (isLastAttempt) {
+                            console.warn('[BuilderAuth] Profile bootstrap skipped after retries:', err?.message || err);
+                            return null;
+                        }
+                        const delay = BASE_DELAY * Math.pow(2, attempt); // 800 → 1600 → 3200
+                        await new Promise((r) => setTimeout(r, delay));
+                    }
                 }
-                return data.profile || null;
-            } catch (err) {
-                console.warn('[BuilderAuth] Profile bootstrap skipped:', err?.message || err);
                 return null;
             } finally {
                 if (inFlightEnsureRef.current.userId === userId) {
@@ -201,6 +221,7 @@ export function BuilderAuthProvider({ children }) {
     const handleSession = useCallback(async (newSession) => {
         // Always update session/user state so consumers see the latest token.
         setSession(newSession);
+        sessionRef.current = newSession;
 
         if (!newSession?.user) {
             setUser(null);
@@ -438,8 +459,10 @@ export function BuilderAuthProvider({ children }) {
         if (profileData) setProfile(profileData);
     }, [user, fetchProfile]);
 
-    // Stable reference for backend calls.
-    const getAccessToken = useCallback(() => session?.access_token || null, [session]);
+    // Stable reference for backend calls — reads from ref so the callback
+    // identity never changes, preventing downstream effect re-fires on every
+    // TOKEN_REFRESHED auth event.
+    const getAccessToken = useCallback(() => sessionRef.current?.access_token || null, []);
 
     const value = React.useMemo(() => ({
         session,

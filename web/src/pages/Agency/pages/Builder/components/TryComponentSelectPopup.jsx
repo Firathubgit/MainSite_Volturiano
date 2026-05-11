@@ -6,6 +6,15 @@ import styles from './TryComponentSelectPopup.module.css';
 // Using the provided video
 import popupVideo from '../Dashboard/Assets/LowQualityVidOpenScreen.mp4';
 
+// Preload the video in the background as soon as this module is evaluated,
+// so it's already in the browser cache when the popup opens.
+if (typeof document !== 'undefined') {
+    const link = document.createElement('link');
+    link.rel = 'preload';
+    link.as = 'video';
+    link.href = popupVideo;
+    document.head.appendChild(link);
+}
 const TryComponentSelectPopup = ({ isOpen, onClose, onOpenCommunity, onProceedWithout }) => {
     // Basic effect to block scrolling if needed
     useEffect(() => {

@@ -5,7 +5,7 @@ import { useBuilderAuth } from '../../../../../contexts/BuilderAuthContext';
 import AuthGateModal from '../../../../../components/Modals/AuthGateModal';
 
 export default function ComponentSelector({ isOpen, onClose, onConfirm }) {
-    const { isAuthenticated } = useBuilderAuth();
+    const { isAuthenticated, getAccessToken } = useBuilderAuth();
     const [showAuthModal, setShowAuthModal] = useState(false);
     
     const [catalog, setCatalog] = useState(null);
@@ -16,8 +16,18 @@ export default function ComponentSelector({ isOpen, onClose, onConfirm }) {
 
     useEffect(() => {
         if (isOpen) {
+            if (!isAuthenticated) {
+                setShowAuthModal(true);
+                setLoading(false);
+                return;
+            }
             setLoading(true);
-            fetch('/api/component-catalog')
+            const token = getAccessToken();
+            fetch('/api/component-catalog', {
+                headers: {
+                    ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+                }
+            })
                 .then(res => res.json())
                 .then(data => {
                     setCatalog(data);
@@ -28,7 +38,7 @@ export default function ComponentSelector({ isOpen, onClose, onConfirm }) {
                     setLoading(false);
                 });
         }
-    }, [isOpen]);
+    }, [isOpen, isAuthenticated, getAccessToken]);
 
     const toggleSelection = (id) => {
         setSelectedIds(prev => {

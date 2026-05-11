@@ -104,7 +104,7 @@ const BuilderContent = () => {
         }
     }, [location.search, navigate, location.state]);
 
-    const { isAuthenticated, profile, loading: authLoading, refreshProfile } = useBuilderAuth();
+    const { isAuthenticated, profile, loading: authLoading, refreshProfile, getAccessToken } = useBuilderAuth();
     const { startTransition } = useRouteTransition();
     const { refreshCredits } = useCredits();
     const [inputValue, setInputValue] = useState("");
@@ -400,17 +400,47 @@ const BuilderContent = () => {
     }, []);
 
     useEffect(() => {
-        fetch('/api/build-template?list=true')
-            .then(res => res.json())
-            .then(data => {
-                if (data.success) setTemplates(data.templates || []);
-                setIsLoadingTemplates(false);
-            })
-            .catch(err => {
-                console.error('Failed to load templates:', err);
-                setIsLoadingTemplates(false);
-            });
-    }, []);
+        if (authLoading) return;
+        if (!isAuthenticated) {
+            setTemplates([]);
+            setIsLoadingTemplates(false);
+            return;
+        }
+
+        const controller = new AbortController();
+        setIsLoadingTemplates(true);
+
+        const fetchWithRetry = async (attempt = 0) => {
+            const MAX_RETRIES = 3;
+            try {
+                const token = getAccessToken();
+                const res = await fetch('/api/build-template?list=true', {
+                    headers: {
+                        ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+                    },
+                    signal: controller.signal
+                });
+                const data = await res.json();
+                if (!controller.signal.aborted) {
+                    if (data.success) setTemplates(data.templates || []);
+                    setIsLoadingTemplates(false);
+                }
+            } catch (err) {
+                if (controller.signal.aborted) return;
+                if (attempt < MAX_RETRIES) {
+                    const delay = 800 * Math.pow(2, attempt);
+                    await new Promise(r => setTimeout(r, delay));
+                    if (!controller.signal.aborted) return fetchWithRetry(attempt + 1);
+                } else {
+                    console.error('Failed to load templates after retries:', err);
+                    setIsLoadingTemplates(false);
+                }
+            }
+        };
+
+        fetchWithRetry();
+        return () => controller.abort();
+    }, [authLoading, isAuthenticated, getAccessToken]);
 
     const handlePaste = (e) => {
         const items = e.clipboardData?.items;

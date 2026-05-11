@@ -192,7 +192,7 @@ const promptTruncationMiddleware = (req, res, next) => {
 };
 
 const aiProtections = [aiLimiter, requireAuth, requireUnrestricted, promptTruncationMiddleware];
-const safeAiProtections = [aiLimiter, optionalAuth, requireUnrestricted, promptTruncationMiddleware];
+const safeAiProtections = [aiLimiter, requireAuth, requireUnrestricted, promptTruncationMiddleware];
 
 // Routes
 app.post('/api/enhance-prompt', aiProtections, enhancePrompt);
@@ -216,13 +216,13 @@ app.post('/api/feedback', feedbackLimiter, optionalAuth, submitFeedback);
 app.post('/api/issues', feedbackLimiter, optionalAuth, submitIssue);
 
 // Premium component registry routes
-app.get('/api/component-catalog', relaxedLimiter, componentCatalog);
-app.post('/api/select-components', standardLimiter, selectComponents);
-app.get('/api/component-bundle', relaxedLimiter, componentBundle);
-app.post('/api/component-bundle', relaxedLimiter, componentBundle);
+app.get('/api/component-catalog', relaxedLimiter, requireAuth, componentCatalog);
+app.post('/api/select-components', standardLimiter, requireAuth, requireUnrestricted, selectComponents);
+app.get('/api/component-bundle', relaxedLimiter, requireAuth, componentBundle);
+app.post('/api/component-bundle', relaxedLimiter, requireAuth, componentBundle);
 app.post('/api/build-from-selection', aiProtections, buildFromSelection);
 app.post('/api/build-template', aiProtections, buildTemplate);
-app.get('/api/build-template', relaxedLimiter, optionalAuth, buildTemplate);
+app.get('/api/build-template', relaxedLimiter, requireAuth, buildTemplate);
 // Deterministic App.jsx renderer
 app.post('/api/render-app', aiProtections, renderApp);
 
@@ -277,11 +277,12 @@ app.use('/api/admin', strictLimiter, adminRoutes);
 app.use('/api/integrations/github', strictLimiter, githubIntegrationRoutes);
 
 // Phase A1: Agentic Builder (AI agent loop with tool calling)
-// requireUnrestricted blocks AI calls when the user has restricted processing in Settings.
-app.use('/api/agent', aiLimiter, optionalAuth, requireUnrestricted, agentRoutes);
+// Agent routes mutate sandbox/project state and consume AI credits, so they must be authenticated.
+app.use('/api/agent', aiLimiter, requireAuth, requireUnrestricted, agentRoutes);
 
-// List published sites API (User specific or all depending on auth)
-app.get('/api/published-sites', optionalAuth, async (req, res) => {
+// List published sites API for the authenticated dashboard user.
+// Public published site rendering remains available through /sites/:slug.
+app.get('/api/published-sites', requireAuth, async (req, res) => {
   try {
     const { supabaseAdmin } = await import('./lib/supabase-admin.js');
     if (!supabaseAdmin) {
@@ -293,12 +294,7 @@ app.get('/api/published-sites', optionalAuth, async (req, res) => {
       .select('*')
       .order('published_at', { ascending: false });
 
-    // Filter by user if logged in, otherwise show all active
-    if (req.user?.id) {
-      query = query.eq('user_id', req.user.id);
-    } else {
-      query = query.eq('status', 'active');
-    }
+    query = query.eq('user_id', req.user.id);
 
     const { data: sites, error } = await query;
     if (error) throw error;

@@ -275,8 +275,8 @@ export default function TermsOfService() {
           <h2>15. Account Data, Export, and Deletion</h2>
           <p>
             You may export and delete your account data from the dashboard. Deletion removes or
-            anonymizes user-scoped data where technically and legally possible. Financial transaction
-            records, refund/dispute records, audit evidence, security logs, and other records we must
+            anonymizes user-scoped data where technically and legally possible. Financial transaction records,
+            refund/dispute records, audit evidence, security logs, and other records we must
             retain for accounting (Swedish bookkeeping requires retention of accounting evidence for
             seven years), tax, security, abuse prevention, or legal reasons may be preserved in
             minimized form.

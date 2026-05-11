@@ -10,7 +10,7 @@ import suggestFix from './suggest-fix.js';
 import mySubmissions from './my-submissions.js';
 import { createHash } from 'crypto';
 import { supabaseAdmin } from '../../lib/supabase-admin.js';
-import { requireAuth, optionalAuth } from '../../middleware/authMiddleware.js';
+import { requireAuth, requireUnrestricted } from '../../middleware/authMiddleware.js';
 import { requireBuilderAdmin } from '../../lib/security/admin-access.js';
 
 const router = Router();
@@ -524,10 +524,10 @@ router.post('/rate/:componentId', requireAuth, async (req, res) => {
 
 // ═══════════════════════════════════════════════════════════════
 // 9. GET /api/community/components/:id/ratings
-// Public — anyone can read ratings
+// Auth required — read component ratings
 // Query: ?page=1&limit=10&sort=newest|helpful
 // ═══════════════════════════════════════════════════════════════
-router.get('/components/:id/ratings', async (req, res) => {
+router.get('/components/:id/ratings', requireAuth, async (req, res) => {
     const componentId = req.params.id;
     const { page = 1, limit = 10, sort = 'newest' } = req.query;
     const offset = (parseInt(page) - 1) * parseInt(limit);
@@ -833,10 +833,10 @@ router.post('/submissions/:id/resubmit', requireAuth, async (req, res) => {
 
 // ═══════════════════════════════════════════════════════════════
 // 14b. POST /api/community/suggest-fix
-// Public (no auth) — AI-powered code fix for preview errors
+// Auth required — AI-powered code fix for preview errors
 // Body: { code, error, stage?, line? }
 // ═══════════════════════════════════════════════════════════════
-router.post('/suggest-fix', suggestFix);
+router.post('/suggest-fix', requireAuth, requireUnrestricted, suggestFix);
 
 // ═══════════════════════════════════════════════════════════════
 // ═══════════════════════════════════════════════════════════════
@@ -905,17 +905,17 @@ router.get('/liked-components', requireAuth, async (req, res) => {
 });
 
 // ═══════════════════════════════════════════════════════════════
-// Phase S11: MARKETPLACE BROWSE API ENDPOINTS (Public — No Auth)
+// Phase S11: MARKETPLACE BROWSE API ENDPOINTS (Authenticated)
 // 5 new endpoints for the community marketplace browse experience
 // ═══════════════════════════════════════════════════════════════
 
 // ───────────────────────────────────────────────────────────────
 // 16. GET /api/community/browse
-// Public — paginated browse with filters, search, sorting, facets
+// Auth required — paginated browse with filters, search, sorting, facets
 // Query: ?type=component|template&category=&subcategory=&sort=popular|newest|quality|most_used
 //        &industry=&color=light|dark|mixed|adaptive&style=&page=1&limit=20&search=
 // ───────────────────────────────────────────────────────────────
-router.get('/browse', async (req, res) => {
+router.get('/browse', requireAuth, async (req, res) => {
     const {
         type = 'component',
         category,
@@ -1066,9 +1066,9 @@ router.get('/browse', async (req, res) => {
 
 // ───────────────────────────────────────────────────────────────
 // 17. GET /api/community/browse/trending
-// Public — top 5 components + templates by usage_count
+// Auth required — top 5 components + templates by usage_count
 // ───────────────────────────────────────────────────────────────
-router.get('/browse/trending', async (req, res) => {
+router.get('/browse/trending', requireAuth, async (req, res) => {
     try {
         if (!supabaseAdmin) {
             return res.status(500).json({ success: false, error: 'Database not configured' });
@@ -1109,12 +1109,12 @@ router.get('/browse/trending', async (req, res) => {
 
 // ───────────────────────────────────────────────────────────────
 // 18. GET /api/community/components/:id  (detail view)
-// Public — single component with author, ratings, related templates
+// Auth required — single component with author, ratings, related templates
 // NOTE: This does NOT conflict with the existing /components/:id/ratings
 //       endpoint (registered at line 513) because Express matches the
 //       more-specific /components/:id/ratings path first.
 // ───────────────────────────────────────────────────────────────
-router.get('/components/:id', optionalAuth, async (req, res) => {
+router.get('/components/:id', requireAuth, async (req, res) => {
     const componentId = req.params.id;
 
     try {
@@ -1200,9 +1200,9 @@ router.get('/components/:id', optionalAuth, async (req, res) => {
 
 // ───────────────────────────────────────────────────────────────
 // 19. GET /api/community/templates/:id  (detail view)
-// Public — single template with author, sections, ratings
+// Auth required — single template with author, sections, ratings
 // ───────────────────────────────────────────────────────────────
-router.get('/templates/:id', async (req, res) => {
+router.get('/templates/:id', requireAuth, async (req, res) => {
     const templateId = req.params.id;
 
     try {
@@ -1256,9 +1256,9 @@ router.get('/templates/:id', async (req, res) => {
 
 // ───────────────────────────────────────────────────────────────
 // 20. GET /api/community/categories
-// Public — distinct categories with counts and subcategories
+// Auth required — distinct categories with counts and subcategories
 // ───────────────────────────────────────────────────────────────
-router.get('/categories', async (req, res) => {
+router.get('/categories', requireAuth, async (req, res) => {
     try {
         if (!supabaseAdmin) {
             return res.status(500).json({ success: false, error: 'Database not configured' });

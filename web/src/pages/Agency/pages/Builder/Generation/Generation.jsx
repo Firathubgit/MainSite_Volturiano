@@ -1018,6 +1018,8 @@ export default function Generation() {
   const [showConsole, setShowConsole] = useState(false);
   const [sidebarWidth, setSidebarWidth] = useState(322);
   const [isResizing, setIsResizing] = useState(false);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [isEdgePulling, setIsEdgePulling] = useState(false);
 
   const [deliveryQueue, setDeliveryQueue] = useState([]);
   const isProcessingQueue = useRef(false);
@@ -1310,7 +1312,11 @@ export default function Generation() {
     }
   }, [generationProgress?.isGenerating, generationProgress?.status, aiThinking?.stage, codeApplicationState?.stage, getUnifiedStatus]);
 
-  // Sidebar Resizing Logic
+  // Sidebar Resizing Logic (with snap-collapse & edge-pull-out)
+  const BASE_SIDEBAR = 322;
+  const getMinW = useCallback(() => BASE_SIDEBAR - (window.innerWidth * 0.04), []);
+  const getMaxW = useCallback(() => BASE_SIDEBAR + (window.innerWidth * 0.12), []);
+
   const startResizing = useCallback((e) => {
     e.preventDefault();
     setIsResizing(true);
@@ -1323,15 +1329,44 @@ export default function Generation() {
   const resize = useCallback((e) => {
     if (isResizing) {
       const newWidth = e.clientX;
-      const BASE = 322;
-      const minW = BASE - (window.innerWidth * 0.04); // -4% of screen
-      const maxW = BASE + (window.innerWidth * 0.12); // +12% of screen
+      const minW = getMinW();
+      const maxW = getMaxW();
+      const snapThreshold = minW / 2; // half of min-width = collapse trigger
 
-      if (newWidth >= minW && newWidth <= maxW) {
+      if (newWidth < snapThreshold) {
+        // User dragged well past half the min → snap-collapse
+        setIsSidebarCollapsed(true);
+        setIsResizing(false);
+      } else if (newWidth >= minW && newWidth <= maxW) {
         setSidebarWidth(newWidth);
+      } else if (newWidth < minW) {
+        // Clamp to min (normal stop behavior)
+        setSidebarWidth(minW);
       }
     }
-  }, [isResizing]);
+  }, [isResizing, getMinW, getMaxW]);
+
+  // Edge-pull: drag from left edge of viewport to restore sidebar
+  const startEdgePull = useCallback((e) => {
+    e.preventDefault();
+    setIsEdgePulling(true);
+  }, []);
+
+  const edgePullMove = useCallback((e) => {
+    if (isEdgePulling) {
+      const minW = getMinW();
+      // Once the user drags out far enough (past 60px), restore
+      if (e.clientX > 60) {
+        setIsSidebarCollapsed(false);
+        setSidebarWidth(minW);
+        setIsEdgePulling(false);
+      }
+    }
+  }, [isEdgePulling, getMinW]);
+
+  const stopEdgePull = useCallback(() => {
+    setIsEdgePulling(false);
+  }, []);
 
   useEffect(() => {
     if (isResizing) {
@@ -1340,12 +1375,26 @@ export default function Generation() {
     } else {
       window.removeEventListener('mousemove', resize);
       window.removeEventListener('mouseup', stopResizing);
-    };
+    }
     return () => {
       window.removeEventListener('mousemove', resize);
       window.removeEventListener('mouseup', stopResizing);
     };
   }, [isResizing, resize, stopResizing]);
+
+  useEffect(() => {
+    if (isEdgePulling) {
+      window.addEventListener('mousemove', edgePullMove);
+      window.addEventListener('mouseup', stopEdgePull);
+    } else {
+      window.removeEventListener('mousemove', edgePullMove);
+      window.removeEventListener('mouseup', stopEdgePull);
+    }
+    return () => {
+      window.removeEventListener('mousemove', edgePullMove);
+      window.removeEventListener('mouseup', stopEdgePull);
+    };
+  }, [isEdgePulling, edgePullMove, stopEdgePull]);
 
   // ─── Helpers ──────────────
 
@@ -3703,7 +3752,7 @@ Just position the new components in a logical order (e.g. after the Hero or befo
   }, [isRevealing, cinematicText, hasPlayedCinematic, chatMessages.length, addChatMessage]);
 
   return (
-    <div className={styles.page} data-mobile-preview={isMobilePreviewOpen} style={{ cursor: isResizing ? 'col-resize' : 'default', userSelect: isResizing ? 'none' : 'auto', background: 'black' }}>
+    <div className={styles.page} data-mobile-preview={isMobilePreviewOpen} style={{ cursor: (isResizing || isEdgePulling) ? 'col-resize' : 'default', userSelect: (isResizing || isEdgePulling) ? 'none' : 'auto', background: 'black' }}>
       <AnimatePresence>
         {showMobileSettingsModal && (
           <motion.div
@@ -3761,7 +3810,7 @@ Just position the new components in a logical order (e.g. after the Hero or befo
         }
       `}</style>
             {/* ─── SIDEBAR (Chat) ─── */}
-            <aside className={styles.sidebar} style={{ width: sidebarWidth }}>
+            <aside className={`${styles.sidebar} ${isSidebarCollapsed ? styles.sidebarCollapsed : ''} ${isResizing ? styles.sidebarResizing : ''}`} style={{ width: isSidebarCollapsed ? 0 : sidebarWidth }}>
               <div className={styles.sidebarHeader}>
                 <button className={styles.backBtn} onClick={() => navigate('/builder')}>
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#ffffff" strokeWidth="1.5"><path d="M19 12H5M12 19l-7-7 7-7" /></svg>
@@ -4532,9 +4581,15 @@ Just position the new components in a logical order (e.g. after the Hero or befo
               }}
             />
 
-            <div className={styles.resizeHandle} onMouseDown={startResizing}>
-              <div className={styles.resizeLine} />
-            </div>
+            {isSidebarCollapsed ? (
+              <div className={styles.edgePullHandle} onMouseDown={startEdgePull}>
+                <div className={styles.edgePullLine} />
+              </div>
+            ) : (
+              <div className={styles.resizeHandle} onMouseDown={startResizing}>
+                <div className={styles.resizeLine} />
+              </div>
+            )}
 
             {/* ─── MAIN AREA ─── */}
             <main className={styles.mainArea}>

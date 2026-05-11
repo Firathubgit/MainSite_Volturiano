@@ -36,7 +36,14 @@ const ALLOWED_FIELDS = new Set([
     'subcategory',
     'tags',
     'industry_tags',
+    // Source code of the component. Edited from the dev dashboard's Sandpack
+    // preview modal. Stored as text — the analyzer normalizes to either a
+    // plain JSX string or a JSON-stringified multi-file object.
+    'bundle_code',
 ]);
+
+// Soft cap for the source-code field so a runaway paste can't bloat the row.
+const MAX_BUNDLE_CODE_BYTES = 200 * 1024; // 200 KB
 
 function submissionStatusForComponentStatus(status) {
     if (status === 'active') return 'approved';
@@ -300,6 +307,14 @@ router.post('/update-component', requireAuth, requireBuilderAdmin, async (req, r
         return res.status(400).json({ error: 'No valid fields to update' });
     }
 
+    // Sanity check on bundle_code size before we hit the DB.
+    if (typeof safeUpdates.bundle_code === 'string' && safeUpdates.bundle_code.length > MAX_BUNDLE_CODE_BYTES) {
+        return res.status(413).json({
+            success: false,
+            error: `bundle_code exceeds ${Math.round(MAX_BUNDLE_CODE_BYTES / 1024)} KB. Trim the source before saving.`,
+        });
+    }
+
     console.log(`[Admin] Updating component ${componentId}:`, JSON.stringify(safeUpdates, null, 2));
 
     try {
@@ -333,6 +348,150 @@ router.post('/update-component', requireAuth, requireBuilderAdmin, async (req, r
     } catch (err) {
         console.error('[Admin] Update component failed:', err.message || err);
         res.status(500).json({ success: false, error: err.message });
+    }
+});
+
+// ═══ Helper: parse a Supabase Storage public URL into { bucket, path } ═══
+// Returns null for external URLs (CDN, third-party, or anything that isn't a
+// Supabase Storage public link) so we don't try to delete them.
+function parseSupabaseStorageUrl(url) {
+    if (!url || typeof url !== 'string') return null;
+    // .../storage/v1/object/public/<bucket>/<path...>?<query>
+    const match = url.match(/\/storage\/v1\/object\/(?:public|sign)\/([^/?#]+)\/([^?#]+)/);
+    if (!match) return null;
+    try {
+        return {
+            bucket: decodeURIComponent(match[1]),
+            path: decodeURIComponent(match[2]),
+        };
+    } catch {
+        return null;
+    }
+}
+
+async function bestEffortRemoveStorageUrl(url) {
+    const parsed = parseSupabaseStorageUrl(url);
+    if (!parsed) return { url, removed: false, reason: 'not-supabase' };
+    try {
+        const { error } = await supabaseAdmin.storage
+            .from(parsed.bucket)
+            .remove([parsed.path]);
+        if (error) {
+            console.warn('[Admin] Storage delete failed', parsed, error.message);
+            return { url, removed: false, reason: error.message };
+        }
+        return { url, removed: true, bucket: parsed.bucket, path: parsed.path };
+    } catch (err) {
+        console.warn('[Admin] Storage delete threw', parsed, err.message);
+        return { url, removed: false, reason: err.message };
+    }
+}
+
+// ═══ POST /api/admin/delete-component — Hard-delete a component + its assets ═══
+//
+// What this does:
+//   1. Loads the component (404 if not found).
+//   2. Best-effort removes thumbnail / preview-image / preview-video files
+//      from Supabase Storage. External URLs are left alone.
+//   3. Archives the linked community_submissions row (if any) so the author's
+//      "My Submissions" page reflects the deletion. (FK is ON DELETE SET NULL
+//      so the row stays for audit; we just flip its status.)
+//   4. Deletes the component row. This cascades to: component_likes,
+//      component_ratings, component_reports, template_sections, and
+//      ai_selection_events via existing ON DELETE CASCADE constraints.
+//   5. Writes an audit log entry with the metadata of the removed component.
+//
+// Body: { componentId, reason? }
+router.post('/delete-component', requireAuth, requireBuilderAdmin, async (req, res) => {
+    const { componentId, reason = null } = req.body || {};
+    if (!componentId) {
+        return res.status(400).json({ success: false, error: 'componentId is required' });
+    }
+
+    try {
+        // 1) Load component metadata so we know what to clean up
+        const { data: component, error: loadError } = await supabaseAdmin
+            .from('components')
+            .select('id, component_id, name, display_name, status, category, author_id, submission_id, thumbnail_url, preview_image_url, preview_video_url')
+            .eq('id', componentId)
+            .maybeSingle();
+
+        if (loadError) throw loadError;
+        if (!component) {
+            return res.status(404).json({ success: false, error: 'Component not found' });
+        }
+
+        console.log(`[Admin] 🗑️ DELETE component ${component.component_id} (${component.name}) initiated by ${req.user?.id}`);
+
+        // 2) Best-effort storage cleanup. We dedupe URLs because thumbnail_url
+        //    and preview_image_url often point to the same file.
+        const urlsToDelete = [
+            component.thumbnail_url,
+            component.preview_image_url,
+            component.preview_video_url,
+        ].filter(Boolean);
+        const dedupedUrls = [...new Set(urlsToDelete)];
+        const storageResults = [];
+        for (const url of dedupedUrls) {
+            // eslint-disable-next-line no-await-in-loop
+            const result = await bestEffortRemoveStorageUrl(url);
+            storageResults.push(result);
+        }
+        const removedCount = storageResults.filter(r => r.removed).length;
+        console.log(`[Admin] Storage cleanup: ${removedCount}/${dedupedUrls.length} files removed`);
+
+        // 3) Archive the linked submission so the author sees this as gone in
+        //    "My Submissions" (the FK SET NULL keeps the row, we just flip status).
+        if (component.submission_id) {
+            const { error: subErr } = await supabaseAdmin
+                .from('community_submissions')
+                .update({
+                    status: 'archived',
+                    rejection_reason: reason || 'Component archived by admin.',
+                    review_reason: reason || 'Component archived by admin.',
+                    reviewed_by: req.user?.id || null,
+                    reviewed_at: new Date().toISOString(),
+                    updated_at: new Date().toISOString(),
+                })
+                .eq('id', component.submission_id);
+            if (subErr) {
+                console.warn('[Admin] Failed to archive submission row:', subErr.message);
+            }
+        }
+
+        // 4) Delete the component. Cascades wipe likes/ratings/reports/template_sections.
+        const { error: deleteError } = await supabaseAdmin
+            .from('components')
+            .delete()
+            .eq('id', componentId);
+        if (deleteError) throw deleteError;
+
+        // 5) Audit log
+        void logAuditEvent(req, {
+            action: 'admin_component_deleted',
+            entityType: 'component',
+            entityId: componentId,
+            metadata: {
+                component_id: component.component_id,
+                name: component.name,
+                display_name: component.display_name,
+                category: component.category,
+                status: component.status,
+                author_id: component.author_id,
+                submission_id: component.submission_id,
+                storageRemoved: storageResults,
+                reason: reason || null,
+            },
+        });
+
+        return res.json({
+            success: true,
+            componentId,
+            storageRemoved: storageResults,
+        });
+    } catch (err) {
+        console.error('[Admin] delete-component failed:', err.message || err);
+        return res.status(500).json({ success: false, error: err.message || 'Failed to delete component' });
     }
 });
 

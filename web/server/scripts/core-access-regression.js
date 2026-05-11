@@ -122,7 +122,9 @@ function testRouteHardeningWiring() {
     assertSourceContains('server/routes/dashboard.js', 'assertPublishedSiteOwner(siteId, userId');
     assertSourceContains('server/routes/dashboard.js', 'updateProjectForUser(site.project_id, userId');
 
-    assertSourceContains('server/middleware/authMiddleware.js', 'allowQueryToken && req.query.token');
+    assertSourceContains('server/middleware/authMiddleware.js', 'Query-string token rejected');
+    assertSourceContains('server/middleware/authMiddleware.js', 'Auth tokens must be sent via the Authorization header');
+    assertSourceNotContains('server/middleware/authMiddleware.js', 'allowQueryToken');
 }
 
 function testMigrationShape() {

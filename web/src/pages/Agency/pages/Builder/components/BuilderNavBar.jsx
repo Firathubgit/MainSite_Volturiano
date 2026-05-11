@@ -43,6 +43,13 @@ export function BuilderNavBar() {
     return () => window.removeEventListener('cinematic-transition-start', handleCinematic);
   }, []);
 
+  // Reset cinematic fade-out when the user navigates back to the builder landing.
+  useEffect(() => {
+    if (isLandingPage && isCinematic) {
+      setIsCinematic(false);
+    }
+  }, [isLandingPage, isCinematic]);
+
   const handleSignOut = async () => {
     setDropdownOpen(false);
     await signOut();

@@ -367,155 +367,107 @@ export default function PublishToVercelModal({
 
     if (!isOpen) return null;
 
+    // ─── Title + icon vary by phase ───
+    // Configure (create new) / pushing → "Publish to Github" with GH logo.
+    // First-publish success → "Publish to Vercel" with Vercel triangle (the
+    //   moment we're handing the user off to Vercel).
+    // Update flow + update success → "Update on Github" with GH logo.
+    let HeaderIcon = GitHubIcon;
+    let headerLabel = 'Publish to Github';
+    if (phase === 'pushing') {
+        HeaderIcon = GitHubIcon;
+        headerLabel = hasExistingRepo ? 'Pushing to github...' : 'Pushing to github...';
+    } else if (phase === 'done' && pushResult && !pushResult.isUpdate) {
+        HeaderIcon = VercelIcon;
+        headerLabel = 'Publish to Vercel';
+    } else if (hasExistingRepo) {
+        HeaderIcon = GitHubIcon;
+        headerLabel = 'Update on Github';
+    }
+
     return (
         <div className={styles.overlay} onClick={!busy ? onClose : undefined}>
             <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
                 <div className={styles.headerRow}>
-                    <h3 className={styles.title}>
-                        {hasExistingRepo ? (
-                            <GitHubIcon className={styles.titleIcon} />
-                        ) : (
-                            <VercelIcon className={styles.titleIcon} />
-                        )}
-                        {hasExistingRepo ? 'Update on GitHub' : 'Publish to Vercel'}
-                    </h3>
+                    <div className={styles.titleGroup}>
+                        <HeaderIcon className={styles.titleIcon} />
+                        <h3 className={styles.title}>{headerLabel}</h3>
+                    </div>
                     <button className={styles.closeBtn} onClick={onClose} disabled={busy} aria-label="Close">
                         ×
                     </button>
                 </div>
 
                 {phase === 'loading' && (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, color: 'rgba(255,255,255,0.55)' }}>
+                    <div className={styles.checkingRow}>
                         <span className={styles.spinner} /> Checking your GitHub connection...
                     </div>
                 )}
 
+                {/* ─── NOT CONNECTED — primary "Connect GitHub" CTA ─── */}
                 {phase === 'notConnected' && (
                     <>
-                        <p className={styles.bodyText}>
-                            We push your project to GitHub first, then hand you off to Vercel for the actual deploy. Connecting only takes a moment.
-                        </p>
                         <div className={styles.consentBanner}>
                             <strong>Volturiano will create or update a GitHub repository on your behalf.</strong>{' '}
-                            We&apos;ll only act when you click Publish. You can disconnect at any time, and your code is yours. Do you want to continue?
+                            We&apos;ll only act when you click Publish. You can disconnect at any time, and your code is yours.
                         </div>
                         {error && <div className={styles.errorBox}>{error}</div>}
-                        <div className={styles.actions}>
-                            <button
-                                className={`${styles.btn} ${styles.btnSecondary}`}
-                                onClick={onClose}
-                                disabled={busy}
-                            >
-                                Not now
-                            </button>
-                            <button
-                                className={`${styles.btn} ${styles.btnPrimary}`}
-                                onClick={handleConnect}
-                                disabled={busy}
-                            >
-                                {busy ? <span className={`${styles.spinner} ${styles.dark}`} /> : <GitHubIcon className={styles.btnIcon} />}
-                                Connect GitHub
-                            </button>
-                        </div>
+                        <button
+                            className={styles.primaryBtn}
+                            onClick={handleConnect}
+                            disabled={busy}
+                        >
+                            {busy
+                                ? <span className={`${styles.spinner} ${styles.dark}`} />
+                                : <GitHubIcon className={styles.primaryBtnIcon} />}
+                            Connect GitHub
+                        </button>
+                        <button className={styles.cancelBtn} onClick={onClose} disabled={busy}>
+                            Not now
+                        </button>
                     </>
                 )}
 
-                {/* ── READY (UPDATE) — simplified single-action card ──
-                    Once the project already has a repo, the user has nothing
-                    new to configure. Skip the form, show a clean confirmation
-                    card with the live link (if known) and one Update button.
-                    On success, auto-close the modal (handled by an effect). */}
+                {/* ─── READY (UPDATE) — simplified card matching UpdateOnGithubFigma ─── */}
                 {phase === 'ready' && conn && hasExistingRepo && (
                     <>
-                        <div className={styles.connectedAs}>
-                            <span>
-                                Connected as <strong>@{conn.githubUsername}</strong>
-                            </span>
-                            <button className={styles.disconnectLink} onClick={handleDisconnect} disabled={busy}>
-                                Disconnect
-                            </button>
-                        </div>
+                        <a
+                            href={`https://github.com/${existingRepo.owner}/${existingRepo.repoName}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className={styles.repoUrlLine}
+                        >
+                            https://github.com/{existingRepo.owner}/{existingRepo.repoName}
+                        </a>
 
-                        <div className={styles.consentBanner}>
-                            Pushing the latest sandbox to{' '}
-                            <strong>{existingRepo.owner}/{existingRepo.repoName}</strong>{' '}
-                            on <code>main</code>. Your hosting provider will redeploy from the new commit automatically.
-                        </div>
-
-                        <div className={styles.fieldGroup}>
-                            <span className={styles.fieldLabel} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                                Live site
+                        <div className={styles.liveUrlGroup}>
+                            <div className={styles.liveUrlHeader}>
+                                <span className={styles.liveUrlLabel}>LIVE URL</span>
                                 <button
+                                    className={styles.liveUrlRefresh}
                                     onClick={autoRefreshVercelUrl}
                                     disabled={busy}
-                                    title="Re-check GitHub Deployments for the latest live URL"
-                                    style={{
-                                        background: 'transparent',
-                                        border: 'none',
-                                        color: 'rgba(255,255,255,0.45)',
-                                        cursor: 'pointer',
-                                        fontSize: '0.7rem',
-                                        textDecoration: 'underline',
-                                        textUnderlineOffset: 3,
-                                        padding: 0,
-                                        textTransform: 'none',
-                                        letterSpacing: 0,
-                                    }}
+                                    title="Re-check GitHub Deployments"
                                 >
                                     refresh
                                 </button>
-                            </span>
+                            </div>
                             {vercelDeployedUrl ? (
                                 <a
                                     href={vercelDeployedUrl}
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className={styles.urlPreview}
-                                    style={{ color: '#2dd4bf', textDecoration: 'none', fontSize: '0.84rem' }}
+                                    className={styles.liveUrlValue}
                                 >
                                     {vercelDeployedUrl.replace(/^https?:\/\//, '')}
                                 </a>
                             ) : (
-                                <span className={styles.urlPreview} style={{ color: 'rgba(255,255,255,0.45)' }}>
-                                    Not detected yet. Vercel writes this back to GitHub after the first successful deploy.
+                                <span className={styles.liveUrlEmpty}>
+                                    not detected yet — once Vercel finishes the build it&apos;ll appear here
                                 </span>
                             )}
-                            <a
-                                href={`https://github.com/${existingRepo.owner}/${existingRepo.repoName}`}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className={styles.urlPreview}
-                                style={{ color: 'rgba(255,255,255,0.55)', textDecoration: 'none', fontSize: '0.78rem' }}
-                            >
-                                github.com/{existingRepo.owner}/{existingRepo.repoName}
-                            </a>
                         </div>
 
-                        {error && <div className={styles.errorBox}>{error}</div>}
-
-                        <div className={styles.actions}>
-                            <button
-                                className={`${styles.btn} ${styles.btnSecondary}`}
-                                onClick={onClose}
-                                disabled={busy}
-                            >
-                                Cancel
-                            </button>
-                            <button
-                                className={`${styles.btn} ${styles.btnPrimary}`}
-                                onClick={handlePush}
-                                disabled={busy}
-                            >
-                                <GitHubIcon className={styles.btnIcon} />
-                                Push update
-                            </button>
-                        </div>
-                    </>
-                )}
-
-                {/* ── READY (CREATE NEW) — full configure form ── */}
-                {phase === 'ready' && conn && !hasExistingRepo && (
-                    <>
                         <div className={styles.connectedAs}>
                             <span>
                                 Connected as <strong>@{conn.githubUsername}</strong>
@@ -525,8 +477,27 @@ export default function PublishToVercelModal({
                             </button>
                         </div>
 
+                        {error && <div className={styles.errorBox}>{error}</div>}
+
+                        <button
+                            className={styles.primaryBtn}
+                            onClick={handlePush}
+                            disabled={busy}
+                        >
+                            <GitHubIcon className={styles.primaryBtnIcon} />
+                            Update
+                        </button>
+                        <button className={styles.cancelBtn} onClick={onClose} disabled={busy}>
+                            Cancel
+                        </button>
+                    </>
+                )}
+
+                {/* ─── READY (CREATE NEW) — matches FirstPostPublishToVercelButtonPressFigma ─── */}
+                {phase === 'ready' && conn && !hasExistingRepo && (
+                    <>
                         <div className={styles.fieldGroup}>
-                            <label className={styles.fieldLabel}>Repository name</label>
+                            <label className={styles.fieldLabel}>Repository Name</label>
                             <input
                                 className={styles.input}
                                 value={repoName}
@@ -542,54 +513,55 @@ export default function PublishToVercelModal({
                             )}
                         </div>
 
-                        <div className={styles.fieldGroup}>
-                            <label className={styles.fieldLabel}>Visibility</label>
-                            <div className={styles.visibilityRow}>
-                                {[
-                                    { id: 'private', label: 'Private' },
-                                    { id: 'public', label: 'Public' },
-                                ].map((opt) => (
-                                    <button
-                                        key={opt.id}
-                                        className={`${styles.visibilityOption} ${visibility === opt.id ? styles.visibilityOptionActive : ''}`}
-                                        onClick={() => setVisibility(opt.id)}
-                                        disabled={busy}
-                                        type="button"
-                                    >
-                                        <span className={styles.visibilityRadio} />
-                                        {opt.label}
-                                    </button>
-                                ))}
-                            </div>
+                        <div className={styles.connectedAs}>
+                            <span>
+                                Connected as <strong>@{conn.githubUsername}</strong>
+                            </span>
+                            <button className={styles.disconnectLink} onClick={handleDisconnect} disabled={busy}>
+                                Disconnect
+                            </button>
+                        </div>
+
+                        <div className={styles.visibilityRow}>
+                            {[
+                                { id: 'private', label: 'Private' },
+                                { id: 'public', label: 'Public' },
+                            ].map((opt) => (
+                                <button
+                                    key={opt.id}
+                                    className={`${styles.visibilityOption} ${visibility === opt.id ? styles.visibilityOptionActive : ''}`}
+                                    onClick={() => setVisibility(opt.id)}
+                                    disabled={busy}
+                                    type="button"
+                                >
+                                    <span className={styles.visibilityRadio} />
+                                    {opt.label}
+                                </button>
+                            ))}
                         </div>
 
                         {error && <div className={styles.errorBox}>{error}</div>}
 
-                        <div className={styles.actions}>
-                            <button
-                                className={`${styles.btn} ${styles.btnSecondary}`}
-                                onClick={onClose}
-                                disabled={busy}
-                            >
-                                Cancel
-                            </button>
-                            <button
-                                className={`${styles.btn} ${styles.btnPrimary}`}
-                                onClick={handlePush}
-                                disabled={busy || !repoName.trim()}
-                            >
-                                <GitHubIcon className={styles.btnIcon} />
-                                Create GitHub repo
-                            </button>
-                        </div>
+                        <button
+                            className={styles.primaryBtn}
+                            onClick={handlePush}
+                            disabled={busy || !repoName.trim()}
+                        >
+                            <GitHubIcon className={styles.primaryBtnIcon} />
+                            Create Github Repo
+                        </button>
+                        <button className={styles.cancelBtn} onClick={onClose} disabled={busy}>
+                            Cancel
+                        </button>
                     </>
                 )}
 
+                {/* ─── PUSHING — matches PushingToGithubWaitingLoadingFigma ─── */}
                 {phase === 'pushing' && (
                     <>
-                        <p className={styles.bodyText}>
+                        <p className={styles.loadingSubtext}>
                             {hasExistingRepo
-                                ? 'Pushing your latest changes to GitHub. This usually takes 10–30 seconds.'
+                                ? 'Pushing your latest sandbox to GitHub. This usually takes 10–30 seconds.'
                                 : 'Creating your repo and uploading the project. This usually takes 10–30 seconds.'}
                         </p>
                         <div className={styles.statusList}>
@@ -599,30 +571,25 @@ export default function PublishToVercelModal({
                             </div>
                             <div className={`${styles.statusItem} ${styles.statusItemActive}`}>
                                 <span className={styles.spinner} />
-                                Uploading files & pushing main
+                                Uploading files and pushing main
                             </div>
                         </div>
                     </>
                 )}
 
-                {/* ── DONE (UPDATE) — compact confirmation, auto-closes ── */}
+                {/* ─── DONE (UPDATE) — compact confirmation, auto-closes ─── */}
                 {phase === 'done' && pushResult?.isUpdate && (
-                    <div className={styles.successBox} style={{ alignItems: 'center', textAlign: 'center', padding: 22 }}>
-                        <strong style={{ fontSize: '1rem' }}>✓ Updated</strong>
-                        <span style={{ color: 'rgba(255,255,255,0.55)', fontSize: '0.82rem' }}>
-                            Pushed commit <code>{(pushResult.commitSha || '').slice(0, 7)}</code> to{' '}
+                    <div className={styles.updateDoneCard}>
+                        <span className={styles.updateDoneTitle}>Updated</span>
+                        <span className={styles.updateDoneSub}>
+                            Pushed to{' '}
                             <a href={pushResult.repoUrl} target="_blank" rel="noopener noreferrer">
                                 {pushResult.repoUrl.replace(/^https?:\/\//, '')}
                             </a>
                         </span>
                         {vercelDeployedUrl && (
-                            <span style={{ color: 'rgba(255,255,255,0.45)', fontSize: '0.78rem' }}>
-                                <a
-                                    href={vercelDeployedUrl}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    style={{ color: '#2dd4bf' }}
-                                >
+                            <span className={styles.updateDoneSub}>
+                                <a href={vercelDeployedUrl} target="_blank" rel="noopener noreferrer">
                                     {vercelDeployedUrl.replace(/^https?:\/\//, '')}
                                 </a>{' '}
                                 will redeploy automatically.
@@ -631,35 +598,43 @@ export default function PublishToVercelModal({
                     </div>
                 )}
 
-                {/* ── DONE (FIRST PUBLISH) — full success card with Vercel CTA ── */}
+                {/* ─── DONE (FIRST PUBLISH) — matches PushingToVercelFigma success ─── */}
                 {phase === 'done' && pushResult && !pushResult.isUpdate && (
                     <>
-                        <div className={styles.successBox}>
-                            <strong>Repo created and pushed</strong>
-                            <a href={pushResult.repoUrl} target="_blank" rel="noopener noreferrer">
-                                {pushResult.repoUrl}
-                            </a>
-                        </div>
-                        <div className={styles.publicHint}>
-                            <span className={styles.publicDot} />
-                            We&apos;ll pick up your live URL automatically once Vercel finishes the first build — no need to copy anything.
+                        <div className={styles.successHeader}>
+                            <div className={styles.successText}>
+                                <h4 className={styles.successTitle}>Repo successfully created</h4>
+                                <a
+                                    href={pushResult.repoUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className={styles.repoUrlLine}
+                                >
+                                    {pushResult.repoUrl}
+                                </a>
+                            </div>
+                            <svg
+                                className={styles.successBadgeIcon}
+                                viewBox="0 0 24 24"
+                                aria-hidden="true"
+                            >
+                                <path
+                                    fill="currentColor"
+                                    d="M12 .5a11.5 11.5 0 0 0-3.64 22.41c.58.1.79-.25.79-.56v-2.18c-3.2.7-3.88-1.36-3.88-1.36-.52-1.33-1.27-1.69-1.27-1.69-1.04-.71.08-.7.08-.7 1.15.08 1.76 1.18 1.76 1.18 1.02 1.74 2.68 1.24 3.34.95.1-.74.4-1.24.73-1.53-2.55-.29-5.24-1.27-5.24-5.66 0-1.25.45-2.27 1.18-3.07-.12-.29-.51-1.46.11-3.04 0 0 .96-.31 3.15 1.17a10.96 10.96 0 0 1 5.74 0c2.18-1.48 3.14-1.17 3.14-1.17.62 1.58.23 2.75.11 3.04.74.8 1.18 1.82 1.18 3.07 0 4.4-2.7 5.36-5.27 5.65.41.36.78 1.06.78 2.14v3.18c0 .31.21.67.8.55A11.5 11.5 0 0 0 12 .5Z"
+                                />
+                            </svg>
                         </div>
 
-                        <div className={styles.actions}>
-                            <button
-                                className={`${styles.btn} ${styles.btnSecondary}`}
-                                onClick={onClose}
-                            >
-                                Close
-                            </button>
-                            <button
-                                className={`${styles.btn} ${styles.btnPrimary}`}
-                                onClick={() => window.open(pushResult.vercelImportUrl, '_blank', 'noopener,noreferrer')}
-                            >
-                                <VercelIcon className={styles.btnIcon} />
-                                Open in Vercel
-                            </button>
-                        </div>
+                        <button
+                            className={styles.primaryBtn}
+                            onClick={() => window.open(pushResult.vercelImportUrl, '_blank', 'noopener,noreferrer')}
+                        >
+                            <VercelIcon className={styles.primaryBtnIcon} />
+                            Open in Vercel
+                        </button>
+                        <button className={styles.cancelBtn} onClick={onClose}>
+                            Close
+                        </button>
                     </>
                 )}
             </div>

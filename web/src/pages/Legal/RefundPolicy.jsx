@@ -24,7 +24,7 @@ export default function RefundPolicy() {
             <ReceiptTextIcon size={32} className={s.icon} />
           </div>
           <h1 className={s.title}>Refund Policy</h1>
-          <p className={s.lastUpdated}>Last updated: May 2026</p>
+          <p className={s.lastUpdated}>Last updated: 14 May 2026</p>
         </header>
 
         <section className={s.section}>
@@ -44,7 +44,7 @@ export default function RefundPolicy() {
             If you are a consumer in the EU/EEA, you have a right to withdraw from a contract for paid
             digital content or services within 14 days of purchase, without giving any reason. To
             exercise this right, send a clear statement (for example by email to{' '}
-            <a className={s.termsLink} href="mailto:contact@volturiano.com">contact@volturiano.com</a>)
+            <a className={s.termsLink} href="mailto:hello@volturiano.com">hello@volturiano.com</a>)
             within 14 days of the order.
           </p>
           <h3>2.1 Express Consent and Waiver of Withdrawal</h3>
@@ -107,7 +107,7 @@ export default function RefundPolicy() {
           <h2>5. Refund Requests</h2>
           <p>
             You can request a refund from the dashboard&rsquo;s billing area or by contacting{' '}
-            <a className={s.termsLink} href="mailto:contact@volturiano.com">contact@volturiano.com</a>{' '}
+            <a className={s.termsLink} href="mailto:hello@volturiano.com">hello@volturiano.com</a>{' '}
             with your account email, the relevant transaction or invoice ID, and a brief reason. Each
             request is reviewed on a case-by-case basis and tracked in our internal refund register
             against the credit ledger and Stripe records.
@@ -137,10 +137,11 @@ export default function RefundPolicy() {
           <h2>8. Contact</h2>
           <p>
             For refund and billing questions, contact{' '}
-            <a className={s.termsLink} href="mailto:contact@volturiano.com">contact@volturiano.com</a>.
-            For consumer dispute resolution, EU consumers may also use the European Commission online
-            dispute platform at{' '}
-            <a className={s.termsLink} href="https://ec.europa.eu/consumers/odr" target="_blank" rel="noopener noreferrer">ec.europa.eu/consumers/odr</a>.
+            <a className={s.termsLink} href="mailto:hello@volturiano.com">hello@volturiano.com</a>.
+            EU consumers can find consumer redress information from the European Commission at{' '}
+            <a className={s.termsLink} href="https://consumer-redress.ec.europa.eu/index_en" target="_blank" rel="noopener noreferrer">consumer-redress.ec.europa.eu</a>.
+            Consumers may also have access to national consumer dispute bodies, such as the Swedish
+            National Board for Consumer Disputes (ARN).
           </p>
         </section>
       </main>

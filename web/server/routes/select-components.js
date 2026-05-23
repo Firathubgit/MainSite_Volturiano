@@ -6,6 +6,7 @@ import { buildSelectionCodeAsync, getCatalogForPromptAsync, getCategoriesAsync, 
 import { llmLog } from '../lib/llm-logger.js';
 
 import appConfig from '../config/app.config.js';
+import { normalizePublicModelId, resolveModelRole } from '../shared/model-registry.js';
 
 // ─── Schema for structured LLM output ─────────────────────
 const selectedComponentSchema = z.object({
@@ -26,8 +27,10 @@ const selectionResultSchema = z.object({
  * POST /api/select-components
  */
 export default async function selectComponents(req, res) {
-    const { prompt, model = 'google/gemini-3.1-pro-preview', overrides = {}, imageDescriptions = [], designSystem = null, buildId, premiumMode = 'hybrid' } = req.body;
-    console.log(`[select-components] ROUTE HIT | BuildId: ${buildId} | Model: ${model} | PremiumMode: ${premiumMode}`);
+    const { prompt, model, overrides = {}, imageDescriptions = [], designSystem = null, buildId, premiumMode = 'hybrid' } = req.body;
+    const requestedModel = model || resolveModelRole('componentSelection');
+    const effectiveModel = normalizePublicModelId(requestedModel);
+    console.log(`[select-components] ROUTE HIT | BuildId: ${buildId} | Model: ${effectiveModel} | Requested: ${requestedModel} | PremiumMode: ${premiumMode}`);
 
     // STRICTURE: If premium mode is OFF, do not even touch the Supabase components table
     if (premiumMode === 'off') {
@@ -87,7 +90,7 @@ export default async function selectComponents(req, res) {
             : '3. VISUAL FIT OVER NOVELTY: For business/service sites, prioritize clear and trustworthy components; do not pick shader/WebGL-heavy heroes unless explicitly requested.';
 
         llmLog.request('SELECT-V1', {
-            model: model,
+            model: effectiveModel,
             systemPrompt: `You are a premium UI component selector.
 CATEGORIES: ${categories.length} categories
 CATALOG: ${catalog.components.length} components`,
@@ -98,7 +101,7 @@ CATALOG: ${catalog.components.length} components`,
 
         const startMs = Date.now();
         const result = await generateObject({
-            model: getModel(model),
+            model: getModel(effectiveModel),
             schema: selectionResultSchema,
             maxRetries: 7, // Highly resilient config to combat rate limit overloads
             messages: [

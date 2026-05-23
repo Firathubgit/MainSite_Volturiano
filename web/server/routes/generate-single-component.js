@@ -3,6 +3,7 @@ import { generateObject } from 'ai';
 import { z } from 'zod';
 import { getModel } from '../lib/provider-helpers.js';
 import { resolveCrossProviderFallback } from '../lib/llm-lightweight.js';
+import { normalizePublicModelId, resolveModelRole } from '../shared/model-registry.js';
 import path from 'node:path';
 
 export default async function generateSingleComponent(req, res) {
@@ -13,9 +14,10 @@ export default async function generateSingleComponent(req, res) {
       prompt,
       overallContext,
       buildMode = 'single_page_multi_section',
-      model = 'google/gemini-3.1-pro-preview'
+      model = resolveModelRole('generalGeneration')
     } = req.body;
-    console.log(`[generate-single-component] ROUTE HIT | Component: ${component?.name} | Model: ${model}`);
+    const effectiveModel = normalizePublicModelId(model);
+    console.log(`[generate-single-component] ROUTE HIT | Component: ${component?.name} | Model: ${effectiveModel} | Requested: ${model}`);
 
     if (!component?.path || !component?.name) {
       return res.status(400).json({ success: false, error: 'component with path and name required' });
@@ -128,9 +130,9 @@ FINAL REMINDER: The user's goal is "${visionPrompt}". Ensure the code is complet
     const timeoutId = setTimeout(() => controller.abort(), 60000); // 60s component generation timeout
 
     try {
-      console.log(`[generate-single-component] Attempting ${name} with ${model}...`);
+      console.log(`[generate-single-component] Attempting ${name} with ${effectiveModel}...`);
       const { object: resultObject } = await generateObject({
-        model: getModel(model),
+        model: getModel(effectiveModel),
         system: SYSTEM_PROMPT,
         prompt: `Create the ${name} component for the "${visionPrompt}" website. Export it as ${finalExportName}.`,
         schema: schema,
@@ -140,8 +142,8 @@ FINAL REMINDER: The user's goal is "${visionPrompt}". Ensure the code is complet
       clearTimeout(timeoutId);
       object = resultObject;
     } catch (err) {
-      const fallbackModel = resolveCrossProviderFallback(model);
-      console.warn(`[generate-single-component] Model ${model} failed, retrying with ${fallbackModel}. Error:`, err.message);
+      const fallbackModel = resolveCrossProviderFallback(effectiveModel);
+      console.warn(`[generate-single-component] Model ${effectiveModel} failed, retrying with ${fallbackModel}. Error:`, err.message);
       try {
         const { object: resultObject } = await generateObject({
           model: getModel(fallbackModel),

@@ -4,6 +4,7 @@
 
 import { generateText } from 'ai';
 import { getModel } from '../../lib/provider-helpers.js';
+import { normalizePublicModelId, resolveModelRole } from '../../shared/model-registry.js';
 
 const SYSTEM_PROMPT = `You are a React component fixer. You receive a React component's source code and an error message from a live preview.
 
@@ -29,8 +30,7 @@ export default async function suggestFix(req, res) {
         return res.status(400).json({ success: false, error: 'Code and error message required' });
     }
 
-    // Use requested model, fallback to 3.1-pro
-    const model = getModel(requestedModel || 'google/gemini-3.1-pro');
+    const model = getModel(normalizePublicModelId(requestedModel || resolveModelRole('generalGeneration')));
 
     try {
         const prompt = `Fix this React component. It crashes with this error in the preview:

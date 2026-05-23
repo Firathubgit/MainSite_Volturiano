@@ -33,6 +33,10 @@ import {
   startAgentTurn,
   summarizeChangedFiles
 } from '../lib/agent/session-store.js';
+import {
+  normalizePublicModelId,
+  resolveModelRole
+} from '../shared/model-registry.js';
 
 const router = express.Router();
 
@@ -82,7 +86,7 @@ router.post('/message', async (req, res) => {
   const {
     prompt,
     sandboxId,
-    model = 'google/gemini-3.1-pro-preview',
+    model = resolveModelRole('generalGeneration'),
     buildId,
     projectId: requestProjectId,
     initialComponents = [],
@@ -105,11 +109,16 @@ router.post('/message', async (req, res) => {
     initialComponents,
     manualSelectionIds
   });
+  const requestedModel = model;
+  const effectiveModel = enableCatalogTools
+    ? resolveModelRole('agentToolHeavy')
+    : normalizePublicModelId(requestedModel);
   const debugTimeline = createAgentDebugTimeline({
     route: 'message',
     projectId: activeProjectId,
     sandboxId: activeSandboxId,
-    model,
+    model: effectiveModel,
+    requestedModel,
     prompt: prompt.trim(),
     turnType: 'edit'
   });
@@ -118,7 +127,9 @@ router.post('/message', async (req, res) => {
     initialComponentCount: initialComponents.length,
     manualSelectionCount: manualSelectionIds.length,
     imageCount: images.length,
-    enableCatalogTools
+    enableCatalogTools,
+    requestedModel,
+    effectiveModel
   });
   debugTimeline.event('catalog_tool_gate', {
     enabled: enableCatalogTools,
@@ -168,7 +179,7 @@ router.post('/message', async (req, res) => {
     userId: authUserId,
     projectId: activeProjectId,
     sandboxId: activeSandboxId,
-    model,
+    model: effectiveModel,
     metadata: { route: 'message' }
   });
   const durableTurn = await startAgentTurn({
@@ -176,7 +187,7 @@ router.post('/message', async (req, res) => {
     userId: authUserId,
     projectId: activeProjectId,
     sandboxId: activeSandboxId,
-    model,
+    model: effectiveModel,
     prompt: prompt.trim(),
     turnType: 'edit'
   });
@@ -196,7 +207,7 @@ router.post('/message', async (req, res) => {
   console.log(`\n[agent-route] POST /api/agent/message`);
   console.log(`[agent-route]   sandbox: ${activeSandboxId || 'global'}`);
   console.log(`[agent-route]   project: ${activeProjectId || 'none'}`);
-  console.log(`[agent-route]   model: ${model}`);
+  console.log(`[agent-route]   model: ${effectiveModel} (requested: ${requestedModel})`);
   console.log(`[agent-route]   prompt: "${prompt.trim().slice(0, 80)}${prompt.length > 80 ? '...' : ''}"`);
   console.log(`[agent-route]   history: ${session.conversationHistory.length} messages`);
 
@@ -265,7 +276,7 @@ router.post('/message', async (req, res) => {
     const result = await runAgentLoop({
       prompt: prompt.trim(),
       images,
-      modelId: model,
+      modelId: effectiveModel,
       sandboxId: activeSandboxId,
       conversationHistory: session.conversationHistory,
       onEvent: sendEvent,
@@ -306,7 +317,8 @@ router.post('/message', async (req, res) => {
     const componentIds = extractComponentIds(result.toolCalls);
     debugTimeline.final({
       route: 'message',
-      model,
+      model: effectiveModel,
+      requestedModel,
       response: result.response,
       toolsUsed: result.toolCalls.map((call) => call.name || call.toolName || call.tool).filter(Boolean),
       changedFiles,
@@ -557,7 +569,7 @@ router.post('/initial-build', async (req, res) => {
     sandboxId,
     buildId,
     projectId: requestProjectId,
-    model = 'google/gemini-3.1-pro-preview',
+    model = resolveModelRole('generalGeneration'),
     initialComponents = [],
     manualSelectionIds = [],
     images = []
@@ -570,11 +582,14 @@ router.post('/initial-build', async (req, res) => {
   // ─── Credit Deduction ────
   const token = req.headers.authorization?.split(' ')[1];
   const activeProjectId = requestProjectId || buildId || null;
+  const requestedModel = model;
+  const effectiveModel = resolveModelRole('agentToolHeavy');
   const debugTimeline = createAgentDebugTimeline({
     route: 'initial-build',
     projectId: activeProjectId,
     sandboxId,
-    model,
+    model: effectiveModel,
+    requestedModel,
     prompt: prompt.trim(),
     turnType: 'initial_build'
   });
@@ -582,7 +597,9 @@ router.post('/initial-build', async (req, res) => {
     buildId,
     initialComponentCount: initialComponents.length,
     manualSelectionCount: manualSelectionIds.length,
-    imageCount: images.length
+    imageCount: images.length,
+    requestedModel,
+    effectiveModel
   });
   let authUserId = req.user?.id || null;
   if (token && supabaseAdmin) {
@@ -633,7 +650,7 @@ router.post('/initial-build', async (req, res) => {
     userId: authUserId,
     projectId: activeProjectId,
     sandboxId: activeSandboxId,
-    model,
+    model: effectiveModel,
     metadata: { route: 'initial-build' }
   });
   const durableTurn = await startAgentTurn({
@@ -641,7 +658,7 @@ router.post('/initial-build', async (req, res) => {
     userId: authUserId,
     projectId: activeProjectId,
     sandboxId: activeSandboxId,
-    model,
+    model: effectiveModel,
     prompt: prompt.trim(),
     turnType: 'initial_build'
   });
@@ -661,7 +678,7 @@ router.post('/initial-build', async (req, res) => {
   console.log(`\n[agent-initial] POST /api/agent/initial-build`);
   console.log(`[agent-initial]   sandbox: ${activeSandboxId || 'global'}`);
   console.log(`[agent-initial]   project: ${activeProjectId || 'none'}`);
-  console.log(`[agent-initial]   model: ${model}`);
+  console.log(`[agent-initial]   model: ${effectiveModel} (requested: ${requestedModel})`);
   console.log(`[agent-initial]   buildId: ${buildId || 'none'}`);
   console.log(`[agent-initial]   prompt: "${prompt.trim().slice(0, 80)}${prompt.length > 80 ? '...' : ''}"`);
   console.log(`[agent-initial]   initialComps: ${initialComponents.length}`);
@@ -735,7 +752,7 @@ router.post('/initial-build', async (req, res) => {
     const result = await runAgentLoop({
       prompt: finalPrompt,
       images, // Pass user-provided images to the agent
-      modelId: model,
+      modelId: effectiveModel,
       sandboxId: activeSandboxId,
       conversationHistory: session.conversationHistory,
       onEvent: sendEvent,
@@ -777,7 +794,8 @@ router.post('/initial-build', async (req, res) => {
     const componentIds = extractComponentIds(result.toolCalls);
     debugTimeline.final({
       route: 'initial-build',
-      model,
+      model: effectiveModel,
+      requestedModel,
       response: result.response,
       toolsUsed: result.toolCalls.map((call) => call.name || call.toolName || call.tool).filter(Boolean),
       changedFiles,

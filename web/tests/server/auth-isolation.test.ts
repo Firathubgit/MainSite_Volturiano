@@ -13,8 +13,8 @@ describe('launch safety: project ownership isolation', () => {
     expectContains(saveSnapshot, 'updateProjectForUser(projectId, userId', 'owned thumbnail update');
 
     const publish = readWeb('server/routes/publish.js');
-    expectContains(publish, 'assertProjectOwner(buildId, userId', 'publish ownership guard before side effects');
-    expectContains(publish, 'updateProjectForUser', 'owned publish project update');
+    expectContains(publish, 'Local Supabase Storage publishing is retired', 'legacy local publish write path retired');
+    expectContains(publish, 'status(410)', 'retired local publish route fails closed');
 
     const dashboard = readWeb('server/routes/dashboard.js');
     expectContains(dashboard, 'assertPublishedSiteOwner', 'published site ownership guard');

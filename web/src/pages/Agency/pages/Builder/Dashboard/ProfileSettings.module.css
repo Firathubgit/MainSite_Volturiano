@@ -79,6 +79,27 @@
     opacity: 1;
 }
 
+.avatarContainer {
+    position: relative;
+    overflow: hidden;
+}
+
+.avatarOverlay {
+    position: absolute;
+    inset: 0;
+    background-color: rgba(0, 0, 0, 0.6);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    border-radius: 50%;
+}
+
+.avatarContainer:hover .avatarOverlay {
+    opacity: 1;
+}
+
 .builderInput:focus {
     transform: scale(1.01);
     /* subtly expand */

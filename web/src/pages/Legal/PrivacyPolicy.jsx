@@ -25,7 +25,7 @@ export default function PrivacyPolicy() {
             <ShieldIcon size={32} className={s.icon} />
           </div>
           <h1 className={s.title}>Privacy Policy & Cookie Policy</h1>
-          <p className={s.lastUpdated}>Last updated: 6 May 2026</p>
+          <p className={s.lastUpdated}>Last updated: 14 May 2026</p>
         </header>
 
         <section className={s.section}>
@@ -36,7 +36,7 @@ export default function PrivacyPolicy() {
             website (regardless of where you visit it from) and tell you about your privacy rights and how the law protects you.
           </p>
           <p>
-            <strong>Data Controller:</strong> Firat Kaya (trading as Volturiano)<br/>
+            <strong>Data Controller:</strong> Firat Kaya, sole trader (enskild firma), Sweden, trading as Volturiano<br/>
             <strong>Contact:</strong> contact@volturiano.com
           </p>
         </section>
@@ -64,7 +64,7 @@ export default function PrivacyPolicy() {
             <li><strong>Performance of Contract:</strong> Where we need to perform the contract we are about to enter into or have entered into with you (e.g., providing AI website generation).</li>
             <li><strong>Legal Obligation:</strong> Where we need to comply with a legal obligation, including retaining accounting evidence where required by Swedish bookkeeping rules.</li>
             <li><strong>Legitimate Interests:</strong> Where it is necessary for our legitimate interests (or those of a third party) and your interests and fundamental rights do not override those interests.</li>
-            <li><strong>Consent:</strong> Where we rely on your acceptance for terms/privacy records, optional analytics, and specific community-submission attestations.</li>
+            <li><strong>Consent:</strong> Where we rely on consent for optional analytics/performance cookies and specific optional choices. Terms/privacy acceptance, community attestation evidence, and security records may also be stored where needed for contract, legal, or legitimate-interest reasons.</li>
           </ul>
         </section>
 
@@ -89,7 +89,7 @@ export default function PrivacyPolicy() {
             We have put in place appropriate security measures (such as Row Level Security) to prevent your personal data from being accidentally lost, used, or accessed in an unauthorized way.
           </p>
           <p>
-            We will only retain your personal data for as long as reasonably necessary to fulfill the purposes we collected it for. If you delete your account, your projects, websites, and profile data are securely wiped. Financial transaction records are retained for 7 years strictly for tax and accounting purposes.
+            We will only retain your personal data for as long as reasonably necessary to fulfill the purposes we collected it for. If you delete your account, user-scoped profile, project, website, snapshot, and agent data is deleted or anonymized from active systems where technically and legally possible. Backup copies, provider logs, security logs, audit evidence, and financial transaction records may remain until their normal retention period expires. Financial transaction records are retained for 7 years where required for Swedish bookkeeping, tax, refund, dispute, and accounting purposes.
           </p>
           <p>
             Data exports and deletion requests are logged so we can prove when a request was received and completed. Agent/session data, snapshots, and generated project data are included in account exports where available. Account deletion removes or anonymizes user-scoped data while preserving financial ledger evidence where legally required.

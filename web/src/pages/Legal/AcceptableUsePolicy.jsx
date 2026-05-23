@@ -24,7 +24,7 @@ export default function AcceptableUsePolicy() {
             <ShieldAlertIcon size={32} className={s.icon} />
           </div>
           <h1 className={s.title}>Acceptable Use Policy</h1>
-          <p className={s.lastUpdated}>Last updated: 6 May 2026</p>
+          <p className={s.lastUpdated}>Last updated: 14 May 2026</p>
         </header>
 
         <section className={s.section}>
@@ -100,6 +100,11 @@ export default function AcceptableUsePolicy() {
             compliance, abuse prevention, billing integrity, or investigation. Where action is taken,
             we will provide a statement of reasons in line with applicable platform regulation when
             feasible. Some restrictions may apply immediately to protect users or the Service.
+          </p>
+          <p>
+            If you believe a moderation action was wrong, contact us with the affected account,
+            component, project, site slug, or notice ID and the reason you believe the decision should
+            be reviewed. We will review credible appeals in good faith and record the outcome.
           </p>
         </section>
 

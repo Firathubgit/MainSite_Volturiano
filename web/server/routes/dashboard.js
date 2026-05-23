@@ -7,6 +7,29 @@ import { logAuditEvent } from '../lib/audit/audit-logger.js';
 
 const router = Router();
 
+function isMissingCommitColumnError(error) {
+    const message = `${error?.message || ''} ${error?.details || ''} ${error?.hint || ''}`;
+    return /is_committed|committed_at|schema cache/i.test(message);
+}
+
+function isVisibleDashboardProject(project) {
+    if (!project) return false;
+    if (project.is_committed === true) return true;
+    if (project.is_committed === false) return false;
+
+    // Migration fallback: hide abandoned in-flight rows even before the new
+    // committed flag exists in a copied/staging database.
+    const hasGeneratedFiles = Array.isArray(project.generated_files)
+        ? project.generated_files.length > 0
+        : project.generated_files && typeof project.generated_files === 'object'
+            ? Object.keys(project.generated_files).length > 0
+            : Boolean(project.generated_files);
+
+    return ['preview', 'published'].includes(project.build_status)
+        || Boolean(project.thumbnail_url)
+        || hasGeneratedFiles;
+}
+
 // ─────────────────────────────────────────────────────────────
 // GET /api/dashboard/projects
 // Returns all projects for the authenticated user
@@ -23,7 +46,7 @@ router.get('/projects', requireAuth, async (req, res) => {
 
         if (error) throw error;
 
-        res.json({ success: true, projects: data });
+        res.json({ success: true, projects: (data || []).filter(isVisibleDashboardProject) });
     } catch (err) {
         console.error('[Dashboard] Error fetching projects:', err.message);
         res.status(500).json({ success: false, error: 'Failed to fetch projects' });
@@ -38,11 +61,19 @@ router.get('/stats', requireAuth, async (req, res) => {
     try {
         const userId = req.user.id;
 
-        // 1. Total projects count
-        const { count: projectCount, error: pError } = await supabaseAdmin
+        // 1. Total visible projects count. In-flight build rows stay hidden
+        // until the first successful snapshot commits them.
+        let { data: projectRows, error: pError } = await supabaseAdmin
             .from('projects')
-            .select('*', { count: 'exact', head: true })
+            .select('id,is_committed,build_status,thumbnail_url')
             .eq('user_id', userId);
+
+        if (pError && isMissingCommitColumnError(pError)) {
+            ({ data: projectRows, error: pError } = await supabaseAdmin
+                .from('projects')
+                .select('id,build_status,thumbnail_url,generated_files')
+                .eq('user_id', userId));
+        }
 
         // 2. Total published sites count
         const { count: publishedCount, error: psError } = await supabaseAdmin
@@ -64,7 +95,7 @@ router.get('/stats', requireAuth, async (req, res) => {
         res.json({
             success: true,
             stats: {
-                totalProjects: projectCount || 0,
+                totalProjects: (projectRows || []).filter(isVisibleDashboardProject).length,
                 totalPublished: publishedCount || 0,
                 credits: profile?.total_credits_remaining || 0
             }

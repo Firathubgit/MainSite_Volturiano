@@ -5,6 +5,7 @@ import React, { useState, useRef, useCallback, useEffect, useMemo } from 'react'
 import { SandpackProvider, SandpackLayout, SandpackPreview, SandpackCodeEditor, useSandpack } from '@codesandbox/sandpack-react';
 import { useBuilderAuth } from '../../../../../contexts/BuilderAuthContext';
 import styles from './ComponentSubmit.module.css';
+import { getDefaultPublicModelId } from '../model-registry.client.js';
 
 // ═══════════════════════════════════════════════════════════════
 // SANDPACK STATE OBSERVER
@@ -261,7 +262,7 @@ export default function ComponentSubmit() {
     const [previewError, setPreviewError] = useState(null);
     const [manualErrorInput, setManualErrorInput] = useState('');
     const [fixing, setFixing] = useState(false);
-    const [selectedFixModel, setSelectedFixModel] = useState('google/gemini-3.1-pro-preview');
+    const [selectedFixModel, setSelectedFixModel] = useState(getDefaultPublicModelId());
 
     const debounceRef = useRef(null);
     const updateFileRef = useRef(null);

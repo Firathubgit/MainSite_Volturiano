@@ -1,10 +1,12 @@
 import { generateText } from 'ai';
 import { getModel } from '../lib/provider-helpers.js';
 import { llmLog } from '../lib/llm-logger.js';
+import { normalizePublicModelId, resolveModelRole } from '../shared/model-registry.js';
 
 export default async function cinematicResponse(req, res) {
     try {
-        const { prompt, model = 'google/gemini-3.1-pro-preview' } = req.body;
+        const { prompt, model = resolveModelRole('generalGeneration') } = req.body;
+        const effectiveModel = normalizePublicModelId(model);
 
         if (!prompt || typeof prompt !== 'string') {
             return res.status(400).json({ success: false, error: 'prompt is required' });
@@ -25,7 +27,7 @@ Summarize the visual soul and the kinetic physics of the site build in a single,
 
         console.log(`[cinematic-response] Synthesizing short architecture for: "${prompt}"`);
         llmLog.request('CINEMATIC', {
-            model,
+            model: effectiveModel,
             systemPrompt,
             userPrompt: prompt,
             temperature: 0.75
@@ -33,7 +35,7 @@ Summarize the visual soul and the kinetic physics of the site build in a single,
 
         const startMs = Date.now();
         let text = '';
-        if (model.includes('openai/')) {
+        if (effectiveModel.includes('openai/')) {
             const { generateFast } = await import('../lib/provider-helpers.js');
             text = await generateFast(
                 systemPrompt,
@@ -41,7 +43,7 @@ Summarize the visual soul and the kinetic physics of the site build in a single,
             );
         } else {
             const result = await generateText({
-                model: getModel(model),
+                model: getModel(effectiveModel),
                 system: systemPrompt,
                 prompt: `Execute a 2-sentence architectural vision for: "${prompt}". Stay under 70 words.`,
                 maxTokens: 1000,

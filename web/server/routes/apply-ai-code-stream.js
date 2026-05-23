@@ -10,6 +10,7 @@ import { runPolishFillers } from '../lib/polish-filler.js';
 import { runMiniPolishStep } from '../lib/mini-polish-refinement.js';
 import { supabaseAdmin } from '../lib/supabase-admin.js';
 import { validateAndFixIdentifiers } from '../lib/validate-identifiers.js';
+import { normalizePublicModelId, resolveModelRole } from '../shared/model-registry.js';
 
 // ═══════════════════════════════════════════════════════════
 // AI_STABILITY_FIX_V4: WHITELIST-ONLY IMPORT ARCHITECTURE
@@ -183,7 +184,7 @@ export default async function applyAiCodeStream(req, res) {
       premiumMode = 'hybrid'
     } = req.body;
 
-    const buildModelId = req.body.model || 'google/gemini-3.1-pro-preview';
+    const buildModelId = normalizePublicModelId(req.body.model || resolveModelRole('generalGeneration'));
     /** Optional explicit paths treated as premium (copy-only polish). Defaults to `src/components/premium/` in polish-refinement. */
     const premiumPolishPathsRaw = req.body.premiumPolishPaths;
     const premiumPaths =

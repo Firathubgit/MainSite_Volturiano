@@ -135,15 +135,6 @@ function ProjectCard({ project, onDelete, navigate }) {
                     >
                         <div className={styles.shimmerEffect} />
                         <Layout size={48} color="rgba(255,255,255,0.05)" strokeWidth={1} />
-                        <span style={{ 
-                            fontSize: '11px', 
-                            fontWeight: '700', 
-                            color: 'rgba(255,255,255,0.2)', 
-                            letterSpacing: '0.1em',
-                            textTransform: 'uppercase'
-                        }}>
-                            Generating Site...
-                        </span>
                     </div>
                 )}
             </div>

@@ -2,8 +2,9 @@
 // Phase S10: LLM Multimodal Analysis for Templates (Structured Output)
 // Analyzes combined component screenshots to generate template metadata.
 
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { GoogleGenAI } from '@google/genai';
 import { z } from 'zod';
+import { resolveModelRole, toProviderModelName } from '../shared/model-registry.js';
 
 // ═══════════════════════════════════════════════════════════════
 // ZOD SCHEMA: Template analysis structured output
@@ -109,40 +110,38 @@ Please respond with valid JSON matching the schema requirements.`;
     }
 
     const MODELS = [
-        'gemini-3-flash-preview',
-        'gemini-2.5-flash-lite-preview',
+        toProviderModelName(resolveModelRole('generalGeneration')),
+        toProviderModelName(resolveModelRole('lightweight')),
     ];
+    const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
     for (let i = 0; i < MODELS.length; i++) {
         const modelName = MODELS[i];
         try {
             console.log(`[template-analyzer] 🚀 Analyzing template "${templateName}" with ${modelName} (attempt ${i + 1}/${MODELS.length})`);
 
-            const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-            const model = genAI.getGenerativeModel({
-                model: modelName,
-                systemInstruction
-            });
-
             const startTime = Date.now();
 
             // 45 second timeout (templates are more complex than single components)
-            const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 45000);
-
-            const result = await model.generateContent({
+            let timeoutId;
+            const timeoutPromise = new Promise((_, reject) => {
+                timeoutId = setTimeout(() => reject(new Error('Timeout after 45000ms')), 45000);
+            });
+            const request = ai.models.generateContent({
+                model: modelName,
                 contents: [{ role: "user", parts }],
-                generationConfig: {
+                config: {
+                    systemInstruction,
                     temperature: 0.2,
-                    responseMimeType: "application/json",
+                    responseMimeType: "application/json"
                 }
-            }, { signal: controller.signal });
-
+            });
+            const result = await Promise.race([request, timeoutPromise]);
             clearTimeout(timeoutId);
 
             console.log(`[template-analyzer] ✅ ${modelName} returned in ${Date.now() - startTime}ms`);
 
-            const responseText = result.response.text();
+            const responseText = result.text;
             const cleanedJsonText = responseText.replace(/^```json\s*/, '').replace(/\s*```$/, '');
             const jsonObj = JSON.parse(cleanedJsonText);
 

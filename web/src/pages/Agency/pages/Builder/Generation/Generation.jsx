@@ -3,8 +3,8 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
-import { FiFile, FiChevronRight, FiChevronDown, FiPlus, FiDownload, FiMonitor, FiTablet, FiSmartphone, FiExternalLink, FiRotateCw, FiRotateCcw, FiRefreshCw, FiZap, FiSlash, FiLayers, FiGlobe, FiCheckCircle, FiCamera, FiEdit2, FiSettings, FiMessageSquare } from 'react-icons/fi';
-import { BsSend, BsCodeSlash, BsLayoutSidebarInset, BsPhone, BsLaptop, BsTablet, BsCheckLg, BsFileEarmarkCode, BsFolder2Open, BsFolderFill, BsTerminal } from 'react-icons/bs';
+import { FiFile, FiChevronRight, FiChevronDown, FiPlus, FiDownload, FiMonitor, FiTablet, FiSmartphone, FiExternalLink, FiRotateCw, FiRotateCcw, FiRefreshCw, FiZap, FiSlash, FiLayers, FiGlobe, FiCheckCircle, FiEdit2, FiSettings, FiMessageSquare } from 'react-icons/fi';
+import { BsSend, BsCodeSlash, BsLayoutSidebarInset, BsPhone, BsLaptop, BsTablet, BsFileEarmarkCode, BsFolder2Open, BsFolderFill, BsTerminal } from 'react-icons/bs';
 import { SiJavascript, SiReact, SiCss3 } from 'react-icons/si';
 import { SparklesIcon } from 'lucide-react';
 import { AIThinkingIndicator, AIMessage, PlanningRevolver } from './SSEEventHandler';
@@ -21,6 +21,8 @@ import { useAgentMode } from './useAgentMode';
 import { mergeHydratedAgentMessages } from './agentChatHydration';
 import { AgentShimmerIcon } from './AgentChatCards';
 import PublishToVercelModal from './PublishToVercelModal';
+import { getPublicModels, normalizePublicModelId } from '../model-registry.client.js';
+import { IMAGE_UPLOAD_LIMITS, formatBytes, optimizeImageFiles } from '../utils/imageOptimizer.js';
 
 
 
@@ -35,7 +37,6 @@ import chockladThumbnail from '../../../../../assets/Chocklad.png';
 import qyvoraClimateThumbnail from '../../../../../assets/87shots_so.png';
 import rivelonThumbnail from '../../../../../assets/134shots_so.png';
 import gradientCorner from '../Dashboard/Assets/GradientCorner.png';
-import gradientCornerForCard from '../Dashboard/Assets/GradientCooorrnerForCard.png';
 import weirdButtonGradient from '../Dashboard/Assets/WeirdButtonGradient.png';
 import coinIcon from '../Dashboard/Assets/SvgIconToken.svg';
 import exportButtonImg from '../Dashboard/Assets/ExportButton.png';
@@ -704,9 +705,11 @@ export default function Generation() {
     return [{ content: 'Welcome! Describe what you want to build and I\'ll generate it for you.', type: 'system', timestamp: new Date() }];
   });
   const [aiChatInput, setAiChatInput] = useState('');
-  const [isAgentMode, setIsAgentMode] = useState(true);
-  const [useAgentBuild, setUseAgentBuild] = useState(location.state?.useAgentBuild ?? true); // ⭐ Experimental agent-mode initial build
-  const [aiModel, setAiModel] = useState(queryParams.get('model') || location.state?.model || 'google/gemini-3.1-pro-preview');
+  const isAgentMode = true;
+  const [aiModel, setAiModel] = useState(() => {
+    const storedModel = typeof window !== 'undefined' ? localStorage.getItem('volturiano_builder_model') : null;
+    return normalizePublicModelId(queryParams.get('model') || location.state?.model || storedModel);
+  });
   const [isMobilePreviewOpen, setIsMobilePreviewOpen] = useState(false);
   const [showMobileSettingsModal, setShowMobileSettingsModal] = useState(false);
   const [aiThinking, setAiThinking] = useState(null);
@@ -723,6 +726,15 @@ export default function Generation() {
   const viewportDropdownRef = useRef(null);
   const [loading, setLoading] = useState(false);
   const [modelDropdownOpen, setModelDropdownOpen] = useState(false);
+  const publicModels = getPublicModels();
+  const renderModelIcon = (id, size = 22) => {
+    if (id.startsWith('openai/')) return <OpenAIIcon width={size} height={size} style={{ color: 'white' }} />;
+    if (id.startsWith('anthropic/')) return <AnthropicIcon width={size} height={size} />;
+    return <GeminiIcon width={size} height={size} />;
+  };
+  useEffect(() => {
+    localStorage.setItem('volturiano_builder_model', aiModel);
+  }, [aiModel]);
   const modelDropdownRef = useRef(null);
   const [exportDropdownOpen, setExportDropdownOpen] = useState(false);
   const exportDropdownRef = useRef(null);
@@ -783,27 +795,6 @@ export default function Generation() {
   // "Publish to Vercel" (first time) and "Update on GitHub" (already
   // linked) without having to wait for the modal to open.
   const [publishMeta, setPublishMeta] = useState(null); // { owner, repoName } | null
-  const [isPublishing, setIsPublishing] = useState(false);
-  const [publishUrl, setPublishUrl] = useState(null);
-  const [showPublishModal, setShowPublishModal] = useState(false);
-  // Template extraction state
-  const [showTemplateForm, setShowTemplateForm] = useState(false);
-  const [templateName, setTemplateName] = useState('');
-  const [templateDesc, setTemplateDesc] = useState('');
-  const [isExtractingTemplate, setIsExtractingTemplate] = useState(false);
-  const [templateResult, setTemplateResult] = useState(null); // { success, message } or null
-  const [showSlugModal, setShowSlugModal] = useState(false);
-  const [customSlug, setCustomSlug] = useState('');
-
-  // Custom Website Info states
-  const [siteTitle, setSiteTitle] = useState('');
-  const [siteDescription, setSiteDescription] = useState('');
-  const [siteIconFile, setSiteIconFile] = useState(null);
-  const [siteIconPreview, setSiteIconPreview] = useState('');
-  const [isUploadingIcon, setIsUploadingIcon] = useState(false);
-  const [publishStep, setPublishStep] = useState(1); // 1 = URL, 2 = Site Info
-
-  const [existingPublishedSlug, setExistingPublishedSlug] = useState(null);
   const [notification, setNotification] = useState(null);
   const [lastPrompt, setLastPrompt] = useState('');
   const lastPromptRef = useRef('');  // Ref for synchronous access in useCallback closures
@@ -1052,7 +1043,7 @@ export default function Generation() {
     const targetSandboxId = sandboxIdOverride || sandboxData?.sandboxId;
     if (!targetSandboxId) return null;
     try {
-      const res = await fetch(`/api/get-sandbox-files?sandboxId=${targetSandboxId}`);
+      const res = await authFetch(`/api/get-sandbox-files?sandboxId=${targetSandboxId}`);
       const data = await res.json();
       if (data.success) {
         const files = data.files || {};
@@ -1064,7 +1055,7 @@ export default function Generation() {
       return data;
     } catch (e) { console.warn('Failed to fetch sandbox files:', e); }
     return null;
-  }, [sandboxData?.sandboxId, syncSandboxFilesToCodePanel]);
+  }, [authFetch, sandboxData?.sandboxId, syncSandboxFilesToCodePanel]);
 
   useEffect(() => {
     if (activeTab !== 'generation' || !sandboxData?.sandboxId) return;
@@ -1128,7 +1119,7 @@ export default function Generation() {
       setAiThinking({ stage: 'Taking state snapshot...' });
 
       // Get latest files from sandbox to ensure accuracy
-      const filesRes = await fetch(`/api/get-sandbox-files?sandboxId=${sandboxData?.sandboxId}`);
+      const filesRes = await authFetch(`/api/get-sandbox-files?sandboxId=${sandboxData?.sandboxId}`);
       const filesData = await filesRes.json();
       const currentFiles = filesData.success ? filesData.files : sandboxFiles;
 
@@ -1156,7 +1147,7 @@ export default function Generation() {
     } finally {
       setAiThinking(null);
     }
-  }, [currentProjectId, sandboxData?.sandboxId, sandboxFiles, chatMessages.length, session, fetchSnapshots, showNotification]);
+  }, [authFetch, currentProjectId, sandboxData?.sandboxId, sandboxFiles, chatMessages.length, session, fetchSnapshots, showNotification]);
   useEffect(() => {
     const hasActiveWork = generationProgress.isGenerating || !!aiThinking || !!codeApplicationState.stage;
     if (!hasActiveWork) {
@@ -1399,51 +1390,56 @@ export default function Generation() {
   // ─── Helpers ──────────────
 
   const [pendingImages, setPendingImages] = useState([]);
+  const [isOptimizingImages, setIsOptimizingImages] = useState(false);
 
-  const handlePaste = useCallback((e) => {
-    const items = e.clipboardData?.items;
-    if (!items) return;
+  const addOptimizedPendingImages = useCallback(async (files) => {
+    const inputFiles = Array.from(files || []);
+    const imageFiles = inputFiles.filter((file) => file?.type?.startsWith('image/'));
+    if (imageFiles.length === 0) return;
 
-    let addedCount = 0;
-    const totalPossible = pendingImages.length;
-
-    for (const item of items) {
-      if (item.type.indexOf("image") !== -1) {
-        if (totalPossible + addedCount >= 10) {
-          showNotification("Maximum of 10 images allowed.");
-          return;
-        }
-        const file = item.getAsFile();
-        if (file) {
-          addedCount++;
-          const reader = new FileReader();
-          reader.onload = (event) => {
-            setPendingImages(prev => [...prev.slice(0, 10), event.target.result].slice(0, 10));
-          };
-          reader.readAsDataURL(file);
-        }
-      }
-    }
-  }, [pendingImages]);
-
-  const processFiles = useCallback((files) => {
-    if (!files) return;
-
-    if (pendingImages.length + files.length > 10) {
-      showNotification("Maximum of 10 images allowed.");
+    if (pendingImages.length >= IMAGE_UPLOAD_LIMITS.maxImages) {
+      showNotification(`Maximum of ${IMAGE_UPLOAD_LIMITS.maxImages} images allowed.`);
       return;
     }
 
-    for (const file of files) {
-      if (file.type.indexOf("image") !== -1) {
-        const reader = new FileReader();
-        reader.onload = (event) => {
-          setPendingImages(prev => [...prev, event.target.result]);
-        };
-        reader.readAsDataURL(file);
+    setIsOptimizingImages(true);
+    try {
+      const { images: optimizedImages, stats } = await optimizeImageFiles(imageFiles, {
+        existingImages: pendingImages,
+      });
+
+      if (optimizedImages.length > 0) {
+        setPendingImages((prev) => [...prev, ...optimizedImages].slice(0, IMAGE_UPLOAD_LIMITS.maxImages));
       }
+
+      if (stats.optimizedCount > 0) {
+        showNotification(
+          `Optimized ${stats.optimizedCount} image${stats.optimizedCount === 1 ? '' : 's'} for upload (${formatBytes(stats.originalBytes)} -> ${formatBytes(stats.optimizedBytes)}).`
+        );
+      } else if (stats.skippedForCount > 0) {
+        showNotification(`Maximum of ${IMAGE_UPLOAD_LIMITS.maxImages} images allowed.`);
+      } else if (stats.skippedForBudget > 0 || stats.failedCount > 0) {
+        showNotification('Some images were too large to prepare. Try fewer images or a smaller screenshot.');
+      }
+    } finally {
+      setIsOptimizingImages(false);
     }
-  }, [pendingImages]);
+  }, [pendingImages, showNotification]);
+
+  const handlePaste = useCallback((e) => {
+    const pastedImages = Array.from(e.clipboardData?.items || [])
+      .filter((item) => item.type.indexOf('image') !== -1)
+      .map((item) => item.getAsFile())
+      .filter(Boolean);
+
+    if (pastedImages.length > 0) {
+      addOptimizedPendingImages(pastedImages);
+    }
+  }, [addOptimizedPendingImages]);
+
+  const processFiles = useCallback((files) => {
+    addOptimizedPendingImages(files);
+  }, [addOptimizedPendingImages]);
 
   const handleDrop = useCallback((e) => {
     e.preventDefault();
@@ -1702,7 +1698,7 @@ export default function Generation() {
                   // Phase S2: Save Snapshot to Supabase
                   try {
                     // Fetch the raw, EXACT files directly from the sandbox (including polish passes)
-                    fetch(`/api/get-sandbox-files?sandboxId=${activeSandboxId}`)
+                    authFetch(`/api/get-sandbox-files?sandboxId=${activeSandboxId}`)
                       .then(res => res.json())
                       .then(sandboxFilesData => {
                         if (sandboxFilesData.success) {
@@ -1722,13 +1718,20 @@ export default function Generation() {
                               sandboxUrl: activeSandboxUrl,
                               sandboxId: activeSandboxId
                             })
-                          });
+                          }).then(snapshotRes => snapshotRes.json());
                         } else {
                           throw new Error('Failed to fetch raw sandbox files');
                         }
                       })
-                      .then(() => {
-                        // Refresh snapshots after saving
+                      .then((snapshotData) => {
+                        if (snapshotData?.success && !snapshotData?.skipped) {
+                          saveProjectUpdates({
+                            buildId,
+                            build_status: 'preview',
+                            is_committed: true,
+                            committed_at: new Date().toISOString()
+                          });
+                        }
                         fetchSnapshots();
                       })
                       .catch(e => console.warn('Snapshot save failed:', e));
@@ -1772,1033 +1775,7 @@ export default function Generation() {
       saveProjectUpdates({ buildId: buildId, build_status: 'failed' });
 
     }
-  }, [sandboxData, addChatMessage, chatMessages.length, session, lastPrompt, premiumMode, saveProjectUpdates, currentProjectId, fetchSnapshots]);
-
-
-  // --- Helper for AI Edits (Shared between Chat and Community Integration) ---
-  const handleAIGeneratedEdit = useCallback(async (promptText, buildId, sandbox) => {
-    try {
-      const res = await authFetch('/api/generate-ai-code-stream', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          prompt: promptText,
-          model: aiModel,
-          isMultiPage: isMultiPageProject,
-          currentPages: projectPages,
-          siteMap: generationProgress.files.find(f => f.path === 'src/app/siteMap.js')?.content || '',
-          context: {
-            sandboxId: sandbox.sandboxId,
-            conversationContext,
-            recentMessages: chatMessages.slice(-10),
-            sandboxUrl: sandbox.url,
-            buildMode: projectBuildMode,
-            routingMode: projectRoutingMode,
-            chromeProfile: projectChromeProfile,
-            plan: {
-              components: componentPlanRef.current || [],
-              isMultiPage: isMultiPageProject,
-              pages: projectPages || [],
-              sharedComponentRefIds: (projectSharedComponents || []).map((c) => c.refId || c.exportName || c.name).filter(Boolean),
-              buildMode: projectBuildMode,
-              routingMode: projectRoutingMode,
-              chromeProfile: projectChromeProfile
-            },
-            premiumComponents: generationProgress.files
-              .filter(f => f.path.includes('components/premium/'))
-              .map(f => ({ name: f.path.split('/').pop().replace(/\.(jsx|tsx)$/, ''), path: f.path }))
-          },
-          isEdit: true,
-          buildId
-        })
-      });
-
-      if (!res.ok) {
-        const text = await res.text();
-        let msg = `Streaming API error (${res.status})`;
-        try { const j = text ? JSON.parse(text) : {}; if (j.message) msg = j.message; } catch (_) { }
-        throw new Error(msg);
-      }
-
-      const reader = res.body.getReader();
-      const decoder = new TextDecoder();
-      let buffer = '';
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split('\n');
-        buffer = lines.pop() || '';
-
-        for (const line of lines) {
-          if (!line.startsWith('data: ')) continue;
-          try {
-            const data = JSON.parse(line.slice(6));
-            if (data.type === 'status') setGenerationProgress(prev => ({ ...prev, status: data.message }));
-            else if (data.type === 'component') setGenerationProgress(prev => ({ ...prev, currentFile: data.path }));
-            else if (data.type === 'complete' && data.generatedCode) {
-              await applyGeneratedCode(data.generatedCode, true, buildId, null, false, sandbox.sandboxId, false, sandbox.url);
-            } else if (data.type === 'error') {
-              throw new Error(data.message);
-            }
-          } catch (e) { /* skip */ }
-        }
-      }
-    } catch (e) {
-      throw e;
-    }
-  }, [
-    aiModel,
-    conversationContext,
-    chatMessages,
-    generationProgress.files,
-    applyGeneratedCode,
-    projectBuildMode,
-    projectRoutingMode,
-    projectChromeProfile,
-    isMultiPageProject,
-    projectPages,
-    projectSharedComponents
-  ]);
-
-  // ─── Start Generation (Prompt-only) ──────────────
-  const startGeneration = useCallback(async (prompt, templateId = null, initialImages = [], manualSelectionIds = null, providedBuildId = null, strictMode = false, initialComponentsFull = null) => {
-    // 🚧 FINAL CREDIT CHECK: Gatekeeper
-    if (outOfCredits) {
-      setShowLimitModal(true);
-      return;
-    }
-
-    setLoading(true);
-    setLastPrompt(prompt);
-    lastPromptRef.current = prompt;  // Synchronous update for polish step
-    setDeliveryQueue([]);
-    setIsMultiPageProject(false);
-    setProjectPages([]);
-    setProjectSharedComponents([]);
-    setProjectBuildMode('single_page_multi_section');
-    setProjectRoutingMode('none');
-    setProjectChromeProfile('marketing');
-
-    // Add deducting message to the loading state
-    setGenerationProgress(prev => ({ ...prev, isGenerating: true, status: 'Starting... (Deducting 1 Credit)', files: [], streamedCode: '' }));
-
-    const displayPrompt = templateId ? "I want to use this template" : prompt;
-    addChatMessage(displayPrompt, 'user', { images: initialImages, stagedComponents: initialComponentsFull });
-
-    // Robust UUID generator
-    const generateUUID = () => {
-      if (typeof crypto !== 'undefined' && crypto.randomUUID) return crypto.randomUUID();
-      return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
-        const r = (Math.random() * 16) | 0;
-        const v = c === 'x' ? r : (r & 0x3) | 0x8;
-        return v.toString(16);
-      });
-    };
-
-    let buildId = providedBuildId || generateUUID();
-    console.log('[Generation] Starting Build:', buildId);
-
-    try {
-      if (!providedBuildId) {
-        // 1. Project Init & Rate Limiting Check (Phase S2)
-        setGenerationProgress(prev => ({ ...prev, status: 'Initializing project...' }));
-        const initRes = await authFetch('/api/projects/init', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ prompt: displayPrompt, buildId })
-        });
-
-        const initData = await safeParseJson(initRes, 'project-init');
-        if (!initData.success) {
-          setGenerationProgress(prev => ({ ...prev, isGenerating: false, status: '' }));
-          addChatMessage(initData.error || 'Failed to initialize project. Please try again.', 'error');
-          setLoading(false);
-          return; // HALT GENERATION
-        }
-
-        // If DB returned a specific ID, use it
-        if (initData.projectId) {
-          buildId = initData.projectId;
-          setCurrentProjectId(buildId);
-        }
-      } else {
-        // We are extending an existing project
-        setCurrentProjectId(buildId);
-      }
-
-      // 1c. Clear the location state so refresh doesn't re-trigger after success
-      window.history.replaceState({}, document.title);
-
-      // 1b. Create sandbox if needed
-      let sandbox = sandboxData;
-      if (!sandbox) {
-        setGenerationProgress(prev => ({ ...prev, status: 'Creating sandbox...' }));
-        // addChatMessage('Creating sandbox environment...', 'system');
-        const createData = await createSandbox();
-        sandbox = { sandboxId: createData.sandboxId, url: createData.url };
-      }
-
-      // ── TEMPLATE MODE: skip enhance/select/plan, build directly ──
-      if (templateId) {
-        setGenerationProgress(prev => ({ ...prev, status: `Building template...` }));
-        addChatMessage("Alright, I will set up the template for you.", 'ai-narrator', { style: 'planning' });
-
-        const templateRes = await authFetch('/api/build-template', {
-          method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ templateId, images: initialImages, buildId })
-        });
-        const templateData = await safeParseJson(templateRes, 'build-template');
-        if (!templateData.success) throw new Error(templateData.error || 'Template build failed');
-
-        // addChatMessage(`Template resolved: ${templateData.resolvedComponents.length} premium components`, 'system');
-
-        setGenerationProgress(prev => ({
-          ...prev, status: 'Applying template code...', files: parseFilesFromCode(templateData.code)
-        }));
-
-        await applyGeneratedCode(templateData.code, false, buildId, null, true, sandbox.sandboxId, false, sandbox.url);
-        // addChatMessage('Template built and applied! Check the preview tab.', 'ai');
-        setActiveTab('preview');
-        return; // Done — template mode exits here
-      }
-
-      // ── PROMPT MODE: enhance → select → plan → generate/bundle → apply ──
-
-      // 2. Enhance prompt
-      setGenerationProgress(prev => ({ ...prev, status: 'Enhancing prompt...' }));
-      let finalPrompt = prompt;
-      try {
-        const enhanceRes = await authFetch('/api/enhance-prompt', {
-          method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ prompt, images: initialImages, model: aiModel, mode: 'prompt-only', buildId })
-        });
-        const enhanceData = await safeParseJson(enhanceRes, 'enhance-prompt');
-        if (enhanceData.success && enhanceData.wasEnhanced) {
-          const ep = enhanceData.enhancedPrompt;
-          const refusalLike =
-            typeof ep === 'string' &&
-            ep.length > 80 &&
-            /\brespectfully decline\b/i.test(ep) &&
-            /\b(ethical|cannot|unable|policy)\b/i.test(ep);
-          finalPrompt = refusalLike ? prompt : ep;
-          if (refusalLike) {
-            console.warn('[BUILDER-VERIFY] enhance: refusal/safety blob discarded; using original user prompt');
-          }
-          // Phase S13: Sync enhanced prompt
-          saveProjectUpdates({ enhanced_prompt: finalPrompt });
-        }
-      } catch (e) { console.warn('Enhance failed, using original:', e); }
-
-      let intentClassification = null;
-      setGenerationProgress(prev => ({ ...prev, status: 'Classifying intent...' }));
-      try {
-        const classifyRes = await authFetch('/api/classify-intent', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            prompt: finalPrompt,
-            rawPrompt: prompt,
-            images: initialImages,
-            model: aiModel,
-            buildId,
-            allowCommunityComponents
-          })
-        });
-        const classifyData = await safeParseJson(classifyRes, 'classify-intent');
-        if (classifyData.success && classifyData.intentClassification) {
-          intentClassification = classifyData.intentClassification;
-          console.log(
-            '[BUILDER-VERIFY] generation: intent layoutType=%s buildMode=%s routingMode=%s',
-            intentClassification.layoutType,
-            intentClassification.buildMode,
-            intentClassification.routingMode
-          );
-          if (intentClassification.buildMode) setProjectBuildMode(intentClassification.buildMode);
-          if (intentClassification.routingMode) setProjectRoutingMode(intentClassification.routingMode);
-          if (intentClassification.chromeProfile) setProjectChromeProfile(intentClassification.chromeProfile);
-        }
-      } catch (e) {
-        console.warn('[Generation] classify-intent failed:', e);
-      }
-
-      // 2b. Derive design system (NEW — contextual intelligence engine)
-      let designSystem = null;
-      setGenerationProgress(prev => ({ ...prev, status: 'Deriving design system...' }));
-      try {
-        const dsRes = await authFetch('/api/derive-design-system', {
-          method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ enhancedPrompt: finalPrompt, images: initialImages, buildId, model: aiModel })
-        });
-        const dsData = await safeParseJson(dsRes, 'derive-ds');
-        if (dsData.success && dsData.designSystem) {
-          designSystem = dsData.designSystem;
-          designSystemRef.current = designSystem;
-          // Phase S2 & S13: Sync design system
-          saveProjectUpdates({
-            design_system: designSystem,
-            industry: designSystem.industryCategory || 'general',
-            build_status: 'generating'
-          });
-        }
-      } catch (e) { console.warn('DS derivation failed, continuing without:', e); }
-
-      // 3. Select premium components (ONLY IF PREMIUM MODE IS ON)
-      let selectionContext = null;
-
-      // 3. (Manual Selection Mode) - Build Directly if NO prompt
-      // If there IS a prompt, we always want to go through the planner to adapt the components
-      const isDumbBuild = !prompt || prompt === "Build from community components" || prompt === "Analyze design and build";
-      if (manualSelectionIds && manualSelectionIds.length > 0 && isDumbBuild) {
-        if (!providedBuildId) {
-          // --- INITIAL BUILD MODE ---
-          setGenerationProgress(prev => ({ ...prev, status: `Building from selection (${manualSelectionIds.length})...` }));
-
-          const selectionRes = await authFetch('/api/build-from-selection', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ componentIds: manualSelectionIds, buildId })
-          });
-
-          const selectionData = await safeParseJson(selectionRes, 'build-from-selection');
-          if (!selectionData.success) throw new Error(selectionData.error || 'Manual build failed');
-
-          setGenerationProgress(prev => ({
-            ...prev,
-            status: 'Applying selection code...',
-            files: parseFilesFromCode(selectionData.code)
-          }));
-
-          addChatMessage(`Building selection: ${manualSelectionIds.join(', ')}`, 'system');
-          if (selectionData.missingComponents && selectionData.missingComponents.length > 0) {
-            addChatMessage(`Warning: Could not build components: ${selectionData.missingComponents.join(', ')}`, 'error');
-          }
-          if (selectionData.resolvedComponents && selectionData.resolvedComponents.length > 0) {
-            addChatMessage(`Successfully resolved: ${selectionData.resolvedComponents.join(', ')}`, 'success');
-          }
-
-          await applyGeneratedCode(selectionData.code, false, buildId, null, true, sandbox.sandboxId, false, sandbox.url);
-          setActiveTab('preview');
-          return; // Done - Direct build exits here
-        } else {
-          // --- APPEND/INTEGRATE MODE (Phase S11) ---
-          setGenerationProgress(prev => ({ ...prev, status: `Fetching ${manualSelectionIds.length} community components...` }));
-          addChatMessage(`Integrating ${manualSelectionIds.length} new components into your current build...`, 'system');
-
-          // 1. Fetch Bundles
-          const bundleResults = await Promise.all(
-            manualSelectionIds.map(id =>
-              authFetch('/api/component-bundle', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ id, format: 'fileblocks', buildId })
-              })
-                .then(r => r.json())
-                .catch(e => ({ success: false, error: e.message }))
-            )
-          );
-
-          const successfulBundles = bundleResults.filter(r => r.success);
-          if (successfulBundles.length === 0) throw new Error('Failed to fetch any of the selected components.');
-
-          // 2. Extract files and names
-          const newFiles = [];
-          const componentNames = [];
-          successfulBundles.forEach(data => {
-            const files = parseFilesFromCode(data.fileBlocks);
-
-            // Extract Name for the prompt
-            const exportMatch = data.fileBlocks.match(/export default (?:function |class |const )?(\w+)/);
-            const compName = exportMatch ? exportMatch[1] : 'Unknown';
-            if (exportMatch) componentNames.push(compName);
-
-            // V4.0 logic: If component is labeled as a page in metadata (or fallback inference)
-            const isPage = data.component_type === 'page' || compName.toLowerCase().includes('page');
-            const basePath = isPage ? 'src/pages' : 'src/components/premium';
-
-            const updatedFiles = files.map(f => {
-              // Route the file to src/pages if it represents a page component
-              if (isPage && f.path.includes('src/components/premium/')) {
-                const fileName = f.path.split('/').pop();
-                return { ...f, path: `${basePath}/${fileName}` };
-              }
-              return f;
-            });
-
-            newFiles.push(...updatedFiles);
-          });
-
-          // 3. Apply files to sandbox (Write them silently)
-          setGenerationProgress(prev => ({ ...prev, status: 'Injecting files...' }));
-          await applyGeneratedCode(null, false, buildId, newFiles, true, sandbox.sandboxId, false, sandbox.url);
-
-          // 4. Trigger Composition Revision (AI Edit)
-          setGenerationProgress(prev => ({ ...prev, status: 'Integrating with existing components...' }));
-
-          const hasPages = componentNames.some(n => n.toLowerCase().includes('page'));
-          const integrationPrompt = `I have added the following components to the project: ${componentNames.join(', ')}. 
-Please UPDATE src/App.jsx to integrate them professionally into the website layout. ${hasPages ? 'As this includes a full page component, please add a new Route in App.jsx and update src/app/siteMap.js.' : ''}
-Keep ALL existing components and sections exactly as they are—do NOT remove anything. 
-Just position the new components in a logical order (e.g. after the Hero or before the Footer) and ensure all imports are correct.`;
-
-          // Call the edit function (which usually handles chat messages)
-          // We bypass UI chat message and call the endpoint directly for a seamless "Processing" feel
-          try {
-            await handleAIGeneratedEdit(integrationPrompt, buildId, sandbox);
-            addChatMessage(`Integration complete! Added: ${componentNames.join(', ')}`, 'success', { style: 'completed' });
-          } catch (editError) {
-            console.error('[Integration] Revision failed:', editError);
-            addChatMessage(`Files added, but auto-integration failed: ${editError.message}. You can manually update App.jsx to include them.`, 'error');
-          }
-
-          setLoading(false);
-          setGenerationProgress(prev => ({ ...prev, isGenerating: false, status: '' }));
-          setActiveTab('preview');
-          return;
-        }
-      } else if (
-        premiumMode !== 'off' &&
-        allowCommunityComponents &&
-        intentClassification?.catalogPosture !== 'codegen_first'
-      ) {
-        setGenerationProgress(prev => ({ ...prev, status: 'Selecting premium components...' }));
-        setComponentSearchPhase({ active: true, currentLabel: 'Searching for Hero' });
-        try {
-          const selectRes = await authFetch('/api/select-components', {
-            method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              prompt: finalPrompt,
-              rawPrompt: prompt,
-              images: initialImages,
-              model: aiModel,
-              designSystem,
-              buildId,
-              premiumMode
-            })
-          });
-          const selectData = await selectRes.json();
-          if (selectData.success && selectData.selection) {
-            selectionContext = selectData.selection;
-          }
-        } catch (e) {
-          console.warn('Selection failed, falling back to full generation:', e);
-        }
-      }
-      else {
-        // Premium Mode OFF: Skipping premium selection.
-      }
-
-      // 4. Plan components
-      setGenerationProgress(prev => ({ ...prev, status: 'Planning components...' }));
-      if (!componentSearchPhase?.active) {
-        setComponentSearchPhase({ active: true, currentLabel: 'Searching for Header' });
-      }
-      let planData;
-      try {
-        const planningPrompt = `${finalPrompt || ''} ${prompt || ''}`;
-        const explicitMultiPagePrompt = /(^|\b)(multi page|multipage|multiple pages|docs|documentation|routes)(\b|$)/i.test(
-          planningPrompt
-        );
-        const explicitSingleSectionPrompt = /(^|\b)(single component|one component|single widget|one widget|single section)(\b|$)/i.test(
-          planningPrompt
-        );
-        const explicitAppShellPrompt = /(^|\b)(app shell|dashboard|admin panel|workspace|kanban|crm|control panel|internal tool|backoffice|sidebar layout)(\b|$)/i.test(
-          planningPrompt
-        );
-        const userSelectedAdvancedMode = ['multi_page', 'app_shell', 'single_section'].includes(projectBuildMode)
-          ? projectBuildMode
-          : null;
-        let contractBuildMode = 'single_page_multi_section';
-        if (explicitMultiPagePrompt) contractBuildMode = 'multi_page';
-        else if (explicitSingleSectionPrompt) contractBuildMode = 'single_section';
-        else if (explicitAppShellPrompt) contractBuildMode = 'app_shell';
-        else if (userSelectedAdvancedMode) contractBuildMode = userSelectedAdvancedMode;
-
-        const contractRoutingMode =
-          contractBuildMode === 'multi_page'
-            ? 'router'
-            : contractBuildMode === 'single_page_multi_section'
-              ? 'anchors'
-              : 'none';
-        const contractChromeProfile =
-          contractBuildMode === 'app_shell'
-            ? 'app'
-            : contractBuildMode === 'single_section'
-              ? 'none'
-              : 'marketing';
-
-        const planRes = await authFetch('/api/plan-website-components', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            prompt: finalPrompt,
-            rawPrompt: prompt,
-            images: initialImages,
-            model: aiModel,
-            selectionContext,
-            designSystem,
-            buildId,
-            generateNarration: true,
-            premiumMode,
-            allowCommunityComponents,
-            buildMode: contractBuildMode,
-            routingMode: contractRoutingMode,
-            chromeProfile: contractChromeProfile,
-            catalogPosture: intentClassification?.catalogPosture,
-            manualSelectionIds,
-            strictMode,
-            intentClassification
-          })
-        });
-        planData = await safeParseJson(planRes, 'plan-website-components');
-
-      } catch (planError) {
-        console.error('[Generation] Planning failed:', planError);
-        addChatMessage(`Planning failed: ${planError.message}. Trying streaming fallback...`, 'system');
-        throw planError; // Re-throw to hit the main catch block which handles streaming fallback
-      }
-
-      // Phase S2: Transition component search pill to chat history
-      setComponentSearchPhase(null); 
-      addChatMessage('Found Components!', 'thinking-pill', { boxed: true });
-
-      if (planData.success && planData.components) {
-        componentPlanRef.current = planData.components; // Store for snapshot
-        saveProjectUpdates({
-          component_plan: planData.components,
-          total_components: planData.components.length
-        });
-      }
-
-      if (planData.aiNarration) {
-        addChatMessage(planData.aiNarration, 'ai-narrator', { style: 'planning' });
-      }
-
-      if (!planData.success) throw new Error(planData.error || 'Planning failed');
-
-      if (planData.layoutType) {
-        console.log('[BUILDER-VERIFY] generation: plan layoutType=', planData.layoutType);
-      }
-
-      const {
-        components: rawComponents,
-        globalStyle,
-        isMultiPage,
-        pages,
-        sharedComponentRefIds,
-        buildMode,
-        routingMode,
-        chromeProfile
-      } = planData;
-
-      if (buildMode) setProjectBuildMode(buildMode);
-      if (routingMode) setProjectRoutingMode(routingMode);
-      if (chromeProfile) setProjectChromeProfile(chromeProfile);
-
-      // Save MPA state for the renderer and future edit cycles
-      if (isMultiPage) {
-        setIsMultiPageProject(true);
-        setProjectPages(pages || []);
-
-        // Convert shared refIds to actual component objects
-        const sharedComps = rawComponents.filter(c => (sharedComponentRefIds || []).includes(c.refId || c.name));
-        setProjectSharedComponents(sharedComps);
-      } else {
-        setIsMultiPageProject(false);
-        setProjectPages([]);
-        setProjectSharedComponents([]);
-      }
-      // Deduplicate components by name to prevent multi-file generation errors
-      const components = [...new Map(rawComponents.map(item => [item.name, item])).values()];
-      const premiumComponents = components.filter(c => c.source === 'premium' && c.bundleId);
-      const generatedComponents = components.filter(c => c.source !== 'premium' || !c.bundleId);
-
-      setGenerationProgress(prev => ({
-        ...prev, components: components.map(c => ({ name: c.name, path: c.path, completed: false, source: c.source || 'generated' })),
-        status: `Generating ${components.length} components (${premiumComponents.length} premium, ${generatedComponents.length} custom)...`
-      }));
-      /*
-      addChatMessage(
-        `Planning ${components.length} components: ${premiumComponents.length} premium, ${generatedComponents.length} custom — ${components.map(c => c.name).join(', ')}`,
-        'system'
-      );
-      */
-
-      // 4b. Install dependencies (New Bulletproof Step)
-      if (planData.requiredPackages?.length > 0) {
-        setGenerationProgress(prev => ({ ...prev, status: `Installing dependencies (${planData.requiredPackages.length})...` }));
-        setCodeApplicationState(prev => ({ ...prev, stage: 'installing', packages: planData.requiredPackages }));
-        // addChatMessage(`Installing dependencies: ${planData.requiredPackages.join(', ')}`, 'system');
-
-        try {
-          await authFetch('/api/install-packages', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              packages: planData.requiredPackages,
-              sandboxId: sandboxData?.sandboxId,
-              buildId
-            })
-          });
-        } catch (e) {
-          console.warn('Dependency install failed, continuing anyway:', e);
-        }
-      }
-
-      // 5. Execute generation in two stages: Premium first (to get real paths), then Custom
-
-      // Stage A: Fetch Premium Bundles (with beefy props)
-      const premiumResults = await Promise.all(
-        premiumComponents.map(comp =>
-          authFetch('/api/component-bundle', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              id: comp.bundleId,
-              format: 'fileblocks',
-              propsOverrides: comp.props, // Inject the Master Copywriter's text
-              buildId
-            })
-          })
-            .then(r => safeParseJson(r, 'premium-bundle'))
-            .then(data => {
-              if (!data.success) return { success: false, error: data.error, path: comp.path };
-
-              // Extract REAL path from the bundle content (critical for App.jsx imports)
-              const match = data.fileBlocks.match(/<file path="([^"]+)">/);
-              const realPath = match ? match[1] : comp.path;
-
-              // Extract REAL export name (Maestro Fix)
-              // Matches: export default function Name, export default class Name, export default Name
-              const exportMatch = data.fileBlocks.match(/export default (?:function |class |const )?(\w+)/);
-              const realName = exportMatch ? exportMatch[1] : comp.name;
-
-              setGenerationProgress(prev => ({
-                ...prev,
-                components: prev.components.map(c => c.name === comp.name ? { ...c, completed: true, path: realPath, name: realName } : c),
-                status: `Premium: ${realName} loaded`
-              }));
-
-              return {
-                success: true,
-                fileContent: data.fileBlocks,
-                name: realName, // Use the REAL export name
-                path: realPath,
-                source: 'premium',
-                description: comp.description,
-                originalRef: comp
-              };
-            })
-            .catch(e => ({ success: false, error: e.message, path: comp.path }))
-        )
-      );
-
-      const joinFileBlocks = (files) =>
-        !files?.length ? '' : files.map((f) => `<file path="${f.path}">\n${f.content}\n</file>`).join('\n\n');
-
-      // Stage A.1: LLM hydration — replace baked-in JSX demo copy (prop regex alone cannot)
-      for (let i = 0; i < premiumResults.length; i++) {
-        const r = premiumResults[i];
-        if (!r.success || !r.fileContent) continue;
-        const comp = r.originalRef;
-        if (!comp) continue;
-        const hasKey = typeof comp.keyContent === 'string' && comp.keyContent.trim().length > 0;
-        const hasProps = comp.props && typeof comp.props === 'object' && Object.keys(comp.props).length > 0;
-        const hasVision =
-          typeof finalPrompt === 'string' && finalPrompt.trim().length > 0;
-        if (!hasKey && !hasProps && !hasVision) continue;
-
-        const parsedFiles = parseFilesFromCode(r.fileContent);
-        if (parsedFiles.length === 0) continue;
-
-        for (const file of parsedFiles) {
-          if (!/\.(jsx|tsx)$/i.test(file.path)) continue;
-          try {
-            console.log(
-              '[BUILDER-VERIFY] generation: hydrate request',
-              { bundle: comp.name || comp.refId, path: file.path, hasKey: hasKey, propCount: Object.keys(comp.props || {}).length }
-            );
-            const hydrateRes = await authFetch('/api/hydrate-premium-copy', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                fileContent: file.content,
-                fileName: file.path,
-                keyContent: comp.keyContent || '',
-                props: comp.props || {},
-                designSystem,
-                prompt: finalPrompt,
-                model: aiModel,
-                buildId
-              })
-            });
-            const hData = await safeParseJson(hydrateRes, 'hydrate-premium-copy');
-            if (hData?.success && typeof hData.hydratedContent === 'string' && hData.hydratedContent.length > 0) {
-              file.content = hData.hydratedContent;
-              console.log('[BUILDER-VERIFY] generation: hydrate applied', {
-                path: file.path,
-                skipped: hData.skipped === true,
-                outLen: hData.hydratedContent.length
-              });
-            }
-          } catch (e) {
-            console.warn('[Generation] hydrate-premium-copy failed for', file.path, e.message);
-          }
-        }
-        r.fileContent = joinFileBlocks(parsedFiles);
-      }
-
-      // Get the successfully loaded premium components with their REAL paths and names
-      const loadedPremiumComponents = premiumResults
-        .filter(r => r.success)
-        .map(r => ({ name: r.name, path: r.path, description: r.description, originalRef: r.originalRef }));
-
-      // Find App.jsx (or App) to generate LAST (Stage C)
-      const appComponent = generatedComponents.find(c => c.path.endsWith('App.jsx') || c.name === 'App');
-      const standardComponents = generatedComponents.filter(c => c !== appComponent);
-
-      // Stage B: Generate Standard Custom Components (Resilient Sequential Queue)
-      const standardResults = [];
-      const MAX_RETRIES = 3;
-
-      for (let i = 0; i < standardComponents.length; i++) {
-        const comp = standardComponents[i];
-        setGenerationProgress(prev => ({
-          ...prev,
-          status: `Generating component ${i + 1}/${standardComponents.length}: ${comp.name}...`
-        }));
-
-        const generateWithRetry = async (retryCount = 0) => {
-          try {
-            // Add a solid 1000ms buffer between components to prevent burst rate limits
-            if (i > 0 && retryCount === 0) {
-              await new Promise(r => setTimeout(r, 1000));
-            }
-
-            // Exponential Backoff: Wait 2s * retryCount^2
-            if (retryCount > 0) {
-              const backoffTime = 2000 * Math.pow(2, retryCount - 1);
-              console.log(`[Generation] Rate limit backoff for ${comp.name}: waiting ${backoffTime}ms... (Retry ${retryCount}/${MAX_RETRIES})`);
-              await new Promise(r => setTimeout(r, backoffTime));
-            }
-
-            const r = await authFetch('/api/generate-single-component', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                component: comp,
-                globalStyle,
-                prompt: finalPrompt,
-                overallContext: finalPrompt,
-                buildMode: planData?.buildMode || projectBuildMode,
-                model: aiModel,
-                componentIndex: premiumComponents.length + i + 1,
-                totalComponents: components.length,
-                premiumComponents: loadedPremiumComponents,
-                allComponents: components,
-                designSystem,
-                buildId
-              })
-            });
-
-            if (!r.ok) {
-              const errorText = await r.text().catch(() => 'No error body');
-              console.error(`[Generation] API Error for ${comp.name}: HTTP ${r.status}`, errorText);
-              throw new Error(`HTTP ${r.status}: ${errorText.substring(0, 100)}`);
-            }
-
-            const data = await safeParseJson(r, `generate-${comp.name}`);
-
-            setGenerationProgress(prev => ({
-              ...prev,
-              components: prev.components.map(c => c.name === comp.name ? { ...c, completed: true } : c),
-              status: `Finished ${data.name || comp.name}`
-            }));
-
-            return { ...data, source: 'generated', originalRef: comp };
-          } catch (e) {
-            if (retryCount < MAX_RETRIES) {
-              console.warn(`[Generation] Retrying ${comp.name} (${retryCount + 1}/${MAX_RETRIES}) due to error:`, e.message);
-              return generateWithRetry(retryCount + 1);
-            }
-            console.error(`[Generation] Failed to generate ${comp.name} after ${MAX_RETRIES} retries.`);
-            return { success: false, error: e.message, path: comp.path };
-          }
-        };
-
-        const result = await generateWithRetry();
-        standardResults.push(result);
-      }
-
-      // Stage C: Deterministic App.jsx Generation (Prompt 5)
-      setGenerationProgress(prev => ({ ...prev, status: 'Synthesizing App.jsx...' }));
-
-      // appComponent is already defined above
-
-      const plannerComponents = Array.isArray(planData?.components) ? planData.components : [];
-      const plannerByRefId = new Map(
-        plannerComponents
-          .filter(c => c?.refId)
-          .map(c => [String(c.refId).toLowerCase(), c])
-      );
-      const plannerByName = new Map(
-        plannerComponents
-          .filter(c => c?.name)
-          .map(c => [String(c.name).toLowerCase(), c])
-      );
-      const plannerByPath = new Map(
-        plannerComponents
-          .filter(c => c?.path)
-          .map(c => [String(c.path).toLowerCase(), c])
-      );
-      const orderMap = new Map(
-        (planData?.appComposition?.order || [])
-          .map((entry, idx) => [String(entry?.refId || '').toLowerCase(), idx])
-          .filter(([id]) => Boolean(id))
-      );
-      const resolvePlannerMeta = ({ refId, name, path }) => {
-        const byRef = refId ? plannerByRefId.get(String(refId).toLowerCase()) : null;
-        const byName = name ? plannerByName.get(String(name).toLowerCase()) : null;
-        const byPath = path ? plannerByPath.get(String(path).toLowerCase()) : null;
-        const planned = byRef || byName || byPath || null;
-        const plannedRef = planned?.refId || refId || name || path || '';
-        const orderIndex = orderMap.has(String(plannedRef).toLowerCase())
-          ? orderMap.get(String(plannedRef).toLowerCase())
-          : Number.MAX_SAFE_INTEGER;
-        return {
-          role: planned?.role || undefined,
-          orderIndex
-        };
-      };
-
-      // Prepare list of ALL valid components for App.jsx
-      const validComponents = [
-        ...loadedPremiumComponents.map(c => {
-          const refId = c.originalRef?.refId || c.originalRef?.name || c.name;
-          const meta = resolvePlannerMeta({ refId, name: c.name, path: c.path });
-          return { exportName: c.name, path: c.path, refId, role: meta.role, orderIndex: meta.orderIndex };
-        }),
-        ...standardResults.filter(r => r.success).map(r => {
-          const refId = r.originalRef?.refId || r.originalRef?.name || r.name;
-          const meta = resolvePlannerMeta({ refId, name: r.name, path: r.path });
-          return { exportName: r.name, path: r.path, refId, role: meta.role, orderIndex: meta.orderIndex };
-        })
-      ];
-
-      let appJsxCode = '';
-      try {
-        console.log('[Generation] Rendering App.jsx with components:', validComponents.length);
-        const renderRes = await authFetch('/api/render-app', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            components: validComponents,
-            buildId,
-            isMultiPage: planData?.isMultiPage || isMultiPageProject,
-            pages: planData?.pages?.length > 0 ? planData.pages : projectPages,
-            sharedComponents: planData?.isMultiPage ? planData.components.filter(c => (planData.sharedComponentRefIds || []).includes(c.refId || c.name)) : projectSharedComponents,
-            prompt: finalPrompt || '',
-            buildMode: planData?.buildMode || projectBuildMode,
-            routingMode: planData?.routingMode || projectRoutingMode,
-            chromeProfile: planData?.chromeProfile || projectChromeProfile
-          })
-        });
-
-        const renderData = await renderRes.json();
-        if (!renderData.success) throw new Error(renderData.error || 'Failed to render App.jsx');
-
-        appJsxCode = renderData.appJsx;
-
-        // Mark App.jsx as complete if it was in the plan
-        if (appComponent) {
-          setGenerationProgress(prev => ({
-            ...prev,
-            components: prev.components.map(c => c.name === appComponent?.name ? { ...c, completed: true } : c),
-            status: 'App.jsx Ready'
-          }));
-        }
-
-      } catch (e) {
-        console.error('[Generation] App.jsx rendering failed:', e);
-        // Fallback or critical error? For now, critical as per Prompt 5.
-        // But we want to preserve at least the components.
-        addChatMessage(`Warning: App.jsx generation failed (${e.message}). You may need to create it manually.`, 'error');
-      }
-
-      // 6. Combine & Construct Files Payload (Prompt 6)
-      const allFiles = [];
-      const results = [...premiumResults, ...standardResults];
-
-      // Process component results
-      results.forEach(r => {
-        if (!r.success) return;
-
-        if (r.content) {
-          // Schema-safe content (Prompt 6)
-          allFiles.push({ path: r.path, content: r.content });
-        } else if (r.fileContent) {
-          // Legacy/Premium content (regex parse)
-          const parsed = parseFilesFromCode(r.fileContent);
-          allFiles.push(...parsed);
-        }
-      });
-
-      // Append deterministic App.jsx (Prompt 5)
-      if (appJsxCode) {
-        allFiles.push({ path: 'src/App.jsx', content: appJsxCode });
-      }
-
-      if (allFiles.length === 0) throw new Error('No code generated');
-
-      // Reconstruct generatedCode string for legacy support/logging
-      let generatedCode = results.filter(r => r.success && r.fileContent).map(r => r.fileContent).join('\n\n');
-      if (appJsxCode) {
-        generatedCode += `\n\n<file path="src/App.jsx">${appJsxCode}</file>`;
-      }
-
-      setGenerationProgress(prev => ({
-        ...prev, status: 'Validating imports...', files: allFiles, isStreaming: false
-      }));
-
-      // 7a. Validate Imports (Prompt 7)
-      try {
-        const validateRes = await authFetch('/api/validate-imports', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ files: allFiles, premiumComponents: loadedPremiumComponents })
-        });
-        const validateData = await validateRes.json();
-
-        if (validateData.success && !validateData.valid) {
-          // Issues found! Report and STOP.
-          console.warn('[Generation] Validation failed:', validateData.issues);
-          const issueList = validateData.issues.map(i => `- ${i.message}`).join('\n');
-          addChatMessage(`Build Halted: Import validation failed.\n${issueList}`, 'error');
-          setGenerationProgress(prev => ({ ...prev, status: 'Validation Failed' }));
-          return; // STOP EXECUTION
-        }
-      } catch (e) {
-        console.error('[Generation] Validator crashed:', e);
-        // We allow to proceed if validator crashes, but warn
-        addChatMessage('Warning: Import validator skipped due to error.', 'error');
-      }
-
-      setGenerationProgress(prev => ({ ...prev, status: 'Applying code...' }));
-
-      // 7b. Apply with explicit files - Pass sandbox reference to ensure closure-safety
-      const generatedSinglePaths = standardResults
-        .filter((r) => r?.success && typeof r.path === 'string' && r.path.trim())
-        .map((r) => r.path);
-      await applyGeneratedCode(generatedCode, false, buildId, allFiles, false, sandbox?.sandboxId, false, sandbox?.url, {
-        polishSkipPaths: generatedSinglePaths
-      });
-      setDeliveryQueue(prev => [...prev, { type: 'message', content: 'Code generated and applied! Check the preview tab.', chatType: 'ai' }]);
-      setActiveTab('preview');
-
-    } catch (error) {
-      console.error('[startGeneration] Fatal Gen Error:', error);
-
-      const isOverloaded = error.message?.toLowerCase().includes('demand') ||
-        error.message?.toLowerCase().includes('503') ||
-        error.message?.toLowerCase().includes('overload') ||
-        error.message?.toLowerCase().includes('quota');
-
-      if (isOverloaded) {
-        addChatMessage('Generation failed: The AI Provider is currently experiencing high traffic or is overloaded. Please wait a few moments and try again.', 'error');
-        // Phase S2: Sync failure state
-        saveProjectUpdates({ buildId, build_status: 'failed' });
-      } else if (generationProgress.status.includes('Planning') || generationProgress.status.includes('Selecting')) {
-        // Fallback: ONLY if we didn't finish planning and it's NOT a 503
-        addChatMessage(`Generation failed: ${error.message}. Switching to streaming fallback...`, 'system');
-        try {
-          setGenerationProgress(prev => ({ ...prev, status: 'Generating (streaming)...' }));
-          const res = await authFetch('/api/generate-ai-code-stream', {
-            method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              prompt,
-              images: initialImages,
-              model: aiModel,
-              context: {
-                sandboxId: sandboxData?.sandboxId,
-                buildMode: projectBuildMode,
-                routingMode: projectRoutingMode,
-                chromeProfile: projectChromeProfile,
-                plan: {
-                  components: componentPlanRef.current || [],
-                  isMultiPage: isMultiPageProject,
-                  pages: projectPages || [],
-                  sharedComponentRefIds: (projectSharedComponents || []).map((c) => c.refId || c.exportName || c.name).filter(Boolean),
-                  buildMode: projectBuildMode,
-                  routingMode: projectRoutingMode,
-                  chromeProfile: projectChromeProfile
-                }
-              },
-              isEdit: false,
-              buildId
-            })
-          });
-
-          if (!res.ok) throw new Error(`Fallback failed (${res.status})`);
-
-          const reader = res.body.getReader();
-          const decoder = new TextDecoder();
-          let buffer = '';
-          let streamedCode = '';
-
-          while (true) {
-            const { done, value } = await reader.read();
-            if (done) break;
-            buffer += decoder.decode(value, { stream: true });
-            const lines = buffer.split('\n');
-            buffer = lines.pop() || '';
-
-            for (const line of lines) {
-              if (!line.startsWith('data: ')) continue;
-              try {
-                const data = JSON.parse(line.slice(6));
-                if (data.type === 'stream') streamedCode += data.text;
-                else if (data.type === 'complete' && data.generatedCode) {
-                  await applyGeneratedCode(data.generatedCode, false, buildId, null, false, sandboxData?.sandboxId, false, sandboxData?.url);
-                  addChatMessage('Code generated and applied!', 'ai');
-                  setActiveTab('preview');
-                }
-              } catch (e) { /* ignore parse error */ }
-            }
-          }
-        } catch (fallbackError) {
-          addChatMessage(`Fallback failed: ${fallbackError.message}`, 'error');
-          // Phase S2: Sync failure state
-          saveProjectUpdates({ buildId, build_status: 'failed' });
-        }
-      } else {
-        addChatMessage(`Partial success: ${error.message}. Attempting to proceed with available code.`, 'warning');
-        // Phase S2: Sync failure state
-        saveProjectUpdates({ buildId, build_status: 'failed' });
-      }
-    } finally {
-      refreshCredits(); // SYNC CREDITS: Refresh from DB to reflect deduction
-      setLoading(false);
-      setGenerationProgress(prev => ({ ...prev, isGenerating: false, status: '' }));
-    }
-  }, [
-    sandboxData,
-    aiModel,
-    createSandbox,
-    applyGeneratedCode,
-    addChatMessage,
-    conversationContext,
-    session,
-    refreshCredits,
-    saveProjectUpdates,
-    allowCommunityComponents,
-    projectBuildMode,
-    projectRoutingMode,
-    projectChromeProfile,
-    isMultiPageProject,
-    projectPages,
-    projectSharedComponents
-  ]);
+  }, [sandboxData, addChatMessage, chatMessages.length, session, lastPrompt, premiumMode, saveProjectUpdates, currentProjectId, fetchSnapshots, authFetch]);
 
 
   // ─── Agent Mode Hook ─────────────────────────────────────
@@ -2861,7 +1838,7 @@ Just position the new components in a logical order (e.g. after the Hero or befo
           ? latestSandboxFilesData
           : await fetchSandboxFiles(activeSandboxId);
         if (filesData?.success) {
-          await authFetch('/api/snapshots', {
+          const snapshotRes = await authFetch('/api/snapshots', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -2875,6 +1852,15 @@ Just position the new components in a logical order (e.g. after the Hero or befo
               sandboxId: activeSandboxId
             })
           });
+          const snapshotData = await snapshotRes.json().catch(() => null);
+          if (snapshotData?.success && !snapshotData?.skipped) {
+            saveProjectUpdates({
+              buildId: currentProjectId,
+              build_status: 'preview',
+              is_committed: true,
+              committed_at: new Date().toISOString()
+            });
+          }
           // 4. Refresh snapshot list so revert arrows appear under user messages
           fetchSnapshots();
         }
@@ -2912,6 +1898,10 @@ Just position the new components in a logical order (e.g. after the Hero or befo
     const msg = aiChatInput.trim();
     if (!msg && pendingImages.length === 0 && pendingComponents.length === 0) return;
     if (loading || agentLoading) return;
+    if (isOptimizingImages) {
+      showNotification('Finishing image optimization before sending.');
+      return;
+    }
 
     const currentImages = [...pendingImages];
     const currentComponents = [...pendingComponents];
@@ -2940,71 +1930,63 @@ Just position the new components in a logical order (e.g. after the Hero or befo
     const isEdit = conversationContext.appliedCode.length > 0;
 
     if (!isEdit) {
-      // ─── AGENT INITIAL BUILD: Use agent pipeline ⭐ ────────
-      if (useAgentBuild) {
-        const initialBuildPrompt = msg || 'Build the website from the attached image.';
-        addChatMessage(initialBuildPrompt, 'user', { images: currentImages });
-        setLoading(true);
-        setGenerationProgress(prev => ({ ...prev, isGenerating: true, status: 'Agent building...', isEdit: false }));
+      const initialBuildPrompt = msg || 'Build the website from the attached image.';
+      addChatMessage(initialBuildPrompt, 'user', { images: currentImages, stagedComponents: currentComponents });
+      setLoading(true);
+      setGenerationProgress(prev => ({ ...prev, isGenerating: true, status: 'Agent building...', isEdit: false }));
 
-        try {
-          // 1. Init project
-          const generateUUID = () => {
-            if (typeof crypto !== 'undefined' && crypto.randomUUID) return crypto.randomUUID();
-            return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
-              const r = (Math.random() * 16) | 0;
-              const v = c === 'x' ? r : (r & 0x3) | 0x8;
-              return v.toString(16);
-            });
-          };
-          let buildId = generateUUID();
-          const initRes = await authFetch('/api/projects/init', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ prompt: initialBuildPrompt, buildId })
+      try {
+        const generateUUID = () => {
+          if (typeof crypto !== 'undefined' && crypto.randomUUID) return crypto.randomUUID();
+          return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+            const r = (Math.random() * 16) | 0;
+            const v = c === 'x' ? r : (r & 0x3) | 0x8;
+            return v.toString(16);
           });
-          const initData = await safeParseJson(initRes, 'project-init');
-          if (initData.success && initData.projectId) {
-            buildId = initData.projectId;
-            setCurrentProjectId(buildId);
-          }
-
-          // 2. Create sandbox if needed
-          let sandbox = sandboxData;
-          if (!sandbox) {
-            setAgentProgressText('Preparing sandbox...');
-            const createData = await createSandbox();
-            sandbox = { sandboxId: createData.sandboxId, url: createData.url };
-          }
-
-          // 3. Run agent initial build
-          setAgentProgressText('Starting agent...');
-          await sendAgentInitialBuild(initialBuildPrompt, buildId, {
-            images: currentImages,
-            sandboxId: sandbox.sandboxId,
-            sandboxUrl: sandbox.url
-          });
-
-          // 4. Mark as having applied code so subsequent messages route through edit mode
-          setConversationContext(prev => ({
-            ...prev,
-            appliedCode: [...prev.appliedCode, 'agent-initial-build']
-          }));
-
-          setActiveTab('preview');
-        } catch (error) {
-          console.error('[AgentInitialBuild] Error:', error);
-          addChatMessage(`Agent build failed: ${error.message}`, 'error');
-        } finally {
-          setLoading(false);
-          setAgentProgressText('');
-          setGenerationProgress(prev => ({ ...prev, isGenerating: false, status: '' }));
+        };
+        let buildId = generateUUID();
+        const initRes = await authFetch('/api/projects/init', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ prompt: initialBuildPrompt, buildId })
+        });
+        const initData = await safeParseJson(initRes, 'project-init');
+        if (initData.success && initData.projectId) {
+          buildId = initData.projectId;
+          setCurrentProjectId(buildId);
         }
-        return;
-      }
 
-      // Legacy pipeline: First generation
-      await startGeneration(msg || "Build from selection", null, currentImages, currentComponents.map(c => c.id), null, strictMode);
+        let sandbox = sandboxData;
+        if (!sandbox) {
+          setAgentProgressText('Preparing sandbox...');
+          const createData = await createSandbox();
+          sandbox = { sandboxId: createData.sandboxId, url: createData.url };
+        }
+
+        setAgentProgressText('Starting agent...');
+        await sendAgentInitialBuild(initialBuildPrompt, buildId, {
+          images: currentImages,
+          manualSelectionIds: currentComponents.map(c => c.id),
+          initialComponents: currentComponents,
+          sandboxId: sandbox.sandboxId,
+          sandboxUrl: sandbox.url
+        });
+
+        setConversationContext(prev => ({
+          ...prev,
+          appliedCode: [...prev.appliedCode, 'agent-initial-build']
+        }));
+
+        setActiveTab('preview');
+      } catch (error) {
+        console.error('[AgentInitialBuild] Error:', error);
+        addChatMessage(`Agent build failed: ${error.message}`, 'error');
+      } finally {
+        setLoading(false);
+        setAgentProgressText('');
+        setGenerationProgress(prev => ({ ...prev, isGenerating: false, status: '' }));
+      }
+      return;
     } else {
       // Edit existing
       setLastPrompt(msg);
@@ -3024,60 +2006,20 @@ Just position the new components in a logical order (e.g. after the Hero or befo
 
         const buildId = currentProjectId || crypto.randomUUID();
 
-        // 1. If we have new components, inject them first
-        let finalInstruction = msg;
-        if (currentComponents.length > 0) {
-          setGenerationProgress(prev => ({ ...prev, status: `Injecting ${currentComponents.length} components...` }));
+        const componentIds = currentComponents.map(c => c.id).filter(Boolean);
+        const componentHint = componentIds.length > 0
+          ? `\n\nUse the pre-selected community components when useful. Component IDs: ${componentIds.join(', ')}. Install them through the agent catalog tools and customize them to match the user's request.`
+          : '';
+        const finalInstruction = `${msg || 'Integrate the selected community components.'}${componentHint}`;
 
-          const bundleResults = await Promise.all(
-            currentComponents.map(comp =>
-              authFetch('/api/component-bundle', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ id: comp.id, format: 'fileblocks', buildId })
-              })
-                .then(r => r.json())
-                .catch(e => ({ success: false, error: e.message }))
-            )
-          );
-
-          const successfulBundles = bundleResults.filter(r => r.success);
-          if (successfulBundles.length > 0) {
-            const newFiles = [];
-            const componentNames = [];
-            successfulBundles.forEach(data => {
-              const files = parseFilesFromCode(data.fileBlocks);
-
-              const exportMatch = data.fileBlocks.match(/export default (?:function |class |const )?(\w+)/);
-              const compName = exportMatch ? exportMatch[1] : 'Unknown';
-              if (exportMatch) componentNames.push(compName);
-
-              const isPage = data.component_type === 'page' || compName.toLowerCase().includes('page');
-              const basePath = isPage ? 'src/pages' : 'src/components/premium';
-
-              const updatedFiles = files.map(f => {
-                if (isPage && f.path.includes('src/components/premium/')) {
-                  const fileName = f.path.split('/').pop();
-                  return { ...f, path: `${basePath}/${fileName}` };
-                }
-                return f;
-              });
-
-              newFiles.push(...updatedFiles);
-            });
-
-            // Write files to sandbox
-            await applyGeneratedCode(null, false, buildId, newFiles, true, sandbox.sandboxId, false, sandbox.url);
-
-            // Build integration hint
-            const hasPages = componentNames.some(n => n.toLowerCase().includes('page'));
-            const integrationHint = `[SYSTEM: I have added ${componentNames.join(', ')} to the project. Please integrate them into App.jsx. ${hasPages ? 'As this includes a page component, add a Route in App.jsx and update src/app/siteMap.js.' : ''} Keep existing components. ${msg ? `User Request: ${msg}` : ''}]`;
-            finalInstruction = msg ? `${msg}\n\n${integrationHint}` : integrationHint;
-          }
-        }
-
-        await handleAIGeneratedEdit(finalInstruction, buildId, sandbox);
-        addChatMessage('Changes applied!', 'ai');
+        await sendAgentMessage(finalInstruction, {
+          images: currentImages,
+          stagedComponents: currentComponents,
+          initialComponents: currentComponents,
+          manualSelectionIds: componentIds,
+          sandboxId: sandbox.sandboxId,
+          sandboxUrl: sandbox.url
+        });
       } catch (error) {
         const isOverloaded = error.message?.toLowerCase().includes('demand') ||
           error.message?.toLowerCase().includes('503') ||
@@ -3094,7 +2036,7 @@ Just position the new components in a logical order (e.g. after the Hero or befo
         setGenerationProgress(prev => ({ ...prev, isGenerating: false, status: '', isEdit: false }));
       }
     }
-  }, [aiChatInput, pendingImages, pendingComponents, loading, agentLoading, isAgentMode, conversationContext, sandboxData, currentProjectId, handleAIGeneratedEdit, createSandbox, addChatMessage, startGeneration, applyGeneratedCode, strictMode, sendAgentMessage, sendAgentInitialBuild, setAgentProgressText]);
+  }, [aiChatInput, pendingImages, pendingComponents, loading, agentLoading, isOptimizingImages, isAgentMode, conversationContext, sandboxData, currentProjectId, createSandbox, addChatMessage, showNotification, sendAgentMessage, sendAgentInitialBuild, setAgentProgressText]);
 
   // ─── Restore Snapshot (Silent Time-Travel) ──────────────
   const restoreSnapshot = useCallback(async (snapshot, revertTargetIndex, revertedPromptText, revertedComponents = []) => {
@@ -3286,8 +2228,7 @@ Just position the new components in a logical order (e.g. after the Hero or befo
     } else if (importIds) {
       initStartedRef.current = true;
       const ids = importIds.split(',');
-      if (useAgentBuild) {
-        (async () => {
+      (async () => {
           const buildId = crypto.randomUUID();
           setCurrentProjectId(buildId);
           setLoading(true);
@@ -3320,9 +2261,6 @@ Just position the new components in a logical order (e.g. after the Hero or befo
             setAgentProgressText('');
           }
         })();
-      } else {
-        startGeneration("Build from community components", null, [], ids, null, strictModeValue);
-      }
       // Clean up URL to prevent re-trigger on refresh
       window.history.replaceState({}, document.title, location.pathname);
       setAiChatInput('');
@@ -3345,8 +2283,7 @@ Just position the new components in a logical order (e.g. after the Hero or befo
         ? `Build using ${templateDisplayName} template — ${userAdjustment}`
         : `Build using ${templateDisplayName} template`;
       
-      if (useAgentBuild) {
-        (async () => {
+      (async () => {
           const buildId = crypto.randomUUID();
           setCurrentProjectId(buildId);
           setLoading(true);
@@ -3381,18 +2318,13 @@ Just position the new components in a logical order (e.g. after the Hero or befo
             setAgentProgressText('');
           }
         })();
-      } else {
-        // Fallback: Legacy template pipeline (for templates without agent_prompt)
-        startGeneration(templateId || templateData?.templateId, templateId || templateData?.templateId, initialImages, null, null, strictModeValue);
-      }
       setAiChatInput('');
       setPendingImages([]);
     } else if (prompt?.trim() || initialImages.length > 0 || manualSelectionIds) {
       initStartedRef.current = true;
       const finalPrompt = prompt?.trim() || (manualSelectionIds ? "Build from community components" : "Analyze design and build");
       
-      if (useAgentBuild) {
-        (async () => {
+      (async () => {
           const buildId = crypto.randomUUID();
           setCurrentProjectId(buildId);
           setLoading(true);
@@ -3433,21 +2365,10 @@ Just position the new components in a logical order (e.g. after the Hero or befo
             setAgentProgressText('');
           }
         })();
-      } else {
-        startGeneration(
-          finalPrompt,
-          null,
-          initialImages,
-          manualSelectionIds,
-          null,
-          strictModeValue,
-          initialComponents
-        );
-      }
       setAiChatInput('');
       setPendingImages([]);
     }
-  }, [location.state, location.search, location.pathname, startGeneration, loadProject, useAgentBuild, sendAgentInitialBuild, setAgentProgressText]); // Added dependencies for safety
+  }, [location.state, location.search, location.pathname, loadProject, sendAgentInitialBuild, setAgentProgressText]); // Added dependencies for safety
 
   // ─── Sandbox Status Polling ──────────────
   useEffect(() => {
@@ -3455,7 +2376,7 @@ Just position the new components in a logical order (e.g. after the Hero or befo
     const interval = setInterval(async () => {
       if (sandboxCreationRef.current) return;
       try {
-        const res = await fetch(`/api/sandbox-status?sandboxId=${sandboxData.sandboxId}`);
+        const res = await authFetch(`/api/sandbox-status?sandboxId=${sandboxData.sandboxId}`);
         const data = await res.json();
         if (!data.healthy) {
           setSandboxData(null);
@@ -3463,7 +2384,7 @@ Just position the new components in a logical order (e.g. after the Hero or befo
       } catch (e) { /* ignore */ }
     }, 15000);
     return () => clearInterval(interval);
-  }, [sandboxData?.sandboxId]);
+  }, [authFetch, sandboxData?.sandboxId]);
 
   // ─── Global Drag & Drop Handler ──────────────
   useEffect(() => {
@@ -3602,138 +2523,12 @@ Just position the new components in a logical order (e.g. after the Hero or befo
     }
   }, [sandboxData, isDownloading, addChatMessage]);
 
-  // ─── Publish Project ──────────────
-  const handleOpenSlugModal = useCallback(() => {
-    if (!sandboxData || isPublishing) return;
-
-    // If already published, skip the slug modal and go straight to update
-    if (existingPublishedSlug) {
-      // Don't open the modal — directly trigger the publish as an update
-      return 'UPDATE_DIRECTLY';
-    }
-
-    // Generate default slug from project name: lowercase, hyphenated, max 40 chars
-    const rawProject = conversationContext.currentProject || 'my-site';
-    const defaultSlug = rawProject
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, '-')
-      .replace(/^-|-$/g, '')
-      .substring(0, 40) || 'my-site';
-    setCustomSlug(defaultSlug);
-    setSiteTitle('');
-    setSiteDescription('');
-    setSiteIconFile(null);
-    setSiteIconPreview('');
-    setPublishStep(1);
-    setShowSlugModal(true);
-    return 'SHOW_MODAL';
-  }, [sandboxData, isPublishing, conversationContext, existingPublishedSlug]);
-
-  const confirmPublish = async (overrideSlug = null) => {
-    const slugToUse = overrideSlug || customSlug;
-    if (!slugToUse || isPublishing) return;
-
-    // Prepare icon
-    let iconBase64 = null;
-    let iconFileName = null;
-    if (siteIconFile) {
-      try {
-        setIsUploadingIcon(true);
-        iconBase64 = await new Promise((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onloadend = () => resolve(reader.result);
-          reader.onerror = reject;
-          reader.readAsDataURL(siteIconFile);
-        });
-        iconFileName = siteIconFile.name;
-      } catch (err) {
-        console.error('Error reading icon file:', err);
-        addChatMessage('Failed to read icon file. Proceeding without icon.', 'error');
-      } finally {
-        setIsUploadingIcon(false);
-      }
-    }
-
-    setShowSlugModal(false);
-
-    const isUpdate = !!existingPublishedSlug;
-    setIsPublishing(true);
-    addChatMessage(`${isUpdate ? 'Updating' : 'Publishing'} your site as "${slugToUse}"... This may take up to 30 seconds.`, 'system');
-
-    console.group('[Publish] ════════════════════════════════════');
-    console.log('[Publish] 🚀 Publish started at', new Date().toISOString());
-    console.log('[Publish] Parameters:', {
-      projectId: currentProjectId,
-      sandboxId: sandboxData?.sandboxId,
-      slug: slugToUse,
-      siteTitle,
-      hasAuthToken: !!session?.access_token,
-    });
-
-    try {
-      const requestBody = {
-        sandboxId: sandboxData?.sandboxId,
-        slug: slugToUse,
-        buildId: currentProjectId,
-        siteTitle: siteTitle.trim() || undefined,
-        siteDescription: siteDescription.trim() || undefined,
-        iconBase64: iconBase64 || undefined,
-        iconFileName: iconFileName || undefined
-      };
-      console.log('[Publish] 📤 Sending POST /api/publish-site');
-
-      const res = await authFetch('/api/publish-site', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(requestBody)
-      });
-
-      const data = await safeParseJson(res, 'publish-site');
-
-      if (!data.success) {
-        if (res.status === 409) {
-          console.error('[Publish] ❌ SLUG CONFLICT (409):', data.error);
-          addChatMessage(`Publish failed: ${data.error}`, 'error');
-          setShowSlugModal(true);
-          throw new Error('Name taken');
-        }
-
-        if (data.logs) {
-          console.error('[Publish] Build Logs:', data.logs);
-          addChatMessage(`Build error details:\n${data.logs.substring(0, 500)}`, 'error');
-        }
-        console.error('[Publish] ❌ PUBLISH FAILED:', data.error);
-        throw new Error(data.error || 'Publishing failed');
-      }
-
-      // Build the public URL correctly
-      let finalUrl;
-      if (window.location.hostname === 'localhost') {
-        finalUrl = `${window.location.origin}/sites/${data.slug}`;
-      } else {
-        finalUrl = `https://volturiano.com/sites/${data.slug}`;
-      }
-
-      console.log(`[Publish] ✅ SUCCESS — site live at: ${finalUrl}`);
-      setPublishUrl(finalUrl);
-      setExistingPublishedSlug(data.slug); // Track that this project is now published
-      setShowPublishModal(true);
-      addChatMessage(`Successfully ${isUpdate ? 'updated' : 'published'}! Your site is live at: ${finalUrl}`, 'success');
-    } catch (err) {
-      console.error('[Publish] 💥 Fatal Error:', err.message);
-      console.error('[Publish] Stack:', err.stack);
-      if (err.message !== 'Name taken') {
-        addChatMessage(`Publishing failed: ${err.message}`, 'error');
-      }
-    } finally {
-      setIsPublishing(false);
-      console.groupEnd();
-    }
-  };
-
   // ─── Key handler ──────────────
   const handleKeyDown = (e) => {
-    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') sendChatMessage();
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      sendChatMessage();
+    }
   };
 
   // ─── Render ──────────────────────────────
@@ -4464,13 +3259,7 @@ Just position the new components in a logical order (e.g. after the Hero or befo
 
                     <div className={styles.geminiIcon} title={`Current Engine: ${aiModel}`} ref={modelDropdownRef}>
                       <div onClick={() => setModelDropdownOpen(!modelDropdownOpen)} style={{ cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
-                        {aiModel.startsWith('openai/') ? (
-                          <OpenAIIcon width="24" height="24" style={{ color: 'white' }} />
-                        ) : aiModel.startsWith('anthropic/') ? (
-                          <AnthropicIcon width="22" height="22" />
-                        ) : (
-                          <GeminiIcon width="22" height="22" />
-                        )}
+                        {renderModelIcon(aiModel, aiModel.startsWith('openai/') ? 24 : 22)}
                       </div>
 
                       <AnimatePresence>
@@ -4482,48 +3271,16 @@ Just position the new components in a logical order (e.g. after the Hero or befo
                             exit={{ opacity: 0, scale: 0.95, y: 10 }}
                             transition={{ duration: 0.2, ease: "easeOut" }}
                           >
-                            <button
-                              className={`${styles.modelOption} ${aiModel === 'google/gemini-3.1-pro-preview' ? styles.modelOptionActive : ''}`}
-                              onClick={() => { setAiModel('google/gemini-3.1-pro-preview'); setModelDropdownOpen(false); }}
-                            >
-                              <GeminiIcon width="22" height="22" />
-                              <span>Gemini 3.1 Pro</span>
-                            </button>
-                            <button
-                              className={`${styles.modelOption} ${aiModel === 'google/gemini-2.5-flash' ? styles.modelOptionActive : ''}`}
-                              onClick={() => { setAiModel('google/gemini-2.5-flash'); setModelDropdownOpen(false); }}
-                            >
-                              <GeminiIcon width="22" height="22" />
-                              <span>Gemini 2.5 Flash</span>
-                            </button>
-                            <button
-                              className={`${styles.modelOption} ${aiModel === 'openai/gpt-5.4' ? styles.modelOptionActive : ''}`}
-                              onClick={() => { setAiModel('openai/gpt-5.4'); setModelDropdownOpen(false); }}
-                            >
-                              <OpenAIIcon width="22" height="22" style={{ color: 'white' }} />
-                              <span>GPT-5.4</span>
-                            </button>
-                            <button
-                              className={`${styles.modelOption} ${aiModel === 'openai/gpt-5.4-mini' ? styles.modelOptionActive : ''}`}
-                              onClick={() => { setAiModel('openai/gpt-5.4-mini'); setModelDropdownOpen(false); }}
-                            >
-                              <OpenAIIcon width="22" height="22" style={{ color: 'white' }} />
-                              <span>GPT-5.4 mini</span>
-                            </button>
-                            <button
-                              className={`${styles.modelOption} ${aiModel === 'anthropic/claude-sonnet-4-6' ? styles.modelOptionActive : ''}`}
-                              onClick={() => { setAiModel('anthropic/claude-sonnet-4-6'); setModelDropdownOpen(false); }}
-                            >
-                              <AnthropicIcon width="22" height="22" />
-                              <span>Claude 4.6 Sonnet</span>
-                            </button>
-                            <button
-                              className={`${styles.modelOption} ${aiModel === 'anthropic/claude-haiku-4-5-20251001' ? styles.modelOptionActive : ''}`}
-                              onClick={() => { setAiModel('anthropic/claude-haiku-4-5-20251001'); setModelDropdownOpen(false); }}
-                            >
-                              <AnthropicIcon width="22" height="22" />
-                              <span>Claude Haiku 4.5</span>
-                            </button>
+                            {publicModels.map((model) => (
+                              <button
+                                key={model.id}
+                                className={`${styles.modelOption} ${aiModel === model.id ? styles.modelOptionActive : ''}`}
+                                onClick={() => { setAiModel(model.id); setModelDropdownOpen(false); }}
+                              >
+                                {renderModelIcon(model.id)}
+                                <span>{model.label}</span>
+                              </button>
+                            ))}
                           </motion.div>
                         )}
                       </AnimatePresence>
@@ -4562,9 +3319,37 @@ Just position the new components in a logical order (e.g. after the Hero or befo
             <ComponentSelector
               isOpen={isSelectorOpen}
               onClose={() => setIsSelectorOpen(false)}
-              onConfirm={(ids) => {
+              onConfirm={async (ids) => {
                 setIsSelectorOpen(false);
-                startGeneration(aiChatInput.trim() || "Analyze and build with these components", null, pendingImages, ids);
+                const prompt = aiChatInput.trim() || "Analyze and build with these components";
+                const currentImages = [...pendingImages];
+                addChatMessage(prompt, 'user', { images: currentImages });
+                setLoading(true);
+                setGenerationProgress(prev => ({ ...prev, isGenerating: true, status: 'Initializing project...' }));
+                try {
+                  const buildId = crypto.randomUUID();
+                  setCurrentProjectId(buildId);
+                  await authFetch('/api/projects/init', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ prompt, buildId })
+                  });
+                  setAgentProgressText('Preparing sandbox...');
+                  const sb = await createSandbox();
+                  setAgentProgressText('Starting agent...');
+                  await sendAgentInitialBuild(prompt, buildId, {
+                    images: currentImages,
+                    manualSelectionIds: ids,
+                    sandboxId: sb.sandboxId,
+                    sandboxUrl: sb.url
+                  });
+                } catch (err) {
+                  addChatMessage(`Failed to initialize: ${err.message}`, 'error');
+                } finally {
+                  setLoading(false);
+                  setAgentProgressText('');
+                  setGenerationProgress(prev => ({ ...prev, isGenerating: false, status: '' }));
+                }
                 setAiChatInput('');
                 setPendingImages([]);
               }}
@@ -4696,25 +3481,6 @@ Just position the new components in a logical order (e.g. after the Hero or befo
                           exit={{ opacity: 0, scale: 0.95, y: 10 }}
                           transition={{ duration: 0.2, ease: "easeOut" }}
                         >
-                          {/* PUBLISH FEATURE TEMPORARILY DISABLED — UI hidden, backend untouched.
-                              To re-enable, simply un-comment the button below. */}
-                          {/*
-                          <button
-                            className={styles.viewportOption}
-                            disabled={isPublishing}
-                            onClick={() => {
-                              setExportDropdownOpen(false);
-                              const result = handleOpenSlugModal();
-                              if (result === 'UPDATE_DIRECTLY') {
-                                confirmPublish(existingPublishedSlug);
-                              }
-                            }}
-                          >
-                            <svg stroke="currentColor" fill="none" strokeWidth="2" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round" height="16" width="16" xmlns="http://www.w3.org/2000/svg"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
-                            <span>{isPublishing ? 'Publishing...' : (existingPublishedSlug ? 'Update' : 'Publish')}</span>
-                          </button>
-                          */}
-
                           {/* Publish to Vercel (first time) -> Update on GitHub (subsequent).
                               Once a project has a linked repo, the action is just an
                               incremental commit + push; nothing user-visible touches Vercel
@@ -4891,183 +3657,6 @@ Just position the new components in a logical order (e.g. after the Hero or befo
                   </svg>
                   {notification}
                 </motion.div>
-              )}
-            </AnimatePresence>
-
-            {/* Slug & Info Entry Modal */}
-            <AnimatePresence>
-              {showSlugModal && (
-                <div className={styles.modalOverlay} onClick={() => { if (!isPublishing && !isUploadingIcon) setShowSlugModal(false); }}>
-                  <motion.div
-                    className={styles.publishModal}
-                    onClick={e => e.stopPropagation()}
-                    initial={{ opacity: 0, scale: 0.9, y: 20 }}
-                    animate={{ opacity: 1, scale: 1, y: 0 }}
-                    exit={{ opacity: 0, scale: 0.9, y: 20 }}
-                  >
-                    <div className={styles.modalHeader}>
-                      <FiExternalLink size={24} color="#2dd4bf" />
-                      <h3>Publish to Private URL</h3>
-                    </div>
-
-                    {/* Corner Decoration */}
-                    <img src={gradientCornerForCard} className={styles.modalCornerDecor} alt="" />
-
-                    {publishStep === 1 ? (
-                      <motion.div
-                        initial={{ opacity: 0, x: -20 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        exit={{ opacity: 0, x: 20 }}
-                        className={styles.publishStepContent}
-                      >
-                        <p>Choose a slug for your website. Your site will be hosted at this address.</p>
-
-                        <div className={styles.slugInputContainer}>
-                          <span className={styles.slugPrefix}>
-                            {window.location.hostname === 'localhost' ? `${window.location.host}/sites/` : 'volturiano.com/sites/'}
-                          </span>
-                          <input
-                            type="text"
-                            value={customSlug}
-                            onChange={(e) => setCustomSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '-'))}
-                            placeholder="my-site-name"
-                            className={styles.slugInput}
-                            autoFocus
-                          />
-                        </div>
-
-                        <div className={styles.modalActions}>
-                          <button
-                            className={styles.confirmBtn}
-                            onClick={() => setPublishStep(2)}
-                            disabled={!customSlug}
-                          >
-                            Next: Website Info
-                            <FiChevronRight size={16} style={{ marginLeft: '4px' }} />
-                          </button>
-                          <button className={styles.closeBtn} onClick={() => setShowSlugModal(false)}>Cancel</button>
-                        </div>
-                      </motion.div>
-                    ) : (
-                      <motion.div
-                        initial={{ opacity: 0, x: 20 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        exit={{ opacity: 0, x: -20 }}
-                        className={styles.publishStepContent}
-                      >
-                        <p>Customize your website's appearance in browser tabs and search engines.</p>
-
-                        <div className={styles.siteInfoForm}>
-                          <div className={styles.siteInfoGroup}>
-                            <label>Icon</label>
-                            <div className={styles.iconUploader}>
-                              <div
-                                className={styles.iconPreviewBox}
-                                onClick={() => document.getElementById('site-icon-upload').click()}
-                                style={{ backgroundImage: siteIconPreview ? `url(${siteIconPreview})` : 'none' }}
-                              >
-                                {!siteIconPreview && <FiCamera size={20} color="rgba(255,255,255,0.4)" />}
-                              </div>
-                              <div className={styles.iconUploadTexts}>
-                                <span className={styles.iconUploadPrimary}>Upload Icon</span>
-                                <span className={styles.iconUploadSecondary}>Recommended: 512x512 PNG or SVG</span>
-                              </div>
-                              <input
-                                id="site-icon-upload"
-                                type="file"
-                                accept="image/png, image/jpeg, image/svg+xml, image/webp"
-                                style={{ display: 'none' }}
-                                onChange={(e) => {
-                                  const file = e.target.files[0];
-                                  if (file) {
-                                    setSiteIconFile(file);
-                                    const objectUrl = URL.createObjectURL(file);
-                                    setSiteIconPreview(objectUrl);
-                                  }
-                                }}
-                              />
-                            </div>
-                          </div>
-
-                          <div className={styles.siteInfoGroup}>
-                            <label>Title</label>
-                            <input
-                              type="text"
-                              value={siteTitle}
-                              onChange={(e) => setSiteTitle(e.target.value)}
-                              placeholder="e.g., My Awesome App"
-                              className={styles.siteInfoInput}
-                            />
-                          </div>
-
-                          <div className={styles.siteInfoGroup}>
-                            <label>Description</label>
-                            <textarea
-                              value={siteDescription}
-                              onChange={(e) => setSiteDescription(e.target.value)}
-                              placeholder="A brief description of your site..."
-                              className={styles.siteInfoTextarea}
-                              rows={3}
-                            />
-                          </div>
-                        </div>
-
-                        <div className={styles.modalActions}>
-                          <button className={styles.closeBtn} onClick={() => setPublishStep(1)}>
-                            Back
-                          </button>
-                          <button
-                            className={styles.confirmBtn}
-                            onClick={() => confirmPublish()}
-                            disabled={!customSlug || isPublishing || isUploadingIcon}
-                          >
-                            {isUploadingIcon ? 'Uploading...' : isPublishing ? 'Initiating...' : 'Confirm Publish'}
-                          </button>
-                        </div>
-                      </motion.div>
-                    )}
-                  </motion.div>
-                </div>
-              )}
-            </AnimatePresence>
-
-            {/* Publish Success Modal */}
-            <AnimatePresence>
-              {showPublishModal && (
-                <div className={styles.modalOverlay} onClick={() => { setShowPublishModal(false); setShowTemplateForm(false); setTemplateResult(null); }}>
-                  <motion.div
-                    className={styles.publishModal}
-                    onClick={e => e.stopPropagation()}
-                    initial={{ opacity: 0, scale: 0.9, y: 30 }}
-                    animate={{ opacity: 1, scale: 1, y: 0 }}
-                    exit={{ opacity: 0, scale: 0.9, y: 30 }}
-                    transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-                  >
-                    <div className={styles.modalHeader}>
-                      <motion.div
-                        initial={{ scale: 0, rotate: -45 }}
-                        animate={{ scale: 1, rotate: 0 }}
-                        transition={{ delay: 0.2, type: 'spring' }}
-                        style={{ width: 56, height: 56, background: 'rgba(45, 212, 191, 0.1)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 8 }}
-                      >
-                        <BsCheckLg size={28} color="#2dd4bf" />
-                      </motion.div>
-                      <h3>Site is Live!</h3>
-                    </div>
-
-                    {/* Corner Decoration */}
-                    <img src={gradientCornerForCard} className={styles.modalCornerDecor} alt="" />
-                    <p>Your website has been successfully deployed and is now public via Volturiano Cloud.</p>
-                    <div className={styles.urlDisplay}>
-                      <code>{publishUrl}</code>
-                      <button onClick={() => { navigator.clipboard.writeText(publishUrl); addChatMessage('URL copied to clipboard!', 'system'); }}>Copy</button>
-                    </div>
-                    <div className={styles.modalActions}>
-                      <button className={styles.visitBtn} onClick={() => window.open(publishUrl, '_blank')}>Visit Site</button>
-                      <button className={styles.closeBtn} onClick={() => { setShowPublishModal(false); setShowTemplateForm(false); setTemplateResult(null); }}>Close</button>
-                    </div>
-                  </motion.div>
-                </div>
               )}
             </AnimatePresence>
           </motion.div>

@@ -1,3 +1,5 @@
+import { getDefaultAvailableModelIds, getDefaultPublicModelId } from '../shared/model-registry.js';
+
 export const appConfig = {
   e2b: {
     timeoutMinutes: 60,
@@ -7,15 +9,8 @@ export const appConfig = {
     workingDirectory: '/home/user/app',
   },
   ai: {
-    defaultModel: 'google/gemini-3.1-pro-preview',
-    availableModels: [
-      'google/gemini-3.1-pro-preview',
-      'google/gemini-2.5-flash',
-      'openai/gpt-5.4',
-      'openai/gpt-5.4-mini',
-      'anthropic/claude-sonnet-4-6',
-      'anthropic/claude-haiku-4-5-20251001',
-    ],
+    defaultModel: getDefaultPublicModelId(),
+    availableModels: getDefaultAvailableModelIds(),
     defaultTemperature: 0.7,
     maxTokens: 8000,
   },

@@ -9,7 +9,6 @@ import { logger } from './lib/logger.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const PUB_SITES_PATH = path.join(__dirname, 'pub_sites');
 
 console.log('\n==========================================================');
 console.log('🚀 VOLTURIANO BUILDER SERVER: AI STABILITY FIXES ACTIVE');
@@ -51,7 +50,6 @@ import publishSite from './routes/publish.js';
 import taxonomyApi from './routes/taxonomy-api.js';
 import resolveBlueprintRoute from './routes/resolve-blueprint.js';
 import communityRoutes from './routes/community/index.js';
-import trackRetention from './routes/track-retention.js';
 import submitFeedback from './routes/feedback.js';
 import submitIssue from './routes/issues.js';
 import billingRoutes from './routes/billing.js';
@@ -126,7 +124,6 @@ const heavyJsonRoutes = [
   '/api/create-ai-sandbox-v2',
   '/api/render-app',
   '/api/finalize-codebase',
-  '/api/publish-site',
   '/api/community/submit-component',
   '/api/community/submit-template',
   '/api/admin/upload-asset'
@@ -206,8 +203,8 @@ app.post('/api/apply-ai-code-stream', aiProtections, applyAiCodeStream);
 app.post('/api/hydrate-premium-copy', aiProtections, hydratePremiumCopy);
 app.post('/api/create-ai-sandbox-v2', aiProtections, createAiSandboxV2);
 app.post('/api/sandbox/keepalive', requireAuth, sandboxKeepAlive);
-app.get('/api/sandbox-status', sandboxStatus);
-app.get('/api/get-sandbox-files', getSandboxFiles);
+app.get('/api/sandbox-status', requireAuth, sandboxStatus);
+app.get('/api/get-sandbox-files', requireAuth, getSandboxFiles);
 app.post('/api/install-packages', aiProtections, installPackages);
 app.post('/api/analyze-edit-intent', aiProtections, analyzeEditIntent);
 app.post('/api/create-zip', aiProtections, createZip);
@@ -230,8 +227,8 @@ app.post('/api/render-app', aiProtections, renderApp);
 app.post('/api/validate-imports', aiProtections, validateImportsRoute);
 
 // Verify Build (Prompt 8)
-app.post('/api/verify-build', standardLimiter, optionalAuth, verifyBuildRoute);
-app.get('/api/lovable-replay-status', standardLimiter, optionalAuth, lovableReplayStatus);
+app.post('/api/verify-build', standardLimiter, requireAuth, requireUnrestricted, verifyBuildRoute);
+app.get('/api/lovable-replay-status', standardLimiter, requireAuth, lovableReplayStatus);
 
 // Finalize Codebase (Polish Step)
 app.post('/api/finalize-codebase', aiProtections, finalizeCodebase);
@@ -243,18 +240,17 @@ app.get('/api/projects/get', requireAuth, getProject);
 app.post('/api/snapshots', requireAuth, requireUnrestricted, saveSnapshot);
 app.get('/api/snapshots', requireAuth, getSnapshots);
 
-// Publish Site (Phase 5)
+// BUILDER-COMPAT: Local Supabase Storage publishing is retired for new writes.
+// Keep this authenticated tombstone so stale clients fail loudly while
+// /sites/:slug below continues serving already-published legacy links.
 app.post('/api/publish-site', requireAuth, requireUnrestricted, publishSite);
 
 // Phase S7: Taxonomy & Blueprint System
 app.use('/api/taxonomy', relaxedLimiter, taxonomyApi);
-app.post('/api/resolve-blueprint', standardLimiter, resolveBlueprintRoute);
+app.post('/api/resolve-blueprint', standardLimiter, requireAuth, requireUnrestricted, resolveBlueprintRoute);
 
 // Phase S9: Community Routes (Component submissions, ratings, etc.)
 app.use('/api/community', relaxedLimiter, communityRoutes);
-
-// Phase S9.14: Usage Feedback Loop (Retention Tracking)
-app.post('/api/track-retention', standardLimiter, optionalAuth, trackRetention);
 
 // Phase S12: Credits & Billing (Stripe Integration)
 app.use('/api/billing', strictLimiter, billingRoutes);
@@ -441,6 +437,14 @@ app.get('/api/health', (req, res) => res.json({ status: 'ok', timestamp: new Dat
 
 // Error handling middleware
 app.use((err, req, res, next) => {
+  if (err?.type === 'entity.too.large') {
+    console.warn(`[Server] Payload too large: ${req.method} ${req.url}`);
+    return res.status(413).json({
+      success: false,
+      error: 'Uploaded images are too large. Try fewer images or a smaller screenshot, then retry.'
+    });
+  }
+
   console.error('[Server] Fatal Route Error:', err);
 
   const logPath = path.join(__dirname, 'server_fatal.log');

@@ -4,6 +4,7 @@ import { getModel } from '../lib/provider-helpers.js';
 import { appConfig } from '../config/app.config.js';
 import { getCatalogForPromptAsync } from '../lib/registry/registry.js';
 import { sandboxManager } from '../lib/sandbox/sandbox-manager.js';
+import { normalizePublicModelId, resolveModelRole } from '../shared/model-registry.js';
 
 export default async function generateAiCodeStream(req, res) {
   // SSE headers
@@ -16,7 +17,9 @@ export default async function generateAiCodeStream(req, res) {
   const send = (data) => res.write(`data: ${JSON.stringify(data)}\n\n`);
 
   try {
-    const { prompt, images = [], model = 'google/gemini-3.1-pro-preview', context = {}, isEdit = false } = req.body;
+    const { prompt, images = [], model, context = {}, isEdit = false } = req.body;
+    const requestedModel = model || resolveModelRole('generalGeneration');
+    const effectiveModel = normalizePublicModelId(requestedModel);
 
     if (!prompt) {
       send({ type: 'error', message: 'prompt is required' });
@@ -363,10 +366,10 @@ ITERATION RULES:
 
     // Stream the response
     const result = streamText({
-      model: getModel(model),
+      model: getModel(effectiveModel),
       messages,
       maxTokens: appConfig.ai.maxTokens,
-      temperature: model.includes('gemini-3.1') ? 1.0 : appConfig.ai.defaultTemperature,
+      temperature: effectiveModel.includes('gemini-3.1') ? 1.0 : appConfig.ai.defaultTemperature,
     });
 
     let generatedCode = '';

@@ -15,9 +15,9 @@ const PLANS = [
     credits: 20,
     features: [
       '20 credits per month',
-      'Publish & export access',
-      'Standard AI generation',
-      'Community hub access'
+      'Standard support',
+      'Commercial usage rights',
+      'Cancel anytime'
     ]
   },
   {
@@ -29,9 +29,9 @@ const PLANS = [
     isPopular: true,
     features: [
       '55 credits per month',
-      'Everything in Starter',
-      'Priority AI generation',
-      'Advanced project tools'
+      'Priority support',
+      'Commercial usage rights',
+      'Cancel anytime'
     ]
   },
   {
@@ -42,9 +42,9 @@ const PLANS = [
     credits: 120,
     features: [
       '120 credits per month',
-      'Everything in Pro',
       'Dedicated support',
-      'White-label options'
+      'Commercial usage rights',
+      'Cancel anytime'
     ]
   }
 ];
@@ -192,7 +192,7 @@ export function CreditLimitContent({ onClose, showCloseButton = true }) {
 
                 <div className={styles.featuresSection}>
                   <h4 className={styles.featuresHead}>
-                    {plan.id === 'starter' ? 'Includes:' : 'Everything in Standard, plus:'}
+                    Includes:
                   </h4>
                   <ul className={styles.featuresList}>
                     {plan.features.map((feature, idx) => (

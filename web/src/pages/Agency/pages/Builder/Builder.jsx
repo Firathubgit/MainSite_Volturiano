@@ -18,6 +18,8 @@ import AuthGateModal from '../../../../components/Modals/AuthGateModal';
 import CongratsModal from './Dashboard/components/CongratsModal';
 import gradientCornerImage from './Dashboard/Assets/GradientCornerOne.png';
 import TryComponentSelectPopup from './components/TryComponentSelectPopup';
+import { getDefaultPublicModelId, getPublicModels, normalizePublicModelId } from './model-registry.client.js';
+import { IMAGE_UPLOAD_LIMITS, formatBytes, optimizeImageFiles } from './utils/imageOptimizer.js';
 
 // Import assets (Reference page thumbnails)
 import scaleIntelligenceThumbnail from '../../../../assets/ScaleIntelegenceMocup.png';
@@ -111,6 +113,7 @@ const BuilderContent = () => {
     const [templates, setTemplates] = useState([]);
     const [isLoadingTemplates, setIsLoadingTemplates] = useState(true);
     const [images, setImages] = useState([]);
+    const [isOptimizingImages, setIsOptimizingImages] = useState(false);
     const [notification, setNotification] = useState(null);
     const [premiumMode, setPremiumMode] = useState(
         profile?.preferred_mode || localStorage.getItem('volturiano_builder_mode') || 'hybrid'
@@ -125,7 +128,10 @@ const BuilderContent = () => {
         }
     }, [profile?.preferred_mode]);
 
-    const [selectedModel, setSelectedModel] = useState('google/gemini-3.1-pro-preview');
+    const [selectedModel, setSelectedModel] = useState(() => {
+        if (typeof window === 'undefined') return getDefaultPublicModelId();
+        return normalizePublicModelId(localStorage.getItem('volturiano_builder_model'));
+    });
     const [placeholderText, setPlaceholderText] = useState("");
 
     // Phase S26: Initialize community popup state from URL to persist across reloads
@@ -154,7 +160,6 @@ const BuilderContent = () => {
     }, [isCommunityOpen]);
 
     const [selectedComponents, setSelectedComponents] = useState([]);
-    const [useAgentBuild, setUseAgentBuild] = useState(true); // ⭐ Experimental agent-mode initial build
     const [strictMode, setStrictMode] = useState(false);
     const [showAuthModal, setShowAuthModal] = useState(false);
     const [showCongrats, setShowCongrats] = useState(false);
@@ -247,38 +252,27 @@ const BuilderContent = () => {
     };
 
 
-    const models = [
-        {
-            id: 'google/gemini-3.1-pro-preview',
-            label: 'Gemini 3.1 Pro',
-            icon: <GeminiIcon />
-        },
-        {
-            id: 'google/gemini-2.5-flash',
-            label: 'Gemini 2.5 Flash',
-            icon: <GeminiIcon />
-        },
-        {
-            id: 'openai/gpt-5.4',
-            label: 'GPT-5.4',
-            icon: <OpenAIIcon />
-        },
-        {
-            id: 'openai/gpt-5.4-mini',
-            label: 'GPT-5.4 mini',
-            icon: <OpenAIIcon />
-        },
-        {
-            id: 'anthropic/claude-sonnet-4-6',
-            label: 'Claude 4.6 Sonnet',
-            icon: <AnthropicIcon />
-        },
-        {
-            id: 'anthropic/claude-haiku-4-5-20251001',
-            label: 'Claude Haiku 4.5',
-            icon: <AnthropicIcon />
-        },
-    ];
+    useEffect(() => {
+        const profileModel = profile?.preferred_model || profile?.preferred_ai_model;
+        if (profileModel) {
+            setSelectedModel(normalizePublicModelId(profileModel));
+        }
+    }, [profile?.preferred_model, profile?.preferred_ai_model]);
+
+    useEffect(() => {
+        localStorage.setItem('volturiano_builder_model', selectedModel);
+    }, [selectedModel]);
+
+    const iconForModel = (id) => {
+        if (id.startsWith('openai/')) return <OpenAIIcon />;
+        if (id.startsWith('anthropic/')) return <AnthropicIcon />;
+        return <GeminiIcon />;
+    };
+
+    const models = getPublicModels().map((model) => ({
+        ...model,
+        icon: iconForModel(model.id)
+    }));
 
     const currentModelIcon = models.find(m => m.id === selectedModel)?.icon || <OpenAIIcon />;
 
@@ -442,35 +436,55 @@ const BuilderContent = () => {
         return () => controller.abort();
     }, [authLoading, isAuthenticated, getAccessToken]);
 
-    const handlePaste = (e) => {
-        const items = e.clipboardData?.items;
-        if (!items) return;
-
-        let addedCount = 0;
-        const totalPossible = images.length;
-
-        for (const item of items) {
-            if (item.type.indexOf("image") !== -1) {
-                if (totalPossible + addedCount >= 10) {
-                    showNotification("Maximum of 10 images allowed.");
-                    return;
-                }
-                const file = item.getAsFile();
-                if (file) {
-                    addedCount++;
-                    const reader = new FileReader();
-                    reader.onload = (event) => {
-                        setImages(prev => [...prev.slice(0, 10), event.target.result].slice(0, 10));
-                    };
-                    reader.readAsDataURL(file);
-                }
-            }
-        }
-    };
-
     const showNotification = (msg) => {
         setNotification(msg);
         setTimeout(() => setNotification(null), 5000);
+    };
+
+    const addOptimizedImages = async (files) => {
+        const inputFiles = Array.from(files || []);
+        const imageFiles = inputFiles.filter((file) => file?.type?.startsWith('image/'));
+        if (imageFiles.length === 0) return;
+
+        if (images.length >= IMAGE_UPLOAD_LIMITS.maxImages) {
+            showNotification(`Maximum of ${IMAGE_UPLOAD_LIMITS.maxImages} images allowed.`);
+            return;
+        }
+
+        setIsOptimizingImages(true);
+        try {
+            const { images: optimizedImages, stats } = await optimizeImageFiles(imageFiles, {
+                existingImages: images,
+            });
+
+            if (optimizedImages.length > 0) {
+                setImages((prev) => [...prev, ...optimizedImages].slice(0, IMAGE_UPLOAD_LIMITS.maxImages));
+            }
+
+            if (stats.optimizedCount > 0) {
+                showNotification(
+                    `Optimized ${stats.optimizedCount} image${stats.optimizedCount === 1 ? '' : 's'} for upload (${formatBytes(stats.originalBytes)} -> ${formatBytes(stats.optimizedBytes)}).`
+                );
+            } else if (stats.skippedForCount > 0) {
+                showNotification(`Maximum of ${IMAGE_UPLOAD_LIMITS.maxImages} images allowed.`);
+            } else if (stats.skippedForBudget > 0 || stats.failedCount > 0) {
+                showNotification('Some images were too large to prepare. Try fewer images or a smaller screenshot.');
+            }
+        } finally {
+            setIsOptimizingImages(false);
+        }
+    };
+
+    const handlePaste = (e) => {
+        const items = Array.from(e.clipboardData?.items || []);
+        const pastedImages = items
+            .filter((item) => item.type.indexOf('image') !== -1)
+            .map((item) => item.getAsFile())
+            .filter(Boolean);
+
+        if (pastedImages.length > 0) {
+            addOptimizedImages(pastedImages);
+        }
     };
 
     // Phase S25: Handle Stripe redirect URL params
@@ -496,22 +510,7 @@ const BuilderContent = () => {
     }, [location.search, refreshCredits]);
 
     const processFiles = (files) => {
-        if (!files) return;
-
-        if (images.length + files.length > 10) {
-            showNotification("Maximum of 10 images allowed.");
-            return;
-        }
-
-        for (const file of files) {
-            if (file.type.indexOf("image") !== -1) {
-                const reader = new FileReader();
-                reader.onload = (event) => {
-                    setImages(prev => [...prev, event.target.result]);
-                };
-                reader.readAsDataURL(file);
-            }
-        }
+        addOptimizedImages(files);
     };
 
     const removeImage = (index) => {
@@ -532,6 +531,11 @@ const BuilderContent = () => {
         }
 
         if (isSubmitting) return;
+
+        if (isOptimizingImages) {
+            showNotification('Finishing image optimization before sending.');
+            return;
+        }
 
         if (inputValue.trim() || images.length > 0 || selectedComponents.length > 0 || selectedTemplate) {
             // Check if we need to show the Component Select popup (skip for template selections)
@@ -585,7 +589,6 @@ const BuilderContent = () => {
                 manualSelectionIds: selectedComponents.map(c => c.id),
                 initialComponents: selectedComponents,
                 strictMode: strictMode,
-                useAgentBuild: useAgentBuild,
                 templateData: selectedTemplate ? {
                     templateId: selectedTemplate.templateId,
                     name: selectedTemplate.name,

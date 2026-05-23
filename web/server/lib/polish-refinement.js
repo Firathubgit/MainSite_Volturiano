@@ -4,9 +4,11 @@ import { getModel } from './provider-helpers.js';
 import { parseFileBlocks } from './file-blocks.js';
 import { llmLog } from './llm-logger.js';
 import { resolveDesignSpecModelId } from './llm-lightweight.js';
+import { normalizePublicModelId, resolveModelRole } from '../shared/model-registry.js';
 
 const USE_PARALLEL_POLISH = false; // Toggle for 2-Step Async Parallel execution instead of slow monolithic runs
 const NON_POLISHABLE_SHELL_FILES = new Set(['src/App.jsx', 'src/main.jsx']);
+const DEFAULT_POLISH_MODEL = resolveModelRole('premiumPolish');
 /** Skip polish for tiny wrappers — not enough text to justify an LLM call (Phase 8). */
 export const MIN_POLISH_CHAR_BYTES = 500;
 
@@ -183,7 +185,7 @@ function salvageSingleFileCode(raw = '') {
  */
 export async function runPolishStep(files, prompt, buildErrors = '', options = {}) {
     const {
-        model = 'google/gemini-3.1-pro-preview',
+        model = DEFAULT_POLISH_MODEL,
         fileTree = [],
         isEdit = false,
         sandboxId = '',
@@ -192,6 +194,7 @@ export async function runPolishStep(files, prompt, buildErrors = '', options = {
         disableTriage = false
     } = options;
 
+    const effectiveModel = normalizePublicModelId(model);
     // Strip EXPLICIT_COMPONENTS tag from prompt as it's metadata, not vision context
     const visionPrompt = prompt.replace(/\[EXPLICIT_COMPONENTS:[^\]]*\]/g, '').trim();
 
@@ -201,7 +204,7 @@ export async function runPolishStep(files, prompt, buildErrors = '', options = {
     console.log('\n' + '═'.repeat(60));
     console.log(' ✨  VOLTURIANO AI POLISH DASHBOARD  ✨ ');
     console.log('═'.repeat(60));
-    console.log(` 🤖 MODEL   : ${model}`);
+    console.log(` 🤖 MODEL   : ${effectiveModel}`);
     const skipPathSet = options.skipPaths instanceof Set ? options.skipPaths : new Set();
     let skippedTiny = 0;
     let skippedSkipPaths = 0;
@@ -346,22 +349,22 @@ ${buildErrors || 'None - perform aesthetic optimizations and copy specialization
         let text;
 
         llmLog.request('POLISH', {
-            model: model,
+            model: effectiveModel,
             systemPrompt: systemPrompt,
             userPrompt: visionPrompt,
             temperature: 0
         });
 
-        const isNativeOpenAI = model.includes('openai/');
+        const isNativeOpenAI = effectiveModel.includes('openai/');
 
         let refinedFilesList = [];
 
         if (USE_PARALLEL_POLISH) {
-            const poolLimit = model.includes('anthropic') ? 2 : 3;
+            const poolLimit = effectiveModel.includes('anthropic') ? 2 : 3;
             console.log(` [process] Using Parallel Polish Engine (concurrency ${poolLimit})`);
             console.log('[BUILDER-VERIFY] polish concurrency poolLimit=%d', poolLimit);
 
-            const specModel = resolveDesignSpecModelId(model);
+            const specModel = resolveDesignSpecModelId(effectiveModel);
             let designSpec =
                 designSpecOption !== undefined ? designSpecOption : await generateDesignSpec(visionPrompt, fileContext, specModel);
 
@@ -376,7 +379,7 @@ ${buildErrors || 'None - perform aesthetic optimizations and copy specialization
 
             let triageMap = new Map();
             if (!disableTriage && standardPolishFiles.length > 0) {
-                triageMap = await triageStandardFilesForPolish(standardPolishFiles, visionPrompt, model, designSpec);
+                triageMap = await triageStandardFilesForPolish(standardPolishFiles, visionPrompt, effectiveModel, designSpec);
                 let skipN = 0;
                 let copyN = 0;
                 let fullN = 0;
@@ -472,11 +475,11 @@ ${file.content}`;
                     fileText = await generateWithQuality(systemForFile, filePrompt);
                 } else {
                     const res = await generateText({
-                        model: getModel(model),
+                        model: getModel(effectiveModel),
                         system: systemForFile,
                         prompt: filePrompt,
                         temperature: 0,
-                        maxRetries: model.includes('anthropic') ? 6 : 3,
+                        maxRetries: effectiveModel.includes('anthropic') ? 6 : 3,
                         abortSignal: controller.signal
                     });
                     fileText = res.text;
@@ -568,7 +571,7 @@ ${file.content}`;
                 } else {
                     console.log(' [process] Using Standard AI SDK...');
                     const result = await generateText({
-                        model: getModel(model),
+                        model: getModel(effectiveModel),
                         system: systemPrompt,
                         prompt: `Perform a Final Polish on the following website files to perfectly match the vision of "${prompt}". Focus on specialization and premium aesthetics.\n\n${standardFileContext}`,
                         temperature: 0,
@@ -589,11 +592,11 @@ ${file.content}`;
                     fileText = await generateWithQuality(systemForFile, fp);
                 } else {
                     const res = await generateText({
-                        model: getModel(model),
+                        model: getModel(effectiveModel),
                         system: systemForFile,
                         prompt: fp,
                         temperature: 0,
-                        maxRetries: model.includes('anthropic') ? 6 : 3,
+                        maxRetries: effectiveModel.includes('anthropic') ? 6 : 3,
                         abortSignal: controller.signal
                     });
                     fileText = res.text;

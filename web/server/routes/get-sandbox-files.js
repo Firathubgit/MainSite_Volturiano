@@ -83,8 +83,15 @@ function isReadableTextFile(filePath = '') {
 export default async function getSandboxFiles(req, res) {
   try {
     const sandboxId = req.query.sandboxId;
+    // BUILDER-SECURITY: This route returns source files from the live sandbox.
+    // Keep it behind auth in index.js and never satisfy a requested sandbox id
+    // with an unrelated global provider. The global fallback is compatibility
+    // for the current manager/global bridge, not a cross-sandbox escape hatch.
     const provider = sandboxId
-      ? (sandboxManager.getProvider(sandboxId) || global.activeSandboxProvider)
+      ? (
+          sandboxManager.getProvider(sandboxId)
+          || (global.sandboxData?.sandboxId === sandboxId ? global.activeSandboxProvider : null)
+        )
       : (sandboxManager.getActiveProvider() || global.activeSandboxProvider);
 
     if (!provider) {

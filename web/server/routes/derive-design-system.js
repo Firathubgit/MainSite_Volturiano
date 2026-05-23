@@ -3,6 +3,8 @@ import { z } from 'zod';
 import { getModel } from '../lib/provider-helpers.js';
 import { llmLog } from '../lib/llm-logger.js';
 import { log } from '../lib/build-manifest.js';
+import { resolveLightweightModel } from '../lib/llm-lightweight.js';
+import { resolveModelRole } from '../shared/model-registry.js';
 
 // ─── Design System Schema ──────────────────────────────────────
 const designSystemSchema = z.object({
@@ -111,6 +113,7 @@ CRITICAL RULES:
 export default async function deriveDesignSystem(req, res) {
     try {
         const { enhancedPrompt, images = [], buildId, model } = req.body;
+        const effectiveModel = resolveLightweightModel(model || resolveModelRole('generalGeneration')).id;
 
         if (!enhancedPrompt || typeof enhancedPrompt !== 'string') {
             return res.status(400).json({ success: false, error: 'enhancedPrompt is required' });
@@ -130,7 +133,7 @@ export default async function deriveDesignSystem(req, res) {
         });
 
         const result = await generateObject({
-            model: getModel(model),
+            model: getModel(effectiveModel),
             schema: designSystemSchema,
             maxRetries: 7, // Highly resilient config to combat rate limit overloads
             messages: [

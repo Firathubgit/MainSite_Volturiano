@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useBuilderAuth } from './BuilderAuthContext';
+import { MODEL_IDS } from '../pages/Agency/pages/Builder/model-registry.client.js';
 
 const RouteTransitionContext = createContext(null);
 
@@ -34,10 +35,10 @@ export const RouteTransitionProvider = ({ children }) => {
         let cinematicController = null;
 
         if (!stateToPass?.isProjectRevisit && !stateToPass?.templateId && !stateToPass?.templateData && stateToPass?.prompt) {
-            let cineModel = 'google/gemini-2.5-flash';
+            let cineModel = MODEL_IDS.GEMINI_25_FLASH;
             if (stateToPass.model) {
-                if (stateToPass.model.includes('openai/')) cineModel = 'openai/gpt-5.4-mini';
-                if (stateToPass.model.includes('anthropic/')) cineModel = 'anthropic/claude-haiku-4-5-20251001';
+                if (stateToPass.model.includes('openai/')) cineModel = MODEL_IDS.GPT_55_MINI;
+                if (stateToPass.model.includes('anthropic/')) cineModel = MODEL_IDS.CLAUDE_HAIKU_45;
             }
 
             cinematicController = typeof AbortController !== 'undefined' ? new AbortController() : null;

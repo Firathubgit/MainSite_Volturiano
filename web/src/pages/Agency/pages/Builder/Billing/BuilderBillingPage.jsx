@@ -16,9 +16,8 @@ export default function BuilderBillingPage() {
     <div className={styles.pageShell}>
       <div className={styles.pageInner}>
         <div className={styles.pageTopBar}>
-          <button type="button" className={styles.pageBackBtn} onClick={handleBack}>
-            <ArrowLeft size={16} />
-            Back to builder
+          <button type="button" className={styles.pageBackBtnPlain} onClick={handleBack} title="Back to builder">
+            <ArrowLeft size={24} />
           </button>
         </div>
 

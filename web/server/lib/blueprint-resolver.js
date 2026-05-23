@@ -4,6 +4,7 @@ import { generateObject } from 'ai';
 import { z } from 'zod';
 import { getModel } from './provider-helpers.js';
 import { supabaseAdmin } from './supabase-admin.js';
+import { resolveModelRole } from '../shared/model-registry.js';
 
 const sb = supabaseAdmin;
 
@@ -125,7 +126,7 @@ RULES:
     let result;
     try {
         result = await generateObject({
-            model: getModel('google/gemini-3.1-pro-preview'),
+            model: getModel(resolveModelRole('componentSelection')),
             schema,
             system: systemPrompt,
             prompt: `Create a website blueprint for: "${prompt}"`,
@@ -134,7 +135,7 @@ RULES:
     } catch (err) {
         console.warn('[blueprint-resolver] Gemini failed, trying fallback:', err.message);
         result = await generateObject({
-            model: getModel('openai/gpt-5.4'),
+            model: getModel(resolveModelRole('crossProviderFallbackFromGoogle')),
             schema,
             system: systemPrompt,
             prompt: `Create a website blueprint for: "${prompt}"`,

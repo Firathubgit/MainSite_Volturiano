@@ -4,6 +4,16 @@ import { RETENTION_DAYS, retentionUntil } from '../retention.js';
 
 // checkGuestLimit removed - no longer supporting guest builds
 
+function shouldRetryWithoutCommitColumns(error) {
+    const message = `${error?.message || ''} ${error?.details || ''} ${error?.hint || ''}`;
+    return /is_committed|committed_at|schema cache/i.test(message);
+}
+
+function withoutCommitColumns(payload) {
+    const { is_committed, committed_at, ...rest } = payload || {};
+    return rest;
+}
+
 /**
  * Checks and deducts user credits.
  * @param {string} userId - Supabase user UUID.
@@ -58,14 +68,25 @@ export async function createProject({ userId, prompt, buildId }) {
             name: prompt ? prompt.substring(0, 50) + '...' : 'Untitled Project',
             prompt: prompt || '',
             build_status: 'generating',
+            is_committed: false,
+            committed_at: null,
             user_id: userId
         };
 
-        const { data, error } = await supabaseAdmin
+        let { data, error } = await supabaseAdmin
             .from('projects')
             .insert(payload)
             .select('id')
             .single();
+
+        if (error && shouldRetryWithoutCommitColumns(error)) {
+            // Allows local/staging to keep working before the visibility migration is applied.
+            ({ data, error } = await supabaseAdmin
+                .from('projects')
+                .insert(withoutCommitColumns(payload))
+                .select('id')
+                .single());
+        }
 
         if (error) {
             console.error('[DB] Failed to create project:', {
@@ -92,10 +113,21 @@ export async function updateProject(projectId, updates) {
     if (!projectId || !supabaseAdmin) return;
 
     try {
-        const { error } = await supabaseAdmin
+        let { error } = await supabaseAdmin
             .from('projects')
             .update(updates)
             .eq('id', projectId);
+
+        if (error && shouldRetryWithoutCommitColumns(error)) {
+            const legacyUpdates = withoutCommitColumns(updates);
+            if (Object.keys(legacyUpdates).length > 0) {
+                // Keep build/status updates working even if the migration has not landed yet.
+                ({ error } = await supabaseAdmin
+                    .from('projects')
+                    .update(legacyUpdates)
+                    .eq('id', projectId));
+            }
+        }
 
         if (error) {
             console.error('[DB] updateProject err:', {

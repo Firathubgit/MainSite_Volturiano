@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { getModel } from '../lib/provider-helpers.js';
 import { sandboxManager } from '../lib/sandbox/sandbox-manager.js';
 import { log } from '../lib/build-manifest.js';
+import { normalizePublicModelId, resolveModelRole } from '../shared/model-registry.js';
 
 const modificationSchema = z.object({
     modifications: z.array(z.object({
@@ -16,7 +17,8 @@ const modificationSchema = z.object({
 });
 
 export default async function finalizeCodebase(req, res) {
-    const { buildId, prompt, sandboxId, model = 'google/gemini-3.1-pro-preview' } = req.body;
+    const { buildId, prompt, sandboxId, model = resolveModelRole('premiumPolish') } = req.body;
+    const effectiveModel = normalizePublicModelId(model);
 
     try {
         log(buildId, '[finalize-codebase] Starting final polish step...');
@@ -78,7 +80,7 @@ Output a list of file modifications.
 `;
 
         const result = await generateObject({
-            model: getModel(model),
+            model: getModel(effectiveModel),
             schema: modificationSchema,
             messages: [
                 { role: 'system', content: MODIFICATION_PROMPT },

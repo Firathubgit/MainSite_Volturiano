@@ -24,7 +24,7 @@ export default function DataProcessingAddendum() {
             <FileCheckIcon size={32} className={s.icon} />
           </div>
           <h1 className={s.title}>Data Processing Addendum (DPA)</h1>
-          <p className={s.lastUpdated}>Last updated: May 2026</p>
+          <p className={s.lastUpdated}>Last updated: 14 May 2026</p>
         </header>
 
         <section className={s.section}>
@@ -114,10 +114,11 @@ export default function DataProcessingAddendum() {
         <section className={s.section}>
           <h2>8. Personal Data Breach Notification</h2>
           <p>
-            Volturiano will notify Customer without undue delay (and in any event aim to notify within
-            72 hours of becoming aware) of a confirmed personal data breach affecting Customer Data,
-            and provide information reasonably required for Customer to meet its own breach
-            notification obligations under GDPR Article 33 and 34.
+            Volturiano will notify Customer without undue delay after confirming a personal data
+            breach affecting Customer Data, and provide information reasonably required for Customer
+            to meet its own breach notification obligations under GDPR Article 33 and 34. The 72-hour
+            supervisory-authority deadline belongs to the controller; Volturiano will support that
+            timeline by escalating confirmed Customer Data incidents promptly.
           </p>
         </section>
 

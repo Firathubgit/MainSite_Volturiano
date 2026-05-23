@@ -115,9 +115,9 @@ function testRouteHardeningWiring() {
     assertSourceContains('server/routes/save-snapshot.js', 'createSnapshotForUser({');
     assertSourceContains('server/routes/save-snapshot.js', 'updateProjectForUser(projectId, userId');
 
-    assertSourceContains('server/routes/publish.js', 'assertProjectOwner(buildId, userId');
-    assertSourceContains('server/routes/publish.js', ".eq('user_id', userId)");
-    assertSourceContains('server/routes/publish.js', 'updateProjectForUser(buildId, userId');
+    assertSourceContains('server/routes/publish.js', 'Local Supabase Storage publishing is retired');
+    assertSourceContains('server/routes/publish.js', 'status(410)');
+    assertSourceContains('server/index.js', "app.post('/api/publish-site', requireAuth, requireUnrestricted, publishSite)");
 
     assertSourceContains('server/routes/dashboard.js', 'assertPublishedSiteOwner(siteId, userId');
     assertSourceContains('server/routes/dashboard.js', 'updateProjectForUser(site.project_id, userId');

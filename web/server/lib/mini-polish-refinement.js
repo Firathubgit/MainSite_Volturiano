@@ -1,6 +1,6 @@
 /**
  * Mini Polish — single fast-model pass after main polish (navigation, routes, UX sanity).
- * Uses the same lightweight routing as polish-filler: OpenAI → gpt-5.4-mini, Anthropic → Haiku, Google → gemini-2.5-flash.
+ * Uses the same lightweight routing as polish-filler: OpenAI mini, Anthropic Haiku, Google Flash-Lite.
  * Intentionally conservative: no output / NO_CHANGES means zero file writes.
  */
 
@@ -9,6 +9,7 @@ import { getModel, generateFast } from './provider-helpers.js';
 import { parseFileBlocks } from './file-blocks.js';
 import { llmLog } from './llm-logger.js';
 import { resolveLightweightModel } from './llm-lightweight.js';
+import { resolveModelRole } from '../shared/model-registry.js';
 
 const MINI_POLISH_TIMEOUT_MS = 180000;
 /** Soft cap so one request stays within typical context limits; tail truncation per file if needed */
@@ -99,7 +100,7 @@ When in doubt, respond NO_CHANGES.`;
  * @returns {Promise<Array<{path: string, content: string}>|null>} - refined files to merge, [] if none, null on hard failure
  */
 export async function runMiniPolishStep(files, prompt, options = {}) {
-    const { model: heavyModel = 'google/gemini-3.1-pro-preview', fileTree = [], sandboxId = '' } = options;
+    const { model: heavyModel = resolveModelRole('generalGeneration'), fileTree = [], sandboxId = '' } = options;
     const visionPrompt = (prompt || '').replace(/\[EXPLICIT_COMPONENTS:[^\]]*\]/g, '').trim();
 
     const lm = resolveLightweightModel(heavyModel);

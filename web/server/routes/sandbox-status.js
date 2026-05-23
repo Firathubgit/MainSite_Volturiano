@@ -2,7 +2,16 @@ import { sandboxManager } from '../lib/sandbox/sandbox-manager.js';
 
 export default async function sandboxStatus(req, res) {
   try {
-    const provider = sandboxManager.getActiveProvider() || global.activeSandboxProvider;
+    const requestedSandboxId = typeof req.query.sandboxId === 'string' ? req.query.sandboxId : null;
+    // BUILDER-SECURITY: A status request for one sandbox must not fall back to
+    // some other globally-active sandbox. The global bridge only applies when it
+    // is the same sandbox id, and exists only until all routes are manager-owned.
+    const provider = requestedSandboxId
+      ? (
+          sandboxManager.getProvider(requestedSandboxId)
+          || (global.sandboxData?.sandboxId === requestedSandboxId ? global.activeSandboxProvider : null)
+        )
+      : (sandboxManager.getActiveProvider() || global.activeSandboxProvider);
     const sandboxExists = !!provider;
     let sandboxHealthy = false;
     let sandboxInfo = null;

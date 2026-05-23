@@ -396,9 +396,9 @@ async function bestEffortRemoveStorageUrl(url) {
 //   3. Archives the linked community_submissions row (if any) so the author's
 //      "My Submissions" page reflects the deletion. (FK is ON DELETE SET NULL
 //      so the row stays for audit; we just flip its status.)
-//   4. Deletes the component row. This cascades to: component_likes,
-//      component_ratings, component_reports, template_sections, and
-//      ai_selection_events via existing ON DELETE CASCADE constraints.
+//   4. Deletes the component row. This cascades to component_likes,
+//      component_ratings, component_reports, and template_sections via
+//      existing ON DELETE CASCADE constraints.
 //   5. Writes an audit log entry with the metadata of the removed component.
 //
 // Body: { componentId, reason? }

@@ -1,6 +1,7 @@
 import { generateObject } from 'ai';
 import { z } from 'zod';
 import { getModel } from '../lib/provider-helpers.js';
+import { normalizePublicModelId, resolveModelRole } from '../shared/model-registry.js';
 
 const searchPlanSchema = z.object({
   editType: z.string().describe('Type: add_component, modify_component, add_section, modify_styling, fix_issue, refactor'),
@@ -11,7 +12,8 @@ const searchPlanSchema = z.object({
 
 export default async function analyzeEditIntent(req, res) {
   try {
-    const { prompt, manifest, model = 'google/gemini-3.1-pro-preview' } = req.body;
+    const { prompt, manifest, model = resolveModelRole('generalGeneration') } = req.body;
+    const effectiveModel = normalizePublicModelId(model);
 
     if (!prompt) {
       return res.status(400).json({ success: false, error: 'prompt is required' });
@@ -22,7 +24,7 @@ export default async function analyzeEditIntent(req, res) {
     const fileList = manifest?.files?.map(f => f.path || f).join('\n') || 'No files available';
 
     const result = await generateObject({
-      model: getModel(model),
+      model: getModel(effectiveModel),
       schema: searchPlanSchema,
       messages: [
         {

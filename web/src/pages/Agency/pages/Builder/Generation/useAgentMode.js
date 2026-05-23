@@ -37,6 +37,8 @@ export function useAgentMode({ sandboxId, sandboxUrl, projectId, model, addChatM
    */
   const sendAgentMessage = useCallback(async (prompt, options = {}) => {
     const images = Array.isArray(options.images) ? options.images : [];
+    const activeSandboxId = options.sandboxId || sandboxId;
+    const activeSandboxUrl = options.sandboxUrl || sandboxUrl;
     const promptText = prompt?.trim() || (images.length > 0 ? 'Use the attached image as the reference for this edit.' : '');
     if (!promptText || agentLoading) return;
 
@@ -59,9 +61,11 @@ export function useAgentMode({ sandboxId, sandboxUrl, projectId, model, addChatM
         body: JSON.stringify({
           prompt: promptText,
           images,
-          sandboxId: sandboxId, // Uses the latest reactive id
+          sandboxId: activeSandboxId,
           projectId,
-          model
+          model,
+          initialComponents: options.initialComponents || options.stagedComponents,
+          manualSelectionIds: options.manualSelectionIds
         }),
         signal: abortControllerRef.current.signal
       });
@@ -86,8 +90,8 @@ export function useAgentMode({ sandboxId, sandboxUrl, projectId, model, addChatM
           response: turnMeta.response,
           buildStatus: turnMeta.buildStatus,
           prompt: promptText,
-          sandboxId: sandboxId,
-          sandboxUrl: sandboxUrl
+          sandboxId: activeSandboxId,
+          sandboxUrl: activeSandboxUrl
         });
       }
 

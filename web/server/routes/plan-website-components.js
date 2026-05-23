@@ -7,10 +7,10 @@ import { AIBuildNarrator } from '../shared/sse-events.js';
 import path from 'node:path';
 import { selectComponentsV2 } from '../lib/select-components-v2.js';
 import { resolvePrimaryPlanningPrompt } from '../lib/prompt-truth.js';
-import { recordComponentSelections } from '../lib/retention-tracker.js';
 import { supabaseAdmin } from '../lib/supabase-admin.js';
 import { llmLog } from '../lib/llm-logger.js';
 import { inferLayoutTypeFromPrompt, LAYOUT_TYPES } from '../lib/layout-type.js';
+import { normalizePublicModelId, resolveModelRole } from '../shared/model-registry.js';
 
 function normalizeComponentName(name = '') {
   return String(name).toLowerCase().replace(/[-_\s]/g, '');
@@ -540,7 +540,7 @@ export default async function planWebsiteComponents(req, res) {
   const {
     prompt,
     images = [],
-    model = 'google/gemini-3.1-pro-preview',
+    model = resolveModelRole('generalGeneration'),
     selectionContext,
     designSystem = null,
     buildId,
@@ -556,7 +556,8 @@ export default async function planWebsiteComponents(req, res) {
     intentClassification = null,
     rawPrompt = ''
   } = req.body;
-  console.log(`[plan-website-components] ROUTE HIT | BuildId: ${buildId} | Model: ${model} | PremiumMode: ${premiumMode}`);
+  const effectiveModel = normalizePublicModelId(model);
+  console.log(`[plan-website-components] ROUTE HIT | BuildId: ${buildId} | Model: ${effectiveModel} | Requested: ${model} | PremiumMode: ${premiumMode}`);
 
   try {
     if (!prompt) return res.status(400).json({ success: false, error: 'prompt is required' });
@@ -734,7 +735,7 @@ export default async function planWebsiteComponents(req, res) {
         (confidenceCatalogPosture !== 'codegen_first' &&
           !disableCommunity &&
           intentClassification?.needsPremiumCatalog === true);
-      v2Result = await selectComponentsV2(primaryPrompt, v2Context, allMandatory, strictMode, model, {
+      v2Result = await selectComponentsV2(primaryPrompt, v2Context, allMandatory, strictMode, effectiveModel, {
         layoutType: intentLayoutType,
         buildMode: finalBuildMode,
         routingMode: finalRoutingMode,
@@ -972,7 +973,7 @@ export default async function planWebsiteComponents(req, res) {
 
         const startMs = Date.now();
         const { object } = await generateObject({
-          model: getModel(model),
+          model: getModel(effectiveModel),
           maxRetries: 3, 
           schema,
           prompt: copyPrompt,
@@ -1070,12 +1071,6 @@ export default async function planWebsiteComponents(req, res) {
           }, { buildModelId: model });
         } catch (e) { }
       }
-
-      // Record AI selections for usage feedback loop
-      recordComponentSelections(buildId, structuredComponents.map(c => ({
-        componentId: c.refId,
-        confidence: 0.8 // Using 0.8 as baseline confidence for V2 selections
-      })));
 
       // ─── TEMPLATE USAGE TRACKING (Phase S10 Mega Prompt 5) ───
       if (v2Result.templateUsed) {
@@ -1351,7 +1346,7 @@ ${flattenedComponents
   )
   .join('\n')}`;
         const repairResult = await generateObject({
-          model: getModel(model),
+          model: getModel(effectiveModel),
           schema: repairSchema,
           prompt: repairPrompt,
           temperature: 0.1,

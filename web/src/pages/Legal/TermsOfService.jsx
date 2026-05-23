@@ -24,7 +24,7 @@ export default function TermsOfService() {
             <FileTextIcon size={32} className={s.icon} />
           </div>
           <h1 className={s.title}>Terms of Service</h1>
-          <p className={s.lastUpdated}>Last updated: 6 May 2026</p>
+          <p className={s.lastUpdated}>Last updated: 14 May 2026</p>
         </header>
 
         <section className={s.section}>
@@ -207,6 +207,11 @@ export default function TermsOfService() {
             harassment, malicious code, or other serious abuse may be suspended or terminated, with
             decisions logged for auditability.
           </p>
+          <p>
+            Where we restrict content, components, published sites, or accounts because of a notice,
+            policy breach, or legal concern, we may provide a concise statement of reasons and an
+            opportunity to request review where required by applicable platform regulation.
+          </p>
         </section>
 
         <section className={s.section}>
@@ -275,8 +280,10 @@ export default function TermsOfService() {
           <h2>15. Account Data, Export, and Deletion</h2>
           <p>
             You may export and delete your account data from the dashboard. Deletion removes or
-            anonymizes user-scoped data where technically and legally possible. Financial transaction records,
-            refund/dispute records, audit evidence, security logs, and other records we must
+            anonymizes user-scoped data from active systems where technically and legally possible.
+            Backup copies and provider logs may remain until their normal retention period expires.
+            Financial transaction records, refund/dispute records, audit evidence, security logs,
+            and other records we must
             retain for accounting (Swedish bookkeeping requires retention of accounting evidence for
             seven years), tax, security, abuse prevention, or legal reasons may be preserved in
             minimized form.
@@ -310,9 +317,11 @@ export default function TermsOfService() {
             UN Convention on Contracts for the International Sale of Goods. Disputes will be resolved by
             the courts of Sweden, with venue in the Stockholm District Court (Stockholms tingsr&auml;tt),
             unless mandatory consumer protection law gives a consumer the right to bring proceedings in
-            their place of residence. EU consumers may also use the European Commission&rsquo;s online
-            dispute resolution platform at{' '}
-            <a className={s.termsLink} href="https://ec.europa.eu/consumers/odr" target="_blank" rel="noopener noreferrer">ec.europa.eu/consumers/odr</a>.
+            their place of residence. EU consumers can find consumer redress information from the
+            European Commission at{' '}
+            <a className={s.termsLink} href="https://consumer-redress.ec.europa.eu/index_en" target="_blank" rel="noopener noreferrer">consumer-redress.ec.europa.eu</a>
+            {' '}and may also have access to their national consumer dispute body, such as the Swedish
+            National Board for Consumer Disputes (ARN).
           </p>
         </section>
 

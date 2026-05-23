@@ -2,6 +2,12 @@ import { createGroq } from '@ai-sdk/groq';
 import { createAnthropic } from '@ai-sdk/anthropic';
 import { createOpenAI } from '@ai-sdk/openai';
 import { createGoogleGenerativeAI } from '@ai-sdk/google';
+import {
+  getProviderFromModelId,
+  normalizeModelId,
+  resolveModelRole,
+  toProviderModelName
+} from '../shared/model-registry.js';
 
 const isUsingAIGateway = !!process.env.AI_GATEWAY_API_KEY;
 const aiGatewayBaseURL = 'https://ai-gateway.vercel.sh/v1';
@@ -27,36 +33,35 @@ const googleGenerativeAI = createGoogleGenerativeAI({
 });
 
 export function getModel(model) {
-  console.log(`[provider-helpers] Resolving model: ${model}`);
+  const rawModel = String(model || '').trim();
+  if (rawModel && !rawModel.includes('/') && !/^(gemini-|gpt-|o|claude-)/.test(rawModel)) {
+    return groq(rawModel);
+  }
+  const normalizedModel = normalizeModelId(model);
+  const provider = getProviderFromModelId(normalizedModel);
+  const providerModelName = toProviderModelName(normalizedModel);
+
+  console.log(`[provider-helpers] Resolving model: ${model} -> ${normalizedModel}`);
   try {
-    if (model.startsWith('anthropic/')) {
-      let modelId = model.replace('anthropic/', '');
-      // Use exact names requested by user
-      if (modelId === 'claude-4.6') modelId = 'claude-sonnet-4-6';
-      return anthropic(modelId);
+    if (provider === 'anthropic') {
+      return anthropic(providerModelName);
     }
-    if (model.startsWith('openai/')) {
-      let modelName = model.replace('openai/', '');
-      if (modelName === 'gpt-5.2') modelName = 'gpt-4o'; // Old mapping cleanup
-      // Use exact names requested by user, bypass o3-mini completely
-      if (modelName === 'gpt-5.4') return openai('gpt-5.4');
-      if (modelName === 'gpt-5.4-mini') return openai('gpt-5.4-mini');
-      return model.includes('gpt-oss') ? groq(model) : openai(modelName);
+    if (provider === 'openai') {
+      return providerModelName.includes('gpt-oss') ? groq(normalizedModel) : openai(providerModelName);
     }
-    if (model.startsWith('google/')) {
-      const modelId = model.replace('google/', '');
-      return googleGenerativeAI(modelId);
+    if (provider === 'google') {
+      return googleGenerativeAI(providerModelName);
     }
-    return groq(model);
+    return groq(normalizedModel);
   } catch (error) {
-    console.error(`[provider-helpers] Error resolving model ${model}, falling back to groq default:`, error.message);
+    console.error(`[provider-helpers] Error resolving model ${normalizedModel}, falling back to groq default:`, error.message);
     return groq('llama-3.1-70b-versatile');
   }
 }
 
 // ----------------------------------------------------------------------
 // NATIVE OPENAI RESPONSES API WRAPPER
-// Minimal implementation as per OpenAI's current model guidance: gpt-5.4
+// Minimal implementation as per OpenAI's current model guidance: GPT-5.5
 // is the main frontier model, preferring Responses API for correct reasoning
 // ----------------------------------------------------------------------
 import OpenAI from "openai";
@@ -67,7 +72,7 @@ const nativeOpenAIClient = new OpenAI({
 
 export async function generateWithQuality(systemPrompt, userPrompt) {
   const res = await nativeOpenAIClient.responses.create({
-    model: "gpt-5.4",
+    model: toProviderModelName(resolveModelRole('nativeOpenAIQuality')),
     reasoning: { effort: "medium" },
     input: [
       { role: "system", content: systemPrompt || "You are a senior architect." },
@@ -79,7 +84,7 @@ export async function generateWithQuality(systemPrompt, userPrompt) {
 
 export async function generateFast(systemPrompt, userPrompt) {
   const res = await nativeOpenAIClient.responses.create({
-    model: "gpt-5.4-mini",
+    model: toProviderModelName(resolveModelRole('nativeOpenAIFast')),
     reasoning: { effort: "low" },
     input: [
       { role: "system", content: systemPrompt || "You are a fast precision assistant." },

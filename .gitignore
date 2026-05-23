@@ -42,3 +42,9 @@ Thumbs.db
 # Local-only assets (keep production assets in Supabase Storage)
 assets-local/
 
+# Volturiano Builder runtime artifacts
+web/server/pub_sites/
+web/server/temp_extract/
+web/server/error.txt
+web/server/query_results.json
+

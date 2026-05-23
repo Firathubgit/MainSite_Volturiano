@@ -10,7 +10,7 @@ import { resolveLightweightModel, resolveCrossProviderFallback } from './llm-lig
  * @param {Array} context.files - Current list of files in the sandbox.
  * @param {string} context.buildErrors - Logs from the failed build.
  * @param {Array} context.repairLog - Previous repair attempts to avoid loops.
- * @param {string} [context.buildModel] - User's selected heavy model (e.g. anthropic/claude-sonnet-4-6) — picks matching flash/mini/haiku.
+ * @param {string} [context.buildModel] - User's selected heavy model; registry picks matching lightweight repair model.
  * @returns {Promise<{success: boolean, fixedFiles: Array, strategy: string}>}
  */
 export async function attemptRepair({ files, buildErrors, repairLog = [], buildModel = '' }) {

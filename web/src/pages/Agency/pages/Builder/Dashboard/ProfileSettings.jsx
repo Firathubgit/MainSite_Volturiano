@@ -15,7 +15,7 @@ import CreditsPanel from './panels/CreditsPanel';
 import AccountSettings from './panels/AccountSettings';
 import WebsitesTab from './panels/WebsitesTab';
 import PlatformSettings from './panels/PlatformSettings';
-import CreditLimitModal from '../components/CreditLimitModal';
+import CreditLimitModal from '../../../../../components/Modals/CreditLimitModal';
 import gradientCornerImage from './Assets/GradientCornerOne.png';
 
 
@@ -254,9 +254,10 @@ export default function ProfileSettings() {
                                 height: 'clamp(120px, 18vh, 203px)',
                                 borderRadius: 9999,
                                 border: 'clamp(2px, 0.4vh, 4px) solid #1F1F1F',
-                                position: 'relative', cursor: 'pointer'
+                                position: 'relative', cursor: 'pointer',
+                                overflow: 'hidden'
                             }}
-                            className={`${styles.skeletonCircle} ${!isAvatarFullyReady ? styles.skeletonPulse : ''}`}
+                            className={`${styles.avatarContainer} ${styles.skeletonCircle} ${!isAvatarFullyReady ? styles.skeletonPulse : ''}`}
                         >
                             {(avatarFile || avatarUrl) ? (
                                 <img 
@@ -270,6 +271,10 @@ export default function ProfileSettings() {
                                     <UserIcon size="50%" color="rgba(255,255,255,0.2)" />
                                 </div>
                             )}
+                            {/* Hover Overlay */}
+                            <div className={styles.avatarOverlay}>
+                                <CameraIcon size={32} color="#fff" />
+                            </div>
                         </div>
                         <input type="file" ref={fileInputRef} style={{ display: 'none' }} accept="image/*" onChange={(e) => setAvatarFile(e.target.files[0])} />
 

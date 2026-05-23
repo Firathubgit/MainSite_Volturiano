@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { getModel } from '../lib/provider-helpers.js';
 import { resolveLightweightModel } from '../lib/llm-lightweight.js';
 import { log } from '../lib/build-manifest.js';
+import { resolveModelRole } from '../shared/model-registry.js';
 
 const intentSchema = z.object({
   buildMode: z.enum(['single_section', 'single_page_multi_section', 'multi_page', 'app_shell']),
@@ -108,7 +109,7 @@ export default async function classifyIntent(req, res) {
       return res.status(400).json({ success: false, error: 'prompt is required' });
     }
 
-    const lm = resolveLightweightModel(heavyModel || 'google/gemini-3.1-pro-preview');
+    const lm = resolveLightweightModel(heavyModel || resolveModelRole('generalGeneration'));
     if (buildId) {
       log(buildId, `[classify-intent] model=${lm.id}`);
     }

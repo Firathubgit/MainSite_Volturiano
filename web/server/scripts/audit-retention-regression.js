@@ -146,8 +146,7 @@ function testStaticWiring() {
     assert(dashboard.includes('published_site_deleted'), 'site delete should be audited');
 
     const publish = read('server/routes/publish.js');
-    assert(publish.includes('published_site_published'), 'publish should be audited');
-    assert(publish.includes('published_site_republished'), 'republish should be audited');
+    assert(publish.includes('status(410)'), 'legacy local publish route should be retired for new writes');
 
     const settings = read('server/routes/settings.js');
     assert(settings.includes('account_data_exported'), 'account export should be audited');

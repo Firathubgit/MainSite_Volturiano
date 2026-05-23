@@ -5,8 +5,10 @@ import { getModel } from './provider-helpers.js';
 import { supabaseAdmin } from './supabase-admin.js';
 import { llmLog } from './llm-logger.js';
 import { inferLayoutTypeFromPrompt } from './layout-type.js';
+import { normalizePublicModelId, resolveModelRole } from '../shared/model-registry.js';
 
 const sb = supabaseAdmin;
+const DEFAULT_COMPONENT_SELECTION_MODEL = resolveModelRole('componentSelection');
 
 // Smart Caching Strategy
 const CACHE_TTL = {
@@ -211,7 +213,7 @@ const llm = {
     /**
      * AI Step 1: Match prompt against available blueprints
      */
-    matchWebsiteType: async (prompt, designSystem, blueprints, aiModel = 'google/gemini-3.1-pro-preview') => {
+    matchWebsiteType: async (prompt, designSystem, blueprints, aiModel = DEFAULT_COMPONENT_SELECTION_MODEL) => {
         const schema = z.object({
             slug: z.string().describe('The slug of the best matching blueprint, or "" if no good match'),
             confidence: z.number().describe('Confidence score from 0.0 to 1.0. Use < 0.6 if it is a poor match for the user request.'),
@@ -266,7 +268,7 @@ Important: A high confidence (>0.8) means the preset closely covers all the user
     /**
      * AI Step 3: Refine explicit category payload based on unique constraints 
      */
-    refineCategories: async (prompt, designSystem, categoryDetails, blueprint, aiModel = 'google/gemini-3.1-pro-preview') => {
+    refineCategories: async (prompt, designSystem, categoryDetails, blueprint, aiModel = DEFAULT_COMPONENT_SELECTION_MODEL) => {
         const schema = z.object({
             refined_categories: z.array(z.string()).describe('Final list of exact category slugs to include'),
             reasoning: z.string().describe('Explain why you kept, added, or removed specific categories')
@@ -332,7 +334,7 @@ ${list}`;
         candidates,
         explicitComponents = [],
         requestedCategories = [],
-        aiModel = 'google/gemini-3.1-pro-preview',
+        aiModel = DEFAULT_COMPONENT_SELECTION_MODEL,
         layoutType = 'marketing-landing',
         buildMode = 'single_page_multi_section',
         catalogPosture = 'hybrid'
@@ -419,7 +421,7 @@ ${visualBiasRule}
     /**
      * AI Step 0: Match prompt against available community templates
      */
-    matchTemplate: async (prompt, designSystem, templates, aiModel = 'google/gemini-3.1-pro-preview') => {
+    matchTemplate: async (prompt, designSystem, templates, aiModel = DEFAULT_COMPONENT_SELECTION_MODEL) => {
         console.log('[LLM matchTemplate] 🏗️ PIPELINE STEP 0a: TEMPLATE MATCHING ════════════════════════════════');
         console.log('[LLM matchTemplate] 🧠 Called with', templates.length, 'templates');
         console.log('[LLM matchTemplate] User prompt (first 100 chars):', prompt?.substring(0, 100));
@@ -498,7 +500,7 @@ Rules:
 /**
  * Step 1: Detect website type from user prompt + fallback
  */
-async function detectWebsiteType(prompt, designSystem, aiModel = 'google/gemini-3.1-pro-preview') {
+async function detectWebsiteType(prompt, designSystem, aiModel = DEFAULT_COMPONENT_SELECTION_MODEL) {
     const blueprints = await cachedQuery('blueprints_active', CACHE_TTL.blueprints, async () => {
         const { data } = await sb
             .from('website_type_blueprints')
@@ -525,7 +527,7 @@ async function detectWebsiteType(prompt, designSystem, aiModel = 'google/gemini-
  * Dynamic Blueprint Generation
  * Creates a custom blueprint on-the-fly when preselected presets don't fit well.
  */
-async function generateDynamicBlueprint(prompt, designSystem, aiModel = 'google/gemini-3.1-pro-preview') {
+async function generateDynamicBlueprint(prompt, designSystem, aiModel = DEFAULT_COMPONENT_SELECTION_MODEL) {
     const allCategories = await cachedQuery('categories_top_level', CACHE_TTL.categories, async () => {
         const { data } = await sb.from('component_categories')
             .select('slug, name, description')
@@ -669,7 +671,7 @@ async function refineCategories(
     blueprint,
     prompt,
     designSystem,
-    aiModel = 'google/gemini-3.1-pro-preview',
+    aiModel = DEFAULT_COMPONENT_SELECTION_MODEL,
     options = {}
 ) {
     const allCategories = [
@@ -831,7 +833,7 @@ async function scoreAndSelect(
     prompt,
     explicitComponents = [],
     requiredCategories = [],
-    aiModel = 'google/gemini-3.1-pro-preview',
+    aiModel = DEFAULT_COMPONENT_SELECTION_MODEL,
     layoutType = 'marketing-landing',
     buildMode = 'single_page_multi_section',
     catalogPosture = 'hybrid'
@@ -988,7 +990,7 @@ async function fetchBundles(componentIds) {
 /**
  * Step 0a: Fetch top templates from weighted_templates view
  */
-async function matchTemplateFromDB(prompt, designSystem, aiModel = 'google/gemini-3.1-pro-preview') {
+async function matchTemplateFromDB(prompt, designSystem, aiModel = DEFAULT_COMPONENT_SELECTION_MODEL) {
     console.group('[Pipeline Step 0a] ════════════════════════════════════');
     console.log('[Step 0a] 🚀 matchTemplateFromDB called at', new Date().toISOString());
     console.log('[Step 0a] Prompt:', prompt?.substring(0, 100) + '...');
@@ -1141,7 +1143,7 @@ export async function selectComponentsV2(
     designSystem = {},
     explicitNames = [],
     strictMode = false,
-    aiModel = 'google/gemini-3.1-pro-preview',
+    aiModel = DEFAULT_COMPONENT_SELECTION_MODEL,
     options = {}
 ) {
     console.log('\n======================================================');
@@ -1150,6 +1152,7 @@ export async function selectComponentsV2(
     console.time('[Pipeline] Total execution time');
 
     try {
+        aiModel = normalizePublicModelId(aiModel);
         const validLayoutTypes = ['marketing-landing', 'business-site', 'web-app', 'portfolio', 'e-commerce', 'experimental-widget'];
         const layoutTypeHint =
             typeof options.layoutType === 'string' && validLayoutTypes.includes(options.layoutType)

@@ -80,6 +80,24 @@
   border-color: rgba(255, 255, 255, 0.2);
 }
 
+.pageBackBtnPlain {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px;
+  margin-left: -4px; /* optical alignment */
+  background: transparent;
+  border: none;
+  color: #fff;
+  cursor: pointer;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.pageBackBtnPlain:hover {
+  opacity: 0.7;
+  transform: translateX(-2px);
+}
+
 .pageContent {
   width: 100%;
   min-height: 100%;
@@ -189,7 +207,8 @@
 }
 
 .pageContent .featuresHead {
-  font-size: 14px;
+  font-size: 15px; /* Slightly bigger */
+  text-align: center; /* Centered */
   margin-top: 10px; /* Extra push down from button */
   margin-bottom: 14px; /* Increased */
   text-transform: uppercase;
@@ -501,7 +520,8 @@
 }
 
 .featuresHead {
-  font-size: 10px; /* Reduced by ~10% */
+  font-size: 11px; /* Slightly bigger */
+  text-align: center; /* Centered */
   font-weight: 600;
   color: rgba(255, 255, 255, 0.4);
   margin-bottom: 12px; /* Reduced by ~10% */

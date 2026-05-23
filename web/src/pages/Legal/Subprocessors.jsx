@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { ChevronLeftIcon, NetworkIcon } from "lucide-react";
 import s from "./LegalLayout.module.css";
 
-const REGISTER_VERSION = "2026-05-06";
+const REGISTER_VERSION = "2026-05-14";
 
 const processors = [
   {
@@ -46,7 +46,7 @@ const processors = [
     purpose: "AI generation, classification, planning, polishing, and analysis based on user prompts",
     location: "Provider-specific regions per the active configuration",
     data: "Prompts, project context, optional images, generated content",
-    transfer: "Provider DPAs and Standard Contractual Clauses; default zero-training/limited-retention configurations where supported"
+    transfer: "Provider DPAs and Standard Contractual Clauses; account-level training and retention controls configured where supported"
   },
   {
     name: "E2B (or equivalent sandbox provider)",

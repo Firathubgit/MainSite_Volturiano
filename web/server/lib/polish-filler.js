@@ -6,9 +6,9 @@
  * Completely independent from the polish execution.
  *
  * Uses the same lightweight model pattern as enhance-prompt and cinematic-response:
- *   google/*    → gemini-2.5-flash
- *   openai/*    → gpt-5.4-mini  (via generateFast)
- *   anthropic/* → claude-haiku-4-5-20251001
+ *   google/*    → registry lightweight model
+ *   openai/*    → registry fast polish model (via generateFast)
+ *   anthropic/* → registry fast Anthropic model
  */
 
 import { generateText } from 'ai';
@@ -73,7 +73,7 @@ async function generateFillerMessage(modelInfo, fillerPrompt) {
     try {
         let text;
         if (useFast) {
-            // OpenAI path — uses generateFast (Responses API, gpt-5.4-mini)
+            // OpenAI path uses generateFast (Responses API fast-polish role).
             text = await generateFast(
                 'You are the Volturiano Builder AI. Generate brief, natural progress messages.',
                 fillerPrompt
@@ -107,7 +107,7 @@ async function generateFillerMessage(modelInfo, fillerPrompt) {
  * Call alongside runPolishStep() — stops automatically via cancelToken.
  *
  * @param {Object} options
- * @param {string}   options.model       - The user's selected heavy model (e.g. "anthropic/claude-sonnet-4-6")
+ * @param {string}   options.model       - The user's selected heavy model.
  * @param {string}   options.prompt      - The original user prompt
  * @param {Function} options.onMessage   - Callback: (message: string) => void
  * @param {Object}   options.cancelToken - Mutable ref: { cancelled: false }

@@ -4,6 +4,7 @@
 import { GoogleGenAI } from '@google/genai';
 import { z } from 'zod';
 import { supabaseAdmin } from './supabase-admin.js';
+import { resolveModelRole, toProviderModelName } from '../shared/model-registry.js';
 
 // ═══════════════════════════════════════════════════════════════
 // ZOD SCHEMA: Structured LLM output covering 30+ metadata columns
@@ -154,12 +155,12 @@ ${code}
 \`\`\``;
 
     const MODELS = [
-        { id: 'gemini-3-flash-preview', provider: 'google' },
-        { id: 'gemini-3.1-pro-preview', provider: 'google' },
-        { id: 'claude-3-5-haiku-latest', provider: 'anthropic' },
-        { id: 'claude-3-7-sonnet-latest', provider: 'anthropic' },
-        { id: 'gpt-5.4-mini', provider: 'openai' },
-        { id: 'gpt-5.4', provider: 'openai' }
+        { id: toProviderModelName(resolveModelRole('generalGeneration')), provider: 'google' },
+        { id: toProviderModelName(resolveModelRole('lightweight')), provider: 'google' },
+        { id: toProviderModelName(resolveModelRole('fastAnthropic')), provider: 'anthropic' },
+        { id: toProviderModelName(resolveModelRole('premiumCoder')), provider: 'anthropic' },
+        { id: toProviderModelName(resolveModelRole('fastPolish')), provider: 'openai' },
+        { id: toProviderModelName(resolveModelRole('premiumPolish')), provider: 'openai' }
     ];
 
     for (let i = 0; i < MODELS.length; i++) {

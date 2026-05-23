@@ -28,7 +28,7 @@ import { builderSupabase } from '../lib/builderSupabaseClient';
 import { withRetry } from '../lib/supabaseUtils';
 
 const BuilderAuthContext = createContext(null);
-const LEGAL_CONSENT_VERSION = '2026-05-03.0005';
+const LEGAL_CONSENT_VERSION = '2026-05-14.legal-v2';
 const PENDING_LEGAL_CONSENT_KEY = 'volturiano_pending_legal_consent';
 // How long we wait after an INITIAL_SESSION:null before accepting "logged out"
 // as final. Long enough for Supabase's auto-refresh path to fire SIGNED_IN,

@@ -6,6 +6,7 @@
 import { generateText } from 'ai';
 import { getModel, generateFast } from '../lib/provider-helpers.js';
 import { resolveLightweightModel } from '../lib/llm-lightweight.js';
+import { resolveModelRole } from './model-registry.js';
 
 // ─── Technical Event Contracts ───────────────────────────────────────
 export const SSE_EVENTS = {
@@ -194,10 +195,10 @@ export class AIBuildNarrator {
      * Generate natural language explanation of what's happening
      * @param {string} stage
      * @param {object} context
-     * @param {{ buildModelId?: string }} [options] — e.g. anthropic/claude-sonnet-4-6 → Haiku narration
+     * @param {{ buildModelId?: string }} [options] — e.g. Claude Opus 4.7 -> Haiku narration
      */
     async narrate(stage, context = {}, options = {}) {
-        const buildModelId = options.buildModelId || 'google/gemini-3.1-pro-preview';
+        const buildModelId = options.buildModelId || resolveModelRole('generalGeneration');
         const lm = resolveLightweightModel(buildModelId);
 
         const prompts = {

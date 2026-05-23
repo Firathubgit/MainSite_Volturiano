@@ -4,6 +4,7 @@ import { parseFileBlocks } from '../lib/file-blocks.js';
 import { llmLog } from '../lib/llm-logger.js';
 import { resolveLightweightModel } from '../lib/llm-lightweight.js';
 import { log } from '../lib/build-manifest.js';
+import { resolveModelRole } from '../shared/model-registry.js';
 
 const MAX_FILE_CHARS = 200_000;
 const PLACEHOLDER_PATTERNS = [
@@ -78,7 +79,7 @@ export default async function hydratePremiumCopy(req, res) {
       return res.json({ success: true, hydratedContent: fileContent, skipped: true });
     }
 
-    const lm = resolveLightweightModel(heavyModel || 'google/gemini-2.5-flash');
+    const lm = resolveLightweightModel(heavyModel || resolveModelRole('generalGeneration'));
     console.log(
       '[BUILDER-VERIFY] hydrate: start file=%s chars=%d model=%s hasKey=%s propKeys=%d',
       fileName || '?',

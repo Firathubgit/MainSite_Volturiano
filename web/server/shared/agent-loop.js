@@ -28,6 +28,7 @@ import {
   toGeminiToolExecutors,
   toVercelTools
 } from '../lib/agent/tool-runtime.js';
+import { MODEL_IDS, normalizeModelId, resolveModelRole } from './model-registry.js';
 
 // ─── Constants ───────────────────────────────────────────────
 
@@ -36,9 +37,10 @@ const MAX_STEPS = 20; // Max model↔tool round trips per user message
 // Gemini 3.x models require thought signatures in multi-turn tool calling.
 // @ai-sdk/google v1 doesn't support this, so we use @google/genai natively.
 const GEMINI_3X_MODELS = new Set([
-  'google/gemini-3.1-pro-preview',
-  'google/gemini-3-pro-preview',
-  'google/gemini-3-pro',
+  MODEL_IDS.GEMINI_35_FLASH,
+  MODEL_IDS.GEMINI_31_PRO_PREVIEW,
+  MODEL_IDS.GEMINI_31_PRO_CUSTOMTOOLS,
+  MODEL_IDS.GEMINI_31_FLASH_LITE,
 ]);
 
 // Native Google GenAI SDK client (for Gemini 3.x)
@@ -294,7 +296,7 @@ function assembleMessages(userPrompt, conversationHistory = [], fileTree = null,
 export async function runAgentLoop(options) {
   const {
     prompt,
-    modelId = 'google/gemini-3.1-pro-preview',
+    modelId = resolveModelRole('generalGeneration'),
     sandboxId,
     conversationHistory = [],
     onEvent = () => {},
@@ -306,10 +308,12 @@ export async function runAgentLoop(options) {
     debugTimeline = null
   } = options;
 
+  const effectiveModelId = normalizeModelId(modelId);
   const effectiveMaxSteps = maxStepsOverride || MAX_STEPS;
   const effectiveSystemPrompt = systemPromptOverride || AGENT_SYSTEM_PROMPT;
   debugTimeline?.event?.('loop_start', {
-    modelId,
+    requestedModelId: modelId,
+    modelId: effectiveModelId,
     sandboxId,
     maxSteps: effectiveMaxSteps,
     enableCatalogTools,
@@ -329,7 +333,7 @@ export async function runAgentLoop(options) {
   }
 
   const activeSandboxId = sandboxId || provider.getSandboxInfo()?.sandboxId;
-  debugTimeline?.setContext?.({ sandboxId: activeSandboxId, model: modelId });
+  debugTimeline?.setContext?.({ sandboxId: activeSandboxId, requestedModel: modelId, model: effectiveModelId });
   debugTimeline?.event?.('provider_resolved', {
     sandboxId: activeSandboxId,
     providerType: provider?.constructor?.name || 'unknown'
@@ -350,7 +354,7 @@ export async function runAgentLoop(options) {
   console.log(`\n[agent] ═══════════════════════════════════════════`);
   console.log(`[agent] 🚀 Agent loop starting`);
   console.log(`[agent]    Prompt: "${prompt.slice(0, 100)}${prompt.length > 100 ? '...' : ''}"`);
-  console.log(`[agent]    Model: ${modelId}`);
+  console.log(`[agent]    Model: ${effectiveModelId} (requested: ${modelId})`);
   console.log(`[agent]    Files in sandbox: ${fileTree?.totalFiles || 0}`);
   console.log(`[agent] ═══════════════════════════════════════════\n`);
 
@@ -385,7 +389,8 @@ export async function runAgentLoop(options) {
 
   onEvent('agent_start', {
     prompt,
-    modelId,
+    modelId: effectiveModelId,
+    requestedModelId: modelId,
     fileCount: fileTree?.totalFiles || 0,
     imageCount: attachments.length
   });
@@ -393,21 +398,21 @@ export async function runAgentLoop(options) {
   // ─── Call model with auto tool execution ─────────────────
 
   let result;
-  const useNativeSDK = GEMINI_3X_MODELS.has(modelId);
+  const useNativeSDK = GEMINI_3X_MODELS.has(normalizeModelId(effectiveModelId));
   debugTimeline?.event?.('model_call_start', {
     providerPath: useNativeSDK ? 'native_gemini' : 'vercel_ai_sdk',
-    modelId,
+    modelId: effectiveModelId,
     maxSteps: effectiveMaxSteps,
     toolCount: Object.keys(tools || {}).length
   });
 
   if (useNativeSDK) {
     // ─── NATIVE GOOGLE SDK PATH (Gemini 3.x) ─────────────────
-    console.log(`[agent] Using native @google/genai SDK for ${modelId}`);
+    console.log(`[agent] Using native @google/genai SDK for ${effectiveModelId}`);
     try {
         const nativeToolExec = buildNativeToolExecutors(provider, sandboxId, onEvent, { enableCatalogTools, debugTimeline });
       result = await runNativeGeminiLoop({
-        modelId: modelId.replace('google/', ''),
+        modelId: effectiveModelId.replace('google/', ''),
         systemPrompt: effectiveSystemPrompt,
         messages,
         toolExecutors: nativeToolExec,
@@ -420,14 +425,14 @@ export async function runAgentLoop(options) {
       getBuildChecks = nativeToolExec.getBuildChecks;
     } catch (modelError) {
       console.error('[agent-loop] ✗ Native Gemini call failed:', modelError.message);
-      debugTimeline?.error?.('model_call_error', modelError, { providerPath: 'native_gemini', modelId });
+      debugTimeline?.error?.('model_call_error', modelError, { providerPath: 'native_gemini', modelId: effectiveModelId });
       onEvent('agent_error', { message: `Model error: ${modelError.message}` });
       throw modelError;
     }
   } else {
     // ─── VERCEL AI SDK PATH (all other models) ────────────────
     try {
-      const model = getModel(modelId);
+      const model = getModel(effectiveModelId);
 
       const sdkResult = await generateText({
         model,
@@ -458,7 +463,7 @@ export async function runAgentLoop(options) {
       };
     } catch (modelError) {
       console.error('[agent-loop] ✗ Model call failed:', modelError.message);
-      debugTimeline?.error?.('model_call_error', modelError, { providerPath: 'vercel_ai_sdk', modelId });
+      debugTimeline?.error?.('model_call_error', modelError, { providerPath: 'vercel_ai_sdk', modelId: effectiveModelId });
       onEvent('agent_error', { message: `Model error: ${modelError.message}` });
       throw modelError;
     }

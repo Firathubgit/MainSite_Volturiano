@@ -3,6 +3,8 @@ import { getModel } from '../lib/provider-helpers.js';
 import { log } from '../lib/build-manifest.js';
 import { llmLog } from '../lib/llm-logger.js';
 import { isLikelyModelRefusalResponse } from '../lib/prompt-truth.js';
+import { resolveLightweightModel } from '../lib/llm-lightweight.js';
+import { resolveModelRole } from '../shared/model-registry.js';
 
 /**
  * Deterministically extract component names that look like named references.
@@ -53,11 +55,7 @@ export default async function enhancePrompt(req, res) {
   try {
     const { prompt, images = [], mode = 'prompt-only', buildId, model } = req.body;
 
-    let ENHANCE_MODEL = 'google/gemini-2.5-flash';  // Fast stable model — avoids RPM collision with pro-preview
-    if (model) {
-        if (model.includes('openai/')) ENHANCE_MODEL = 'openai/gpt-5.4-mini';
-        else if (model.includes('anthropic/')) ENHANCE_MODEL = 'anthropic/claude-haiku-4-5-20251001';
-    }
+    const ENHANCE_MODEL = resolveLightweightModel(model || resolveModelRole('generalGeneration')).id;
 
     if (!prompt || typeof prompt !== 'string') {
       return res.status(400).json({ success: false, error: 'prompt is required' });

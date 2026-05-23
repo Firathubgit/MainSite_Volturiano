@@ -4,7 +4,7 @@ import { useBuilderAuth } from '../../contexts/BuilderAuthContext';
 import styles from './CookieConsent.module.css';
 
 const CONSENT_KEY = 'volturiano_gdpr_consent';
-const CONSENT_VERSION = '2026-05-03.0005';
+const CONSENT_VERSION = '2026-05-14.legal-v2';
 
 /**
  * CookieConsent banner for GDPR compliance.

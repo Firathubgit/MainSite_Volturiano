@@ -97,6 +97,8 @@ export default function TakedownRequest() {
           <p>
             Use this form to report content you believe is unlawful, infringing, unsafe, or otherwise
             violates Volturiano policy. Include enough detail for us to locate and review the material.
+            For a faster review, include the exact component ID, submission ID, published-site slug,
+            URL, rights owner, legal basis, and evidence that supports the notice.
           </p>
 
           <form onSubmit={submit}>
@@ -134,6 +136,11 @@ export default function TakedownRequest() {
               {status.text}
             </p>
           )}
+          <p style={{ marginTop: 18 }}>
+            If your own content was restricted and you want review of that decision, email{' '}
+            <a className={s.termsLink} href="mailto:contact@volturiano.com">contact@volturiano.com</a>{' '}
+            with the affected account, project, component, or notice ID.
+          </p>
         </section>
       </main>
     </div>

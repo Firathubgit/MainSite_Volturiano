@@ -13,6 +13,17 @@ Describe a website. Watch an AI agent plan it, write it, fix its own mistakes an
 <img width="2866" height="1508" alt="Skärmbild 2026-06-13 023409" src="https://github.com/user-attachments/assets/6b7eea1e-c92e-464b-8e78-57615f74fde7" />
 
 
+<img width="1904" height="936" alt="Skärmbild 2026-07-30 002532" src="https://github.com/user-attachments/assets/0c1da4fd-859e-4cac-96d2-45393352f7e9" />
+
+
+
+<img width="804" height="471" alt="Skärmbild 2026-05-07 003741" src="https://github.com/user-attachments/assets/2612d88a-f6d7-480a-a346-d36797eb242b" />
+
+
+
+<img width="2864" height="1531" alt="Skärmbild 2026-05-07 003843" src="https://github.com/user-attachments/assets/10df7d76-f083-4dca-a413-13cfd6e4aa9d" />
+
+
 <!-- TODO: replace with a recording of a full build at docs/assets/demo.gif -->
 
 ## What it does

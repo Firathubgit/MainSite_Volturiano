@@ -1,8 +1,17 @@
-# Volturiano Agent
+<img width="1140" height="1144" alt="Skärmbild 2026-04-17 014945" src="https://github.com/user-attachments/assets/55d75ba9-11c3-4bff-8ac2-a55f4712be1c" /><img width="1140" height="1144" alt="Skärmbild 2026-04-17 014945" src="https://github.com/user-attachments/assets/3371478d-701c-473a-9eb3-0dd6ec96db49" /># Volturiano Agent
 
 Describe a website. Watch an AI agent plan it, write it, fix its own mistakes and hand you a real React app.
 
-![The start screen of Volturiano Agent](docs/assets/start-screen.jpg)
+<img width="2879" height="1528" alt="Skärmbild 2026-04-24 195945" src="https://github.com/user-attachments/assets/02390d3c-6b23-4008-86d7-d6ba793d9154" />
+
+<img width="2877" height="1627" alt="Skärmbild 2026-04-13 052434" src="https://github.com/user-attachments/assets/977e352c-b97f-4e99-95d4-9d7bef26027e" />
+
+
+<img width="1140" height="1144" alt="Skärmbild 2026-04-17 014945" src="https://github.com/user-attachments/assets/a6037573-8b48-4d98-a080-aca063c00a84" />
+
+
+<img width="2866" height="1508" alt="Skärmbild 2026-06-13 023409" src="https://github.com/user-attachments/assets/6b7eea1e-c92e-464b-8e78-57615f74fde7" />
+
 
 <!-- TODO: replace with a recording of a full build at docs/assets/demo.gif -->
 

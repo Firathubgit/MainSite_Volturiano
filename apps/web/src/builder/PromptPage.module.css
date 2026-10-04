@@ -30,8 +30,6 @@
     flex-direction: column;
 }
 
-/* Background Video */
-
 /* Overlay */
 .pageContainer::after {
     content: '';
@@ -44,13 +42,6 @@
     z-index: 1;
     pointer-events: none;
 }
-
-/* Main Content Container - used as positioning context */
-
-/* ==============================================
-   Title & Maestro are ABSOLUTELY positioned
-   independently so they can diverge on zoom out.
-   ============================================== */
 
 /* Title Styling */
 .titleWrapper {
@@ -120,13 +111,6 @@
     justify-content: center;
     z-index: 100 !important;
 }
-
-/* ==============================================
-   ZOOM-OUT RESPONSIVE: Spread title UP, maestro DOWN
-   When browser Ctrl- is pressed, CSS viewport height
-   increases, triggering these breakpoints.
-   The % top values diverge: title % goes DOWN, maestro % goes UP.
-   ============================================== */
 
 /* ~90% zoom on 1080p → viewport ~1200px+ */
 @media (min-height: 1100px) {
@@ -917,65 +901,6 @@
 .notificationPopup svg {
     color: #ef4444;
 }
-
-/* ─── Community Discovery CTA ─── */
-
-/* The card: border only on top + bottom, radial gradient from top-left */
-
-/* Vertical left + right border lines extending beyond the card */
-
-/* Dashed vertical centre line */
-
-/* Plus / cross icons at each corner */
-
-/* Text content block */
-
-/* Button row */
-
-/* Outline button */
-
-/* Primary (filled) button */
-
-/* Arrow inside primary button */
-
-/* Supabase Icon Stage 13 */
-
-/* Ambient violet glow blob bottom-left */
-
-/* Inner layout: side-by-side on desktop */
-
-/* StarButton */
-
-/* â”€â”€â”€ Community Discovery CTA â”€â”€â”€ */
-
-/* Fully enclosed rectangular card with rounded corners, matching theme background */
-
-/* Exact geometric diagonal stripes matching the structural shading of the white reference card.
-   Both stripes flow parallel to each other, forming a single continuous geometric overlay. */
-
-/* Text block */
-
-/* Button row */
-
-/* Outline button (secondary) */
-
-/* Primary filled button */
-
-/* Arrow icon in primary button */
-
-/* Pixelated Toggle Switch */
-
-/* Base Track */
-
-/* Teal Overlay + Active Line */
-
-/* Show teal overlay when checked */
-
-/* Swiper (Thumb) */
-
-/* Movement when checked */
-
-/* Skeleton Loaders */
 
 /* ─── Template Grid Responsive ─── */
 @media (max-width: 1350px) {

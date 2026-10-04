@@ -218,8 +218,6 @@
   transition: color 0.15s;
 }
 .repoUrlLine:hover { color: #999; }
-
-/* ── LIVE URL block ── */
 /* The header keeps "LIVE URL" + the refresh link locked together, so when
    the URL wraps to a long second line the refresh button doesn't end up
    stranded underneath it. */

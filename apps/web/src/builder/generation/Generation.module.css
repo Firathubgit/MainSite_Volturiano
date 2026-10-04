@@ -1206,24 +1206,6 @@ svg.shimmerText {
   font-style: italic;
 }
 
-/* ─── Single Line Premium Showcase ─── */
-
-/* Cinematic Gradient Masks (The "Consumed" Effect) */
-
-/* The Track */
-
-/* Centered absolute wrapper */
-
-/* Glassy sheen for active card */
-
-/* Typography */
-
-/* Premium Success Message */
-
-/* Minimal Status Badge */
-
-/* ─── CODE PROGRESS ─── */
-
 /* ─── RESPONSIVE ─── */
 @media (max-width: 768px) {
   .page {
@@ -1294,8 +1276,6 @@ svg.shimmerText {
   background: #b91c1c;
   /* Darker red on hover */
 }
-
-/* ─── CHAT IMAGES ─── */
 
 /* ─── Notification Popup ─── */
 .notificationPopup {
@@ -1448,8 +1428,6 @@ svg.shimmerText {
   color: #000000;
   border-color: #e0e0e0;
 }
-
-/* --- Publish Site Info Styles --- */
 
 /* ─── TOP BAR LOADING INDICATOR ─── */
 .topBarLoading {
@@ -1775,7 +1753,6 @@ svg.shimmerText {
 }
 
 @media (max-width: 1000px) {
-  /* Site begins to overlap or overflow - per user instruction we let it be or future plans */
 }
 
 /* ─── MOBILE VIEW (<500px) ─── */
@@ -2015,7 +1992,6 @@ svg.shimmerText {
 }
 
 @media (max-width: 1000px) {
-  /* Site begins to overlap or overflow - per user instruction we let it be or future plans */
 }
 
 /* ─── MOBILE VIEW (<500px) ─── */

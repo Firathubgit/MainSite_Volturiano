@@ -7,9 +7,11 @@
  */
 
 const PII_KEYS = [
-    'password', 'token', 'secret', 'key', 'credit_card', 'card_number', 'cvc', 'cvv', 
-    'stripeToken', 'sk_test', 'sk_live', 'authorization', 'cookie'
+    'password', 'token', 'secret', 'key', 'authorization', 'cookie'
 ];
+
+// Values that look like provider or platform keys (OpenAI, Google, E2B, GitHub).
+const API_KEY_SHAPE = /\b(sk|pk|rk)[-_][A-Za-z0-9_-]{16,}|\bAIza[0-9A-Za-z_-]{20,}|\be2b_[0-9a-f]{20,}|\bgh[opsu]_[A-Za-z0-9]{20,}/;
 
 const maskString = (str) => {
     if (typeof str !== 'string' || str.length < 5) return '***';
@@ -27,9 +29,9 @@ const recursivelyScrubObject = (obj) => {
             scrubbed[key] = '[REDACTED]';
         } else if (typeof value === 'object' && value !== null) {
             scrubbed[key] = recursivelyScrubObject(value);
-        } else if (typeof value === 'string' && value.match(/sk_(test|live)_[a-zA-Z0-9]+/)) {
-            // Catch raw stripe tokens hiding in values
-            scrubbed[key] = '[STRIPE_MASKED]'; 
+        } else if (typeof value === 'string' && API_KEY_SHAPE.test(value)) {
+            // Catch raw API keys hiding in values
+            scrubbed[key] = '[KEY_MASKED]';
         } else if (typeof value === 'string' && value.match(/eyJhbGciOi/)) {
             // Catch raw JWTs hiding in values
             scrubbed[key] = '[JWT_MASKED]';

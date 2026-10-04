@@ -1,17 +1,3 @@
-/* ─── Agent Chat Cards ─────────────────────────────────── */
-
-/* Tool Call Card */
-
-/* Inline Diff */
-
-/* Error Message */
-
-/* Build Result */
-
-/* Meta Text */
-
-/* ─── Agent Summary Badge ─────────────────────────────── */
-
 /* ─── Agent Thinking Indicator (Classic Style) ───────── */
 
 .tornadoLogoShimmer,
@@ -50,7 +36,3 @@
   0%, 100% { opacity: 0.4; filter: brightness(0) invert(1) blur(1px); }
   50% { opacity: 1; filter: brightness(0) invert(1) blur(0px); }
 }
-
-/* ─── Agent Mode Toggle ───────────────────────────────── */
-
-/* ─── Agent Activity Clustered UI ────────────────────── */

@@ -1,4 +1,4 @@
-<img width="1140" height="1144" alt="Skärmbild 2026-04-17 014945" src="https://github.com/user-attachments/assets/55d75ba9-11c3-4bff-8ac2-a55f4712be1c" /><img width="1140" height="1144" alt="Skärmbild 2026-04-17 014945" src="https://github.com/user-attachments/assets/3371478d-701c-473a-9eb3-0dd6ec96db49" /># Volturiano Agent
+# Volturiano Agent
 
 Describe a website. Watch an AI agent plan it, write it, fix its own mistakes and hand you a real React app.
 

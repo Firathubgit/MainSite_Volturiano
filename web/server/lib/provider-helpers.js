@@ -65,13 +65,21 @@ export function getModel(model) {
 // is the main frontier model, preferring Responses API for correct reasoning
 // ----------------------------------------------------------------------
 import OpenAI from "openai";
-const nativeOpenAIClient = new OpenAI({
-  apiKey: process.env.AI_GATEWAY_API_KEY ?? process.env.OPENAI_API_KEY,
-  baseURL: isUsingAIGateway ? aiGatewayBaseURL : process.env.OPENAI_BASE_URL,
-});
+
+// Created on first use so importing this module never requires an API key.
+let nativeOpenAIClient = null;
+function getNativeOpenAIClient() {
+  if (!nativeOpenAIClient) {
+    nativeOpenAIClient = new OpenAI({
+      apiKey: process.env.AI_GATEWAY_API_KEY ?? process.env.OPENAI_API_KEY,
+      baseURL: isUsingAIGateway ? aiGatewayBaseURL : process.env.OPENAI_BASE_URL,
+    });
+  }
+  return nativeOpenAIClient;
+}
 
 export async function generateWithQuality(systemPrompt, userPrompt) {
-  const res = await nativeOpenAIClient.responses.create({
+  const res = await getNativeOpenAIClient().responses.create({
     model: toProviderModelName(resolveModelRole('nativeOpenAIQuality')),
     reasoning: { effort: "medium" },
     input: [
@@ -83,7 +91,7 @@ export async function generateWithQuality(systemPrompt, userPrompt) {
 }
 
 export async function generateFast(systemPrompt, userPrompt) {
-  const res = await nativeOpenAIClient.responses.create({
+  const res = await getNativeOpenAIClient().responses.create({
     model: toProviderModelName(resolveModelRole('nativeOpenAIFast')),
     reasoning: { effort: "low" },
     input: [

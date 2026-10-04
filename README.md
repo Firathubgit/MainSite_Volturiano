@@ -40,7 +40,7 @@ More detail is in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 You need Node.js 20 or newer, one model provider key and an [E2B](https://e2b.dev) key.
 
 ```bash
-git clone https://github.com/Firathubgit/volturiano-agent.git
+git clone https://github.com/Firathubgit/MainSite_Volturiano.git volturiano-agent
 cd volturiano-agent
 cp .env.example .env
 npm install

@@ -7,7 +7,7 @@ Thanks for taking a look. Bug reports, fixes, registry components and docs are a
 You need Node.js 20 or newer.
 
 ```bash
-git clone https://github.com/Firathubgit/volturiano-agent.git
+git clone https://github.com/Firathubgit/MainSite_Volturiano.git volturiano-agent
 cd volturiano-agent
 cp .env.example .env
 npm install

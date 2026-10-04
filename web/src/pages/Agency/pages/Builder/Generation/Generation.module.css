@@ -226,6 +226,32 @@
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
 }
 
+.intakeSelectionTags {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 5px;
+  max-width: 100%;
+  margin-top: 8px;
+}
+
+.intakeSelectionTag {
+  display: inline-block;
+  max-width: 180px;
+  padding: 4px 8px;
+  overflow: hidden;
+  color: #cfe7e7;
+  font-family: 'Inter', sans-serif;
+  font-size: 10px;
+  font-weight: 500;
+  line-height: 1.2;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  background: rgba(175, 255, 252, 0.055);
+  border: 1px solid rgba(175, 255, 252, 0.18);
+  border-radius: 999px;
+}
+
 .messageImages {
   display: flex;
   flex-wrap: wrap;

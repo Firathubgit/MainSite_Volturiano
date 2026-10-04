@@ -3,7 +3,7 @@ import { streamText } from 'ai';
 import { getModel } from '../lib/provider-helpers.js';
 import { appConfig } from '../config/app.config.js';
 import { getCatalogForPromptAsync } from '../lib/registry/registry.js';
-import { sandboxManager } from '../lib/sandbox/sandbox-manager.js';
+import { resolveSandboxProvider } from '../lib/sandbox/provider-resolver.js';
 import { normalizePublicModelId, resolveModelRole } from '../shared/model-registry.js';
 
 export default async function generateAiCodeStream(req, res) {
@@ -170,8 +170,14 @@ CRITICAL RULES:
 
       if (sandboxId) {
         try {
-          const provider = sandboxManager.getProvider(sandboxId) || global.activeSandboxProvider;
-          if (provider) {
+          const resolution = await resolveSandboxProvider({
+            sandboxId,
+            allowGlobalFallback: false,
+            allowReconnect: true,
+            requireAlive: true
+          });
+          if (resolution.ok) {
+            const provider = resolution.provider;
             // Get the file tree
             const allFiles = await provider.listFiles('/home/user/app');
             sandboxFileList = allFiles.filter(f => {

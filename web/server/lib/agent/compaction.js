@@ -13,8 +13,8 @@
  */
 
 const FRAME_BUDGET = 400;
-const RECENT_TURNS_MIN_BUDGET = 3000;
-const MEMORY_MAX_BUDGET = 1600;
+const RECENT_TURNS_MIN_BUDGET = 9000;
+const MEMORY_MAX_BUDGET = 3200;
 
 /**
  * Allocate a character budget across the three context blocks.
@@ -24,14 +24,14 @@ const MEMORY_MAX_BUDGET = 1600;
  * @param {string} options.projectContextBlock
  * @param {string} options.memoryBlock
  * @param {string} options.recentTurnsBlock
- * @param {number} [options.maxTotalChars=9000]
+ * @param {number} [options.maxTotalChars=24000]
  * @returns {{ projectContextBlock: string, memoryBlock: string, recentTurnsBlock: string }}
  */
 export function compactContextBlocks({
   projectContextBlock = '',
   memoryBlock = '',
   recentTurnsBlock = '',
-  maxTotalChars = 9000
+  maxTotalChars = 24000
 } = {}) {
   const available = Math.max(0, maxTotalChars - FRAME_BUDGET);
 

@@ -1,8 +1,10 @@
 import { supabaseAdmin } from '../supabase-admin.js';
+import { designBriefToContextBlock } from '../design/derive-design-system.js';
 
 const MAX_CHAT_MESSAGES = 8;
 const MAX_TEXT = 700;
 const MAX_JSON = 1400;
+const MAX_DESIGN_BRIEF = 2400;
 
 export async function loadProjectContextBlock({ projectId, userId = null } = {}) {
   if (!projectId || !supabaseAdmin) return '';
@@ -70,8 +72,8 @@ export function formatProjectContextBlock({ project, latestSnapshot = null }) {
   const componentPlan = summarizeJson(project.component_plan);
   if (componentPlan) lines.push(`Component plan: ${componentPlan}`);
 
-  const designSystem = summarizeJson(project.design_system);
-  if (designSystem) lines.push(`Design system: ${designSystem}`);
+  const designSystem = summarizeDesignSystem(project.design_system);
+  if (designSystem) lines.push(designSystem);
 
   const recentChat = summarizeChat(project.chat_history);
   if (recentChat) {
@@ -134,6 +136,23 @@ function summarizeJson(value) {
   if (!parsed) return '';
 
   return trim(JSON.stringify(parsed, jsonReplacer), MAX_JSON);
+}
+
+function summarizeDesignSystem(value) {
+  const parsed = parseMaybeJson(value);
+  if (!parsed) return '';
+
+  // Structured design briefs render as a readable, binding art-direction block
+  // so every edit turn keeps the original palette, type, and tone.
+  if (parsed.colorPalette) {
+    const block = designBriefToContextBlock(parsed);
+    if (block) {
+      return block.length <= MAX_DESIGN_BRIEF ? block : `${block.slice(0, MAX_DESIGN_BRIEF - 3)}...`;
+    }
+  }
+
+  const fallback = trim(JSON.stringify(parsed, jsonReplacer), MAX_JSON);
+  return fallback ? `Design system: ${fallback}` : '';
 }
 
 function parseMaybeJson(value) {

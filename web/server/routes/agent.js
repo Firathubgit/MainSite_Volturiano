@@ -19,17 +19,29 @@ import { runAgentLoop, undoLastTurn } from '../shared/agent-loop.js';
 import { supabaseAdmin } from '../lib/supabase-admin.js';
 import {
   buildInitialComponentPrompt,
+  isLikelyMutatingEditPrompt,
   shouldEnableCatalogToolsForEdit
 } from '../lib/agent/component-turn-policy.js';
 import { buildAgentContextEnvelope } from '../lib/agent/context-assembler.js';
 import { createAgentDebugTimeline, logAgentDebugEvent } from '../lib/agent/debug-timeline.js';
 import { persistTurnMemories } from '../lib/agent/memory-manager.js';
+import { resolveSandboxProvider } from '../lib/sandbox/provider-resolver.js';
+import { buildTemplateCodeAsync, resolveComponentRefs } from '../lib/registry/registry.js';
+import { isProtectedFile, replaceFile } from '../shared/sandbox-fs.js';
+import { deriveDesignBrief } from '../lib/design/derive-design-system.js';
+import { normalizeProvidedDesignBrief } from '../lib/design/design-intake.js';
+import { updateProject } from '../lib/db/projects.js';
 import {
   appendAgentToolEvent,
+  compactToolTranscript,
   extractComponentIds,
   finalizeAgentTurn,
   getOrCreateAgentSession,
   loadAgentSessionHydration,
+  loadSessionReferenceImages,
+  persistSessionReferenceImages,
+  popDurableUndoSnapshot,
+  pushDurableUndoSnapshot,
   startAgentTurn,
   summarizeChangedFiles
 } from '../lib/agent/session-store.js';
@@ -40,6 +52,106 @@ import {
 
 const router = express.Router();
 
+// ─── Premium mode (community catalog posture) ────────────────
+// UI exposes free/hybrid/premium which the landing page maps to off/hybrid/strict.
+const PREMIUM_MODE_VALUES = new Set(['off', 'hybrid', 'strict']);
+
+function normalizePremiumMode(value) {
+  const mode = String(value || '').toLowerCase().trim();
+  if (mode === 'free') return 'off';
+  if (mode === 'premium') return 'strict';
+  return PREMIUM_MODE_VALUES.has(mode) ? mode : 'hybrid';
+}
+
+function buildModeContextNote(premiumMode) {
+  if (premiumMode === 'strict') {
+    return '\n\n[Build mode] PREMIUM (strict): Assemble the site primarily from community catalog components (browse_components / install_component_bundle). Custom-code only gaps the catalog cannot fill, and always customize installed components to the user\'s brief.';
+  }
+  if (premiumMode === 'off') {
+    return '\n\n[Build mode] FREE: The community component catalog is disabled for this build. Write all components from scratch.';
+  }
+  return '';
+}
+
+const CARRYOVER_IMAGE_NOTE = '\n\n[Reference images] The attached images are the user\'s reference images from earlier in this session, re-attached by the harness for continuity. Keep steering the design toward them unless the new message changes direction.';
+
+const TEMPLATE_FILE_BLOCK_PATTERN = /<file path="([^"]+)">(\n?)([\s\S]*?)<\/file>/g;
+
+/**
+ * Materialize a template's assembled code directly into the sandbox so the
+ * agent starts from real files instead of re-interpreting a hidden prompt.
+ * Returns the list of written file paths ([] when nothing was written).
+ */
+async function materializeTemplateIntoSandbox({ templateId, provider, debugTimeline }) {
+  if (!templateId || !provider) return [];
+
+  try {
+    const result = await buildTemplateCodeAsync(templateId);
+    if (!result?.success || !result.code) {
+      console.warn(`[agent-initial] Template "${templateId}" could not be assembled`);
+      return [];
+    }
+
+    const writtenPaths = [];
+    let match;
+    TEMPLATE_FILE_BLOCK_PATTERN.lastIndex = 0;
+    while ((match = TEMPLATE_FILE_BLOCK_PATTERN.exec(result.code)) !== null) {
+      const filePath = match[1];
+      const content = match[3].trim();
+      if (!filePath || !content || isProtectedFile(filePath)) continue;
+      try {
+        await replaceFile(provider, filePath, content);
+        writtenPaths.push(filePath);
+      } catch (writeErr) {
+        console.warn(`[agent-initial] Template file write failed (${filePath}):`, writeErr.message);
+      }
+    }
+
+    debugTimeline?.event?.('template_materialized', {
+      templateId,
+      fileCount: writtenPaths.length,
+      missingComponents: result.missingComponents || []
+    });
+    console.log(`[agent-initial] Template "${templateId}" materialized: ${writtenPaths.length} files`);
+    return writtenPaths;
+  } catch (error) {
+    console.warn(`[agent-initial] Template materialization failed (${templateId}):`, error.message);
+    debugTimeline?.error?.('template_materialization_failed', error);
+    return [];
+  }
+}
+
+/**
+ * Resolve which images ride on this turn. New images supersede the session's
+ * stored references; otherwise the previous references are carried over so the
+ * agent never loses its visual target between turns.
+ */
+async function resolveTurnImages({ session, durableSessionId, images = [] }) {
+  if (Array.isArray(images) && images.length > 0) {
+    session.referenceImages = images;
+    if (durableSessionId) {
+      persistLater(
+        persistSessionReferenceImages({ sessionId: durableSessionId, images }),
+        'persist reference images'
+      );
+    }
+    return { images, carryover: false };
+  }
+
+  if (Array.isArray(session.referenceImages) && session.referenceImages.length > 0) {
+    return { images: session.referenceImages, carryover: true };
+  }
+
+  if (durableSessionId) {
+    const restored = await loadSessionReferenceImages(durableSessionId);
+    if (restored.length > 0) {
+      session.referenceImages = restored;
+      return { images: restored, carryover: true };
+    }
+  }
+
+  return { images: [], carryover: false };
+}
 
 // In-memory session store (per sandbox session)
 // In production, this should be persisted to Supabase
@@ -91,28 +203,52 @@ router.post('/message', async (req, res) => {
     projectId: requestProjectId,
     initialComponents = [],
     manualSelectionIds = [],
-    images = []
+    images = [],
+    premiumMode: requestedPremiumMode
   } = req.body;
 
   if (!prompt || typeof prompt !== 'string' || prompt.trim().length === 0) {
     return res.status(400).json({ success: false, error: 'Prompt is required' });
   }
 
-  if (!sandboxId && !global.activeSandboxProvider) {
-    return res.status(400).json({ success: false, error: 'No active sandbox. Create one first.' });
-  }
-
-  const activeSandboxId = sandboxId || global.sandboxData?.sandboxId;
-  const activeProjectId = requestProjectId || buildId || null;
-  const enableCatalogTools = shouldEnableCatalogToolsForEdit({
-    prompt,
-    initialComponents,
-    manualSelectionIds
+  let activeSandboxId = sandboxId || global.sandboxData?.sandboxId;
+  const sandboxPreflight = await resolveSandboxProvider({
+    sandboxId: activeSandboxId,
+    allowGlobalFallback: !activeSandboxId,
+    allowReconnect: true,
+    requireAlive: true
   });
+  if (!sandboxPreflight.ok) {
+    return res.status(sandboxPreflight.statusCode).json({
+      success: false,
+      error: sandboxPreflight.message,
+      code: sandboxPreflight.code,
+      sandboxId: sandboxPreflight.sandboxId
+    });
+  }
+  activeSandboxId = sandboxPreflight.sandboxId || activeSandboxId;
+  const activeProjectId = requestProjectId || buildId || null;
+  const premiumMode = normalizePremiumMode(requestedPremiumMode);
+  // Premium mode overrides the keyword heuristic: strict always gets catalog
+  // tools, free never does, hybrid keeps the intent-based gate.
+  const enableCatalogTools = premiumMode === 'off'
+    ? false
+    : premiumMode === 'strict'
+      ? true
+      : shouldEnableCatalogToolsForEdit({
+        prompt,
+        initialComponents,
+        manualSelectionIds
+      });
+  const expectedMutation = isLikelyMutatingEditPrompt(prompt);
   const requestedModel = model;
-  const effectiveModel = enableCatalogTools
-    ? resolveModelRole('agentToolHeavy')
-    : normalizePublicModelId(requestedModel);
+  // Honor the user's explicit model choice. The internal tool-heavy model is
+  // only a fallback when the request doesn't specify one.
+  const effectiveModel = req.body.model
+    ? normalizePublicModelId(requestedModel)
+    : enableCatalogTools
+      ? resolveModelRole('agentToolHeavy')
+      : normalizePublicModelId(requestedModel);
   const debugTimeline = createAgentDebugTimeline({
     route: 'message',
     projectId: activeProjectId,
@@ -127,13 +263,17 @@ router.post('/message', async (req, res) => {
     initialComponentCount: initialComponents.length,
     manualSelectionCount: manualSelectionIds.length,
     imageCount: images.length,
+    expectedMutation,
     enableCatalogTools,
     requestedModel,
     effectiveModel
   });
   debugTimeline.event('catalog_tool_gate', {
     enabled: enableCatalogTools,
-    reason: enableCatalogTools ? 'component_or_section_intent' : 'ordinary_edit_prompt'
+    premiumMode,
+    reason: premiumMode !== 'hybrid'
+      ? `premium_mode_${premiumMode}`
+      : enableCatalogTools ? 'component_section_or_page_intent' : 'ordinary_edit_prompt'
   });
 
   // ─── Credit Deduction (same pattern as apply-ai-code-stream) ────
@@ -273,22 +413,36 @@ router.post('/message', async (req, res) => {
       contextChars: agentContextBlock.length
     });
 
+    const turnImages = await resolveTurnImages({
+      session,
+      durableSessionId: durableSession?.id,
+      images
+    });
+    if (turnImages.carryover) {
+      debugTimeline.event('reference_images_carried_over', { count: turnImages.images.length });
+    }
+
     const result = await runAgentLoop({
       prompt: prompt.trim(),
-      images,
+      images: turnImages.images,
       modelId: effectiveModel,
       sandboxId: activeSandboxId,
       conversationHistory: session.conversationHistory,
       onEvent: sendEvent,
       enableCatalogTools,
-      projectContextBlock: agentContextBlock,
+      expectedMutation,
+      projectContextBlock: agentContextBlock
+        + buildModeContextNote(premiumMode)
+        + (turnImages.carryover ? CARRYOVER_IMAGE_NOTE : ''),
+      projectId: activeProjectId,
+      sessionId: durableSession?.id,
       debugTimeline
     });
 
     // Update session
     session.conversationHistory = result.conversationHistory;
 
-    // Push snapshot for undo
+    // Push snapshot for undo (memory cache + durable copy)
     if (result.snapshot && result.mutations.length > 0) {
       session.snapshots.push({
         snapshot: result.snapshot,
@@ -300,6 +454,14 @@ router.post('/message', async (req, res) => {
       if (session.snapshots.length > 10) {
         session.snapshots.shift();
       }
+      persistLater(pushDurableUndoSnapshot({
+        sessionId: durableSession?.id,
+        sandboxId: activeSandboxId,
+        projectId: activeProjectId,
+        userId: authUserId,
+        prompt: prompt.trim(),
+        snapshot: result.snapshot
+      }), 'push durable undo snapshot');
     }
 
     // Final summary event
@@ -310,6 +472,9 @@ router.post('/message', async (req, res) => {
       mutationCount: result.mutations.length,
       rounds: result.rounds,
       buildStatus: result.buildStatus,
+      verificationRan: result.verificationRan,
+      incompleteReason: result.incompleteReason,
+      hitMaxSteps: result.hitMaxSteps,
       canUndo: session.snapshots.length > 0
     });
 
@@ -324,6 +489,9 @@ router.post('/message', async (req, res) => {
       changedFiles,
       componentIds,
       buildStatus: result.buildStatus,
+      verificationRan: result.verificationRan,
+      incompleteReason: result.incompleteReason,
+      hitMaxSteps: result.hitMaxSteps,
       toolCallCount: result.toolCalls.length,
       mutationCount: result.mutations.length,
       rounds: result.rounds,
@@ -337,7 +505,11 @@ router.post('/message', async (req, res) => {
       summary: {
         canUndo: session.snapshots.length > 0,
         route: 'message',
-        response: result.responseEnvelope || null
+        verificationRan: result.verificationRan,
+        incompleteReason: result.incompleteReason || null,
+        hitMaxSteps: Boolean(result.hitMaxSteps),
+        response: result.responseEnvelope || null,
+        toolTranscript: compactToolTranscript(result.toolCalls)
       },
       changedFiles,
       componentIds,
@@ -358,6 +530,9 @@ router.post('/message', async (req, res) => {
       changedFiles,
       componentIds,
       buildStatus: result.buildStatus,
+      verificationRan: result.verificationRan,
+      incompleteReason: result.incompleteReason || null,
+      hitMaxSteps: Boolean(result.hitMaxSteps),
       mutationCount: result.mutations.length,
       toolCallCount: result.toolCalls.length,
       rounds: result.rounds,
@@ -418,13 +593,24 @@ router.post('/undo', async (req, res) => {
     undoDepth: session.snapshots.length
   });
 
-  if (session.snapshots.length === 0) {
-    debugTimeline.event('undo_empty', { undoDepth: 0 });
-    return res.status(400).json({ success: false, error: 'Nothing to undo' });
-  }
-
   try {
-    const lastEntry = session.snapshots.pop();
+    let lastEntry = session.snapshots.pop() || null;
+    if (lastEntry) {
+      // Keep the durable stack aligned with the in-memory cache.
+      popDurableUndoSnapshot({ sandboxId: activeSandboxId }).catch(() => {});
+    } else {
+      // Server restarted (or session swept) — fall back to the durable stack.
+      lastEntry = await popDurableUndoSnapshot({ sandboxId: activeSandboxId });
+      if (lastEntry) {
+        debugTimeline.event('undo_durable_fallback', {});
+      }
+    }
+
+    if (!lastEntry) {
+      debugTimeline.event('undo_empty', { undoDepth: 0 });
+      return res.status(400).json({ success: false, error: 'Nothing to undo' });
+    }
+
     const result = await undoLastTurn(lastEntry.snapshot, activeSandboxId);
 
     // Also remove the last conversation turn
@@ -512,6 +698,7 @@ const INITIAL_BUILD_SYSTEM_PROMPT = `You are the Volturiano Agentic Site Archite
 Your goal is to build a complete, high-end, TAILORED website from scratch based on a user's prompt inside a live Vite sandbox.
 
 CAPABILITIES:
+0. Page Architecture: For sites that need multiple routes (shops, restaurants, multi-service businesses), call 'plan_pages' FIRST to get a page graph, then implement it with react-router-dom (src/pages/<Name>.jsx per page, shared Nav, <Routes> in App.jsx). Simple landing pages can skip this and stay single-page multi-section.
 1. Browse Community Components: Use 'browse_components' to find existing premium components that match the user's industry/style.
 2. Fetch Component Code: Use 'fetch_component_bundle' for small components when you need to inspect/adapt source. Large shader/WebGL files may be summarized to protect context.
 3. Install Component Bundles: Use 'install_component_bundle' for large visual/shader components or pre-selected components you want to use mostly as-is. It writes files directly into the sandbox without loading huge source into your context.
@@ -561,7 +748,7 @@ After installing and wiring all components, spend your remaining steps CUSTOMIZI
 VISIBLE RESPONSE STYLE:
 After the build is complete, keep the user-facing response short and calm. Tool cards already show detail. Use one concise sentence or up to 3 clear bullets.
 
-You have a 35-step limit. Work efficiently — install fast, customize thoroughly.`;
+The harness manages your step budget, warns you when it runs low, and grants extra repair steps if verification fails. After your build passes, the harness may show you a screenshot of the rendered site — review it like a senior designer and fix real visual problems before finishing. Work efficiently: install fast, customize thoroughly.`;
 
 router.post('/initial-build', async (req, res) => {
   const {
@@ -572,22 +759,49 @@ router.post('/initial-build', async (req, res) => {
     model = resolveModelRole('generalGeneration'),
     initialComponents = [],
     manualSelectionIds = [],
-    images = []
+    images = [],
+    premiumMode: requestedPremiumMode,
+    templateId = null,
+    designBrief: providedDesignBrief = null
   } = req.body;
 
   if (!prompt || typeof prompt !== 'string' || prompt.trim().length === 0) {
     return res.status(400).json({ success: false, error: 'Prompt is required' });
   }
 
-  // ─── Credit Deduction ────
+  // Resolve sandbox before deducting credits so missing/paused workspaces fail cleanly.
+  let activeSandboxId = sandboxId || global.sandboxData?.sandboxId;
+  const sandboxPreflight = await resolveSandboxProvider({
+    sandboxId: activeSandboxId,
+    allowGlobalFallback: !activeSandboxId,
+    allowReconnect: true,
+    requireAlive: true
+  });
+  if (!sandboxPreflight.ok) {
+    return res.status(sandboxPreflight.statusCode).json({
+      success: false,
+      error: sandboxPreflight.message,
+      code: sandboxPreflight.code,
+      sandboxId: sandboxPreflight.sandboxId
+    });
+  }
+  activeSandboxId = sandboxPreflight.sandboxId || activeSandboxId;
+
   const token = req.headers.authorization?.split(' ')[1];
   const activeProjectId = requestProjectId || buildId || null;
+  const premiumMode = normalizePremiumMode(requestedPremiumMode);
+  const normalizedProvidedDesignBrief = normalizeProvidedDesignBrief(providedDesignBrief);
   const requestedModel = model;
-  const effectiveModel = resolveModelRole('agentToolHeavy');
+  // Honor the user's model choice on initial builds; the internal tool-heavy
+  // model is only the default when no model is requested.
+  const effectiveModel = req.body.model
+    ? normalizePublicModelId(requestedModel)
+    : resolveModelRole('agentToolHeavy');
+  const enableCatalogTools = premiumMode !== 'off';
   const debugTimeline = createAgentDebugTimeline({
     route: 'initial-build',
     projectId: activeProjectId,
-    sandboxId,
+    sandboxId: activeSandboxId,
     model: effectiveModel,
     requestedModel,
     prompt: prompt.trim(),
@@ -598,6 +812,7 @@ router.post('/initial-build', async (req, res) => {
     initialComponentCount: initialComponents.length,
     manualSelectionCount: manualSelectionIds.length,
     imageCount: images.length,
+    providedDesignBrief: Boolean(normalizedProvidedDesignBrief),
     requestedModel,
     effectiveModel
   });
@@ -636,14 +851,8 @@ router.post('/initial-build', async (req, res) => {
     });
   }
 
-  // Resolve or use existing sandbox
-  const activeSandboxId = sandboxId || global.sandboxData?.sandboxId;
+  // Agentic builder turns are bound to the preflighted sandbox id.
   debugTimeline.setContext({ sandboxId: activeSandboxId });
-
-  if (!activeSandboxId && !global.activeSandboxProvider) {
-    debugTimeline.event('provider_missing', { sandboxId: activeSandboxId });
-    return res.status(400).json({ success: false, error: 'No active sandbox. Create one first.' });
-  }
 
   const session = getSession(activeSandboxId || 'default');
   const durableSession = await getOrCreateAgentSession({
@@ -719,12 +928,61 @@ router.post('/initial-build', async (req, res) => {
     try { res.write(': keepalive\n\n'); } catch { clearInterval(keepalive); }
   }, 15000);
 
+  // Normalize component references to catalog slugs so the model sees one ID
+  // dialect: the human UI passes UUIDs while browse_components returns slugs.
+  let resolvedInitialComponents = initialComponents;
+  let resolvedManualSelectionIds = manualSelectionIds;
+  try {
+    const allRefs = [
+      ...initialComponents.map((c) => (typeof c === 'object' && c ? c.id || c.component_id : c)),
+      ...manualSelectionIds
+    ].filter(Boolean);
+    const refs = await resolveComponentRefs(allRefs);
+    if (refs.size > 0) {
+      resolvedInitialComponents = initialComponents.map((component) => {
+        const key = String((typeof component === 'object' && component ? component.id || component.component_id : component) || '').trim();
+        const ref = refs.get(key);
+        if (!ref) return component;
+        return typeof component === 'object' && component
+          ? { ...component, id: ref.slug, name: component.name || ref.name }
+          : { id: ref.slug, name: ref.name };
+      });
+      resolvedManualSelectionIds = manualSelectionIds.map((id) => refs.get(String(id || '').trim())?.slug || id);
+      debugTimeline.event('component_refs_resolved', {
+        requested: allRefs.length,
+        resolved: refs.size
+      });
+    }
+  } catch (refErr) {
+    console.warn('[agent-initial] Component ref resolution skipped:', refErr.message);
+  }
+
+  // Template mode: write the template's assembled files into the sandbox so
+  // the agent starts from a real, working site and spends its budget on
+  // customization instead of re-deriving the structure from a prompt.
+  let templateNote = '';
+  if (templateId) {
+    const templateFiles = await materializeTemplateIntoSandbox({
+      templateId,
+      provider: sandboxPreflight.provider,
+      debugTimeline
+    });
+    if (templateFiles.length > 0) {
+      templateNote = [
+        '',
+        `[Template installed] The "${templateId}" template files are ALREADY written into the sandbox:`,
+        templateFiles.map((path) => `- ${path}`).join('\n'),
+        'Do NOT rebuild the structure from scratch. Read the key files, then customize copy, colors, imagery, and sections to the user\'s brief. Replace every generic placeholder.'
+      ].join('\n');
+    }
+  }
+
   // Prepare final prompt with context about pre-selected components
   const finalPrompt = buildInitialComponentPrompt({
     prompt,
-    initialComponents,
-    manualSelectionIds
-  });
+    initialComponents: resolvedInitialComponents,
+    manualSelectionIds: resolvedManualSelectionIds
+  }) + templateNote;
   if (finalPrompt !== prompt.trim()) {
     debugTimeline.event('initial_components_attached', {
       initialComponentCount: initialComponents.length,
@@ -738,16 +996,51 @@ router.post('/initial-build', async (req, res) => {
       projectId: activeProjectId,
       sandboxId: activeSandboxId
     });
-    const agentContextBlock = await buildAgentContextEnvelope({
-      projectId: activeProjectId,
-      userId: authUserId,
-      sessionId: durableSession?.id,
-      sandboxId: activeSandboxId,
-      excludeTurnId: durableTurn?.id
-    });
+    // Derive the design brief in parallel with context assembly. It becomes
+    // the project's persistent art direction (palette, type, imagery, tone).
+    const [agentContextBlock, designBrief] = await Promise.all([
+      buildAgentContextEnvelope({
+        projectId: activeProjectId,
+        userId: authUserId,
+        sessionId: durableSession?.id,
+        sandboxId: activeSandboxId,
+        excludeTurnId: durableTurn?.id
+      }),
+      normalizedProvidedDesignBrief
+        ? Promise.resolve(normalizedProvidedDesignBrief)
+        : deriveDesignBrief({ prompt: prompt.trim(), images })
+    ]);
     debugTimeline.event('context_ready', {
-      contextChars: agentContextBlock.length
+      contextChars: agentContextBlock.length,
+      hasDesignBrief: Boolean(designBrief)
     });
+
+    if (designBrief) {
+      // Persist so every later edit turn inherits the same art direction.
+      persistLater(updateProject(activeProjectId, { design_system: designBrief }), 'persist design system');
+      sendEvent('agent_design_brief', {
+        industry: designBrief.industryCategory,
+        mood: designBrief.mood,
+        mode: designBrief.colorPalette?.mode,
+        primary: designBrief.colorPalette?.primary,
+        accent: designBrief.colorPalette?.accent,
+        headingFont: designBrief.typography?.headingFont,
+        bodyFont: designBrief.typography?.bodyFont,
+        personality: designBrief.designPersonality || []
+      });
+    }
+
+    // Initial build: any attached images become the session's durable visual
+    // reference so follow-up edit turns keep steering toward them.
+    if (Array.isArray(images) && images.length > 0) {
+      session.referenceImages = images;
+      if (durableSession?.id) {
+        persistLater(
+          persistSessionReferenceImages({ sessionId: durableSession.id, images }),
+          'persist initial reference images'
+        );
+      }
+    }
 
     const result = await runAgentLoop({
       prompt: finalPrompt,
@@ -758,15 +1051,19 @@ router.post('/initial-build', async (req, res) => {
       onEvent: sendEvent,
       systemPromptOverride: INITIAL_BUILD_SYSTEM_PROMPT,
       maxStepsOverride: 35,
-      enableCatalogTools: true,
-      projectContextBlock: agentContextBlock,
+      enableCatalogTools,
+      projectContextBlock: agentContextBlock + buildModeContextNote(premiumMode),
+      projectId: activeProjectId,
+      sessionId: durableSession?.id,
+      isInitialBuild: true,
+      designBrief,
       debugTimeline
     });
 
     // Update conversation history
     session.conversationHistory = result.conversationHistory;
 
-    // Store snapshot for undo
+    // Store snapshot for undo (memory cache + durable copy)
     if (result.snapshot) {
       session.snapshots.push({
         snapshot: result.snapshot,
@@ -776,6 +1073,14 @@ router.post('/initial-build', async (req, res) => {
       if (session.snapshots.length > 10) {
         session.snapshots.shift();
       }
+      persistLater(pushDurableUndoSnapshot({
+        sessionId: durableSession?.id,
+        sandboxId: activeSandboxId,
+        projectId: activeProjectId,
+        userId: authUserId,
+        prompt: prompt.trim(),
+        snapshot: result.snapshot
+      }), 'push durable undo snapshot');
     }
 
     // Final summary event
@@ -786,6 +1091,9 @@ router.post('/initial-build', async (req, res) => {
       mutationCount: result.mutations.length,
       rounds: result.rounds,
       buildStatus: result.buildStatus,
+      verificationRan: result.verificationRan,
+      incompleteReason: result.incompleteReason,
+      hitMaxSteps: result.hitMaxSteps,
       canUndo: session.snapshots.length > 0,
       isInitialBuild: true
     });
@@ -801,6 +1109,9 @@ router.post('/initial-build', async (req, res) => {
       changedFiles,
       componentIds,
       buildStatus: result.buildStatus,
+      verificationRan: result.verificationRan,
+      incompleteReason: result.incompleteReason,
+      hitMaxSteps: result.hitMaxSteps,
       toolCallCount: result.toolCalls.length,
       mutationCount: result.mutations.length,
       rounds: result.rounds,
@@ -815,7 +1126,11 @@ router.post('/initial-build', async (req, res) => {
         canUndo: session.snapshots.length > 0,
         route: 'initial-build',
         isInitialBuild: true,
-        response: result.responseEnvelope || null
+        verificationRan: result.verificationRan,
+        incompleteReason: result.incompleteReason || null,
+        hitMaxSteps: Boolean(result.hitMaxSteps),
+        response: result.responseEnvelope || null,
+        toolTranscript: compactToolTranscript(result.toolCalls)
       },
       changedFiles,
       componentIds,
@@ -836,6 +1151,9 @@ router.post('/initial-build', async (req, res) => {
       changedFiles,
       componentIds,
       buildStatus: result.buildStatus,
+      verificationRan: result.verificationRan,
+      incompleteReason: result.incompleteReason || null,
+      hitMaxSteps: Boolean(result.hitMaxSteps),
       mutationCount: result.mutations.length,
       toolCallCount: result.toolCalls.length,
       rounds: result.rounds,

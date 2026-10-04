@@ -6,6 +6,7 @@ import { supabaseAdmin } from '../lib/supabase-admin.js';
 import { analyzeCommunityComponent, basicMetadataExtraction } from '../lib/community-analyzer.js';
 import { analyzeTemplate, basicTemplateMetadata } from '../lib/template-analyzer.js';
 import { decodeDataUriMedia } from '../lib/community/media-validation.js';
+import { upsertComponentEmbedding } from '../lib/registry/embeddings.js';
 import puppeteer from 'puppeteer';
 
 const POLL_INTERVAL_MS = 5000; // 5 seconds
@@ -453,6 +454,27 @@ async function processSubmissionJob(job) {
             } else {
                 componentDbId = componentRow.id;
                 console.log(`[Analyzer] Component prepared for review: ${componentId} (DB id: ${componentDbId})`);
+
+                // Semantic retrieval: embed the design metadata so the agent can
+                // find this component by meaning once it goes live. Fire-and-forget.
+                upsertComponentEmbedding({
+                    id: componentDbId,
+                    component_id: componentId,
+                    name: llmAnalysis.display_name || submission.name,
+                    category,
+                    description: llmAnalysis.description || '',
+                    visual_description: llmAnalysis.visual_description || '',
+                    mood_tone: llmAnalysis.mood_tone || '',
+                    typography_style: llmAnalysis.typography_style || '',
+                    layout_type: llmAnalysis.layout_type || '',
+                    color_mode: llmAnalysis.color_mode || '',
+                    tags: llmAnalysis.tags || [],
+                    keywords: llmAnalysis.keywords || [],
+                    suitable_for: llmAnalysis.suitable_for || [],
+                    industry_tags: llmAnalysis.industry_tags || []
+                }).catch((embedErr) => {
+                    console.warn(`[Analyzer] Embedding generation skipped for ${componentId}:`, embedErr.message);
+                });
             }
         }
 

@@ -25,7 +25,7 @@ export default function PrivacyPolicy() {
             <ShieldIcon size={32} className={s.icon} />
           </div>
           <h1 className={s.title}>Privacy Policy & Cookie Policy</h1>
-          <p className={s.lastUpdated}>Last updated: 14 May 2026</p>
+          <p className={s.lastUpdated}>Last updated: 24 May 2026</p>
         </header>
 
         <section className={s.section}>
@@ -51,7 +51,7 @@ export default function PrivacyPolicy() {
             <li><strong>Transaction Data:</strong> Details about payments to and from you and other details of products and services you have purchased from us (e.g. Credit Packs, Subscriptions).</li>
             <li><strong>Technical Data:</strong> Internet protocol (IP) address, your login data, browser type and version, time zone setting, location, security fingerprints, and usage patterns for rate limiting.</li>
             <li><strong>Usage Data:</strong> Information about how you use our website, products and services, including chat prompts sent to our AI models.</li>
-            <li><strong>Builder and Agent Data:</strong> Project prompts, generated files, snapshots, selected components, agent messages, tool events, build status, and audit events needed to provide, debug, secure, and improve the Builder.</li>
+            <li><strong>Builder and Agent Data:</strong> Project prompts, generated files, snapshots, selected components, agent messages, tool events, sandbox identifiers, preview URLs, provider capability metadata, build status, error diagnostics, and audit events needed to provide, debug, secure, and improve the Builder.</li>
             <li><strong>Consent and Rights Request Data:</strong> Records of terms/privacy acceptance, data export requests, deletion requests, and processing restriction requests.</li>
             <li><strong>Publishing Integration Data:</strong> When you connect a GitHub account to publish a project, we store your GitHub user id, GitHub username, the OAuth scopes you granted, and an access token that we encrypt at rest using AES-256-GCM. We also store the repository owner, repository name, branch, last commit SHA, and Vercel import URL associated with each project you publish.</li>
           </ul>
@@ -77,6 +77,7 @@ export default function PrivacyPolicy() {
             <li><strong>Railway/Vercel:</strong> For backend/frontend hosting, deployment, and content delivery. Vercel additionally hosts websites that you publish through the &ldquo;Publish to Vercel&rdquo; flow once you complete the import on Vercel&apos;s side.</li>
             <li><strong>GitHub:</strong> Used only when you opt in to the publish flow. We use GitHub&apos;s OAuth and REST APIs to create or update a repository under your account with your project files. See section 9 below for details.</li>
             <li><strong>AI Providers and Sandbox Providers:</strong> For executing AI generation, analysis, previews, and code sandboxing based on your prompts and project context. Provider retention and training settings depend on the configured provider agreements and product settings.</li>
+            <li><strong>Open-source and Component Ecosystem:</strong> The Builder may use open-source packages, public registries, component metadata, and community-submitted components to assemble your website. License notices and component metadata may be stored with projects or exports where needed.</li>
           </ul>
           <p>
             See the <Link to="/builder/subprocessors">Subprocessor Register</Link> for the current operational list.
@@ -93,6 +94,14 @@ export default function PrivacyPolicy() {
           </p>
           <p>
             Data exports and deletion requests are logged so we can prove when a request was received and completed. Agent/session data, snapshots, and generated project data are included in account exports where available. Account deletion removes or anonymizes user-scoped data while preserving financial ledger evidence where legally required.
+          </p>
+          <p>
+            Agentic builder runs may generate operational logs such as tool names, file paths, sandbox
+            status, build errors, package installation results, and preview health results. We use these
+            records to show progress in the Builder, support undo/session hydration, diagnose failures,
+            prevent abuse, and improve reliability. We avoid intentionally logging access tokens,
+            payment credentials, and local environment files, but you should not include secrets in
+            prompts or project files unless necessary for your own use case.
           </p>
         </section>
 

@@ -2,6 +2,7 @@ import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRouteTransition } from '../../contexts/RouteTransitionContext';
 import { PremiumBackground } from './PremiumBackground';
+import { GuidedDesignIntake } from './GuidedDesignIntake';
 import styles from './RouteTransitionOverlay.module.css';
 
 const TypewriterEffect = ({ text, speed = 15, onComplete, onStart }) => {
@@ -47,17 +48,18 @@ export const RouteTransitionOverlay = () => {
     const [showDots, setShowDots] = useState(false);
     const [step, setStep] = useState(1);
     const [cinematicDelayed, setCinematicDelayed] = useState(true);
+    const isGuided = Boolean(transitionData?.guidedIntake);
 
     useEffect(() => {
-        if (phase === 'intro') {
+        if (phase === 'intro' && !isGuided) {
             setCinematicDelayed(true);
             const timer = setTimeout(() => setCinematicDelayed(false), 5000);
             return () => clearTimeout(timer);
         }
-    }, [phase]);
+    }, [phase, isGuided]);
 
     useEffect(() => {
-        if (phase === 'intro') {
+        if (phase === 'intro' && !isGuided) {
             setShowContent(true);
             setStep(1);
 
@@ -85,7 +87,7 @@ export const RouteTransitionOverlay = () => {
             setShowDots(false);
             setStep(1);
         }
-    }, [phase]);
+    }, [phase, isGuided]);
 
     const handleTypewriterStart = useCallback(() => {
         setStep(3);
@@ -104,7 +106,7 @@ export const RouteTransitionOverlay = () => {
 
     // Safety fallback
     useEffect(() => {
-        if (phase === 'intro' && !transitionData?.cinematicResponse) {
+        if (!isGuided && phase === 'intro' && !transitionData?.cinematicResponse) {
             const timer = setTimeout(() => {
                 if (!transitionData?.cinematicResponse) {
                     handleTypewriterComplete();
@@ -112,13 +114,13 @@ export const RouteTransitionOverlay = () => {
             }, 20000);
             return () => clearTimeout(timer);
         }
-    }, [phase, transitionData?.cinematicResponse, handleTypewriterComplete]);
+    }, [phase, transitionData?.cinematicResponse, handleTypewriterComplete, isGuided]);
 
     useEffect(() => {
-        if (phase === 'intro' && transitionData?.cinematicResponse) {
+        if (!isGuided && phase === 'intro' && transitionData?.cinematicResponse) {
             setShowDots(false);
         }
-    }, [phase, transitionData?.cinematicResponse]);
+    }, [phase, transitionData?.cinematicResponse, isGuided]);
 
     if (phase === 'idle') return null;
 
@@ -148,17 +150,19 @@ export const RouteTransitionOverlay = () => {
                                 exit={{ opacity: 0 }}
                                 transition={{ duration: 1.5, ease: "easeInOut" }}
                             >
-                                <PremiumBackground 
-                                    step={step} 
+                                <PremiumBackground
+                                    step={isGuided ? 3 : step}
                                     isRevisit={transitionData?.isProjectRevisit}
                                 />
                             </motion.div>
                         )}
                     </AnimatePresence>
 
+                    {isGuided && phase !== 'revealing' && <GuidedDesignIntake />}
+
                     {/* Sequential Content Fade-outs */}
                     <AnimatePresence>
-                        {showContent && transitionData?.prompt && phase !== 'revealing' && (
+                        {!isGuided && showContent && transitionData?.prompt && phase !== 'revealing' && (
                             <motion.div
                                 className={styles.promptMessage}
                                 initial={{ y: 20, opacity: 0, filter: 'blur(8px)' }}
@@ -172,7 +176,7 @@ export const RouteTransitionOverlay = () => {
                     </AnimatePresence>
 
                     <AnimatePresence mode="wait">
-                        {showContent && (showDots || cinematicDelayed || !transitionData?.cinematicResponse) && phase !== 'revealing' && (
+                        {!isGuided && showContent && (showDots || cinematicDelayed || !transitionData?.cinematicResponse) && phase !== 'revealing' && (
                             <motion.div
                                 key="loading"
                                 className={styles.loadingContainer}
@@ -187,7 +191,7 @@ export const RouteTransitionOverlay = () => {
                                 </div>
                             </motion.div>
                         )}
-                        {showContent && transitionData?.cinematicResponse && !cinematicDelayed && phase !== 'revealing' && (
+                        {!isGuided && showContent && transitionData?.cinematicResponse && !cinematicDelayed && phase !== 'revealing' && (
                             <motion.div
                                 key="response"
                                 className={styles.assistantMessage}

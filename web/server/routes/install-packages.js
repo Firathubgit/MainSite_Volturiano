@@ -1,4 +1,5 @@
-import { sandboxManager } from '../lib/sandbox/sandbox-manager.js';
+import { resolveSandboxProvider } from '../lib/sandbox/provider-resolver.js';
+import { validatePackageNames } from '../lib/agent/tool-runtime.js';
 
 export default async function installPackages(req, res) {
   // SSE headers
@@ -17,22 +18,39 @@ export default async function installPackages(req, res) {
       return res.end();
     }
 
-    const provider = sandboxId
-      ? (sandboxManager.getProvider(sandboxId) || global.activeSandboxProvider)
-      : (sandboxManager.getActiveProvider() || global.activeSandboxProvider);
-
-    if (!provider) {
-      send({ type: 'error', message: 'No active sandbox' });
+    let safePackages;
+    try {
+      safePackages = validatePackageNames(packages);
+    } catch (error) {
+      send({
+        type: 'error',
+        message: error.message || 'Invalid package name',
+        code: error.code || 'INVALID_PACKAGES'
+      });
       return res.end();
     }
 
-    send({ type: 'start', message: `Installing ${packages.length} packages...` });
-    send({ type: 'status', message: `Installing: ${packages.join(', ')}` });
+    const resolution = await resolveSandboxProvider({
+      sandboxId,
+      allowGlobalFallback: !sandboxId,
+      allowReconnect: true,
+      requireAlive: true
+    });
 
-    const result = await provider.installPackages(packages);
+    if (!resolution.ok) {
+      send({ type: 'error', message: resolution.message, code: resolution.code });
+      return res.end();
+    }
+
+    const provider = resolution.provider;
+
+    send({ type: 'start', message: `Installing ${safePackages.length} packages...` });
+    send({ type: 'status', message: `Installing: ${safePackages.join(', ')}` });
+
+    const result = await provider.installPackages(safePackages);
 
     if (result.success) {
-      send({ type: 'success', message: 'Packages installed successfully', installedPackages: packages });
+      send({ type: 'success', message: 'Packages installed successfully', installedPackages: safePackages });
     } else {
       send({ type: 'error', message: `Installation failed: ${result.stderr}` });
     }

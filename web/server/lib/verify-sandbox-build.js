@@ -1,7 +1,9 @@
 import { sandboxManager } from './sandbox/sandbox-manager.js';
+import { captureForVerification } from './screenshot.js';
 
 const MAX_LOG_CHARS = 15000;
 const PREVIEW_HEALTH_URL = 'http://127.0.0.1:5173';
+const MAX_BROWSER_CONSOLE_LINES = 200;
 
 /**
  * Verifies the build in the sandbox through a staged pipeline.
@@ -13,11 +15,22 @@ const PREVIEW_HEALTH_URL = 'http://127.0.0.1:5173';
  * @param {string} sandboxId - The ID of the sandbox to verify.
  * @returns {Promise<{success: boolean, logs: string, exitCode: number, stages: Array}>}
  */
-export async function verifySandboxBuild(sandboxId) {
+export async function verifySandboxBuild(sandboxId, options = {}) {
   console.log(`[verify-build] Checking build for sandbox ${sandboxId}...`);
 
   const stages = [];
   let provider = null;
+  const {
+    // Fast path by default: the Vite dev server has already compiled the code,
+    // so we verify against the LIVE preview (compile-error overlay + runtime
+    // console + render metrics) instead of running a slow production build.
+    // Set fullBuild: true to run `vite build` (thorough but 30-90s).
+    fullBuild = false,
+    captureRuntime = true,
+    captureScreenshot = false,
+    captureMobile = false,
+    captureForVerificationFn = captureForVerification
+  } = options;
 
   try {
     provider = await resolveProvider(sandboxId, stages);
@@ -30,6 +43,33 @@ export async function verifySandboxBuild(sandboxId) {
       });
     }
 
+    if (!fullBuild) {
+      // ── Fast verification (dev-server based) ──
+      const previewStage = await runPreviewHealthStage(stages, provider);
+      let runtimeStage = null;
+      if (captureRuntime) {
+        runtimeStage = await runBrowserRuntimeStage(stages, provider, {
+          captureForVerificationFn,
+          captureScreenshot,
+          captureMobile
+        });
+      }
+
+      const compileFailed = Boolean(runtimeStage?.details?.viteOverlay);
+      // "buildPassed" == compiles & serves. A runtime error (e.g. ReferenceError)
+      // still means it compiled, so buildPassed stays independent of render health.
+      const buildPassed = Boolean(previewStage.success) && !compileFailed;
+
+      return buildVerificationResult({
+        stages,
+        success: buildPassed,
+        exitCode: buildPassed ? 0 : 1,
+        compileSource: 'preview',
+        summary: buildVerificationSummary(stages, { success: buildPassed, name: 'preview_health' })
+      });
+    }
+
+    // ── Full production build (opt-in, thorough) ──
     await runCommandStage(stages, provider, {
       name: 'prepare_workspace',
       label: 'Prepare workspace permissions',
@@ -68,6 +108,9 @@ export async function verifySandboxBuild(sandboxId) {
       });
     } else {
       await runPreviewHealthStage(stages, provider);
+      if (captureRuntime) {
+        await runBrowserRuntimeStage(stages, provider, { captureForVerificationFn, captureScreenshot, captureMobile });
+      }
     }
 
     console.log(`[verify-build] Build finished with exit code: ${buildStage.exitCode}`);
@@ -76,7 +119,7 @@ export async function verifySandboxBuild(sandboxId) {
       stages,
       success: buildStage.success,
       exitCode: buildStage.exitCode,
-      summary: buildStage.success ? 'Vite build passed.' : 'Vite build failed.'
+      summary: buildVerificationSummary(stages, buildStage)
     });
   } catch (error) {
     console.error('[verify-build] Execution error in provider:', error);
@@ -189,6 +232,139 @@ async function runPreviewHealthStage(stages, provider) {
   });
 }
 
+async function runBrowserRuntimeStage(stages, provider, { captureForVerificationFn, captureScreenshot = false, captureMobile = false }) {
+  const startedAt = Date.now();
+  const sandboxUrl = provider?.getSandboxUrl?.() || provider?.getSandboxInfo?.()?.url || null;
+
+  if (!sandboxUrl) {
+    const stage = makeStage({
+      name: 'browser_runtime',
+      label: 'Check browser runtime console and rendered content',
+      success: true,
+      required: false,
+      skipped: true,
+      durationMs: Date.now() - startedAt,
+      details: { reason: 'no_public_preview_url' }
+    });
+    stages.push(stage);
+    return stage;
+  }
+
+  try {
+    const runtime = await captureForVerificationFn(sandboxUrl, {
+      maxConsoleLines: MAX_BROWSER_CONSOLE_LINES,
+      captureScreenshot,
+      captureMobile
+    });
+    const diagnostics = compactRuntimeDiagnostics(runtime);
+    const success = Boolean(
+      !runtime?.skipped &&
+      !runtime?.viteOverlay &&
+      runtime?.hasContent !== false &&
+      diagnostics.browserConsole.errorCount === 0 &&
+      diagnostics.browserConsole.pageErrorCount === 0 &&
+      diagnostics.browserConsole.requestFailureCount === 0
+    );
+    const stage = makeStage({
+      name: 'browser_runtime',
+      label: 'Check browser runtime console and rendered content',
+      success,
+      required: false,
+      durationMs: Date.now() - startedAt,
+      details: diagnostics,
+      stdout: formatRuntimeDiagnostics(diagnostics),
+      error: success ? null : runtimeFailureSummary(diagnostics)
+    });
+    // Stash screenshots on the stage so the agent loop's visual judge can reuse
+    // them without launching a second browser.
+    stage.screenshots = Array.isArray(runtime?.screenshots) ? runtime.screenshots : [];
+    stages.push(stage);
+    return stage;
+  } catch (error) {
+    const stage = makeStage({
+      name: 'browser_runtime',
+      label: 'Check browser runtime console and rendered content',
+      success: false,
+      required: false,
+      durationMs: Date.now() - startedAt,
+      stderr: error.message || String(error),
+      error: error.message || String(error)
+    });
+    stages.push(stage);
+    return stage;
+  }
+}
+
+function compactRuntimeDiagnostics(runtime = {}) {
+  const browserConsole = runtime.browserConsole || {};
+  return {
+    skipped: Boolean(runtime.skipped),
+    reason: runtime.reason || null,
+    urlChecked: runtime.url || null,
+    viteOverlay: runtime.viteOverlay || null,
+    render: {
+      hasContent: runtime.hasContent ?? null,
+      scrollHeight: runtime.scrollHeight ?? null,
+      textLen: runtime.textLen ?? null,
+      bodyChildCount: runtime.bodyChildCount ?? null,
+      mediaCount: runtime.mediaCount ?? null
+    },
+    browserConsole: {
+      total: browserConsole.total || 0,
+      errorCount: browserConsole.errorCount || 0,
+      assetErrorCount: browserConsole.assetErrorCount || 0,
+      warningCount: browserConsole.warningCount || 0,
+      pageErrorCount: browserConsole.pageErrorCount || 0,
+      requestFailureCount: browserConsole.requestFailureCount || 0,
+      returnedLines: browserConsole.returnedLines || 0,
+      truncated: Boolean(browserConsole.truncated),
+      maxLines: browserConsole.maxLines || MAX_BROWSER_CONSOLE_LINES,
+      entries: Array.isArray(browserConsole.entries) ? browserConsole.entries : [],
+      guidance: browserConsole.guidance || null
+    },
+    sourceSafety: {
+      maxConsoleLines: browserConsole.maxLines || MAX_BROWSER_CONSOLE_LINES,
+      truncated: Boolean(browserConsole.truncated),
+      guidance: 'Browser diagnostics are capped. If more context is needed, rerun verification after fixing the first surfaced runtime errors.'
+    }
+  };
+}
+
+function formatRuntimeDiagnostics(diagnostics) {
+  return JSON.stringify({
+    render: diagnostics.render,
+    browserConsole: diagnostics.browserConsole,
+    sourceSafety: diagnostics.sourceSafety
+  });
+}
+
+function runtimeFailureSummary(diagnostics) {
+  if (diagnostics.skipped) return diagnostics.reason || 'Browser runtime verification skipped.';
+  if (diagnostics.viteOverlay) return `Vite compile error: ${String(diagnostics.viteOverlay).slice(0, 300)}`;
+  if (diagnostics.render.hasContent === false) return 'Browser rendered with little or no visible content.';
+  if (diagnostics.browserConsole.pageErrorCount > 0) return 'Browser page error captured after build.';
+  if (diagnostics.browserConsole.errorCount > 0) return 'Browser console errors captured after build.';
+  if (diagnostics.browserConsole.requestFailureCount > 0) return 'Browser failed to load a required page/script/style resource.';
+  return 'Browser runtime verification reported issues.';
+}
+
+function buildVerificationSummary(stages, buildStage) {
+  const isFast = buildStage.name === 'preview_health';
+  const label = isFast ? 'Live preview' : 'Vite build';
+  if (!buildStage.success) {
+    const runtimeStage = stages.find((stage) => stage.name === 'browser_runtime');
+    if (isFast && runtimeStage?.details?.viteOverlay) {
+      return `${label} compile error: ${String(runtimeStage.details.viteOverlay).slice(0, 200)}`;
+    }
+    return isFast ? 'Live preview is not serving the app.' : 'Vite build failed.';
+  }
+  const runtimeStage = stages.find((stage) => stage.name === 'browser_runtime');
+  if (runtimeStage && !runtimeStage.skipped && !runtimeStage.success) {
+    return `${label} passed, but browser runtime verification found issues.`;
+  }
+  return `${label} passed.`;
+}
+
 function normalizeCommandResult(result = {}) {
   const exitCode = Number.isInteger(result.exitCode) ? result.exitCode : (result.success === false ? 1 : 0);
   return {
@@ -232,15 +408,28 @@ function makeStage({
 function buildVerificationResult({ stages, success, exitCode, summary }) {
   const logs = buildLogs(stages, summary);
   const previewStage = stages.find((stage) => stage.name === 'preview_health');
+  const runtimeStage = stages.find((stage) => stage.name === 'browser_runtime');
   const buildStage = stages.find((stage) => stage.name === 'vite_build');
+  const runtimeHealthy = runtimeStage && !runtimeStage.skipped
+    ? Boolean(runtimeStage.success)
+    : null;
+  const previewHealthy = previewStage
+    ? Boolean(previewStage.success) && (runtimeHealthy === null ? true : runtimeHealthy)
+    : null;
 
   return {
     success: Boolean(success),
     logs: truncate(logs, MAX_LOG_CHARS),
     exitCode: Number.isInteger(exitCode) ? exitCode : (success ? 0 : 1),
     summary,
-    buildPassed: Boolean(buildStage?.success),
-    previewHealthy: previewStage ? Boolean(previewStage.success) : null,
+    // Fast path has no vite_build stage — fall back to the overall success flag,
+    // which the caller derived from preview health + compile-overlay detection.
+    buildPassed: buildStage ? Boolean(buildStage.success) : Boolean(success),
+    previewHealthy,
+    runtimeHealthy,
+    runtimeDiagnostics: runtimeStage?.details || null,
+    // Screenshots captured during the runtime pass, reused by the visual judge.
+    screenshots: Array.isArray(runtimeStage?.screenshots) ? runtimeStage.screenshots : [],
     stages: stages.map(toPublicStage),
     verifiedAt: new Date().toISOString()
   };

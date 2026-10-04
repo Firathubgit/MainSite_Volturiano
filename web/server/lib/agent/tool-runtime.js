@@ -1,5 +1,8 @@
-import { tool } from 'ai';
+import { tool, generateObject } from 'ai';
 import { z } from 'zod';
+import { getModel } from '../provider-helpers.js';
+import { resolveLightweightModel } from '../llm-lightweight.js';
+import { resolveModelRole } from '../../shared/model-registry.js';
 import {
   listFiles,
   readFile,
@@ -11,7 +14,9 @@ import {
   isProtectedFile
 } from '../../shared/sandbox-fs.js';
 import { verifySandboxBuild } from '../verify-sandbox-build.js';
+import { getProviderCapabilities } from '../sandbox/provider-resolver.js';
 import { getCatalogForPromptAsync, getBundleAsync, bundleToFileBlocks } from '../registry/registry.js';
+import { recordComponentInstall } from '../community/usage-flywheel.js';
 import {
   AgentToolPolicyError,
   TOOL_CATEGORIES,
@@ -32,6 +37,142 @@ export const SOURCE_SAFETY_LIMITS = Object.freeze({
   bundleInlineTotalChars: 44000
 });
 
+// Packages preinstalled in the sandbox template — never reinstalled.
+const SANDBOX_BASE_PACKAGES = new Set([
+  'react', 'react-dom', 'framer-motion', 'lucide-react', 'react-icons',
+  'react-router-dom', 'clsx', 'tailwind-merge', 'three',
+  '@react-three/fiber', '@react-three/drei', '@radix-ui/react-icons'
+]);
+
+// Curated allowlist for agent-driven package installs (install_packages tool
+// and automatic component `requires` installation). Quality, widely-used,
+// design-relevant libraries only.
+const AGENT_PACKAGE_ALLOWLIST = new Set([
+  'gsap', '@gsap/react', 'recharts', 'lottie-react', 'embla-carousel-react',
+  'swiper', 'react-countup', 'react-intersection-observer', 'zustand',
+  'date-fns', '@react-spring/web', 'ogl', 'postprocessing', 'maath',
+  'react-hook-form', 'zod', 'sonner', 'vaul', 'cmdk',
+  'class-variance-authority', 'react-fast-marquee', 'simplex-noise',
+  'canvas-confetti', 'react-parallax-tilt', 'react-type-animation',
+  'react-wrap-balancer', 'split-type', 'lenis', 'matter-js'
+]);
+const ALLOWLISTED_SCOPE_PREFIXES = ['@radix-ui/'];
+
+export function isAllowlistedPackage(packageName) {
+  // Strip a trailing version spec ("pkg@1.2", "@scope/pkg@^2") but keep the
+  // leading scope marker of scoped package names.
+  const bare = String(packageName || '').trim()
+    .replace(/(.+?)@[^@/]*$/, '$1');
+  if (!bare) return false;
+  if (SANDBOX_BASE_PACKAGES.has(bare)) return true;
+  if (AGENT_PACKAGE_ALLOWLIST.has(bare)) return true;
+  return ALLOWLISTED_SCOPE_PREFIXES.some((prefix) => bare.startsWith(prefix));
+}
+
+/**
+ * Normalize a bundle's `requires` field (array of names, or object map of
+ * name → version) into a deduped list of package names.
+ */
+export function extractRequiredPackages(requires) {
+  let entries = [];
+  const parsed = typeof requires === 'string' ? safeJsonParse(requires) : requires;
+  if (Array.isArray(parsed)) {
+    entries = parsed;
+  } else if (parsed && typeof parsed === 'object') {
+    entries = Array.isArray(parsed.packages) ? parsed.packages : Object.keys(parsed);
+  }
+  return [...new Set(entries
+    .map((entry) => typeof entry === 'string' ? entry.trim() : entry?.name)
+    .filter(Boolean))];
+}
+
+function safeJsonParse(value) {
+  try {
+    return JSON.parse(value);
+  } catch {
+    return null;
+  }
+}
+
+// ─── Page planning (multi-page architect) ───────────────────
+
+const pagePlanSchema = z.object({
+  buildMode: z.enum(['single_page_multi_section', 'multi_page'])
+    .describe('multi_page only when distinct routes genuinely serve the user better'),
+  reasoning: z.string().describe('One short sentence on why this structure fits'),
+  sharedNav: z.object({
+    links: z.array(z.object({
+      label: z.string(),
+      route: z.string().describe('Route path beginning with /')
+    })).min(1).max(8)
+  }),
+  pages: z.array(z.object({
+    route: z.string().describe('Route path, e.g. "/" or "/about"'),
+    name: z.string().describe('Human page name, e.g. "Home"'),
+    fileName: z.string().describe('Component file, e.g. "src/pages/Home.jsx"'),
+    purpose: z.string().describe('What this page must accomplish'),
+    sections: z.array(z.string()).min(1).max(8).describe('Ordered section roles, e.g. ["hero", "features", "cta"]')
+  })).min(1).max(8)
+});
+
+const PAGE_PLAN_SYSTEM_PROMPT = `You are a senior information architect for premium marketing and product websites.
+Given a site description, design the page structure:
+- Prefer single_page_multi_section for simple brochure/landing briefs; choose multi_page when the content genuinely needs separate routes (shops, multi-service businesses, docs, dashboards, restaurants with menus, etc.).
+- Every page gets a clear purpose and an ordered list of section roles.
+- Routes are clean and lowercase. The home page is always "/".
+- Shared navigation links cover every page (and key anchors for single-page builds).
+- Never invent filler pages. 2-5 pages is the sweet spot for multi_page.`;
+
+async function generatePagePlan({ siteDescription, pageCountHint = null }) {
+  const modelId = resolveLightweightModel(resolveModelRole('generalGeneration')).id;
+  const hint = pageCountHint ? `\nThe user wants roughly ${pageCountHint} pages.` : '';
+  const result = await generateObject({
+    model: getModel(modelId),
+    schema: pagePlanSchema,
+    maxRetries: 3,
+    messages: [
+      { role: 'system', content: PAGE_PLAN_SYSTEM_PROMPT },
+      { role: 'user', content: `Plan the page architecture for this website:\n\n${String(siteDescription || '').slice(0, 4000)}${hint}` }
+    ],
+    temperature: 0
+  });
+  return result.object;
+}
+
+const BROWSE_MAX_RESULTS = 30;
+const BROWSE_PREVIEW_IMAGE_COUNT = 6;
+const PREVIEW_IMAGE_MAX_BYTES = 350_000; // skip oversized thumbnails to protect context
+const PREVIEW_IMAGE_FETCH_TIMEOUT_MS = 6000;
+
+/**
+ * Download component preview thumbnails (Supabase storage URLs) as base64 so
+ * the harness can attach them as image parts. Failures are silently skipped —
+ * previews are an enhancement, never a blocker.
+ */
+async function fetchComponentPreviewImages(components = []) {
+  const results = await Promise.all(components.map(async (component) => {
+    try {
+      const response = await fetch(component.thumbnailUrl, {
+        signal: AbortSignal.timeout(PREVIEW_IMAGE_FETCH_TIMEOUT_MS)
+      });
+      if (!response.ok) return null;
+      const contentType = response.headers.get('content-type') || 'image/jpeg';
+      if (!contentType.startsWith('image/')) return null;
+      const buffer = Buffer.from(await response.arrayBuffer());
+      if (!buffer.length || buffer.length > PREVIEW_IMAGE_MAX_BYTES) return null;
+      return {
+        componentId: component.id,
+        name: component.name,
+        base64: buffer.toString('base64'),
+        mimeType: contentType.split(';')[0]
+      };
+    } catch {
+      return null;
+    }
+  }));
+  return results.filter(Boolean);
+}
+
 export function bundleToFiles(bundle) {
   const fileBlocks = bundleToFileBlocks(bundle);
   const fileRegex = /<file path="([^"]+)">(\n?)([\s\S]*?)<\/file>/g;
@@ -48,11 +189,14 @@ export function bundleToFiles(bundle) {
 export function createAgentToolRuntime({
   provider,
   sandboxId,
+  projectId = null,
+  sessionId = null,
   onEvent = () => {},
   enableCatalogTools = false,
   enablePackageTools = false,
   enableDestructiveTools = false,
   enableSandboxAdminTools = false,
+  providerCapabilities = null,
   permissionMode = TOOL_PERMISSION_MODES.WORKSPACE_WRITE,
   verifyBuild = verifySandboxBuild,
   getCatalog = getCatalogForPromptAsync,
@@ -62,12 +206,17 @@ export function createAgentToolRuntime({
   const mutations = [];
   const buildChecks = [];
   const sideEffects = [];
+  const toolCallLog = [];
+  // Visual attachments (e.g. component preview thumbnails) queued by tools for
+  // the harness to inject as image parts on the next model round.
+  const visualAttachments = [];
   const policyOptions = normalizeToolPolicyOptions({
     permissionMode,
     enableCatalogTools,
     enablePackageTools,
     enableDestructiveTools,
-    enableSandboxAdminTools
+    enableSandboxAdminTools,
+    providerCapabilities: providerCapabilities || getProviderCapabilities(provider)
   });
   const allDefinitions = buildToolDefinitions();
   const definitions = allDefinitions.filter((definition) => shouldExposeTool(definition, policyOptions));
@@ -112,6 +261,8 @@ export function createAgentToolRuntime({
         args,
         provider,
         sandboxId,
+        projectId,
+        sessionId,
         verifyBuild,
         getCatalog,
         getBundle
@@ -124,6 +275,10 @@ export function createAgentToolRuntime({
           type: outcome.mutation.type || definition.policy?.category || 'mutation',
           timestamp: Date.now()
         });
+      }
+
+      if (outcome.visualAttachment?.images?.length) {
+        visualAttachments.push(outcome.visualAttachment);
       }
 
       if (Array.isArray(outcome.mutations)) {
@@ -155,6 +310,8 @@ export function createAgentToolRuntime({
         });
       }
 
+      toolCallLog.push({ name: toolName, args: eventArgs || args, success: true, timestamp: Date.now() });
+
       emitToolEvent(onEvent, 'tool_result', {
         toolName,
         result: outcome.eventResult ?? outcome.modelResult ?? outcome.result,
@@ -185,6 +342,7 @@ export function createAgentToolRuntime({
       };
     } catch (error) {
       const result = normalizeToolError(error);
+      toolCallLog.push({ name: toolName, args: eventArgs || args, success: false, timestamp: Date.now() });
       emitToolEvent(onEvent, 'tool_result', {
         toolName,
         result,
@@ -216,6 +374,8 @@ export function createAgentToolRuntime({
     getMutations: () => mutations,
     getBuildChecks: () => buildChecks,
     getSideEffects: () => sideEffects,
+    getToolCalls: () => toolCallLog,
+    drainVisualAttachments: () => visualAttachments.splice(0, visualAttachments.length),
     getPolicySummary: () => definitions.map((definition) => ({
       name: definition.name,
       ...serializeToolPolicy(definition)
@@ -603,7 +763,7 @@ function buildToolDefinitions() {
         mutating: true,
         sideEffect: true
       }),
-      description: 'Edit a file by exact string replacement. old_string must match exactly including whitespace.',
+      description: 'Edit a file by string replacement. Exact matches are preferred; small whitespace differences are tolerated automatically. If old_string matches multiple places the edit is REJECTED — include more surrounding context to make it unique, or set replace_all: true.',
       parameters: z.object({
         path: z.string().describe('Relative file path to edit.'),
         old_string: z.string().describe('Exact text currently in the file.'),
@@ -748,20 +908,27 @@ function buildToolDefinitions() {
           error.code = 'NO_SANDBOX_ID';
           throw error;
         }
-        const buildResult = await verifyBuild(sandboxId);
+        // Capture a screenshot in the same pass so the visual-review judge can
+        // reuse it instead of launching a second browser.
+        const buildResult = await verifyBuild(sandboxId, { captureScreenshot: true });
         const result = {
           buildPassed: Boolean(buildResult.success),
           previewHealthy: buildResult.previewHealthy ?? null,
+          runtimeHealthy: buildResult.runtimeHealthy ?? null,
+          runtimeDiagnostics: buildResult.runtimeDiagnostics || null,
           stages: Array.isArray(buildResult.stages)
             ? buildResult.stages.map((stage) => ({
                 name: stage.name,
                 success: stage.success,
                 required: stage.required,
-                error: stage.error || null
+                error: stage.error || null,
+                details: stage.name === 'browser_runtime' ? stage.details || null : undefined
               }))
             : [],
           summary: buildResult.summary || null,
-          errors: buildResult.success ? null : buildResult.logs?.slice(0, 2000)
+          errors: (buildResult.success && buildResult.previewHealthy !== false)
+            ? null
+            : buildResult.logs?.slice(0, 4000)
         };
         return {
           result,
@@ -774,9 +941,11 @@ function buildToolDefinitions() {
           buildCheck: {
             buildPassed: result.buildPassed,
             previewHealthy: result.previewHealthy,
+            runtimeHealthy: result.runtimeHealthy,
             exitCode: buildResult.exitCode,
             summary: buildResult.summary || null,
-            stages: buildResult.stages || []
+            stages: buildResult.stages || [],
+            screenshots: Array.isArray(buildResult.screenshots) ? buildResult.screenshots : []
           }
         };
       }
@@ -785,13 +954,48 @@ function buildToolDefinitions() {
 
   definitions.push(
       {
+        name: 'plan_pages',
+        policy: makeToolPolicy({
+          permission: TOOL_PERMISSION_MODES.READ_ONLY,
+          category: TOOL_CATEGORIES.PLANNING
+        }),
+        description: 'Plan the page architecture for a website BEFORE building it. Returns a page graph (routes, purposes, sections) and shared navigation plan. Use this when the user wants multiple pages (or the site clearly needs them), then implement with react-router-dom, src/pages/<Name>.jsx files, and a shared nav. For simple single-page sites you can skip this tool.',
+        parameters: z.object({
+          site_description: z.string().describe('What the website is for: industry, audience, goals, and any pages the user explicitly asked for.'),
+          page_count_hint: z.number().nullable().describe('Approximate number of pages the user wants, or null to let the planner decide.')
+        }),
+        jsonSchema: {
+          type: 'object',
+          properties: {
+            site_description: { type: 'string', description: 'What the website is for' },
+            page_count_hint: { type: 'number', description: 'Approximate number of pages, optional' }
+          },
+          required: ['site_description']
+        },
+        eventArgs: ({ site_description, page_count_hint }) => ({ site_description: String(site_description || '').slice(0, 200), page_count_hint }),
+        run: async ({ args }) => {
+          const plan = await generatePagePlan({
+            siteDescription: args.site_description,
+            pageCountHint: args.page_count_hint || null
+          });
+          return {
+            result: plan,
+            modelResult: plan,
+            eventResult: {
+              buildMode: plan.buildMode,
+              pages: plan.pages.map((page) => ({ route: page.route, name: page.name }))
+            }
+          };
+        }
+      },
+      {
         name: 'browse_components',
         policy: makeToolPolicy({
           permission: TOOL_PERMISSION_MODES.READ_ONLY,
           category: TOOL_CATEGORIES.CATALOG,
           requiresFeature: 'catalog'
         }),
-        description: 'Browse the community component library. Returns component IDs, names, categories, and descriptions.',
+        description: 'Browse the community component library. Returns rich design metadata (visual description, mood, colors, suitability, quality) per component, and attaches preview screenshots of the top matches so you can judge them visually.',
         parameters: z.object({
           keywords: z.string().nullable().describe('Optional keywords to filter components. Use null if no keywords.')
         }),
@@ -804,20 +1008,60 @@ function buildToolDefinitions() {
         },
         eventArgs: ({ keywords }) => ({ keywords }),
         run: async ({ args, getCatalog }) => {
-          const catalog = await getCatalog(args.keywords || '', 50);
-          const summary = (catalog.components || []).map((component) => ({
+          const catalog = await getCatalog(args.keywords || '', BROWSE_MAX_RESULTS);
+          const components = catalog.components || [];
+          const summary = components.map((component) => ({
             id: component.id,
             name: component.name,
             category: component.category,
-            description: component.description?.slice(0, 120) || '',
+            description: component.description?.slice(0, 200) || '',
+            visualDescription: component.visualDescription?.slice(0, 240) || '',
+            moodTone: component.moodTone || null,
+            tags: Array.isArray(component.tags) ? component.tags.slice(0, 6) : [],
+            suitableFor: Array.isArray(component.suitableFor) ? component.suitableFor.slice(0, 4) : [],
+            notSuitableFor: Array.isArray(component.notSuitableFor) ? component.notSuitableFor.slice(0, 3) : [],
+            colorProfile: component.colorProfile || null,
+            authorType: component.authorType || 'official',
+            qualityScore: component.qualityScore ?? null,
+            usageCount: component.usageCount ?? 0,
+            hasPreviewImage: Boolean(component.thumbnailUrl),
             fitScore: component.fitScore,
             fitReasons: component.fitReasons,
             matchedRoles: component.matchedRoles
           }));
+
+          // Fetch preview thumbnails for the top matches so the (multimodal)
+          // model can choose by looking at the actual component, not just text.
+          const previewImages = await fetchComponentPreviewImages(
+            components.filter((component) => component.thumbnailUrl).slice(0, BROWSE_PREVIEW_IMAGE_COUNT)
+          );
+
+          const modelResult = {
+            components: summary,
+            total: summary.length,
+            previewNote: previewImages.length > 0
+              ? `Preview screenshots for the top ${previewImages.length} matches are attached as images on the next message, in this order: ${previewImages.map((image) => image.componentId).join(', ')}.`
+              : 'No preview screenshots available for these matches; rely on visualDescription and metadata.'
+          };
+
           return {
-            result: { components: summary, total: summary.length },
-            modelResult: { components: summary, total: summary.length },
-            eventResult: { count: summary.length }
+            result: modelResult,
+            modelResult,
+            eventResult: { count: summary.length, previews: previewImages.length },
+            visualAttachment: previewImages.length > 0
+              ? {
+                text: [
+                  `[Component previews] Screenshots of the top ${previewImages.length} catalog matches from your browse_components call, in order:`,
+                  ...previewImages.map((image, index) => `${index + 1}. ${image.componentId} — ${image.name}`),
+                  'Judge them visually: pick components whose actual look fits the user\'s brief and visual direction, not just the keyword match.'
+                ].join('\n'),
+                images: previewImages.map((image) => ({
+                  base64: image.base64,
+                  mimeType: image.mimeType,
+                  label: image.componentId
+                }))
+              }
+              : null
           };
         }
       },
@@ -884,7 +1128,7 @@ function buildToolDefinitions() {
           required: ['component_id', 'reason']
         },
         eventArgs: ({ component_id, reason }) => ({ component_id, reason }),
-        run: async ({ args, provider, getBundle }) => {
+        run: async ({ args, provider, projectId, sessionId, getBundle }) => {
           const bundle = await getBundle(args.component_id);
           if (!bundle) {
             const error = new Error(`Component not found: ${args.component_id}`);
@@ -929,6 +1173,27 @@ function buildToolDefinitions() {
             linesRemoved: acc.linesRemoved + (file.diff?.linesRemoved || 0)
           }), { linesAdded: 0, linesRemoved: 0 });
 
+          // Honor the bundle's declared npm dependencies: auto-install
+          // allowlisted packages so community components don't silently break.
+          const requiredPackages = extractRequiredPackages(bundle.requires)
+            .filter((packageName) => !SANDBOX_BASE_PACKAGES.has(packageName));
+          const installablePackages = requiredPackages.filter((packageName) => isAllowlistedPackage(packageName));
+          const blockedPackages = requiredPackages.filter((packageName) => !isAllowlistedPackage(packageName));
+          let installedPackages = [];
+          let packageInstallError = null;
+          if (installablePackages.length > 0 && typeof provider.installPackages === 'function') {
+            try {
+              const installResult = await provider.installPackages(installablePackages.slice(0, 5));
+              if (installResult?.success) {
+                installedPackages = installablePackages.slice(0, 5);
+              } else {
+                packageInstallError = String(installResult?.stderr || installResult?.stdout || 'install failed').slice(0, 400);
+              }
+            } catch (installErr) {
+              packageInstallError = installErr.message;
+            }
+          }
+
           const result = {
             success: true,
             componentId: args.component_id,
@@ -936,11 +1201,28 @@ function buildToolDefinitions() {
             installedFiles,
             skippedFiles,
             diff,
+            ...(requiredPackages.length > 0 ? {
+              dependencies: {
+                required: requiredPackages,
+                installed: installedPackages,
+                blocked: blockedPackages,
+                ...(packageInstallError ? { error: packageInstallError } : {})
+              }
+            } : {}),
             sourceSafety: {
               installedWithoutModelSource: true,
               guidance: 'The component files were written directly to the sandbox. Import the installed paths instead of asking for the full shader/source text.'
             }
           };
+
+          // Flywheel: every agent install counts as a real usage so catalog
+          // ranking, survival stats, and author rewards learn from agent builds.
+          recordComponentInstall({
+            componentRef: args.component_id,
+            projectId,
+            sessionId,
+            installedPaths: installedFiles.map((file) => file.path)
+          }).catch(() => {});
 
           return {
             result,
@@ -1055,6 +1337,14 @@ function buildToolDefinitions() {
         eventArgs: ({ packages = [], reason }) => ({ packages, reason }),
         run: async ({ provider, args }) => {
           const packages = validatePackageNames(args.packages || []);
+          const blocked = packages.filter((packageName) => !isAllowlistedPackage(packageName));
+          if (blocked.length > 0) {
+            const error = new Error(
+              `Package(s) not on the allowlist: ${blocked.join(', ')}. Only curated design/animation/data libraries can be installed. Use the preinstalled libraries or an allowlisted alternative.`
+            );
+            error.code = 'PACKAGE_NOT_ALLOWLISTED';
+            throw error;
+          }
           if (!provider || typeof provider.installPackages !== 'function') {
             const error = new Error('Current sandbox provider does not support package installation');
             error.code = 'PACKAGE_INSTALL_UNSUPPORTED';

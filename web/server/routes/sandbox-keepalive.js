@@ -1,4 +1,4 @@
-import { sandboxManager } from '../lib/sandbox/sandbox-manager.js';
+import { resolveSandboxProvider } from '../lib/sandbox/provider-resolver.js';
 
 export default async function sandboxKeepAlive(req, res) {
   try {
@@ -8,7 +8,22 @@ export default async function sandboxKeepAlive(req, res) {
       return res.status(400).json({ success: false, error: 'sandboxId is required' });
     }
 
-    const provider = sandboxManager.getProvider(sandboxId) || global.activeSandboxProvider;
+    const resolution = await resolveSandboxProvider({
+      sandboxId,
+      allowGlobalFallback: false,
+      allowReconnect: true,
+      requireAlive: true
+    });
+
+    if (!resolution.ok) {
+      return res.status(resolution.statusCode).json({
+        success: false,
+        error: resolution.message,
+        code: resolution.code
+      });
+    }
+
+    const provider = resolution.provider;
     
     if (provider && typeof provider.keepAlive === 'function') {
       await provider.keepAlive();

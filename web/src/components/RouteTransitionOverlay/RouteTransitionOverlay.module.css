@@ -26,6 +26,8 @@
     position: absolute;
     inset: 0;
     z-index: 2;
+    transform-origin: 50% 100%;
+    animation: ambientBreathe 7s ease-in-out infinite;
 }
 
 .glowSource {
@@ -222,5 +224,23 @@
         transform: scale(var(--s, 1)) translate(400%, 0);
         opacity: 0.4;
         box-shadow: 0 0 5px rgba(175, 255, 252, 0.2);
+    }
+}
+
+@keyframes ambientBreathe {
+    0%, 100% {
+        transform: scale(0.985) translateY(1.2vh);
+    }
+    50% {
+        transform: scale(1.025) translateY(-0.5vh);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .glowContainer,
+    .innerDot,
+    .loader::before,
+    .loader::after {
+        animation: none;
     }
 }

@@ -14,7 +14,21 @@ export class SandboxProvider {
   async readFile(path) { throw new Error('Not implemented'); }
   async downloadFile(path) { throw new Error('Not implemented'); }
   async listFiles(directory) { throw new Error('Not implemented'); }
+  async deleteFile(path) { throw new Error('deleteFile not implemented'); }
+  async assertPathWithinRoot(path) { return { safe: true, path }; }
   async installPackages(packages) { throw new Error('Not implemented'); }
+  getCapabilities() {
+    return {
+      fileRead: typeof this.readFile === 'function',
+      fileWrite: typeof this.writeFile === 'function',
+      command: typeof this.runCommand === 'function',
+      packageInstall: false,
+      appReset: false,
+      viteRestart: false,
+      deleteFile: false,
+      pathSafetyCheck: false
+    };
+  }
   getSandboxUrl() { return null; }
   getSandboxInfo() { return null; }
   async terminate() { throw new Error('Not implemented'); }

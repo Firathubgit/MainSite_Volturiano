@@ -2,6 +2,7 @@ import { createSnapshotForUser } from '../lib/db/projects.js';
 import { captureAndUploadScreenshot } from '../lib/screenshot.js';
 import { updateProjectForUser } from '../lib/db/projects.js';
 import { sendOwnershipError } from '../lib/security/project-access.js';
+import { recordComponentSurvival } from '../lib/community/usage-flywheel.js';
 
 export default async function saveSnapshot(req, res) {
     try {
@@ -34,6 +35,12 @@ export default async function saveSnapshot(req, res) {
             designSystem,
             componentPlan
         });
+
+        // Flywheel: check which installed catalog components survived into this
+        // snapshot. Survival rate feeds component ranking. Fire and forget.
+        recordComponentSurvival({ projectId, files }).catch((e) =>
+            console.warn('[Snapshot Endpoint] Survival tracking skipped:', e.message)
+        );
 
         console.log(`[Snapshot Endpoint] Checking sandbox URL for screenshot trigger:`, sandboxUrl);
         // Fire and forget thumbnail capture

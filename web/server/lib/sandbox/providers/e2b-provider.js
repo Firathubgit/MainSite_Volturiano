@@ -190,6 +190,73 @@ print(f"Written: {full_path}")
     }
   }
 
+  getCapabilities() {
+    return {
+      fileRead: true,
+      fileWrite: true,
+      command: true,
+      packageInstall: true,
+      appReset: true,
+      viteRestart: true,
+      deleteFile: true,
+      pathSafetyCheck: true
+    };
+  }
+
+  async assertPathWithinRoot(path, root = '/home/user/app') {
+    if (!this.sandbox) throw new Error('No active sandbox');
+
+    const result = await this.sandbox.runCode(`
+import json, os
+target = ${JSON.stringify(path)}
+root = ${JSON.stringify(root)}
+root_real = os.path.realpath(root)
+target_abs = target if os.path.isabs(target) else os.path.join(root_real, target)
+parent = target_abs if os.path.exists(target_abs) else os.path.dirname(target_abs)
+while parent and not os.path.exists(parent):
+    next_parent = os.path.dirname(parent)
+    if next_parent == parent:
+        break
+    parent = next_parent
+parent_real = os.path.realpath(parent or root_real)
+target_real = os.path.realpath(target_abs) if os.path.exists(target_abs) else os.path.join(parent_real, os.path.basename(target_abs))
+safe = target_real == root_real or target_real.startswith(root_real + os.sep)
+print(json.dumps({"safe": safe, "path": target_real, "root": root_real}))
+`);
+
+    const output = this._getOutput(result).trim().split('\n').filter(Boolean).pop() || '{}';
+    let parsed;
+    try {
+      parsed = JSON.parse(output);
+    } catch {
+      throw new Error('Sandbox path safety check returned invalid output');
+    }
+
+    if (!parsed.safe) {
+      const error = new Error(`Path "${path}" escapes sandbox root "${root}"`);
+      error.code = 'BOUNDARY_VIOLATION';
+      throw error;
+    }
+
+    return parsed;
+  }
+
+  async deleteFile(path) {
+    if (!this.sandbox) throw new Error('No active sandbox');
+    const fullPath = path.startsWith('/') ? path : `/home/user/app/${path}`;
+
+    await this.assertPathWithinRoot(fullPath);
+    await this.sandbox.runCode(`
+import os
+target = ${JSON.stringify(fullPath)}
+if os.path.isdir(target):
+    raise IsADirectoryError(target)
+if os.path.exists(target):
+    os.remove(target)
+print(f"Deleted: {target}")
+`);
+  }
+
   async listFiles(directory = '/home/user/app') {
     if (!this.sandbox) throw new Error('No active sandbox');
 

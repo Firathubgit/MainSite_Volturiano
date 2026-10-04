@@ -34,6 +34,8 @@ import {
     GithubApiError,
 } from '../../lib/github/api.js';
 import { publishProjectToGithub, buildGithubNoreplyEmail } from '../../lib/github/publish-flow.js';
+import { resolveSandboxProvider } from '../../lib/sandbox/provider-resolver.js';
+import { assertProjectOwner, sendOwnershipError } from '../../lib/security/project-access.js';
 
 const router = Router();
 
@@ -487,7 +489,7 @@ router.post('/vercel-url', requireAuth, async (req, res) => {
 // ═══════════════════════════════════════════════════════════════
 router.post('/push-project', requireAuth, async (req, res) => {
     if (!ensureConfigured(res)) return;
-    const { projectId, repoName, visibility = 'private', isUpdate = false } = req.body || {};
+    const { projectId, sandboxId, repoName, visibility = 'private', isUpdate = false } = req.body || {};
 
     if (!projectId || !repoName) {
         return res.status(400).json({ success: false, error: 'projectId and repoName are required' });
@@ -509,26 +511,29 @@ router.post('/push-project', requireAuth, async (req, res) => {
             });
         }
 
-        const { data: project, error: projectError } = await supabaseAdmin
-            .from('projects')
-            .select('id, user_id, name, github_repo_owner, github_repo_name')
-            .eq('id', projectId)
-            .eq('user_id', req.user.id)
-            .maybeSingle();
-
-        if (projectError) throw projectError;
-        if (!project) {
-            return res.status(404).json({ success: false, error: 'Project not found' });
+        let project;
+        try {
+            project = await assertProjectOwner(projectId, req.user.id, {
+                select: 'id,user_id,name,github_repo_owner,github_repo_name',
+            });
+        } catch (ownershipError) {
+            return sendOwnershipError(res, ownershipError, 'Project not found');
         }
 
-        const sandboxProvider = global.activeSandboxProvider;
-        if (!sandboxProvider) {
+        const sandboxResolution = await resolveSandboxProvider({
+            sandboxId,
+            allowGlobalFallback: !sandboxId,
+            allowReconnect: true,
+            requireAlive: true,
+        });
+        if (!sandboxResolution.ok) {
             return res.status(409).json({
                 success: false,
-                error: 'No active sandbox. Open the project in the Builder so we can package its files.',
-                code: 'NO_ACTIVE_SANDBOX',
+                error: sandboxResolution.message || 'No active sandbox. Open the project in the Builder so we can package its files.',
+                code: sandboxResolution.code || 'NO_ACTIVE_SANDBOX',
             });
         }
+        const sandboxProvider = sandboxResolution.provider;
 
         let token;
         try {

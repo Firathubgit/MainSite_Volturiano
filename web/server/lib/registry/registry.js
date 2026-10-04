@@ -2,6 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { createClient } from '@supabase/supabase-js';
+import { loadSurvivalStats, semanticMatchComponents } from './embeddings.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -105,6 +106,7 @@ export async function getCatalogAsync() {
                     tags: [...new Set(sorted.flatMap(c => c.tags || []))],
                     components: sorted.map(c => ({
                         id: c.component_id,
+                        uuid: c.id,
                         category: c.category,
                         name: c.name,
                         tags: c.tags || [],
@@ -121,6 +123,8 @@ export async function getCatalogAsync() {
                         },
                         suitableFor: typeof c.suitable_for === 'string' ? JSON.parse(c.suitable_for) : (c.suitable_for || []),
                         notSuitableFor: typeof c.not_suitable_for === 'string' ? JSON.parse(c.not_suitable_for) : (c.not_suitable_for || []),
+                        industryTags: typeof c.industry_tags === 'string' ? JSON.parse(c.industry_tags) : (c.industry_tags || []),
+                        designPersonality: c.design_personality || null,
                         moodTone: c.mood_tone || '',
                         typographyStyle: c.typography_style || '',
                         layoutType: c.layout_type || '',
@@ -128,6 +132,9 @@ export async function getCatalogAsync() {
                         authorType: c.author_type || 'official',
                         qualityScore: c.quality_score || null,
                         ratingAvg: c.rating_avg || null,
+                        usageCount: c.usage_count || 0,
+                        // Visual previews so multimodal agents can pick by looking
+                        thumbnailUrl: c.thumbnail_url || c.preview_image_url || null,
                     }))
                 };
             } else {
@@ -198,7 +205,14 @@ export async function getCatalogForPromptAsync(filterKeywords = [], maxItems = 8
     const promptText = Array.isArray(filterKeywords)
         ? filterKeywords.join(' ')
         : String(filterKeywords || '');
-    const components = rankComponentsForPrompt(catalog.components, promptText, { maxItems });
+
+    // Unified retrieval: semantic (pgvector) hybrid ranking first, keyword
+    // heuristics as fallback. One layer behind the agent, the selector, and
+    // the planner, so component picks are consistent everywhere.
+    let components = await rankComponentsSemantic(catalog.components, promptText, { maxItems });
+    if (!components) {
+        components = rankComponentsForPrompt(catalog.components, promptText, { maxItems });
+    }
 
     return {
         catalogVersion: catalog.catalogVersion,
@@ -214,6 +228,8 @@ export async function getCatalogForPromptAsync(filterKeywords = [], maxItems = 8
             visualDescription: c.visualDescription,
             suitableFor: c.suitableFor,
             notSuitableFor: c.notSuitableFor,
+            industryTags: c.industryTags,
+            designPersonality: c.designPersonality,
             moodTone: c.moodTone,
             colorProfile: c.colorProfile,
             supports: c.supports,
@@ -222,6 +238,8 @@ export async function getCatalogForPromptAsync(filterKeywords = [], maxItems = 8
             authorType: c.authorType || 'official',
             qualityScore: c.qualityScore,
             ratingAvg: c.ratingAvg,
+            usageCount: c.usageCount,
+            thumbnailUrl: c.thumbnailUrl || null,
             fitScore: c.fitScore,
             fitReasons: c.fitReasons,
             matchedRoles: c.matchedRoles,
@@ -238,7 +256,7 @@ const ROLE_INTENTS = [
     { role: 'header', terms: ['header', 'navbar', 'navigation', 'nav', 'menu', 'topbar'] },
     { role: 'hero', terms: ['hero', 'above the fold', 'intro', 'headline', 'landing'] },
     { role: 'features', terms: ['features', 'feature', 'benefits', 'services', 'capabilities'] },
-    { role: 'pricing', terms: ['pricing', 'plans', 'subscription', 'tiers', 'checkout'] },
+    { role: 'pricing', terms: ['pricing', 'plans', 'subscription', 'tiers'] },
     { role: 'testimonials', terms: ['testimonial', 'testimonials', 'reviews', 'social proof', 'customers'] },
     { role: 'footer', terms: ['footer', 'bottom', 'links'] },
     { role: 'dashboard', terms: ['dashboard', 'admin', 'crm', 'workspace', 'panel', 'backoffice'] },
@@ -248,14 +266,28 @@ const ROLE_INTENTS = [
     { role: 'calendar', terms: ['calendar', 'schedule', 'appointments', 'events'] },
     { role: 'form', terms: ['form', 'input', 'submit', 'contact', 'signup', 'login'] },
     { role: 'profile', terms: ['profile', 'user', 'member', 'customer', 'client', 'girlfriend', 'boyfriend', 'people'] },
-    { role: 'ecommerce', terms: ['shop', 'store', 'product', 'cart', 'commerce', 'ecommerce'] },
+    {
+        role: 'ecommerce',
+        terms: [
+            'shop', 'store', 'storefront', 'product', 'products', 'catalog',
+            'collection', 'cart', 'checkout', 'commerce', 'ecommerce', 'e-commerce',
+            'merch', 'merchandise', 'apparel', 'streetwear', 'retail', 'drop', 'drops'
+        ]
+    },
     { role: 'portfolio', terms: ['portfolio', 'case study', 'case studies', 'gallery', 'showcase'] }
 ];
 
 const SITE_TYPE_INTENTS = [
     { type: 'dashboard', terms: ['dashboard', 'admin', 'crm', 'manage', 'management', 'panel', 'workspace'] },
     { type: 'landing_page', terms: ['landing page', 'homepage', 'marketing site', 'website', 'startup', 'saas'] },
-    { type: 'ecommerce', terms: ['ecommerce', 'shop', 'store', 'product', 'cart'] },
+    {
+        type: 'ecommerce',
+        terms: [
+            'ecommerce', 'e-commerce', 'commerce', 'online store', 'shop', 'store',
+            'storefront', 'cart', 'checkout', 'catalog', 'merch', 'merchandise',
+            'apparel', 'retail'
+        ]
+    },
     { type: 'portfolio', terms: ['portfolio', 'agency', 'case study', 'showcase'] },
     { type: 'restaurant', terms: ['restaurant', 'cafe', 'menu', 'booking'] },
     { type: 'automotive', terms: ['car', 'automotive', 'vehicle', 'dealership', 'luxury car'] }
@@ -295,7 +327,7 @@ export function inferComponentIntent(input = '') {
         addUnique(sectionRoles, ['header', 'hero', 'features', 'testimonials', 'pricing', 'footer']);
     }
     if (siteTypes.includes('ecommerce')) {
-        addUnique(sectionRoles, ['header', 'hero', 'ecommerce', 'cards', 'pricing', 'footer']);
+        addUnique(sectionRoles, ['header', 'hero', 'ecommerce', 'cards', 'footer']);
     }
 
     return {
@@ -308,6 +340,74 @@ export function inferComponentIntent(input = '') {
         colorModes,
         hasIntent: Boolean(tokens.length || sectionRoles.length || siteTypes.length || moodTones.length || colorModes.length)
     };
+}
+
+/**
+ * Hybrid semantic ranking: pgvector similarity blended with intent fit,
+ * quality score, usage, and agent-survival rate. Returns null when semantic
+ * retrieval is unavailable so callers can fall back to keyword heuristics.
+ */
+export async function rankComponentsSemantic(components = [], prompt = '', options = {}) {
+    const maxItems = Number.isFinite(options.maxItems) ? options.maxItems : 80;
+    const promptText = String(prompt || '').trim();
+    if (!promptText || !components?.length) return null;
+
+    const [match, survivalStats] = await Promise.all([
+        semanticMatchComponents(promptText, { matchCount: Math.max(maxItems, 40) }),
+        loadSurvivalStats()
+    ]);
+    if (!match) return null;
+
+    const intent = inferComponentIntent(promptText);
+    const scored = [];
+
+    for (const component of components) {
+        const similarity = match.bySlug.get(component.id) ?? match.byUuid.get(component.uuid);
+        if (similarity === undefined || similarity === null) continue;
+
+        const fit = scoreComponentFit(component, intent);
+        const survival = component.uuid ? survivalStats.get(component.uuid) : null;
+        const survivalScore = survival?.survivalRate ?? null;
+        const usageScore = Math.min(1, Math.log10((component.usageCount || 0) + 1) / 3);
+        const quality = normalizeQualityScore(component);
+
+        const adjustedRelevance = clamp01(fit.relevance - fit.penalty);
+        const blended = clamp01(
+            similarity * 0.55
+            + adjustedRelevance * 0.15
+            + quality * 0.15
+            + usageScore * 0.05
+            + (survivalScore === null ? quality * 0.10 : survivalScore * 0.10)
+        );
+
+        const reasons = [`semantic:${similarity.toFixed(2)}`, ...fit.reasons.slice(0, 3)];
+        if (survivalScore !== null) reasons.push(`survival:${survivalScore.toFixed(2)}`);
+
+        scored.push({
+            ...component,
+            fitScore: Number(blended.toFixed(3)),
+            fitReasons: reasons,
+            matchedRoles: fit.matchedRoles,
+            matchedSiteTypes: fit.matchedSiteTypes,
+            _fitStrongSiteTypes: fit.matchedStrongSiteTypes
+        });
+    }
+
+    if (scored.length === 0) return null;
+    const specializedSiteTypes = requestedSpecializedSiteTypes(intent);
+    const exactCandidates = specializedSiteTypes.length > 0
+        ? scored.filter((component) => component._fitStrongSiteTypes.length > 0)
+        : [];
+    if (specializedSiteTypes.length > 0 && exactCandidates.length === 0) {
+        // The semantic shortlist missed every exact vertical match. Let the
+        // deterministic catalog pass recover grounded matches from the full set.
+        return null;
+    }
+
+    return (exactCandidates.length > 0 ? exactCandidates : scored)
+        .sort((a, b) => b.fitScore - a.fitScore)
+        .slice(0, maxItems)
+        .map(({ _fitStrongSiteTypes, ...component }) => component);
 }
 
 export function rankComponentsForPrompt(components = [], prompt = '', options = {}) {
@@ -323,6 +423,7 @@ export function rankComponentsForPrompt(components = [], prompt = '', options = 
             fitReasons: fit.reasons,
             matchedRoles: fit.matchedRoles,
             matchedSiteTypes: fit.matchedSiteTypes,
+            _fitStrongSiteTypes: fit.matchedStrongSiteTypes,
             _fitMatched: fit.matched,
             _fitRelevance: fit.relevance,
             _originalIndex: index
@@ -336,6 +437,11 @@ export function rankComponentsForPrompt(components = [], prompt = '', options = 
         ));
         if (filtered.length > 0) candidates = filtered;
     }
+    const specializedSiteTypes = requestedSpecializedSiteTypes(intent);
+    const exactCandidates = specializedSiteTypes.length > 0
+        ? candidates.filter((component) => component._fitStrongSiteTypes.length > 0)
+        : [];
+    if (specializedSiteTypes.length > 0) candidates = exactCandidates;
 
     return candidates
         .sort((a, b) => {
@@ -345,7 +451,13 @@ export function rankComponentsForPrompt(components = [], prompt = '', options = 
             return a._originalIndex - b._originalIndex;
         })
         .slice(0, maxItems)
-        .map(({ _fitMatched, _fitRelevance, _originalIndex, ...component }) => component);
+        .map(({
+            _fitStrongSiteTypes,
+            _fitMatched,
+            _fitRelevance,
+            _originalIndex,
+            ...component
+        }) => component);
 }
 
 export function scoreComponentFit(component = {}, intentOrPrompt = '') {
@@ -357,6 +469,7 @@ export function scoreComponentFit(component = {}, intentOrPrompt = '') {
     const componentSiteTypes = classifyComponentSiteTypes(component);
     const componentMoods = classifyComponentMoods(component);
     const componentColors = classifyComponentColors(component);
+    const componentStrongSiteTypes = classifyComponentStrongSiteTypes(component);
     const reasons = [];
 
     let relevance = 0;
@@ -364,7 +477,10 @@ export function scoreComponentFit(component = {}, intentOrPrompt = '') {
     const matchedSiteTypes = intersection(intent.siteTypes, componentSiteTypes);
     const matchedMoods = intersection(intent.moodTones, componentMoods);
     const matchedColors = intersection(intent.colorModes, componentColors);
-    const tokenHits = intent.tokens.filter((token) => token.length > 2 && haystack.includes(token));
+    const matchedStrongSiteTypes = intersection(intent.siteTypes, componentStrongSiteTypes);
+    const tokenHits = intent.tokens.filter((token) => (
+        token.length > 2 && containsIntentTerm(haystack, token)
+    ));
 
     if (matchedRoles.length) {
         relevance += Math.min(0.42, matchedRoles.length * 0.18);
@@ -373,6 +489,10 @@ export function scoreComponentFit(component = {}, intentOrPrompt = '') {
     if (matchedSiteTypes.length) {
         relevance += Math.min(0.24, matchedSiteTypes.length * 0.14);
         reasons.push(`site:${matchedSiteTypes.slice(0, 2).join(',')}`);
+    }
+    if (matchedStrongSiteTypes.length) {
+        relevance += Math.min(0.22, matchedStrongSiteTypes.length * 0.22);
+        reasons.push(`exact-site:${matchedStrongSiteTypes.slice(0, 2).join(',')}`);
     }
     if (matchedMoods.length) {
         relevance += Math.min(0.16, matchedMoods.length * 0.08);
@@ -397,9 +517,11 @@ export function scoreComponentFit(component = {}, intentOrPrompt = '') {
         score: Number(score.toFixed(3)),
         relevance: Number(relevance.toFixed(3)),
         matched: relevance > 0 && penalty < 0.5,
+        penalty,
         reasons: reasons.length ? reasons : ['quality_rank'],
         matchedRoles,
-        matchedSiteTypes
+        matchedSiteTypes,
+        matchedStrongSiteTypes
     };
 }
 
@@ -416,6 +538,40 @@ function classifyComponentSiteTypes(component) {
     const suitableFor = normalizeArray(component.suitableFor).join(' ');
     addUnique(siteTypes, collectIntentMatches(normalizeText(suitableFor), SITE_TYPE_INTENTS, 'type'));
     return siteTypes;
+}
+
+const SPECIALIZED_SITE_EVIDENCE = {
+    dashboard: ['dashboard', 'admin', 'crm', 'backoffice', 'back office', 'workspace'],
+    ecommerce: [
+        'ecommerce', 'e-commerce', 'online store', 'shop', 'storefront', 'shopping cart',
+        'cart', 'checkout', 'catalog', 'merch', 'merchandise', 'apparel', 'retail',
+        'fashion retailer', 'streetwear', 'sneaker drop', 'fashion drop', 'product showcase'
+    ],
+    portfolio: ['portfolio', 'case study', 'case studies', 'project showcase'],
+    restaurant: ['restaurant', 'cafe', 'dining', 'food menu', 'table booking'],
+    automotive: ['automotive', 'vehicle', 'dealership', 'luxury car', 'car showroom']
+};
+
+function classifyComponentStrongSiteTypes(component) {
+    const evidence = normalizeText([
+        component.id,
+        component.name,
+        component.category,
+        ...(component.tags || []),
+        ...(component.keywords || []),
+        ...normalizeArray(component.suitableFor),
+        ...normalizeArray(component.industryTags)
+    ].filter(Boolean).join(' '));
+
+    return Object.entries(SPECIALIZED_SITE_EVIDENCE)
+        .filter(([, terms]) => terms.some((term) => containsIntentTerm(evidence, term)))
+        .map(([siteType]) => siteType);
+}
+
+function requestedSpecializedSiteTypes(intent) {
+    return (intent?.siteTypes || []).filter((siteType) => (
+        Object.prototype.hasOwnProperty.call(SPECIALIZED_SITE_EVIDENCE, siteType)
+    ));
 }
 
 function classifyComponentMoods(component) {
@@ -447,30 +603,44 @@ function componentHaystack(component) {
         ...(component.tags || []),
         ...(component.keywords || []),
         ...normalizeArray(component.suitableFor),
+        ...normalizeArray(component.industryTags),
+        JSON.stringify(component.designPersonality || {}),
         JSON.stringify(component.supports || {})
     ].filter(Boolean).join(' '));
 }
 
 function notSuitablePenalty(component, intent) {
-    const notSuitable = normalizeText(normalizeArray(component.notSuitableFor).join(' '));
+    const notSuitable = normalizeText(
+        normalizeArray(component.notSuitableFor)
+            .map((constraint) => String(constraint).replace(/\b(?:without|excluding)\b.*$/i, ''))
+            .join(' ')
+    );
     if (!notSuitable) return 0;
-    const disallowedHits = [
-        ...intent.siteTypes,
-        ...intent.sectionRoles,
-        ...intent.moodTones,
-        ...intent.tokens
-    ].filter((term) => term.length > 2 && notSuitable.includes(term));
-    return disallowedHits.length ? 0.35 : 0;
+    const disallowedSiteTypes = collectIntentMatches(notSuitable, SITE_TYPE_INTENTS, 'type');
+    const disallowedMoods = collectIntentMatches(notSuitable, MOOD_INTENTS, 'mood');
+    const hasConflict = (
+        intersection(intent.siteTypes, disallowedSiteTypes).length > 0
+        || intersection(intent.moodTones, disallowedMoods).length > 0
+    );
+    return hasConflict ? 0.35 : 0;
 }
 
 function collectIntentMatches(normalizedText, definitions, key) {
     const matches = [];
     for (const definition of definitions) {
-        if (definition.terms.some((term) => normalizedText.includes(normalizeText(term)))) {
+        if (definition.terms.some((term) => containsIntentTerm(normalizedText, term))) {
             matches.push(definition[key]);
         }
     }
     return [...new Set(matches)];
+}
+
+function containsIntentTerm(normalizedText, term) {
+    const text = normalizeText(normalizedText);
+    const normalizedTerm = normalizeText(term);
+    if (!text || !normalizedTerm) return false;
+    const escaped = normalizedTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    return new RegExp(`(?:^|[^a-z0-9])${escaped}(?:$|[^a-z0-9])`, 'i').test(text);
 }
 
 function normalizeCategoryRole(category = '') {
@@ -517,9 +687,14 @@ function normalizeArray(value) {
 function tokenize(text = '') {
     return normalizeText(text)
         .split(/[^a-z0-9]+/)
-        .filter((token) => token.length > 2)
+        .filter((token) => token.length > 2 && !INTENT_TOKEN_STOPWORDS.has(token))
         .slice(0, 30);
 }
+
+const INTENT_TOKEN_STOPWORDS = new Set([
+    'and', 'are', 'build', 'create', 'dedicated', 'for', 'from', 'into',
+    'make', 'site', 'that', 'the', 'this', 'use', 'website', 'with',
+]);
 
 function normalizeText(text = '') {
     return String(text || '').toLowerCase().replace(/[_-]+/g, ' ').replace(/\s+/g, ' ').trim();
@@ -613,6 +788,70 @@ export async function getBundleAsync(componentId, format = 'fileblocks') {
 
     console.error(`[Registry] Supabase client NOT initialized. Cannot fetch bundle "${componentId}".`);
     throw new Error('Supabase not configured');
+}
+
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/**
+ * Resolve a mixed list of component references (UUIDs from the human-facing UI
+ * or slugs from the agent catalog) into canonical records.
+ * Returns Map<inputId, { uuid, slug, name }> for every reference that exists.
+ */
+export async function resolveComponentRefs(componentIds = []) {
+    const resolved = new Map();
+    const ids = [...new Set((componentIds || []).map((id) => String(id || '').trim()).filter(Boolean))];
+    if (!ids.length || !supabase) return resolved;
+
+    const uuids = ids.filter((id) => UUID_PATTERN.test(id));
+    const slugs = ids.filter((id) => !UUID_PATTERN.test(id));
+
+    try {
+        const queries = [];
+        if (uuids.length) {
+            queries.push(supabase.from('components').select('id,component_id,name').in('id', uuids));
+        }
+        if (slugs.length) {
+            queries.push(supabase.from('components').select('id,component_id,name').in('component_id', slugs));
+        }
+        const results = await Promise.all(queries);
+        for (const { data, error } of results) {
+            if (error || !data) continue;
+            for (const row of data) {
+                const record = { uuid: row.id, slug: row.component_id, name: row.name || row.component_id };
+                if (uuids.includes(row.id)) resolved.set(row.id, record);
+                if (slugs.includes(row.component_id)) resolved.set(row.component_id, record);
+            }
+        }
+    } catch (err) {
+        console.warn('[Registry] resolveComponentRefs failed:', err.message);
+    }
+    return resolved;
+}
+
+/**
+ * Record one usage of a component (agent install or template assembly).
+ * Accepts UUID or slug; resolves and calls the increment_usage_count RPC,
+ * which also handles author reputation milestones. Fire-and-forget safe.
+ */
+export async function recordComponentUsage(componentId) {
+    if (!supabase || !componentId) return false;
+    try {
+        let uuid = String(componentId).trim();
+        if (!UUID_PATTERN.test(uuid)) {
+            const refs = await resolveComponentRefs([uuid]);
+            uuid = refs.get(String(componentId).trim())?.uuid || null;
+        }
+        if (!uuid) return false;
+        const { error } = await supabase.rpc('increment_usage_count', { p_component_id: uuid });
+        if (error) {
+            console.warn(`[Registry] increment_usage_count failed for ${componentId}:`, error.message);
+            return false;
+        }
+        return true;
+    } catch (err) {
+        console.warn(`[Registry] recordComponentUsage error for ${componentId}:`, err.message);
+        return false;
+    }
 }
 
 /**

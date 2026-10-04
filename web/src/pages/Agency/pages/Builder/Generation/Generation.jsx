@@ -210,6 +210,36 @@ function truncateMiddle(str, maxLen = 52) {
   return `${str.slice(0, head)}${ellipsis}${str.slice(-tail)}`;
 }
 
+function buildGuidedIntakeSelectionTags(designBrief, components = []) {
+  const intake = designBrief?.intake;
+  if (!intake) return [];
+
+  const tags = [];
+  const seen = new Set();
+  const appendTag = (kind, label, id) => {
+    const cleanLabel = String(label || '').trim();
+    if (!cleanLabel) return;
+
+    const identity = `${kind}:${cleanLabel.toLowerCase()}`;
+    if (seen.has(identity)) return;
+    seen.add(identity);
+    tags.push({ id, kind, label: cleanLabel });
+  };
+
+  (Array.isArray(intake.answers) ? intake.answers : []).forEach((answer, index) => {
+    appendTag('decision', answer?.answer, `decision-${index + 1}`);
+  });
+  appendTag('typography', intake.typography, 'typography');
+  appendTag('palette', intake.palette, 'palette');
+  (Array.isArray(components) ? components : []).forEach((component, index) => {
+    const name = typeof component === 'string' ? component : component?.name;
+    const componentId = typeof component === 'string' ? index : (component?.id || component?.uuid || index);
+    appendTag('component', name, `component-${componentId}`);
+  });
+
+  return tags;
+}
+
 /** Safely parse JSON from a fetch Response. Throws with a clear message if response is not ok or body is invalid. */
 async function safeParseJson(res, context = 'response') {
   const text = await res.text();
@@ -752,6 +782,7 @@ export default function Generation() {
   const [pendingComponents, setPendingComponents] = useState([]);
   const [optimisticDeduction, setOptimisticDeduction] = useState(0);
   const [isDeducting, setIsDeducting] = useState(false);
+  const routeDeductionDispatchedRef = useRef(false);
 
   useEffect(() => {
     const handleDeduction = () => {
@@ -764,12 +795,33 @@ export default function Generation() {
   }, []);
 
   useEffect(() => {
+    if (!location.state?.optimisticCreditDeduction || routeDeductionDispatchedRef.current) return;
+    routeDeductionDispatchedRef.current = true;
+    window.dispatchEvent(new CustomEvent('optimistic-credit-deduction'));
+  }, [location.state?.optimisticCreditDeduction]);
+
+  // Agent page plan (plan_pages tool) → page list for the preview switcher
+  useEffect(() => {
+    const handlePagePlan = (event) => {
+      const detail = event?.detail || {};
+      if (!Array.isArray(detail.pages) || detail.pages.length === 0) return;
+      setProjectPages(detail.pages);
+      setIsMultiPageProject(detail.buildMode === 'multi_page' && detail.pages.length > 1);
+      setProjectBuildMode(detail.buildMode || 'multi_page');
+      setActivePageRoute(detail.pages[0]?.route || '/');
+    };
+    window.addEventListener('agent-page-plan', handlePagePlan);
+    return () => window.removeEventListener('agent-page-plan', handlePagePlan);
+  }, []);
+
+  useEffect(() => {
     setOptimisticDeduction(0);
   }, [totalAvailable]);
   // MPA State Tracking
   const [expandedFolders, setExpandedFolders] = useState(new Set(['src', 'src/components', 'src/pages', 'src/app']));
   const [isMultiPageProject, setIsMultiPageProject] = useState(false);
   const [projectPages, setProjectPages] = useState([]);
+  const [activePageRoute, setActivePageRoute] = useState('/');
   const [projectSharedComponents, setProjectSharedComponents] = useState([]);
   const [projectBuildMode, setProjectBuildMode] = useState('single_page_multi_section');
   const [projectRoutingMode, setProjectRoutingMode] = useState('none');
@@ -1451,14 +1503,16 @@ export default function Generation() {
   };
 
   // ─── Create Sandbox ──────────────
-  const createSandbox = useCallback(async () => {
+  const createSandbox = useCallback(async (projectIdOverride = null) => {
     if (sandboxCreationRef.current) return sandboxCreationRef.current;
 
     const promise = (async () => {
       try {
         const res = await authFetch('/api/create-ai-sandbox-v2', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' }
+          headers: { 'Content-Type': 'application/json' },
+          // Sandboxes are scoped per project so parallel projects/tabs never kill each other.
+          body: JSON.stringify({ projectId: projectIdOverride || currentProjectId || null })
         });
         const data = await safeParseJson(res, 'create-ai-sandbox');
         if (!data.success) throw new Error(data.error || 'Failed to create sandbox');
@@ -1471,7 +1525,7 @@ export default function Generation() {
 
     sandboxCreationRef.current = promise;
     return promise;
-  }, [session]);
+  }, [session, currentProjectId]);
 
   // ─── Apply Generated Code ──────────────
   const applyGeneratedCode = useCallback(async (generatedCode, isEdit, buildId, explicitFiles = null, skipPolish = false, passedSandboxId = null, isResume = false, passedSandboxUrl = null, options = {}) => {
@@ -1793,6 +1847,7 @@ export default function Generation() {
     sandboxUrl: sandboxData?.url,
     projectId: currentProjectId,
     model: aiModel,
+    premiumMode,
     addChatMessage,
     authFetch,
     onTurnComplete: async ({ hadMutations, mutationCount, toolCallCount, prompt: agentPrompt, response, isUndo, sandboxId: passedSandboxId, sandboxUrl: passedSandboxUrl, isInitialBuild }) => {
@@ -1902,6 +1957,11 @@ export default function Generation() {
       showNotification('Finishing image optimization before sending.');
       return;
     }
+    // Pre-flight credit check: fail before any work starts instead of mid-generation with a 402.
+    if (outOfCredits && !isUnlimited) {
+      setShowLimitModal(true);
+      return;
+    }
 
     const currentImages = [...pendingImages];
     const currentComponents = [...pendingComponents];
@@ -1959,7 +2019,7 @@ export default function Generation() {
         let sandbox = sandboxData;
         if (!sandbox) {
           setAgentProgressText('Preparing sandbox...');
-          const createData = await createSandbox();
+          const createData = await createSandbox(buildId);
           sandbox = { sandboxId: createData.sandboxId, url: createData.url };
         }
 
@@ -2215,6 +2275,8 @@ export default function Generation() {
     const importIds = params.get('import');
     const projectId = params.get('project') || params.get('projectId');
     const prompt = location.state?.prompt;
+    const generationPrompt = location.state?.generationPrompt;
+    const guidedDesignBrief = location.state?.designBrief;
     const templateId = location.state?.templateId;
     const initialImages = location.state?.images || [];
 
@@ -2247,7 +2309,7 @@ export default function Generation() {
             // Ensure sandbox exists for agent to write to
             setGenerationProgress(prev => ({ ...prev, status: 'Creating sandbox...' }));
             setAgentProgressText('Preparing sandbox...');
-            const sb = await createSandbox();
+            const sb = await createSandbox(buildId);
 
             setAgentProgressText('Starting agent...');
             await sendAgentInitialBuild("Build from community components", buildId, {
@@ -2303,12 +2365,15 @@ export default function Generation() {
 
             setGenerationProgress(prev => ({ ...prev, status: 'Creating sandbox...' }));
             setAgentProgressText('Preparing sandbox...');
-            const sb = await createSandbox();
+            const sb = await createSandbox(buildId);
 
-            // Send the HIDDEN agent_prompt through the agent pipeline
+            // Send the HIDDEN agent_prompt through the agent pipeline.
+            // templateId makes the server materialize the template's real files
+            // into the sandbox before the agent customizes them.
             setAgentProgressText('Starting agent...');
             await sendAgentInitialBuild(agentPrompt, buildId, {
               images: initialImages,
+              templateId: templateData?.templateId || templateId || null,
               sandboxId: sb.sandboxId,
               sandboxUrl: sb.url
             });
@@ -2323,6 +2388,7 @@ export default function Generation() {
     } else if (prompt?.trim() || initialImages.length > 0 || manualSelectionIds) {
       initStartedRef.current = true;
       const finalPrompt = prompt?.trim() || (manualSelectionIds ? "Build from community components" : "Analyze design and build");
+      const agentPrompt = generationPrompt?.trim() || finalPrompt;
       
       (async () => {
           const buildId = crypto.randomUUID();
@@ -2342,20 +2408,22 @@ export default function Generation() {
             // while the slower sandbox creation and npm install happen in the background.
             addChatMessage(finalPrompt, 'user', { 
               images: initialImages, 
-              stagedComponents: initialComponents 
+              stagedComponents: initialComponents,
+              selectionTags: buildGuidedIntakeSelectionTags(guidedDesignBrief, initialComponents)
             });
 
             // Ensure sandbox exists for agent to write to
             setGenerationProgress(prev => ({ ...prev, status: 'Creating sandbox...' }));
             setAgentProgressText('Preparing sandbox...');
-            const sb = await createSandbox();
+            const sb = await createSandbox(buildId);
 
             // Trigger the autonomous Agent Build pipeline
             setAgentProgressText('Starting agent...');
-            await sendAgentInitialBuild(finalPrompt, buildId, {
+            await sendAgentInitialBuild(agentPrompt, buildId, {
               images: initialImages,
               manualSelectionIds,
               initialComponents,
+              designBrief: guidedDesignBrief,
               sandboxId: sb.sandboxId,
               sandboxUrl: sb.url
             });
@@ -2535,16 +2603,17 @@ export default function Generation() {
   const { phase, transitionData } = useRouteTransition();
   const isRevealing = phase === 'revealing' || phase === 'idle';
   const cinematicText = transitionData?.cinematicResponse;
+  const hasGuidedIntakeBrief = Boolean(location.state?.designBrief?.intake);
 
   useEffect(() => {
-    if (isRevealing && cinematicText && !hasPlayedCinematic && chatMessages.length > 0) {
+    if (!hasGuidedIntakeBrief && isRevealing && cinematicText && !hasPlayedCinematic && chatMessages.length > 0) {
       setHasPlayedCinematic(true);
       // Reveal chat message shortly after page load
       setTimeout(() => {
         addChatMessage(cinematicText, 'ai-narrator', { style: 'planning' });
       }, 300);
     }
-  }, [isRevealing, cinematicText, hasPlayedCinematic, chatMessages.length, addChatMessage]);
+  }, [hasGuidedIntakeBrief, isRevealing, cinematicText, hasPlayedCinematic, chatMessages.length, addChatMessage]);
 
   return (
     <div className={styles.page} data-mobile-preview={isMobilePreviewOpen} style={{ cursor: (isResizing || isEdgePulling) ? 'col-resize' : 'default', userSelect: (isResizing || isEdgePulling) ? 'none' : 'auto', background: 'black' }}>
@@ -2983,6 +3052,9 @@ export default function Generation() {
                     const firstUserMsgIndex = chatMessages.findIndex(m => m.type === 'user');
                     const isFirstUserMsg = firstUserMsgIndex === i;
                     const nextMsg = chatMessages[i + 1];
+                    const selectionTags = Array.isArray(msg.metadata?.selectionTags)
+                      ? msg.metadata.selectionTags.filter((tag) => tag?.label)
+                      : [];
                     let snapshot = null;
                     let isEdit = false;
 
@@ -3007,7 +3079,7 @@ export default function Generation() {
                             )}
                             <div className={styles.chatBubble}>
                               {msg.content}
-                              {msg.metadata?.stagedComponents?.length > 0 && (
+                              {selectionTags.length === 0 && msg.metadata?.stagedComponents?.length > 0 && (
                                 <div className={styles.messageComponents}>
                                   {msg.metadata.stagedComponents.map((comp, idx) => {
                                     const thumbPath = comp.thumbnail_url || comp.preview_image_url || comp.image_url || comp.image || (comp.metadata && comp.metadata.thumbnail_url);
@@ -3026,6 +3098,21 @@ export default function Generation() {
                                 </div>
                               )}
                             </div>
+                            {selectionTags.length > 0 && (
+                              <div className={styles.intakeSelectionTags} aria-label="Selected website direction">
+                                {selectionTags.map((tag, index) => (
+                                  <span
+                                    key={tag.id || `${tag.kind || 'selection'}-${index}`}
+                                    className={styles.intakeSelectionTag}
+                                    data-kind={tag.kind || 'selection'}
+                                    title={tag.label}
+                                    aria-label={`${tag.kind || 'selection'}: ${tag.label}`}
+                                  >
+                                    {tag.label}
+                                  </span>
+                                ))}
+                              </div>
+                            )}
                           </div>
                         </div>
                         <div className={styles.chatActionRow}>
@@ -3335,7 +3422,7 @@ export default function Generation() {
                     body: JSON.stringify({ prompt, buildId })
                   });
                   setAgentProgressText('Preparing sandbox...');
-                  const sb = await createSandbox();
+                  const sb = await createSandbox(buildId);
                   setAgentProgressText('Starting agent...');
                   await sendAgentInitialBuild(prompt, buildId, {
                     images: currentImages,
@@ -3583,6 +3670,37 @@ export default function Generation() {
                   </div>
                 ) : activeTab === 'preview' ? (
                   <div className={styles.previewArea}>
+                    {isMultiPageProject && projectPages.length > 1 && sandboxData?.url && (
+                      <div style={{
+                        display: 'flex', gap: 6, flexWrap: 'wrap', justifyContent: 'center',
+                        padding: '6px 10px', position: 'absolute', top: 8, left: '50%',
+                        transform: 'translateX(-50%)', zIndex: 20,
+                        background: 'rgba(10,10,12,0.82)', border: '1px solid rgba(255,255,255,0.08)',
+                        borderRadius: 999, backdropFilter: 'blur(8px)'
+                      }}>
+                        {projectPages.map((page) => (
+                          <button
+                            key={page.route}
+                            onClick={() => {
+                              setActivePageRoute(page.route);
+                              if (iframeRef.current) {
+                                const base = sandboxData.url.replace(/\/+$/, '');
+                                iframeRef.current.src = `${base}${page.route}?t=${Date.now()}`;
+                              }
+                            }}
+                            style={{
+                              padding: '4px 12px', fontSize: 12, borderRadius: 999, cursor: 'pointer',
+                              border: '1px solid transparent',
+                              background: activePageRoute === page.route ? 'rgba(255,255,255,0.92)' : 'transparent',
+                              color: activePageRoute === page.route ? '#0a0a0c' : 'rgba(255,255,255,0.75)'
+                            }}
+                            title={page.purpose || page.route}
+                          >
+                            {page.name || page.route}
+                          </button>
+                        ))}
+                      </div>
+                    )}
                     {(() => {
                       const vp = VIEWPORT_SIZES[previewMode];
                       const isDevice = previewMode !== 'desktop';

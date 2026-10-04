@@ -52,15 +52,43 @@ const SECTION_TERMS = [
   'analytics',
   'stats',
   'chart',
-  'charts'
+  'charts',
+  'model',
+  'models',
+  'lineup',
+  'collection',
+  'collections',
+  'catalogue',
+  'vehicles'
+];
+
+const SITE_STRUCTURE_TERMS = [
+  'page',
+  'pages',
+  'route',
+  'routes',
+  'screen',
+  'screens',
+  'view',
+  'views',
+  'tab',
+  'tabs'
 ];
 
 const SECTION_ACTION_TERMS = [
   'add',
+  'added',
   'create',
+  'new',
+  'make',
   'build',
   'insert',
   'include',
+  'update',
+  'change',
+  'adjust',
+  'fix',
+  'improve',
   'replace',
   'swap',
   'use',
@@ -69,7 +97,18 @@ const SECTION_ACTION_TERMS = [
   'select',
   'install',
   'bring',
+  'remove',
+  'delete',
   'rebuild'
+];
+
+const MUTATION_ACTION_TERMS = [
+  ...SECTION_ACTION_TERMS,
+  'darken',
+  'lighten',
+  'polish',
+  'refactor',
+  'wire'
 ];
 
 function normalizeText(value) {
@@ -117,7 +156,22 @@ export function shouldEnableCatalogToolsForEdit({
     return true;
   }
 
-  return hasAnyTerm(text, SECTION_ACTION_TERMS) && hasAnyTerm(text, SECTION_TERMS);
+  const hasAction = hasAnyTerm(text, SECTION_ACTION_TERMS);
+  const hasSectionIntent = hasAnyTerm(text, SECTION_TERMS);
+  const hasStructuralIntent = hasAnyTerm(text, SITE_STRUCTURE_TERMS);
+
+  return hasAction && (hasSectionIntent || hasStructuralIntent);
+}
+
+export function isLikelyMutatingEditPrompt(prompt = '') {
+  const text = normalizeText(prompt);
+  if (!text) return false;
+
+  if (/\b(can you|please|pls)\b.*\b(add|create|make|build|update|change|fix|remove|delete|replace)\b/i.test(text)) {
+    return true;
+  }
+
+  return hasAnyTerm(text, MUTATION_ACTION_TERMS);
 }
 
 export function buildInitialComponentSelectionList(initialComponents = [], manualSelectionIds = []) {

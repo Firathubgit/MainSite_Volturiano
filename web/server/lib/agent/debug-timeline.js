@@ -150,6 +150,9 @@ export function normalizeFinalPayload(payload = {}) {
     filesChanged: changedFiles,
     changedFileCount: changedFiles.length,
     buildStatus: payload.buildStatus ?? null,
+    verificationRan: payload.verificationRan ?? null,
+    incompleteReason: payload.incompleteReason || null,
+    hitMaxSteps: payload.hitMaxSteps ?? null,
     componentIds,
     finalResponseLength: typeof response === 'string'
       ? response.length

@@ -15,9 +15,9 @@ import GradualBlur from './GradualBlur';
 import { useRouteTransition } from '../../../../contexts/RouteTransitionContext';
 import CommunitySelectorPopup from './Generation/CommunitySelectorPopup';
 import AuthGateModal from '../../../../components/Modals/AuthGateModal';
+import CreditLimitModal from '../../../../components/Modals/CreditLimitModal';
 import CongratsModal from './Dashboard/components/CongratsModal';
 import gradientCornerImage from './Dashboard/Assets/GradientCornerOne.png';
-import TryComponentSelectPopup from './components/TryComponentSelectPopup';
 import { getDefaultPublicModelId, getPublicModels, normalizePublicModelId } from './model-registry.client.js';
 import { IMAGE_UPLOAD_LIMITS, formatBytes, optimizeImageFiles } from './utils/imageOptimizer.js';
 
@@ -108,7 +108,7 @@ const BuilderContent = () => {
 
     const { isAuthenticated, profile, loading: authLoading, refreshProfile, getAccessToken } = useBuilderAuth();
     const { startTransition } = useRouteTransition();
-    const { refreshCredits } = useCredits();
+    const { refreshCredits, isOut: outOfCredits, isUnlimited } = useCredits();
     const [inputValue, setInputValue] = useState("");
     const [templates, setTemplates] = useState([]);
     const [isLoadingTemplates, setIsLoadingTemplates] = useState(true);
@@ -162,12 +162,10 @@ const BuilderContent = () => {
     const [selectedComponents, setSelectedComponents] = useState([]);
     const [strictMode, setStrictMode] = useState(false);
     const [showAuthModal, setShowAuthModal] = useState(false);
+    const [showCreditModal, setShowCreditModal] = useState(false);
     const [showCongrats, setShowCongrats] = useState(false);
     const [popupDismissed, setPopupDismissed] = useState(false); // Session guard
     const [selectedTemplate, setSelectedTemplate] = useState(null); // { templateId, name, thumbnail, agentPrompt }
-
-    const [hasShownComponentPopup, setHasShownComponentPopup] = useState(false);
-    const [showComponentPopup, setShowComponentPopup] = useState(false);
 
     const premiumPhrases = [
         "design a luxury real estate site...",
@@ -323,6 +321,12 @@ const BuilderContent = () => {
 
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isModelDropdownOpen, setIsModelDropdownOpen] = useState(false);
+
+    useEffect(() => {
+        const handleTransitionCancel = () => setIsSubmitting(false);
+        window.addEventListener('cinematic-transition-cancel', handleTransitionCancel);
+        return () => window.removeEventListener('cinematic-transition-cancel', handleTransitionCancel);
+    }, []);
 
     // ─── Global Drag & Drop Handler ──────────────
     useEffect(() => {
@@ -537,14 +541,14 @@ const BuilderContent = () => {
             return;
         }
 
-        if (inputValue.trim() || images.length > 0 || selectedComponents.length > 0 || selectedTemplate) {
-            // Check if we need to show the Component Select popup (skip for template selections)
-            if (!selectedTemplate && selectedComponents.length === 0 && !hasShownComponentPopup) {
-                setHasShownComponentPopup(true);
-                setShowComponentPopup(true);
-                return; // Stop submission for now
-            }
+        // Guided builds check credits at the final confirmation step. Templates
+        // skip that step, so they open the same purchase modal here.
+        if (selectedTemplate && outOfCredits && !isUnlimited) {
+            setShowCreditModal(true);
+            return;
+        }
 
+        if (inputValue.trim() || images.length > 0 || selectedComponents.length > 0 || selectedTemplate) {
             executeSubmit();
         }
     };
@@ -565,7 +569,7 @@ const BuilderContent = () => {
         window.dispatchEvent(new CustomEvent('cinematic-transition-start'));
 
         // Dispatch an optimistic credit deduction event to animate the top right counter instantly
-        if (inputValue.trim() || selectedTemplate) {
+        if (selectedTemplate) {
             window.dispatchEvent(new CustomEvent('optimistic-credit-deduction'));
         }
 
@@ -589,6 +593,8 @@ const BuilderContent = () => {
                 manualSelectionIds: selectedComponents.map(c => c.id),
                 initialComponents: selectedComponents,
                 strictMode: strictMode,
+                guidedIntake: !selectedTemplate,
+                allowCommunityComponents: backendMode !== 'off',
                 templateData: selectedTemplate ? {
                     templateId: selectedTemplate.templateId,
                     name: selectedTemplate.name,
@@ -1056,6 +1062,10 @@ const BuilderContent = () => {
                 isOpen={showAuthModal}
                 onClose={() => setShowAuthModal(false)}
             />
+            <CreditLimitModal
+                isOpen={showCreditModal}
+                onClose={() => setShowCreditModal(false)}
+            />
 
             {notification && (
                 <motion.div
@@ -1074,19 +1084,6 @@ const BuilderContent = () => {
                     {notification}
                 </motion.div>
             )}
-
-            <TryComponentSelectPopup
-                isOpen={showComponentPopup}
-                onClose={() => setShowComponentPopup(false)}
-                onOpenCommunity={() => {
-                    setShowComponentPopup(false);
-                    setIsCommunityOpen(true);
-                }}
-                onProceedWithout={() => {
-                    setShowComponentPopup(false);
-                    executeSubmit();
-                }}
-            />
 
             <CommunitySelectorPopup
                 isOpen={isCommunityOpen}

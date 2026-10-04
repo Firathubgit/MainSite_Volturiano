@@ -74,6 +74,8 @@ function buildEnvelope(userMessage, { rawResponse, wasNormalized, reason, metada
     userMessage,
     summaryBullets,
     buildStatus: metadata.buildStatus || null,
+    verificationRan: metadata.verificationRan ?? null,
+    incompleteReason: metadata.incompleteReason || null,
     changedFiles: metadata.changedFiles || [],
     toolCallCount: metadata.toolCallCount || 0,
     mutationCount: metadata.mutationCount || 0,
@@ -119,12 +121,23 @@ function formatBulletMessage(hasProblem, bullets) {
 
 function defaultCompletionMessage(metadata = {}) {
   if (metadata.hadError) return 'I hit an issue and stopped before making unsafe changes.';
+  if (metadata.incompleteReason === 'max_steps_reached') return 'I hit the step limit before I could fully verify the result.';
+  if (metadata.buildStatus === 'failed' || metadata.incompleteReason === 'build_verification_failed') {
+    return 'I hit an issue: the latest changes did not pass build verification yet.';
+  }
+  if ((metadata.mutationCount || 0) > 0 && metadata.verificationRan === false) {
+    return 'I stopped before build verification ran, so the latest changes are not confirmed yet.';
+  }
   if ((metadata.mutationCount || 0) > 0) return 'Done - I applied the changes.';
+  if (metadata.expectedMutation) return "I couldn't complete that edit because no project files were changed.";
   return 'Done - I checked the project.';
 }
 
 function hasProblemLanguage(text, metadata = {}) {
   return Boolean(metadata.hadError)
+    || Boolean(metadata.incompleteReason)
+    || metadata.buildStatus === 'failed'
+    || ((metadata.mutationCount || 0) > 0 && metadata.verificationRan === false)
     || /\b(error|failed|failing|issue|unable|couldn'?t|cannot|blocked|warning)\b/i.test(text);
 }
 

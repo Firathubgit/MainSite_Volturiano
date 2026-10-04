@@ -78,25 +78,27 @@ async function safeTeardown(provider) {
 
 export default async function createAiSandboxV2(req, res) {
   try {
-    console.log('[create-ai-sandbox-v2] Creating sandbox...');
+    const projectId = req.body?.projectId || null;
+    const userId = req.user?.id || null;
+    console.log(`[create-ai-sandbox-v2] Creating sandbox... (project: ${projectId || 'none'})`);
 
-    // Defensive cleanup of any pre-existing global sandbox state.
-    try {
-      if (sandboxManager && typeof sandboxManager.terminateAll === 'function') {
-        await sandboxManager.terminateAll();
+    // Per-project lifecycle: only replace a previous sandbox for the SAME project.
+    // Never terminate other projects' sandboxes (multiple tabs/projects must coexist).
+    if (projectId) {
+      const previousId = sandboxManager.getSandboxIdForProject(projectId);
+      if (previousId) {
+        console.log(`[create-ai-sandbox-v2] Replacing previous sandbox ${previousId} for project ${projectId}`);
+        try {
+          await sandboxManager.terminateSandbox(previousId);
+        } catch (e) {
+          console.warn('[create-ai-sandbox-v2] Previous sandbox cleanup failed:', e?.message || e);
+        }
+        if (global.sandboxData?.sandboxId === previousId) {
+          global.activeSandboxProvider = null;
+          global.sandboxData = null;
+        }
       }
-    } catch (e) {
-      console.warn('[create-ai-sandbox-v2] Defensive cleanup failed (manager):', e?.message || e);
     }
-
-    if (global.activeSandboxProvider && typeof global.activeSandboxProvider.terminate === 'function') {
-      try {
-        await global.activeSandboxProvider.terminate();
-      } catch (e) {
-        console.warn('[create-ai-sandbox-v2] Defensive cleanup failed (provider):', e?.message || e);
-      }
-    }
-    global.activeSandboxProvider = null;
 
     if (global.existingFiles) global.existingFiles.clear();
     else global.existingFiles = new Set();
@@ -137,7 +139,12 @@ export default async function createAiSandboxV2(req, res) {
 
     const { provider, sandboxInfo } = success;
 
-    sandboxManager.registerSandbox(sandboxInfo.sandboxId, provider);
+    sandboxManager.registerSandbox(sandboxInfo.sandboxId, provider, { projectId, userId });
+    try {
+      await sandboxManager.enforceUserCap(userId, 3);
+    } catch (e) {
+      console.warn('[create-ai-sandbox-v2] User cap enforcement failed:', e?.message || e);
+    }
     global.activeSandboxProvider = provider;
     global.sandboxData = { sandboxId: sandboxInfo.sandboxId, url: sandboxInfo.url };
 

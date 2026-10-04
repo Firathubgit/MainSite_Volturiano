@@ -16,19 +16,32 @@ export async function getOrCreateAgentSession({ userId = null, projectId = null,
 
   const sessionKey = makeSessionKey({ userId, projectId, sandboxId });
   const now = new Date().toISOString();
-  const payload = {
-    session_key: sessionKey,
-    user_id: userId,
-    project_id: projectId,
-    sandbox_id: sandboxId,
-    model,
-    status: 'active',
-    metadata: sanitizeJson(metadata, {}),
-    updated_at: now,
-    last_activity: now
-  };
 
   try {
+    // Merge metadata with any existing session so durable fields set between
+    // turns (e.g. referenceImages) survive the per-turn upsert.
+    let existingMetadata = {};
+    const { data: existing } = await supabaseAdmin
+      .from('agent_sessions')
+      .select('metadata')
+      .eq('session_key', sessionKey)
+      .maybeSingle();
+    if (existing?.metadata && typeof existing.metadata === 'object') {
+      existingMetadata = existing.metadata;
+    }
+
+    const payload = {
+      session_key: sessionKey,
+      user_id: userId,
+      project_id: projectId,
+      sandbox_id: sandboxId,
+      model,
+      status: 'active',
+      metadata: sanitizeJson({ ...existingMetadata, ...metadata }, {}),
+      updated_at: now,
+      last_activity: now
+    };
+
     const { data, error } = await supabaseAdmin
       .from('agent_sessions')
       .upsert(payload, { onConflict: 'session_key' })
@@ -39,6 +52,118 @@ export async function getOrCreateAgentSession({ userId = null, projectId = null,
     return data;
   } catch (error) {
     logPersistWarning('getOrCreateAgentSession', error);
+    return null;
+  }
+}
+
+// ─── Durable reference images ────────────────────────────────
+// User-attached screenshots are the visual target for the whole session, not
+// just one turn. We upload them once to storage and keep public URLs in the
+// session metadata so later turns (and server restarts) can re-attach them.
+
+const REFERENCE_IMAGE_BUCKET = 'agent-reference-images';
+const MAX_REFERENCE_IMAGES = 4;
+
+export async function persistSessionReferenceImages({ sessionId = null, images = [] } = {}) {
+  if (!supabaseAdmin || !sessionId || !Array.isArray(images) || images.length === 0) return [];
+
+  const urls = [];
+  try {
+    for (const [index, image] of images.slice(0, MAX_REFERENCE_IMAGES).entries()) {
+      const parsed = parseDataUrlImage(image);
+      if (!parsed) continue;
+      const extension = parsed.mimeType.split('/')[1] || 'png';
+      const filename = `${sessionId}/${Date.now()}_${index}.${extension}`;
+
+      let { error } = await supabaseAdmin.storage
+        .from(REFERENCE_IMAGE_BUCKET)
+        .upload(filename, parsed.buffer, { contentType: parsed.mimeType, upsert: true });
+      if (error) {
+        await supabaseAdmin.storage.createBucket(REFERENCE_IMAGE_BUCKET, { public: true }).catch(() => {});
+        ({ error } = await supabaseAdmin.storage
+          .from(REFERENCE_IMAGE_BUCKET)
+          .upload(filename, parsed.buffer, { contentType: parsed.mimeType, upsert: true }));
+      }
+      if (error) continue;
+
+      const { data: publicUrlData } = supabaseAdmin.storage.from(REFERENCE_IMAGE_BUCKET).getPublicUrl(filename);
+      if (publicUrlData?.publicUrl) urls.push(publicUrlData.publicUrl);
+    }
+
+    if (urls.length > 0) {
+      await mergeSessionMetadata(sessionId, { referenceImages: urls, referenceImagesUpdatedAt: new Date().toISOString() });
+    }
+    return urls;
+  } catch (error) {
+    logPersistWarning('persistSessionReferenceImages', error);
+    return urls;
+  }
+}
+
+export async function loadSessionReferenceImages(sessionId = null) {
+  if (!supabaseAdmin || !sessionId) return [];
+
+  try {
+    const { data, error } = await supabaseAdmin
+      .from('agent_sessions')
+      .select('metadata')
+      .eq('id', sessionId)
+      .maybeSingle();
+    if (error) throw error;
+
+    const urls = Array.isArray(data?.metadata?.referenceImages) ? data.metadata.referenceImages : [];
+    const images = await Promise.all(urls.slice(0, MAX_REFERENCE_IMAGES).map(async (url) => {
+      try {
+        const response = await fetch(url, { signal: AbortSignal.timeout(8000) });
+        if (!response.ok) return null;
+        const contentType = (response.headers.get('content-type') || 'image/png').split(';')[0];
+        const buffer = Buffer.from(await response.arrayBuffer());
+        if (!buffer.length) return null;
+        return `data:${contentType};base64,${buffer.toString('base64')}`;
+      } catch {
+        return null;
+      }
+    }));
+    return images.filter(Boolean);
+  } catch (error) {
+    logPersistWarning('loadSessionReferenceImages', error);
+    return [];
+  }
+}
+
+async function mergeSessionMetadata(sessionId, patch = {}) {
+  const { data } = await supabaseAdmin
+    .from('agent_sessions')
+    .select('metadata')
+    .eq('id', sessionId)
+    .maybeSingle();
+  const merged = { ...(data?.metadata && typeof data.metadata === 'object' ? data.metadata : {}), ...patch };
+  await supabaseAdmin
+    .from('agent_sessions')
+    .update({ metadata: sanitizeJson(merged, {}) })
+    .eq('id', sessionId);
+}
+
+function parseDataUrlImage(image) {
+  const value = typeof image === 'string'
+    ? image
+    : (image && typeof image === 'object' ? image.dataUrl || image.url || null : null);
+  if (typeof value !== 'string') {
+    if (image && typeof image === 'object' && typeof image.base64 === 'string') {
+      const mimeType = image.mimeType || image.mediaType || 'image/png';
+      try {
+        return { mimeType, buffer: Buffer.from(image.base64.replace(/\s/g, ''), 'base64') };
+      } catch {
+        return null;
+      }
+    }
+    return null;
+  }
+  const match = value.trim().match(/^data:([^;,]+)(?:;[^,]*)?;base64,(.+)$/i);
+  if (!match) return null;
+  try {
+    return { mimeType: match[1] || 'image/png', buffer: Buffer.from(match[2].replace(/\s/g, ''), 'base64') };
+  } catch {
     return null;
   }
 }
@@ -317,7 +442,7 @@ export async function loadRecentAgentContextBlock({
 async function queryRecentTurns({ sessionId = null, projectId = null, userId = null, excludeTurnId = null, limit }) {
   let query = supabaseAdmin
     .from('agent_turns')
-    .select('id, turn_type, user_prompt, response_short, changed_files, component_ids, build_status, tool_call_count, mutation_count, status, error, created_at')
+    .select('id, turn_type, user_prompt, response_short, summary, changed_files, component_ids, build_status, tool_call_count, mutation_count, status, error, created_at')
     .in('status', ['completed', 'failed'])
     .order('created_at', { ascending: false })
     .limit(limit);
@@ -374,6 +499,92 @@ export function extractComponentIds(toolCalls = []) {
 
 export function createLocalTurnId() {
   return crypto.randomUUID();
+}
+
+// ─── Durable undo snapshots ──────────────────────────────────
+// The in-memory per-sandbox undo stack is a cache; the durable copy in
+// agent_undo_snapshots survives server restarts and the 2h session sweep.
+
+const MAX_DURABLE_UNDO_PER_SANDBOX = 10;
+
+export async function pushDurableUndoSnapshot({
+  sessionId = null,
+  sandboxId = null,
+  projectId = null,
+  userId = null,
+  prompt = '',
+  snapshot = null
+} = {}) {
+  if (!supabaseAdmin || !snapshot?.files || !sandboxId) return null;
+
+  try {
+    const { data, error } = await supabaseAdmin
+      .from('agent_undo_snapshots')
+      .insert({
+        session_id: sessionId,
+        sandbox_id: sandboxId,
+        project_id: projectId,
+        user_id: userId,
+        prompt: trimText(prompt, 1000),
+        files: snapshot.files
+      })
+      .select('id')
+      .single();
+    if (error) throw error;
+
+    // Prune anything beyond the cap for this sandbox.
+    const { data: extras } = await supabaseAdmin
+      .from('agent_undo_snapshots')
+      .select('id')
+      .eq('sandbox_id', sandboxId)
+      .order('created_at', { ascending: false })
+      .range(MAX_DURABLE_UNDO_PER_SANDBOX, MAX_DURABLE_UNDO_PER_SANDBOX + 20);
+    if (Array.isArray(extras) && extras.length > 0) {
+      await supabaseAdmin
+        .from('agent_undo_snapshots')
+        .delete()
+        .in('id', extras.map((row) => row.id));
+    }
+
+    return data;
+  } catch (error) {
+    logPersistWarning('pushDurableUndoSnapshot', error);
+    return null;
+  }
+}
+
+/**
+ * Pop (fetch + delete) the most recent durable undo snapshot for a sandbox.
+ * Returns { snapshot: { id, timestamp, files }, prompt } or null.
+ */
+export async function popDurableUndoSnapshot({ sandboxId = null } = {}) {
+  if (!supabaseAdmin || !sandboxId) return null;
+
+  try {
+    const { data, error } = await supabaseAdmin
+      .from('agent_undo_snapshots')
+      .select('id, prompt, files, created_at')
+      .eq('sandbox_id', sandboxId)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (error) throw error;
+    if (!data) return null;
+
+    await supabaseAdmin.from('agent_undo_snapshots').delete().eq('id', data.id);
+
+    return {
+      prompt: data.prompt || '',
+      snapshot: {
+        id: data.id,
+        timestamp: new Date(data.created_at).getTime(),
+        files: data.files || {}
+      }
+    };
+  } catch (error) {
+    logPersistWarning('popDurableUndoSnapshot', error);
+    return null;
+  }
 }
 
 async function findAgentSession({ userId = null, projectId = null, sandboxId = null } = {}) {
@@ -477,10 +688,16 @@ function formatRecentAgentContextBlock(turns = []) {
   if (!turns.length) return '';
 
   const lines = ['[Recent agent turns]'];
-  for (const turn of turns) {
-    const prompt = trimSingleLine(turn.user_prompt, 220);
-    const response = trimSingleLine(turn.response_short, 220);
-    const files = summarizeFileList(turn.changed_files);
+  for (const [index, turn] of turns.entries()) {
+    // The most recent 2 turns get a fuller record (incl. tool transcript) so
+    // the agent doesn't re-discover what it just did.
+    const isRecent = index >= turns.length - 2;
+    const promptCap = isRecent ? 420 : 220;
+    const responseCap = isRecent ? 420 : 220;
+
+    const prompt = trimSingleLine(turn.user_prompt, promptCap);
+    const response = trimSingleLine(turn.response_short, responseCap);
+    const files = summarizeFileList(turn.changed_files, isRecent ? 14 : 8);
     const components = Array.isArray(turn.component_ids) ? turn.component_ids.filter(Boolean).slice(0, 5) : [];
 
     lines.push(`- User asked: ${prompt || '(no prompt stored)'}`);
@@ -489,17 +706,37 @@ function formatRecentAgentContextBlock(turns = []) {
     if (components.length) lines.push(`  Components used: ${components.join(', ')}`);
     if (turn.build_status) lines.push(`  Build status: ${turn.build_status}`);
     if (turn.status === 'failed' && turn.error) lines.push(`  Last error: ${trimSingleLine(turn.error, 180)}`);
+
+    const transcript = Array.isArray(turn.summary?.toolTranscript) ? turn.summary.toolTranscript : [];
+    if (isRecent && transcript.length) {
+      lines.push(`  Tool transcript: ${transcript.slice(0, 30).join(' → ')}`);
+    }
   }
   lines.push('Use this as continuity context for short follow-up requests. Do not repeat it back unless the user asks.');
   return lines.join('\n');
 }
 
-function summarizeFileList(changedFiles) {
+/**
+ * Compact a turn's tool calls into a one-line-per-call transcript for durable
+ * memory, e.g. "edit_file(src/App.jsx)".
+ */
+export function compactToolTranscript(toolCalls = [], maxEntries = 30) {
+  if (!Array.isArray(toolCalls)) return [];
+  return toolCalls.slice(0, maxEntries).map((call) => {
+    const name = call?.name || call?.toolName || 'tool';
+    const args = call?.args || {};
+    const target = args.path || args.filePath || args.component_id || args.keywords || args.pattern || '';
+    const suffix = call?.success === false ? '!' : '';
+    return target ? `${name}(${trimSingleLine(String(target), 60)})${suffix}` : `${name}${suffix}`;
+  });
+}
+
+function summarizeFileList(changedFiles, maxFiles = 8) {
   if (!Array.isArray(changedFiles)) return '';
   return changedFiles
     .map((file) => typeof file === 'string' ? file : file?.path)
     .filter(Boolean)
-    .slice(0, 8)
+    .slice(0, maxFiles)
     .join(', ');
 }
 

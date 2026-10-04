@@ -33,6 +33,11 @@ import selectComponents from './routes/select-components.js';
 import componentBundle from './routes/component-bundle.js';
 import buildTemplate from './routes/build-template.js';
 import deriveDesignSystem from './routes/derive-design-system.js';
+import {
+  prepareDesignIntakeRoute,
+  refreshDesignIntakeComponentsRoute,
+  finalizeDesignIntakeRoute,
+} from './routes/design-intake.js';
 import buildFromSelection from './routes/build-from-selection.js';
 import renderApp from './routes/render-app.js';
 import validateImportsRoute from './routes/validate-imports.js';
@@ -196,6 +201,9 @@ app.post('/api/enhance-prompt', aiProtections, enhancePrompt);
 app.post('/api/cinematic-response', safeAiProtections, cinematicResponse);
 app.post('/api/classify-intent', aiProtections, classifyIntent);
 app.post('/api/derive-design-system', aiProtections, deriveDesignSystem);
+app.post('/api/design-intake/prepare', aiProtections, prepareDesignIntakeRoute);
+app.post('/api/design-intake/components', aiProtections, refreshDesignIntakeComponentsRoute);
+app.post('/api/design-intake/finalize', standardLimiter, requireAuth, requireUnrestricted, finalizeDesignIntakeRoute);
 app.post('/api/plan-website-components', aiProtections, planWebsiteComponents);
 app.post('/api/generate-single-component', aiProtections, generateSingleComponent);
 app.post('/api/generate-ai-code-stream', aiProtections, generateAiCodeStream);

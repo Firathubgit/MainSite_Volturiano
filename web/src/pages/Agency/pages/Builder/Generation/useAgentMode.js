@@ -20,7 +20,7 @@ const MAX_VISIBLE_RESPONSE_CHARS = 520;
  * @param {Function} options.authFetch — authenticated fetch wrapper from Generation
  * @param {Function} options.onTurnComplete — called when the agent finishes a turn, receives metadata for persistence
  */
-export function useAgentMode({ sandboxId, sandboxUrl, projectId, model, addChatMessage, authFetch, onTurnComplete }) {
+export function useAgentMode({ sandboxId, sandboxUrl, projectId, model, premiumMode, addChatMessage, authFetch, onTurnComplete }) {
   const [agentActive, setAgentActive] = useState(true);
   const [agentLoading, setAgentLoading] = useState(false);
   const [agentProgressText, setAgentProgressText] = useState('');
@@ -64,6 +64,7 @@ export function useAgentMode({ sandboxId, sandboxUrl, projectId, model, addChatM
           sandboxId: activeSandboxId,
           projectId,
           model,
+          premiumMode,
           initialComponents: options.initialComponents || options.stagedComponents,
           manualSelectionIds: options.manualSelectionIds
         }),
@@ -104,7 +105,7 @@ export function useAgentMode({ sandboxId, sandboxUrl, projectId, model, addChatM
       setAgentProgressText('');
       abortControllerRef.current = null;
     }
-  }, [sandboxId, sandboxUrl, projectId, model, addChatMessage, authFetch, agentLoading]);
+  }, [sandboxId, sandboxUrl, projectId, model, premiumMode, addChatMessage, authFetch, agentLoading]);
 
   /**
    * Undo the last agent turn.
@@ -182,6 +183,9 @@ export function useAgentMode({ sandboxId, sandboxUrl, projectId, model, addChatM
           projectId: options.projectId || buildId || projectId,
           buildId,
           model,
+          premiumMode,
+          templateId: options.templateId || null,
+          designBrief: options.designBrief || null,
           initialComponents: options.initialComponents,
           manualSelectionIds: options.manualSelectionIds,
           images: options.images
@@ -224,7 +228,7 @@ export function useAgentMode({ sandboxId, sandboxUrl, projectId, model, addChatM
       setAgentProgressText('');
       abortControllerRef.current = null;
     }
-  }, [sandboxId, sandboxUrl, projectId, model, addChatMessage, authFetch, agentLoading]);
+  }, [sandboxId, sandboxUrl, projectId, model, premiumMode, addChatMessage, authFetch, agentLoading]);
 
   /**
    * Cancel an in-flight agent request.
@@ -282,6 +286,17 @@ export async function consumeAgentEventStream(body, { addChatMessage, setCanUndo
       if (MUTATING_TOOLS.has(data.toolName) && data.success) {
         turnMeta.hadMutations = true;
         turnMeta.mutationCount += 1;
+      }
+      // Surface the agent's page plan so the builder can render a page list.
+      if (data.toolName === 'plan_pages' && data.success && Array.isArray(data.result?.pages)) {
+        try {
+          window.dispatchEvent(new CustomEvent('agent-page-plan', {
+            detail: {
+              buildMode: data.result.buildMode || 'multi_page',
+              pages: data.result.pages
+            }
+          }));
+        } catch { /* non-browser context */ }
       }
     }
 
@@ -405,6 +420,19 @@ function handleAgentEvent(eventType, data, addChatMessage, options = {}) {
       }
       // Return metadata so the hook can pass it to onTurnComplete.
       return { mutationCount, toolCallCount, response: finalResponse || '', canUndo, buildStatus, visibleResponseShown };
+    }
+
+    case 'agent_design_brief': {
+      const descriptors = [
+        data.industry ? String(data.industry).replace(/-/g, ' ') : null,
+        data.mood || null
+      ].filter(Boolean).join(' — ');
+      const fonts = [...new Set([data.headingFont, data.bodyFont].filter(Boolean))].join(' + ');
+      const colors = data.primary ? `${data.primary}${data.accent ? ` / ${data.accent}` : ''}` : '';
+      const summary = ['Design direction:', descriptors, fonts && `· ${fonts}`, colors && `· ${colors}`]
+        .filter(Boolean).join(' ');
+      addChatMessage(summary, 'agent-progress', { kind: 'design-brief' });
+      return null;
     }
 
     case 'agent_error':

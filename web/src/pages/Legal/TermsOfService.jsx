@@ -24,7 +24,7 @@ export default function TermsOfService() {
             <FileTextIcon size={32} className={s.icon} />
           </div>
           <h1 className={s.title}>Terms of Service</h1>
-          <p className={s.lastUpdated}>Last updated: 14 May 2026</p>
+          <p className={s.lastUpdated}>Last updated: 24 May 2026</p>
         </header>
 
         <section className={s.section}>
@@ -50,6 +50,12 @@ export default function TermsOfService() {
             components, templates, and entire sites based on user input. Output is produced by large
             language models, sandboxed code execution, and a curated component catalog with both official
             and community-contributed components.
+          </p>
+          <p>
+            The Builder includes an agentic workflow that can inspect project files, select components,
+            write or edit frontend code, run build checks, and restart or verify the live preview inside a
+            sandbox when you ask it to build or modify a website. These agent tools are part of the
+            Service and operate for the limited purpose of fulfilling your builder requests.
           </p>
           <p>
             You must be at least 18 years old (or the legal age of majority in your jurisdiction) to use
@@ -136,6 +142,12 @@ export default function TermsOfService() {
             community-contributed components which remain under their respective licenses, and (iii) the
             Volturiano platform, brand, runtime helpers, and stamp.
           </p>
+          <p>
+            Open-source packages, icons, fonts, design assets, and community catalog components may be
+            subject to separate license terms. You are responsible for reviewing license notices before
+            publishing or using generated work commercially, especially where you ask the Builder to add
+            third-party dependencies, brand references, images, or imported component code.
+          </p>
           <h3>7.2 Volturiano Platform</h3>
           <p>
             The Service, the underlying software, the component catalog metadata, the AI selection
@@ -190,6 +202,22 @@ export default function TermsOfService() {
           <p>
             Where applicable law requires disclosure that content was generated or assisted by AI, you
             are responsible for that disclosure on your own published sites.
+          </p>
+          <h3>8.1 Agent Tools, Sandboxes, and Build Execution</h3>
+          <p>
+            When you use Agent Mode, you authorize Volturiano to run the builder tools needed for your
+            request inside the active sandbox, including file reads, file writes, component installation,
+            build verification, preview health checks, and package installation where that capability is
+            available and explicitly enabled. The sandbox is designed to limit blast radius, but no
+            sandbox or automated code review can guarantee that generated code is safe, bug-free, or fit
+            for production without your review.
+          </p>
+          <p>
+            Do not place secrets, private keys, regulated personal data, or confidential client material
+            in prompts, generated files, uploaded assets, or sandbox projects unless you have confirmed
+            that doing so is appropriate for your own obligations. The Service is a website creation tool
+            and does not provide legal, financial, medical, security, accessibility, or other regulated
+            professional advice.
           </p>
         </section>
 

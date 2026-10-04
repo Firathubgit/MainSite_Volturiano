@@ -7,6 +7,8 @@ class SandboxManager {
   }
 
   async getOrCreateProvider(sandboxId) {
+    if (!sandboxId) return null;
+
     const existing = this.sandboxes.get(sandboxId);
     if (existing) {
       existing.lastAccessed = new Date();
@@ -21,16 +23,49 @@ class SandboxManager {
         this.activeSandboxId = sandboxId;
         return provider;
       }
-      return provider;
+      return null;
     } catch (error) {
       console.error(`[SandboxManager] Error reconnecting to sandbox ${sandboxId}:`, error);
       throw error;
     }
   }
 
-  registerSandbox(sandboxId, provider) {
-    this.sandboxes.set(sandboxId, { sandboxId, provider, createdAt: new Date(), lastAccessed: new Date() });
+  registerSandbox(sandboxId, provider, { projectId = null, userId = null } = {}) {
+    this.sandboxes.set(sandboxId, {
+      sandboxId,
+      provider,
+      projectId,
+      userId,
+      createdAt: new Date(),
+      lastAccessed: new Date()
+    });
     this.activeSandboxId = sandboxId;
+  }
+
+  /** Find the live sandbox id registered for a project, if any. */
+  getSandboxIdForProject(projectId) {
+    if (!projectId) return null;
+    for (const [id, info] of this.sandboxes.entries()) {
+      if (info.projectId === projectId) return id;
+    }
+    return null;
+  }
+
+  /**
+   * Enforce a per-user cap on live sandboxes by terminating the
+   * least-recently-accessed ones. Sandboxes without a userId are exempt
+   * (legacy/global flows).
+   */
+  async enforceUserCap(userId, maxSandboxes = 3) {
+    if (!userId) return;
+    const owned = Array.from(this.sandboxes.values())
+      .filter((info) => info.userId === userId)
+      .sort((a, b) => a.lastAccessed.getTime() - b.lastAccessed.getTime());
+    while (owned.length > maxSandboxes) {
+      const victim = owned.shift();
+      console.log(`[SandboxManager] LRU-evicting sandbox ${victim.sandboxId} for user ${userId}`);
+      await this.terminateSandbox(victim.sandboxId);
+    }
   }
 
   getActiveProvider() {

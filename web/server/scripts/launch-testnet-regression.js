@@ -39,7 +39,7 @@ assertContains('web/playwright.config.ts', 'webServer:', 'Playwright local web s
 assertContains('web/playwright.config.ts', "trace: 'retain-on-failure'", 'Playwright trace retention');
 
 assertContains('web/tests/server/auth-isolation.test.ts', 'updateProjectForUser', 'project isolation assertion');
-assertContains('web/tests/server/auth-isolation.test.ts', 'assertProjectOwner(buildId, userId', 'publish ownership assertion');
+assertContains('web/tests/server/auth-isolation.test.ts', 'assertProjectOwner(projectId, req.user.id', 'publish ownership assertion');
 assertContains('web/tests/server/stripe-webhooks.test.ts', 'stripe_webhook_events', 'Stripe ledger assertion');
 assertContains('web/tests/server/stripe-webhooks.test.ts', 'reserveStripeEvent', 'Stripe idempotency assertion');
 assertContains('web/tests/server/community-approval.test.ts', "const componentStatus = 'pending_review'", 'community pending assertion');

@@ -1,7 +1,7 @@
 import { generateObject } from 'ai';
 import { z } from 'zod';
 import { getModel } from '../lib/provider-helpers.js';
-import { sandboxManager } from '../lib/sandbox/sandbox-manager.js';
+import { resolveSandboxProvider } from '../lib/sandbox/provider-resolver.js';
 import { log } from '../lib/build-manifest.js';
 import { normalizePublicModelId, resolveModelRole } from '../shared/model-registry.js';
 
@@ -23,13 +23,14 @@ export default async function finalizeCodebase(req, res) {
     try {
         log(buildId, '[finalize-codebase] Starting final polish step...');
 
-        const provider = sandboxId
-            ? (sandboxManager.getProvider(sandboxId) || global.activeSandboxProvider)
-            : (sandboxManager.getActiveProvider() || global.activeSandboxProvider);
-
-        if (!provider) {
-            throw new Error('No active sandbox found for finalization');
-        }
+        const resolution = await resolveSandboxProvider({
+            sandboxId,
+            allowGlobalFallback: !sandboxId,
+            allowReconnect: true,
+            requireAlive: true
+        });
+        if (!resolution.ok) throw new Error(resolution.message);
+        const provider = resolution.provider;
 
         // 1. Gather Context (App.jsx, index.css, and headers/footers)
         const fileList = await provider.listFiles('/home/user/app/src');

@@ -1,4 +1,5 @@
 import { sandboxManager } from '../lib/sandbox/sandbox-manager.js';
+import { getProviderCapabilities } from '../lib/sandbox/provider-resolver.js';
 
 export default async function sandboxStatus(req, res) {
   try {
@@ -23,6 +24,7 @@ export default async function sandboxStatus(req, res) {
         sandboxInfo = {
           sandboxId: providerInfo?.sandboxId || global.sandboxData?.sandboxId,
           url: providerInfo?.url || global.sandboxData?.url,
+          capabilities: getProviderCapabilities(provider),
           lastHealthCheck: new Date().toISOString()
         };
       } catch (error) {

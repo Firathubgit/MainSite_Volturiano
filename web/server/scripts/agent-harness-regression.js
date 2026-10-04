@@ -5,6 +5,7 @@ import { composeAgentContextBlock } from '../lib/agent/context-assembler.js';
 import {
   buildInitialComponentPrompt,
   buildInitialComponentSelectionList,
+  isLikelyMutatingEditPrompt,
   shouldEnableCatalogToolsForEdit
 } from '../lib/agent/component-turn-policy.js';
 import {
@@ -29,7 +30,10 @@ import {
   scoreComponentFit
 } from '../lib/registry/registry.js';
 import { verifySandboxBuild } from '../lib/verify-sandbox-build.js';
+import { compactConsoleEntries } from '../lib/screenshot.js';
 import { sandboxManager } from '../lib/sandbox/sandbox-manager.js';
+import { resolveSandboxProvider } from '../lib/sandbox/provider-resolver.js';
+import { isDeleteProtectedFile, normalizePath } from '../shared/sandbox-fs.js';
 import { consumeAgentEventStream } from '../../src/pages/Agency/pages/Builder/Generation/useAgentMode.js';
 import { mergeHydratedAgentMessages } from '../../src/pages/Agency/pages/Builder/Generation/agentChatHydration.js';
 
@@ -37,12 +41,14 @@ const encoder = new TextEncoder();
 
 const tests = [
   ['response_normalizer_contract', testResponseNormalizerContract],
+  ['response_normalizer_verification_truth_contract', testResponseNormalizerVerificationTruthContract],
   ['sse_chunked_edit_turn_contract', testSseChunkedEditTurnContract],
   ['sse_initial_build_contract', testSseInitialBuildContract],
   ['sse_agent_progress_line_contract', testSseAgentProgressLineContract],
   ['hydration_dedupe_contract', testHydrationDedupeContract],
   ['turn_memory_derivation_contract', testTurnMemoryDerivationContract],
   ['context_envelope_contract', testContextEnvelopeContract],
+  ['context_envelope_priority_contract', testContextEnvelopePriorityContract],
   ['image_attachment_multimodal_contract', testImageAttachmentMultimodalContract],
   ['tool_runtime_adapter_shape_contract', testToolRuntimeAdapterShapeContract],
   ['tool_runtime_read_source_safety_contract', testToolRuntimeReadSourceSafetyContract],
@@ -54,17 +60,24 @@ const tests = [
   ['tool_runtime_mutation_contract', testToolRuntimeMutationContract],
   ['tool_runtime_error_contract', testToolRuntimeErrorContract],
   ['tool_runtime_delete_guard_contract', testToolRuntimeDeleteGuardContract],
+  ['sandbox_delete_protected_core_contract', testSandboxDeleteProtectedCoreContract],
   ['tool_runtime_package_install_guard_contract', testToolRuntimePackageInstallGuardContract],
   ['tool_runtime_reset_guard_contract', testToolRuntimeResetGuardContract],
+  ['sandbox_resolver_strict_identity_contract', testSandboxResolverStrictIdentityContract],
+  ['sandbox_path_boundary_contract', testSandboxPathBoundaryContract],
   ['tool_runtime_catalog_fetch_parity_contract', testToolRuntimeCatalogFetchParityContract],
   ['component_turn_policy_catalog_gate_contract', testComponentTurnPolicyCatalogGateContract],
   ['initial_component_prompt_manual_ids_contract', testInitialComponentPromptManualIdsContract],
   ['tool_runtime_build_check_contract', testToolRuntimeBuildCheckContract],
+  ['staged_browser_runtime_diagnostics_contract', testStagedBrowserRuntimeDiagnosticsContract],
   ['component_intent_dashboard_contract', testComponentIntentDashboardContract],
+  ['component_intent_word_boundary_contract', testComponentIntentWordBoundaryContract],
   ['component_fit_ranking_contract', testComponentFitRankingContract],
+  ['component_exact_vertical_ranking_contract', testComponentExactVerticalRankingContract],
   ['component_not_suitable_penalty_contract', testComponentNotSuitablePenaltyContract],
   ['staged_verification_pass_contract', testStagedVerificationPassContract],
-  ['staged_verification_failure_contract', testStagedVerificationFailureContract]
+  ['staged_verification_failure_contract', testStagedVerificationFailureContract],
+  ['benign_console_error_classification_contract', testBenignConsoleErrorClassificationContract]
 ];
 
 for (const [name, test] of tests) {
@@ -95,6 +108,44 @@ function testResponseNormalizerContract() {
   assert.match(result.userMessage, /^Done:/);
   assert.doesNotMatch(result.userMessage, /Would you like/i);
   assert.doesNotMatch(result.userMessage, /internal implementation detail/i);
+
+  const noOpEdit = normalizeAgentResponse('', {
+    mutationCount: 0,
+    toolCallCount: 4,
+    expectedMutation: true
+  });
+  assert.equal(noOpEdit.reason, 'empty_response');
+  assert.match(noOpEdit.userMessage, /couldn't complete/i);
+  assert.doesNotMatch(noOpEdit.userMessage, /checked the project/i);
+}
+
+function testResponseNormalizerVerificationTruthContract() {
+  const failedBuild = normalizeAgentResponse('', {
+    mutationCount: 2,
+    buildStatus: 'failed',
+    verificationRan: true,
+    incompleteReason: 'build_verification_failed'
+  });
+  assert.equal(failedBuild.reason, 'empty_response');
+  assert.equal(failedBuild.buildStatus, 'failed');
+  assert.equal(failedBuild.verificationRan, true);
+  assert.equal(failedBuild.incompleteReason, 'build_verification_failed');
+  assert.match(failedBuild.userMessage, /did not pass build verification/i);
+
+  const unverified = normalizeAgentResponse('', {
+    mutationCount: 1,
+    verificationRan: false,
+    incompleteReason: 'build_verification_not_run'
+  });
+  assert.match(unverified.userMessage, /not confirmed/i);
+  assert.equal(unverified.verificationRan, false);
+
+  const maxed = normalizeAgentResponse('', {
+    mutationCount: 1,
+    hitMaxSteps: true,
+    incompleteReason: 'max_steps_reached'
+  });
+  assert.match(maxed.userMessage, /step limit/i);
 }
 
 async function testSseChunkedEditTurnContract() {
@@ -305,6 +356,16 @@ function testContextEnvelopeContract() {
   assert.ok(block.indexOf('[Agent memory]') < block.indexOf('[Recent agent turns]'));
   assert.match(block, /short follow-up prompts/);
   assert.match(block, /\[\/Volturiano continuity envelope\]/);
+}
+
+function testContextEnvelopePriorityContract() {
+  const block = composeAgentContextBlock({
+    projectContextBlock: '[Persisted project context]\nOld direction',
+    memoryBlock: '[Agent memory]\nOld copy style',
+    recentTurnsBlock: '[Recent agent turns]\nOld turn'
+  });
+
+  assert.match(block, /latest user request and the current sandbox file state outrank/i);
 }
 
 function testImageAttachmentMultimodalContract() {
@@ -677,6 +738,13 @@ async function testToolRuntimeDeleteGuardContract() {
   await assert.rejects(() => provider.readFile('src/OldPanel.jsx'), /ENOENT/);
 }
 
+function testSandboxDeleteProtectedCoreContract() {
+  assert.equal(isDeleteProtectedFile('src/App.jsx'), true);
+  assert.equal(isDeleteProtectedFile('/home/user/app/src/App.tsx'), true);
+  assert.equal(isDeleteProtectedFile('index.html'), true);
+  assert.equal(isDeleteProtectedFile('src/components/OldPanel.jsx'), false);
+}
+
 async function testToolRuntimePackageInstallGuardContract() {
   assert.deepEqual(validatePackageNames(['lucide-react', '@radix-ui/react-icons@1.3.0']), [
     'lucide-react',
@@ -769,6 +837,47 @@ async function testToolRuntimeResetGuardContract() {
   assert.equal(runtime.getSideEffects()[0].type, 'sandbox_reset');
 }
 
+async function testSandboxResolverStrictIdentityContract() {
+  const requestedProvider = createFakeProvider({}, { sandboxId: 'agent-requested' });
+  const globalProvider = createFakeProvider({}, { sandboxId: 'agent-global' });
+
+  sandboxManager.registerSandbox('agent-requested', requestedProvider);
+  global.activeSandboxProvider = globalProvider;
+  global.sandboxData = { sandboxId: 'agent-global', url: 'https://global.example' };
+
+  const exact = await resolveSandboxProvider({
+    sandboxId: 'agent-requested',
+    allowGlobalFallback: false,
+    allowReconnect: false
+  });
+
+  assert.equal(exact.ok, true);
+  assert.equal(exact.provider, requestedProvider);
+  assert.equal(exact.sandboxId, 'agent-requested');
+
+  await sandboxManager.terminateSandbox('agent-requested');
+
+  const missing = await resolveSandboxProvider({
+    sandboxId: 'agent-missing',
+    allowGlobalFallback: false,
+    allowReconnect: false
+  });
+
+  assert.equal(missing.ok, false);
+  assert.equal(missing.code, 'SANDBOX_MISSING');
+  assert.equal(sandboxManager.getProvider('agent-missing'), null);
+
+  global.activeSandboxProvider = null;
+  global.sandboxData = null;
+}
+
+function testSandboxPathBoundaryContract() {
+  assert.equal(normalizePath('src/App.jsx'), '/home/user/app/src/App.jsx');
+  assert.throws(() => normalizePath('src/../App.jsx'), /directory traversal/);
+  assert.throws(() => normalizePath('/etc/passwd'), /outside the sandbox root/);
+  assert.throws(() => normalizePath(''), /empty/);
+}
+
 async function testToolRuntimeCatalogFetchParityContract() {
   const componentBundle = {
     files: [
@@ -805,8 +914,12 @@ function testComponentTurnPolicyCatalogGateContract() {
   assert.equal(shouldEnableCatalogToolsForEdit({ prompt: 'make it darker' }), false);
   assert.equal(shouldEnableCatalogToolsForEdit({ prompt: 'fix mobile spacing' }), false);
   assert.equal(shouldEnableCatalogToolsForEdit({ prompt: 'add pricing section' }), true);
+  assert.equal(shouldEnableCatalogToolsForEdit({ prompt: 'Add a models page' }), true);
+  assert.equal(shouldEnableCatalogToolsForEdit({ prompt: 'create a gallery route' }), true);
   assert.equal(shouldEnableCatalogToolsForEdit({ prompt: 'use stronger components for the hero' }), true);
   assert.equal(shouldEnableCatalogToolsForEdit({ prompt: 'replace the dashboard cards' }), true);
+  assert.equal(isLikelyMutatingEditPrompt('Add a models page'), true);
+  assert.equal(isLikelyMutatingEditPrompt('what files are in this project?'), false);
   assert.equal(shouldEnableCatalogToolsForEdit({
     prompt: 'small color tweak',
     manualSelectionIds: ['component.manual.v1']
@@ -843,6 +956,11 @@ async function testToolRuntimeBuildCheckContract() {
       exitCode: 0,
       summary: 'Vite build passed.',
       previewHealthy: true,
+      runtimeHealthy: true,
+      runtimeDiagnostics: {
+        render: { hasContent: true, textLen: 42, mediaCount: 0 },
+        browserConsole: { errorCount: 0, pageErrorCount: 0, requestFailureCount: 0, entries: [] }
+      },
       stages: [{ name: 'vite_build', success: true, required: true }]
     })
   });
@@ -852,9 +970,54 @@ async function testToolRuntimeBuildCheckContract() {
   assert.equal(result.ok, true);
   assert.equal(result.modelResult.buildPassed, true);
   assert.equal(result.modelResult.previewHealthy, true);
+  assert.equal(result.modelResult.runtimeHealthy, true);
+  assert.equal(result.modelResult.runtimeDiagnostics.browserConsole.errorCount, 0);
   assert.equal(result.modelResult.stages[0].name, 'vite_build');
   assert.equal(runtime.getBuildChecks().length, 1);
   assert.equal(runtime.getBuildChecks()[0].buildPassed, true);
+}
+
+async function testStagedBrowserRuntimeDiagnosticsContract() {
+  const sandboxId = 'agent-harness-runtime-diagnostics';
+  sandboxManager.registerSandbox(sandboxId, createVerificationProvider({
+    buildPasses: true,
+    previewPasses: true,
+    url: 'https://runtime.example'
+  }));
+
+  const result = await verifySandboxBuild(sandboxId, {
+    captureForVerificationFn: async () => ({
+      hasContent: false,
+      scrollHeight: 900,
+      textLen: 0,
+      bodyChildCount: 1,
+      mediaCount: 0,
+      browserConsole: {
+        total: 3,
+        errorCount: 1,
+        warningCount: 1,
+        pageErrorCount: 1,
+        requestFailureCount: 0,
+        returnedLines: 2,
+        truncated: false,
+        maxLines: 200,
+        entries: [
+          { source: 'pageerror', level: 'error', text: 'ReferenceError: ModelGallery is not defined' },
+          { source: 'console', level: 'warn', text: 'Fallback route rendered' }
+        ]
+      }
+    })
+  });
+
+  assert.equal(result.success, true);
+  assert.equal(result.buildPassed, true);
+  assert.equal(result.previewHealthy, false);
+  assert.equal(result.runtimeHealthy, false);
+  assert.match(result.summary, /browser runtime/i);
+  assert.equal(result.runtimeDiagnostics.browserConsole.entries.length, 2);
+  assert.match(result.logs, /ReferenceError: ModelGallery is not defined/);
+
+  await sandboxManager.terminateSandbox(sandboxId);
 }
 
 function testComponentIntentDashboardContract() {
@@ -867,6 +1030,23 @@ function testComponentIntentDashboardContract() {
   assert.ok(intent.sectionRoles.includes('calendar'));
   assert.ok(intent.moodTones.includes('premium'));
   assert.ok(intent.colorModes.includes('dark'));
+}
+
+function testComponentIntentWordBoundaryContract() {
+  const intent = inferComponentIntent(
+    'Build a King Von merchandise shop with a cart, checkout, and product cards.',
+  );
+
+  assert.ok(intent.siteTypes.includes('ecommerce'));
+  assert.ok(intent.sectionRoles.includes('ecommerce'));
+  assert.ok(!intent.siteTypes.includes('automotive'));
+  assert.ok(!intent.sectionRoles.includes('pricing'));
+
+  const productionIntent = inferComponentIntent(
+    'Create a cinematic production story with strong performance photography.',
+  );
+  assert.ok(!productionIntent.siteTypes.includes('ecommerce'));
+  assert.ok(!productionIntent.sectionRoles.includes('form'));
 }
 
 function testComponentFitRankingContract() {
@@ -915,6 +1095,94 @@ function testComponentFitRankingContract() {
   assert.ok(ranked[0].fitReasons.some((reason) => reason.startsWith('section:')));
 }
 
+function testComponentExactVerticalRankingContract() {
+  const components = [
+    {
+      id: 'pricing.minimal.v1',
+      name: 'Minimal Dark Pricing',
+      category: 'pricing',
+      tags: ['premium', 'dark', 'cards'],
+      suitableFor: ['SaaS subscriptions'],
+      qualityScore: 10,
+    },
+    {
+      id: 'feature.code.integration.v1',
+      name: 'Code Integration Feature',
+      category: 'features',
+      description: 'A production-ready product integration section.',
+      suitableFor: ['Developer portfolios'],
+      qualityScore: 10,
+    },
+    {
+      id: 'header.ecommerce.v1',
+      name: 'Premium Ecommerce Mega Menu',
+      category: 'header',
+      tags: ['ecommerce', 'cart'],
+      suitableFor: ['Online stores', 'Fashion retailers'],
+      qualityScore: 8,
+    },
+    {
+      id: 'background.streetwear.v1',
+      name: 'Underground Streetwear Background',
+      category: 'background',
+      keywords: ['fashion drop', 'sneaker drop'],
+      suitableFor: ['Streetwear brands'],
+      qualityScore: 8,
+    },
+    {
+      id: 'product.showcase.v1',
+      name: 'Editorial Product Showcase',
+      category: 'features',
+      tags: ['product', 'showcase'],
+      qualityScore: 7,
+    },
+  ];
+
+  const ranked = rankComponentsForPrompt(
+    components,
+    'Build a dedicated King Von merchandise ecommerce shop with a catalog, cart, limited drops, and streetwear styling.',
+    { maxItems: 6 },
+  );
+  const ids = ranked.map((component) => component.id);
+
+  assert.deepEqual(ids.sort(), [
+    'background.streetwear.v1',
+    'header.ecommerce.v1',
+    'product.showcase.v1',
+  ]);
+  assert.ok(!ids.includes('pricing.minimal.v1'));
+  assert.ok(!ids.includes('feature.code.integration.v1'));
+
+  const noExactMatch = rankComponentsForPrompt(
+    components.slice(0, 2),
+    'Build a merchandise ecommerce shop with catalog and checkout.',
+    { maxItems: 6 },
+  );
+  assert.deepEqual(noExactMatch, []);
+
+  const industryTaggedMatch = rankComponentsForPrompt([
+    {
+      id: 'collection.editorial.v1',
+      name: 'Editorial Collection',
+      category: 'features',
+      industryTags: ['ecommerce'],
+      qualityScore: 7,
+    },
+  ], 'Build a merchandise ecommerce shop.', { maxItems: 6 });
+  assert.equal(industryTaggedMatch[0]?.id, 'collection.editorial.v1');
+
+  const negativeFit = scoreComponentFit({
+    id: 'header.ecommerce.unsuitable.v1',
+    name: 'Ecommerce Header',
+    category: 'header',
+    tags: ['ecommerce'],
+    notSuitableFor: ['E-commerce product listings'],
+    qualityScore: 8,
+  }, 'Build a merchandise ecommerce shop with product listings.');
+  assert.equal(negativeFit.penalty, 0.35);
+  assert.ok(negativeFit.reasons.includes('penalty:not_suitable'));
+}
+
 function testComponentNotSuitablePenaltyContract() {
   const prompt = 'Create a dashboard for a professional CRM admin workspace.';
   const goodFit = scoreComponentFit({
@@ -942,7 +1210,14 @@ async function testStagedVerificationPassContract() {
   const sandboxId = 'agent-harness-verification-pass';
   sandboxManager.registerSandbox(sandboxId, createVerificationProvider({ buildPasses: true, previewPasses: true }));
 
-  const result = await verifySandboxBuild(sandboxId);
+  // Full production build path (opt-in, thorough).
+  const result = await verifySandboxBuild(sandboxId, {
+    fullBuild: true,
+    captureForVerificationFn: async () => ({
+      hasContent: true, scrollHeight: 900, textLen: 120, mediaCount: 2, bodyChildCount: 4,
+      browserConsole: { total: 0, errorCount: 0, warningCount: 0, pageErrorCount: 0, requestFailureCount: 0, returnedLines: 0, truncated: false, maxLines: 200, entries: [] }
+    })
+  });
 
   assert.equal(result.success, true);
   assert.equal(result.exitCode, 0);
@@ -954,13 +1229,45 @@ async function testStagedVerificationPassContract() {
   assert.match(result.logs, /VERIFICATION STAGES/);
 
   await sandboxManager.terminateSandbox(sandboxId);
+
+  // Fast (default) path: no production build, verified against the live preview.
+  const fastSandboxId = 'agent-harness-verification-fast';
+  sandboxManager.registerSandbox(fastSandboxId, createVerificationProvider({ previewPasses: true, url: 'https://fast.example' }));
+  const fast = await verifySandboxBuild(fastSandboxId, {
+    captureForVerificationFn: async () => ({
+      hasContent: true, scrollHeight: 1200, textLen: 240, mediaCount: 3, bodyChildCount: 6,
+      screenshots: [{ label: 'desktop', base64: 'AAAA', mimeType: 'image/jpeg' }],
+      browserConsole: { total: 0, errorCount: 0, warningCount: 0, pageErrorCount: 0, requestFailureCount: 0, returnedLines: 0, truncated: false, maxLines: 200, entries: [] }
+    })
+  });
+  assert.equal(fast.success, true);
+  assert.equal(fast.buildPassed, true);
+  assert.equal(fast.previewHealthy, true);
+  assert.ok(!fast.stages.some((stage) => stage.name === 'vite_build'), 'fast path must not run a production build');
+  assert.ok(fast.stages.some((stage) => stage.name === 'preview_health'));
+  assert.equal(fast.screenshots.length, 1, 'fast path surfaces reusable screenshots');
+  await sandboxManager.terminateSandbox(fastSandboxId);
+
+  // Fast path compile failure: Vite error overlay → buildPassed false.
+  const overlaySandboxId = 'agent-harness-verification-overlay';
+  sandboxManager.registerSandbox(overlaySandboxId, createVerificationProvider({ previewPasses: true, url: 'https://overlay.example' }));
+  const overlay = await verifySandboxBuild(overlaySandboxId, {
+    captureForVerificationFn: async () => ({
+      hasContent: false, scrollHeight: 0, textLen: 0, mediaCount: 0, bodyChildCount: 1,
+      viteOverlay: 'src/App.jsx: Unexpected token (12:3)',
+      browserConsole: { total: 1, errorCount: 0, warningCount: 0, pageErrorCount: 0, requestFailureCount: 0, returnedLines: 1, truncated: false, maxLines: 200, entries: [{ source: 'vite_overlay', level: 'error', text: 'Vite compile error: Unexpected token' }] }
+    })
+  });
+  assert.equal(overlay.buildPassed, false, 'vite overlay must fail the compile check');
+  assert.match(overlay.summary, /compile error/i);
+  await sandboxManager.terminateSandbox(overlaySandboxId);
 }
 
 async function testStagedVerificationFailureContract() {
   const sandboxId = 'agent-harness-verification-fail';
   sandboxManager.registerSandbox(sandboxId, createVerificationProvider({ buildPasses: false }));
 
-  const result = await verifySandboxBuild(sandboxId);
+  const result = await verifySandboxBuild(sandboxId, { fullBuild: true });
 
   assert.equal(result.success, false);
   assert.equal(result.exitCode, 1);
@@ -971,6 +1278,37 @@ async function testStagedVerificationFailureContract() {
   assert.match(result.logs, /Vite build failed/);
 
   await sandboxManager.terminateSandbox(sandboxId);
+
+  // Fast path failure: dev server not serving → buildPassed false.
+  const downSandboxId = 'agent-harness-verification-down';
+  sandboxManager.registerSandbox(downSandboxId, createVerificationProvider({ previewPasses: false, url: 'https://down.example' }));
+  const down = await verifySandboxBuild(downSandboxId, { captureRuntime: false });
+  assert.equal(down.success, false);
+  assert.equal(down.buildPassed, false);
+  assert.ok(!down.stages.some((stage) => stage.name === 'vite_build'));
+  await sandboxManager.terminateSandbox(downSandboxId);
+}
+
+function testBenignConsoleErrorClassificationContract() {
+  // A missing-asset 404 (console error) + a stylesheet asset failure must NOT
+  // count as fatal errors, so they never block build verification.
+  const benign = compactConsoleEntries([
+    { source: 'console', level: 'error', text: 'Failed to load resource: the server responded with a status of 404 (Not Found)' },
+    { source: 'asset', level: 'warn', text: 'GET https://x/tokens.css failed: net::ERR_ABORTED' },
+    { source: 'console', level: 'error', text: 'GET https://fonts.googleapis.com/css2 net::ERR_FAILED' }
+  ]);
+  assert.equal(benign.errorCount, 0, 'asset 404s must not count as fatal errors');
+  assert.ok(benign.assetErrorCount >= 1, 'asset 404s are surfaced as asset warnings');
+  assert.equal(benign.requestFailureCount, 0);
+  assert.equal(benign.pageErrorCount, 0);
+
+  // A real JS error and an uncaught page error MUST stay fatal.
+  const fatal = compactConsoleEntries([
+    { source: 'console', level: 'error', text: 'Uncaught ReferenceError: ModelGallery is not defined' },
+    { source: 'pageerror', level: 'error', text: 'TypeError: Cannot read properties of undefined (reading map)' }
+  ]);
+  assert.ok(fatal.errorCount >= 1, 'real JS console error stays fatal');
+  assert.equal(fatal.pageErrorCount, 1, 'uncaught page error stays fatal');
 }
 
 function sseEvent(event, payload) {
@@ -1025,6 +1363,9 @@ function createFakeProvider(seedFiles = {}, options = {}) {
     async writeFile(filePath, content) {
       files.set(toAbsolutePath(filePath), content);
     },
+    async deleteFile(filePath) {
+      files.delete(toAbsolutePath(filePath));
+    },
     async runCommand(command) {
       if (options.runCommand) return options.runCommand(command);
       const rmMatch = command.match(/rm -f "([^"]+)"/);
@@ -1044,12 +1385,35 @@ function createFakeProvider(seedFiles = {}, options = {}) {
     },
     async terminate() {
       files.clear();
+    },
+    getSandboxInfo() {
+      return {
+        sandboxId: options.sandboxId || 'fake-sandbox',
+        url: options.url === null ? null : (options.url || 'https://fake.example'),
+        provider: 'fake'
+      };
+    },
+    isAlive() {
+      return options.alive !== false;
+    },
+    getCapabilities() {
+      return {
+        fileRead: true,
+        fileWrite: true,
+        command: true,
+        packageInstall: true,
+        appReset: true,
+        viteRestart: false,
+        deleteFile: true,
+        pathSafetyCheck: false
+      };
     }
   };
 }
 
-function createVerificationProvider({ buildPasses = true, previewPasses = true } = {}) {
+function createVerificationProvider({ buildPasses = true, previewPasses = true, url = null } = {}) {
   return createFakeProvider({}, {
+    url,
     runCommand: async (command) => {
       if (command.includes('npx vite build')) {
         return buildPasses

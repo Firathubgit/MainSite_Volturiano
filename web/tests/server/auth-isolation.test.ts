@@ -19,6 +19,9 @@ describe('launch safety: project ownership isolation', () => {
     const dashboard = readWeb('server/routes/dashboard.js');
     expectContains(dashboard, 'assertPublishedSiteOwner', 'published site ownership guard');
     expectContains(dashboard, 'assertProjectOwner', 'dashboard project ownership guard');
+
+    const githubPublish = readWeb('server/routes/integrations/github.js');
+    expectContains(githubPublish, 'assertProjectOwner(projectId, req.user.id', 'publish ownership assertion');
   });
 
   it('uses strict bearer auth for normal project/settings routes and query tokens only where explicitly allowed', () => {

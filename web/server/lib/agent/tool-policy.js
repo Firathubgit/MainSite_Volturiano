@@ -14,7 +14,8 @@ export const TOOL_CATEGORIES = Object.freeze({
   BUILD: 'build',
   CATALOG: 'catalog',
   PACKAGE: 'package',
-  SANDBOX: 'sandbox'
+  SANDBOX: 'sandbox',
+  PLANNING: 'planning'
 });
 
 const MODE_RANK = Object.freeze({
@@ -31,7 +32,8 @@ export const DEFAULT_TOOL_POLICY_OPTIONS = Object.freeze({
   enableCatalogTools: false,
   enablePackageTools: false,
   enableDestructiveTools: false,
-  enableSandboxAdminTools: false
+  enableSandboxAdminTools: false,
+  providerCapabilities: null
 });
 
 export class AgentToolPolicyError extends Error {
@@ -82,9 +84,13 @@ export function shouldExposeTool(definition, options = {}) {
 
   if (!policy.requiresFeature) return true;
   if (policy.requiresFeature === 'catalog') return Boolean(normalized.enableCatalogTools);
-  if (policy.requiresFeature === 'package') return Boolean(normalized.enablePackageTools);
+  if (policy.requiresFeature === 'package') {
+    return Boolean(normalized.enablePackageTools) && normalized.providerCapabilities?.packageInstall !== false;
+  }
   if (policy.requiresFeature === 'destructive') return Boolean(normalized.enableDestructiveTools);
-  if (policy.requiresFeature === 'sandbox-admin') return Boolean(normalized.enableSandboxAdminTools);
+  if (policy.requiresFeature === 'sandbox-admin') {
+    return Boolean(normalized.enableSandboxAdminTools) && normalized.providerCapabilities?.appReset !== false;
+  }
   return false;
 }
 

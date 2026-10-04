@@ -1,9 +1,22 @@
+import { resolveSandboxProvider } from '../lib/sandbox/provider-resolver.js';
+
 export default async function createZip(req, res) {
   try {
-    const provider = global.activeSandboxProvider;
+    const { sandboxId } = req.body || {};
+    const resolution = await resolveSandboxProvider({
+      sandboxId,
+      allowGlobalFallback: !sandboxId,
+      allowReconnect: true,
+      requireAlive: true
+    });
+    const provider = resolution.ok ? resolution.provider : null;
 
     if (!provider) {
-      return res.status(400).json({ success: false, error: 'No active sandbox' });
+      return res.status(resolution.statusCode || 400).json({
+        success: false,
+        error: resolution.message || 'No active sandbox',
+        code: resolution.code
+      });
     }
 
     console.log('[create-zip] Creating project zip...');

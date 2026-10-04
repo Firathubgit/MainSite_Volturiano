@@ -1,3 +1,5 @@
+import path from 'node:path';
+
 /**
  * Sandbox Filesystem Abstraction Layer
  * 
@@ -29,13 +31,21 @@ const PROTECTED_FILES = new Set([
   'main.jsx' // main.jsx is the entry point, agent shouldn't touch it
 ]);
 
+// Files that may be edited/refactored, but should never be deleted by the agent.
+const DELETE_PROTECTED_FILES = new Set([
+  ...PROTECTED_FILES,
+  'App.jsx',
+  'App.tsx',
+  'index.html'
+]);
+
 // ─── Path Validation ─────────────────────────────────────────
 
 /**
  * Normalize a relative or absolute path to an absolute sandbox path.
  * Validates the path stays within the sandbox root.
  */
-function normalizePath(inputPath) {
+function normalizePathLegacy(inputPath) {
   // Strip leading slashes if it's a relative path
   let cleaned = inputPath.trim();
   
@@ -64,6 +74,65 @@ function normalizePath(inputPath) {
   return `${SANDBOX_ROOT}/${cleaned}`;
 }
 
+function normalizePath(inputPath) {
+  const cleaned = String(inputPath ?? '').trim().replace(/\\/g, '/');
+
+  if (!cleaned || cleaned.includes('\0')) {
+    throw new SandboxFsError('INVALID_PATH', 'Path is empty or contains invalid characters');
+  }
+
+  const parts = cleaned.split('/').filter(Boolean);
+  if (parts.includes('..')) {
+    throw new SandboxFsError(
+      'BOUNDARY_VIOLATION',
+      `Path "${cleaned}" contains directory traversal (..)`
+    );
+  }
+
+  if (cleaned.startsWith(SANDBOX_ROOT + '/')) {
+    return assertNormalizedSandboxPath(cleaned);
+  }
+
+  if (cleaned.startsWith('/')) {
+    throw new SandboxFsError(
+      'BOUNDARY_VIOLATION',
+      `Path "${cleaned}" is outside the sandbox root "${SANDBOX_ROOT}"`
+    );
+  }
+
+  return assertNormalizedSandboxPath(`${SANDBOX_ROOT}/${cleaned.replace(/^\/+/, '')}`);
+}
+
+function assertNormalizedSandboxPath(candidate) {
+  const normalized = path.posix.normalize(candidate);
+
+  if (normalized === SANDBOX_ROOT || !normalized.startsWith(SANDBOX_ROOT + '/')) {
+    throw new SandboxFsError(
+      'BOUNDARY_VIOLATION',
+      `Path "${candidate}" is outside the sandbox root "${SANDBOX_ROOT}"`
+    );
+  }
+
+  return normalized;
+}
+
+async function ensureProviderPathSafe(provider, absolutePath) {
+  if (typeof provider?.assertPathWithinRoot !== 'function') return;
+
+  try {
+    await provider.assertPathWithinRoot(absolutePath, SANDBOX_ROOT);
+  } catch (error) {
+    throw new SandboxFsError(
+      error.code || 'BOUNDARY_VIOLATION',
+      error.message || `Path "${absolutePath}" failed sandbox boundary validation`
+    );
+  }
+}
+
+function shellQuote(value) {
+  return `'${String(value).replace(/'/g, `'\"'\"'`)}'`;
+}
+
 /**
  * Convert absolute sandbox path back to relative for display/storage.
  */
@@ -80,6 +149,11 @@ function toRelativePath(absolutePath) {
 function isProtectedFile(filePath) {
   const fileName = filePath.split('/').pop();
   return PROTECTED_FILES.has(fileName);
+}
+
+function isDeleteProtectedFile(filePath) {
+  const fileName = filePath.split('/').pop();
+  return DELETE_PROTECTED_FILES.has(fileName);
 }
 
 /**
@@ -184,6 +258,7 @@ async function readFile(provider, filePath, options = {}) {
   if (!provider) throw new SandboxFsError('NO_SANDBOX', 'No active sandbox provider');
 
   const absolutePath = normalizePath(filePath);
+  await ensureProviderPathSafe(provider, absolutePath);
   
   if (!isTextFile(absolutePath)) {
     throw new SandboxFsError('BINARY_FILE', `File "${filePath}" appears to be binary`);
@@ -246,6 +321,7 @@ async function createFile(provider, filePath, content) {
   }
 
   const absolutePath = normalizePath(filePath);
+  await ensureProviderPathSafe(provider, absolutePath);
 
   if (isProtectedFile(absolutePath)) {
     throw new SandboxFsError('PROTECTED_FILE', `Cannot write to protected file "${filePath}"`);
@@ -293,6 +369,7 @@ async function editFile(provider, filePath, oldString, newString, replaceAll = f
   if (!provider) throw new SandboxFsError('NO_SANDBOX', 'No active sandbox provider');
 
   const absolutePath = normalizePath(filePath);
+  await ensureProviderPathSafe(provider, absolutePath);
 
   if (isProtectedFile(absolutePath)) {
     throw new SandboxFsError('PROTECTED_FILE', `Cannot edit protected file "${filePath}"`);
@@ -314,27 +391,39 @@ async function editFile(provider, filePath, oldString, newString, replaceAll = f
     originalContent = originalContent.toString();
   }
 
-  // Check if oldString exists
-  if (!originalContent.includes(oldString)) {
-    throw new SandboxFsError(
-      'STRING_NOT_FOUND',
-      `Could not find the specified text in "${filePath}". The file may have been modified since you last read it.`
-    );
+  // Resolve the match target: exact first, then whitespace-tolerant fallback
+  // (models routinely drift on indentation/trailing spaces when echoing code).
+  let effectiveOldString = oldString;
+  if (!originalContent.includes(effectiveOldString)) {
+    const fuzzyMatch = findWhitespaceTolerantMatch(originalContent, oldString);
+    if (fuzzyMatch) {
+      effectiveOldString = fuzzyMatch;
+      console.log(`[sandbox-fs] edit_file: exact match failed in "${filePath}", matched via whitespace-tolerant fallback.`);
+    } else {
+      throw new SandboxFsError(
+        'STRING_NOT_FOUND',
+        `Could not find the specified text in "${filePath}" (even ignoring whitespace differences). Re-read the relevant lines and retry with the exact current text.`
+      );
+    }
   }
 
   // Count occurrences
-  const occurrences = originalContent.split(oldString).length - 1;
+  const occurrences = originalContent.split(effectiveOldString).length - 1;
 
   // Apply replacement
   let updatedContent;
   if (replaceAll) {
-    updatedContent = originalContent.replaceAll(oldString, newString);
+    updatedContent = originalContent.replaceAll(effectiveOldString, newString);
   } else {
     if (occurrences > 1) {
-      // Multiple occurrences but replaceAll not set — warn but replace first
-      console.warn(`[sandbox-fs] edit_file: found ${occurrences} occurrences of old_string in "${filePath}", replacing first only.`);
+      // Ambiguous target — refuse instead of silently editing the first match,
+      // which historically produced wrong-place edits.
+      throw new SandboxFsError(
+        'AMBIGUOUS_MATCH',
+        `Found ${occurrences} occurrences of old_string in "${filePath}". Include more surrounding context to make the match unique, or pass replace_all: true to change every occurrence.`
+      );
     }
-    updatedContent = originalContent.replace(oldString, newString);
+    updatedContent = originalContent.replace(effectiveOldString, newString);
   }
 
   // Size check
@@ -358,6 +447,42 @@ async function editFile(provider, filePath, oldString, newString, replaceAll = f
 }
 
 /**
+ * Whitespace-tolerant fallback matching for edit_file. Compares line
+ * sequences with collapsed internal whitespace and trimmed ends, and returns
+ * the EXACT substring from the file when exactly one region matches.
+ * Returns null when there is no match or the fuzzy match is ambiguous.
+ */
+function findWhitespaceTolerantMatch(content, target) {
+  const normalizeLine = (line) => line.replace(/\s+/g, ' ').trim();
+
+  const targetLines = String(target || '').split('\n').map(normalizeLine);
+  while (targetLines.length && targetLines[0] === '') targetLines.shift();
+  while (targetLines.length && targetLines[targetLines.length - 1] === '') targetLines.pop();
+  if (targetLines.length === 0) return null;
+
+  const contentLines = content.split('\n');
+  const normalizedContent = contentLines.map(normalizeLine);
+
+  let matchStart = -1;
+  for (let i = 0; i + targetLines.length <= normalizedContent.length; i++) {
+    let matches = true;
+    for (let j = 0; j < targetLines.length; j++) {
+      if (normalizedContent[i + j] !== targetLines[j]) {
+        matches = false;
+        break;
+      }
+    }
+    if (matches) {
+      if (matchStart !== -1) return null; // multiple fuzzy matches — too risky
+      matchStart = i;
+    }
+  }
+
+  if (matchStart === -1) return null;
+  return contentLines.slice(matchStart, matchStart + targetLines.length).join('\n');
+}
+
+/**
  * Replace entire file contents. Used for major rewrites where edit_file
  * would be impractical.
  */
@@ -369,6 +494,7 @@ async function replaceFile(provider, filePath, content) {
   }
 
   const absolutePath = normalizePath(filePath);
+  await ensureProviderPathSafe(provider, absolutePath);
 
   if (isProtectedFile(absolutePath)) {
     throw new SandboxFsError('PROTECTED_FILE', `Cannot replace protected file "${filePath}"`);
@@ -402,8 +528,9 @@ async function deleteFile(provider, filePath) {
   if (!provider) throw new SandboxFsError('NO_SANDBOX', 'No active sandbox provider');
 
   const absolutePath = normalizePath(filePath);
+  await ensureProviderPathSafe(provider, absolutePath);
 
-  if (isProtectedFile(absolutePath)) {
+  if (isDeleteProtectedFile(absolutePath)) {
     throw new SandboxFsError('PROTECTED_FILE', `Cannot delete protected file "${filePath}"`);
   }
 
@@ -416,8 +543,11 @@ async function deleteFile(provider, filePath) {
     throw new SandboxFsError('READ_FAILED', `File "${filePath}" does not exist or cannot be read`);
   }
 
-  // Use sandbox command to delete
-  await provider.runCommand(`rm -f "${absolutePath}"`);
+  if (typeof provider.deleteFile === 'function') {
+    await provider.deleteFile(absolutePath);
+  } else {
+    await provider.runCommand(`rm -f ${shellQuote(absolutePath)}`);
+  }
 
   return {
     type: 'delete',
@@ -520,6 +650,7 @@ async function createSnapshot(provider, filePaths) {
   for (const filePath of filePaths) {
     try {
       const absolutePath = normalizePath(filePath);
+      await ensureProviderPathSafe(provider, absolutePath);
       const content = await provider.readFile(absolutePath);
       snapshot.files[toRelativePath(absolutePath)] = typeof content === 'string' ? content : content.toString();
     } catch (e) {
@@ -541,11 +672,13 @@ async function restoreSnapshot(provider, snapshot) {
 
   for (const [filePath, content] of Object.entries(snapshot.files)) {
     const absolutePath = normalizePath(filePath);
+    await ensureProviderPathSafe(provider, absolutePath);
     
     if (content === null) {
       // File didn't exist before — delete it
       try {
-        await provider.runCommand(`rm -f "${absolutePath}"`);
+        if (typeof provider.deleteFile === 'function') await provider.deleteFile(absolutePath);
+        else await provider.runCommand(`rm -f ${shellQuote(absolutePath)}`);
         restored.push({ path: filePath, action: 'deleted' });
       } catch (e) {
         console.warn(`[sandbox-fs] Could not delete ${filePath} during restore:`, e.message);
@@ -583,6 +716,7 @@ export {
   normalizePath,
   toRelativePath,
   isProtectedFile,
+  isDeleteProtectedFile,
   isTextFile,
   
   // Error class
@@ -591,5 +725,6 @@ export {
   // Constants
   SANDBOX_ROOT,
   PROTECTED_FILES,
+  DELETE_PROTECTED_FILES,
   TEXT_EXTENSIONS
 };

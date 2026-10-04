@@ -5,7 +5,11 @@
   "scripts": {
     "start": "node index.js",
     "dev": "node --watch index.js",
-    "check:syntax": "node --check index.js"
+    "check:syntax": "node --check index.js",
+    "regression:harness": "node -r dotenv/config scripts/agent-harness-regression.js",
+    "eval:design": "node -r dotenv/config scripts/design-eval.js",
+    "eval:design:full": "node -r dotenv/config scripts/design-eval.js --all",
+    "embeddings:backfill": "node -r dotenv/config scripts/backfill-component-embeddings.js"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^1.1.0",

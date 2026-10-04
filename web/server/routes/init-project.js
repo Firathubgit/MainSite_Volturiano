@@ -1,4 +1,4 @@
-import { checkAndDeductUserCredit, createProject } from '../lib/db/projects.js';
+import { createProject } from '../lib/db/projects.js';
 import { supabaseAdmin } from '../lib/supabase-admin.js';
 import crypto from 'crypto';
 import { logger } from '../lib/logger.js';
@@ -20,7 +20,7 @@ export default async function initProject(req, res) {
                 .maybeSingle();
 
             if (existing) {
-                console.log(`[initProject] BuildId ${buildId} already exists — bypassing credit deduction`);
+                console.log(`[initProject] BuildId ${buildId} already exists`);
                 return res.status(200).json({
                     success: true,
                     projectId: buildId,
@@ -29,17 +29,10 @@ export default async function initProject(req, res) {
             }
         }
 
-        // 1. Credit Check (Now mandatory as route is requireAuth)
-        const creditCheck = await checkAndDeductUserCredit(userId);
-        if (!creditCheck.allowed) {
-            return res.status(402).json({
-                success: false,
-                error: creditCheck.message,
-                code: 'PAYMENT_REQUIRED'
-            });
-        }
+        // Credits are charged once, by /api/agent/initial-build. Project init is free
+        // so a single generation never double-deducts (init + build used to charge twice).
 
-        // 2. Initialize the project in Supabase
+        // 1. Initialize the project in Supabase
         const savedId = await createProject({
             userId,
             prompt,

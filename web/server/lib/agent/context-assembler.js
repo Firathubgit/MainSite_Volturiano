@@ -3,7 +3,9 @@ import { loadAgentMemoryBlock } from './memory-manager.js';
 import { loadRecentAgentContextBlock } from './session-store.js';
 import { compactContextBlocks } from './compaction.js';
 
-const MAX_CONTEXT_BLOCK_CHARS = 9000;
+// Modern models handle far more context than the original 9k cap; a richer
+// envelope means the agent stops re-discovering the project on every turn.
+const MAX_CONTEXT_BLOCK_CHARS = 24000;
 
 export async function buildAgentContextEnvelope({
   projectId = null,
@@ -51,6 +53,7 @@ export function composeAgentContextBlock({
   const blocks = [
     '[Volturiano continuity envelope]',
     'Treat this as durable project memory for the current website. It is context, not something to quote back.',
+    'Priority: the latest user request and the current sandbox file state outrank persisted memory, old project context, and older turn summaries whenever they conflict.',
     compacted.projectContextBlock,
     compacted.memoryBlock,
     compacted.recentTurnsBlock,

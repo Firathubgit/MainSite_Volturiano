@@ -1,5 +1,4 @@
-import { supabaseAdmin } from '../supabase-admin.js';
-import { RETENTION_DAYS, retentionUntil } from '../retention.js';
+import { db } from '../store/index.js';
 
 const DEFAULT_MEMORY_LIMIT = 12;
 const MAX_MEMORY_CONTENT = 420;
@@ -32,10 +31,10 @@ export async function loadAgentMemoryBlock({
   userId = null,
   limit = DEFAULT_MEMORY_LIMIT
 } = {}) {
-  if (!supabaseAdmin || !projectId) return '';
+  if (!projectId) return '';
 
   try {
-    let query = supabaseAdmin
+    let query = db
       .from('agent_memory')
       .select('id,memory_type,content,metadata,importance,created_at,updated_at')
       .eq('project_id', projectId)
@@ -72,7 +71,7 @@ export async function persistTurnMemories({
   route = null,
   turnType = null
 } = {}) {
-  if (!supabaseAdmin || !projectId) return [];
+  if (!projectId) return [];
 
   const memories = deriveTurnMemories({
     prompt,
@@ -106,7 +105,7 @@ export async function persistTurnMemories({
       }, {});
 
       // Check for existing memory with same project + type + content
-      const { data: existing } = await supabaseAdmin
+      const { data: existing } = await db
         .from('agent_memory')
         .select('id, importance')
         .eq('project_id', projectId)
@@ -116,20 +115,19 @@ export async function persistTurnMemories({
 
       if (existing) {
         // Bump importance and refresh timestamp instead of duplicating
-        const { data: updated } = await supabaseAdmin
+        const { data: updated } = await db
           .from('agent_memory')
           .update({
             importance: Math.max(existing.importance, importance),
             metadata,
-            updated_at: new Date().toISOString(),
-            retention_until: retentionUntil(RETENTION_DAYS.agentMemory)
+            updated_at: new Date().toISOString()
           })
           .eq('id', existing.id)
           .select('id, memory_type');
         if (updated) results.push(updated);
       } else {
         // New memory — insert
-        const { data: inserted } = await supabaseAdmin
+        const { data: inserted } = await db
           .from('agent_memory')
           .insert({
             project_id: projectId,
@@ -137,8 +135,7 @@ export async function persistTurnMemories({
             memory_type: memoryType,
             content,
             metadata,
-            importance,
-            retention_until: retentionUntil(RETENTION_DAYS.agentMemory)
+            importance
           })
           .select('id, memory_type');
         if (inserted) results.push(inserted);

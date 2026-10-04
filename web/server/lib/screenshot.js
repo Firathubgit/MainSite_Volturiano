@@ -1,74 +1,51 @@
-import puppeteer from 'puppeteer';
-import { supabaseAdmin } from './supabase-admin.js';
+import { files } from './store/index.js';
 
 const CHROMIUM_NO_SANDBOX = process.env.CHROMIUM_NO_SANDBOX === 'true';
 const chromiumArgs = CHROMIUM_NO_SANDBOX
     ? ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage']
     : ['--disable-dev-shm-usage'];
 
+// Puppeteer is loaded on first use. Screenshots are an optional extra: without
+// Puppeteer (or its Chromium download) the agent still builds and edits sites,
+// it just skips thumbnails and the visual self-review.
+let puppeteerPromise = null;
+async function launchBrowser() {
+    if (!puppeteerPromise) {
+        puppeteerPromise = import('puppeteer').then((mod) => mod.default).catch(() => null);
+    }
+    const puppeteer = await puppeteerPromise;
+    if (!puppeteer) throw new Error('Puppeteer is not installed');
+    return puppeteer.launch({ headless: true, args: chromiumArgs });
+}
+
+/**
+ * Capture a thumbnail of the running preview and store it with the project.
+ * Returns the URL of the stored image, or null when capture is unavailable.
+ */
 export async function captureAndUploadScreenshot(url, projectId) {
-    if (!supabaseAdmin || !url || !projectId) return null;
+    if (!url || !projectId) return null;
     let browser = null;
     try {
-        console.log(`\n[Screenshot Agent] 📸 STARTING JOB for Project: ${projectId}`);
-        console.log(`[Screenshot Agent] ⏳ Sandboxing URL: ${url}`);
-
-        // This runs after a build/turn has completed, so the Vite server is
-        // already warm — no need for a long pre-launch wait.
+        // This runs after a turn has completed, so the Vite server is already warm.
         await new Promise(resolve => setTimeout(resolve, 1500));
 
-        console.log(`[Screenshot Agent] 🌐 Launching Headless Chromium...`);
-        browser = await puppeteer.launch({
-            headless: true,
-            args: chromiumArgs,
-        });
+        browser = await launchBrowser();
         const page = await browser.newPage();
         await page.setViewport({ width: 1440, height: 900 });
-        
-        console.log(`[Screenshot Agent] 🚀 Navigating to ${url}...`);
-        // domcontentloaded + short settle: networkidle2 stalled on Vite's HMR socket.
-        await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 20000 }).catch(e => {
-            console.warn(`[Screenshot Agent] ⚠️ Navigation warning (may still work): ${e.message}`);
-        });
-        
-        // Allow initial React render, fonts, and lazy images to settle.
-        await new Promise(resolve => setTimeout(resolve, 2500));
-        
-        console.log(`[Screenshot Agent] 📸 SNAP! Capturing JPEG buffer...`);
-        const screenshotBuffer = await page.screenshot({ type: 'jpeg', quality: 90 });
-        
-        const filename = `${projectId}_${Date.now()}.jpg`;
-        console.log(`[Screenshot Agent] 💾 Uploading to Supabase bucket 'project-thumbnails' as ${filename}...`);
-        const { data, error } = await supabaseAdmin.storage
-            .from('project-thumbnails')
-            .upload(filename, screenshotBuffer, { contentType: 'image/jpeg', upsert: true });
-            
-        if (error) {
-            console.warn('[Screenshot Agent] ⚠️ First upload attempt failed. Trying to ensure bucket exists...', error.message);
-            // Attempt to create bucket if it does not exist (we ignore errors here if it already exists)
-            await supabaseAdmin.storage.createBucket('project-thumbnails', { public: true }).catch(() => {});
-            
-            console.log(`[Screenshot Agent] 💾 Retrying upload...`);
-            const retry = await supabaseAdmin.storage
-                .from('project-thumbnails')
-                .upload(filename, screenshotBuffer, { contentType: 'image/jpeg', upsert: true });
-            if (retry.error) throw retry.error;
-        }
 
-        const { data: publicUrlData } = supabaseAdmin.storage.from('project-thumbnails').getPublicUrl(filename);
-        
-        console.log(`[Screenshot Agent] 🎉 SUCCESSFULLY GENERATED & SAVED THUMBNAIL!`);
-        console.log(`[Screenshot Agent] 🔗 URL: ${publicUrlData.publicUrl}\n`);
-        return publicUrlData.publicUrl;
+        // domcontentloaded plus a short settle: networkidle2 stalls on Vite's HMR socket.
+        await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 20000 }).catch(e => {
+            console.warn(`[screenshot] Navigation warning: ${e.message}`);
+        });
+        await new Promise(resolve => setTimeout(resolve, 2500));
+
+        const buffer = await page.screenshot({ type: 'jpeg', quality: 90 });
+        return files.write('project-thumbnails', `${projectId}/${Date.now()}.jpg`, buffer);
     } catch (err) {
-        console.error('\n[Screenshot Agent] ❌ CATASTROPHIC ERROR generating screenshot:', err.message);
-        console.error(err);
-        return null; // silently fail and return null
+        console.warn('[screenshot] Thumbnail skipped:', err.message);
+        return null;
     } finally {
-        if (browser) {
-            console.log(`[Screenshot Agent] 🧹 Closing headless Chromium instance.\n`);
-            await browser.close().catch(() => {});
-        }
+        if (browser) await browser.close().catch(() => {});
     }
 }
 
@@ -95,10 +72,7 @@ export async function captureViewportScreenshots(sandboxUrl, options = {}) {
     let browser = null;
     const shots = [];
     try {
-        browser = await puppeteer.launch({
-            headless: true,
-            args: chromiumArgs
-        });
+        browser = await launchBrowser();
         const page = await browser.newPage();
 
         for (const viewport of viewports) {
@@ -156,10 +130,7 @@ export async function captureForVerification(sandboxUrl, options = {}) {
     let browser = null;
     const consoleEntries = [];
     try {
-        browser = await puppeteer.launch({
-            headless: true,
-            args: chromiumArgs
-        });
+        browser = await launchBrowser();
         const page = await browser.newPage();
         await page.setViewport({ width: 1280, height: 800 });
 

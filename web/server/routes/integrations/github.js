@@ -1,9 +1,10 @@
 /**
  * /api/integrations/github/* — GitHub publishing OAuth + repo push.
  *
- * Distinct from the Supabase "Login with GitHub" flow used for sign-in:
- * this OAuth App carries `repo` scope so we can create/update repos on
- * the user's behalf when they click "Publish to Vercel" in the Builder.
+ * Uses a GitHub OAuth App with the `repo` scope so the server can create
+ * and update a repository for the user when they publish a project. The
+ * whole integration is optional: without GITHUB_PUBLISH_CLIENT_ID and
+ * GITHUB_PUBLISH_CLIENT_SECRET every endpoint answers 503.
  *
  * Endpoints:
  *   POST /connect        Returns { url } — frontend redirects to it.
@@ -15,8 +16,7 @@
 import { Router } from 'express';
 import crypto from 'crypto';
 
-import { requireAuth } from '../../middleware/authMiddleware.js';
-import { supabaseAdmin } from '../../lib/supabase-admin.js';
+import { db } from '../../lib/store/index.js';
 import {
     encryptToken,
     decryptToken,
@@ -43,11 +43,9 @@ const router = Router();
 function readConfig() {
     const clientId = process.env.GITHUB_PUBLISH_CLIENT_ID;
     const clientSecret = process.env.GITHUB_PUBLISH_CLIENT_SECRET;
-    const redirectUri = process.env.GITHUB_PUBLISH_REDIRECT_URI;
-    const frontendReturn =
-        process.env.GITHUB_PUBLISH_FRONTEND_RETURN_URL ||
-        process.env.FRONTEND_URL ||
-        'http://localhost:5173';
+    const redirectUri = process.env.GITHUB_PUBLISH_REDIRECT_URI
+        || `http://localhost:${process.env.PORT || 3001}/api/integrations/github/callback`;
+    const frontendReturn = process.env.GITHUB_PUBLISH_FRONTEND_RETURN_URL || 'http://localhost:5173';
 
     return { clientId, clientSecret, redirectUri, frontendReturn };
 }
@@ -72,8 +70,8 @@ function ensureConfigured(res) {
 
 // ─── Connection storage helpers ───
 async function loadConnection(userId) {
-    if (!userId || !supabaseAdmin) return null;
-    const { data, error } = await supabaseAdmin
+    if (!userId) return null;
+    const { data, error } = await db
         .from('github_connections')
         .select('id, github_user_id, github_username, access_token_encrypted, scopes, connected_at, updated_at')
         .eq('user_id', userId)
@@ -88,7 +86,7 @@ async function loadConnection(userId) {
 async function upsertConnection({ userId, githubUserId, githubUsername, accessToken, scopes }) {
     const access_token_encrypted = encryptToken(accessToken);
     const now = new Date().toISOString();
-    const { error } = await supabaseAdmin
+    const { error } = await db
         .from('github_connections')
         .upsert({
             user_id: userId,
@@ -113,7 +111,7 @@ function safeMessage(message) {
 //  POST /api/integrations/github/connect
 //  Returns the GitHub OAuth authorize URL the frontend should redirect to.
 // ═══════════════════════════════════════════════════════════════
-router.post('/connect', requireAuth, async (req, res) => {
+router.post('/connect', async (req, res) => {
     if (!ensureConfigured(res)) return;
     const { clientId, redirectUri } = readConfig();
 
@@ -176,7 +174,7 @@ function renderCallbackHtml({ status, username, reason, frontendReturnUrl }) {
 <html lang="en">
 <head>
 <meta charset="utf-8" />
-<title>Volturiano GitHub Publishing</title>
+<title>GitHub publishing</title>
 <meta name="viewport" content="width=device-width,initial-scale=1" />
 <style>
   html, body { margin:0; padding:0; background:#0a0a0f; color:#e5e7eb;
@@ -200,7 +198,7 @@ function renderCallbackHtml({ status, username, reason, frontendReturnUrl }) {
         ? `Linked as <strong>@${escapeHtml(username || '')}</strong>. You can close this window.`
         : `Reason: ${escapeHtml(reason || 'unknown')}.`}
     </div>
-    <small>If this window does not close on its own, <a href="${escapeHtml(fallbackUrl.toString())}">return to Volturiano</a>.</small>
+    <small>If this window does not close on its own, <a href="${escapeHtml(fallbackUrl.toString())}">return to the app</a>.</small>
   </div>
 <script>
 (function(){
@@ -289,7 +287,7 @@ router.get('/callback', async (req, res) => {
 // ═══════════════════════════════════════════════════════════════
 //  GET /api/integrations/github/status
 // ═══════════════════════════════════════════════════════════════
-router.get('/status', requireAuth, async (req, res) => {
+router.get('/status', async (req, res) => {
     if (!ensureConfigured(res)) return;
     try {
         const conn = await loadConnection(req.user.id);
@@ -314,7 +312,7 @@ router.get('/status', requireAuth, async (req, res) => {
 //  Removes the local encrypted token and best-effort revokes the grant
 //  on github.com so the user has nothing lingering on either side.
 // ═══════════════════════════════════════════════════════════════
-router.post('/disconnect', requireAuth, async (req, res) => {
+router.post('/disconnect', async (req, res) => {
     if (!ensureConfigured(res)) return;
     const { clientId, clientSecret } = readConfig();
 
@@ -339,7 +337,7 @@ router.post('/disconnect', requireAuth, async (req, res) => {
             }
         }
 
-        await supabaseAdmin
+        await db
             .from('github_connections')
             .delete()
             .eq('user_id', req.user.id);
@@ -358,7 +356,7 @@ router.post('/disconnect', requireAuth, async (req, res) => {
 //  `homepage` field as fallback. Cheap, uses our existing `repo`
 //  scope, no second OAuth integration required.
 // ═══════════════════════════════════════════════════════════════
-router.post('/refresh-vercel-url', requireAuth, async (req, res) => {
+router.post('/refresh-vercel-url', async (req, res) => {
     if (!ensureConfigured(res)) return;
     const { projectId } = req.body || {};
     if (!projectId) {
@@ -375,7 +373,7 @@ router.post('/refresh-vercel-url', requireAuth, async (req, res) => {
             });
         }
 
-        const { data: project, error: projectError } = await supabaseAdmin
+        const { data: project, error: projectError } = await db
             .from('projects')
             .select('id, user_id, github_repo_owner, github_repo_name, vercel_deployed_url')
             .eq('id', projectId)
@@ -412,7 +410,7 @@ router.post('/refresh-vercel-url', requireAuth, async (req, res) => {
         );
 
         if (fetchedUrl && fetchedUrl !== project.vercel_deployed_url) {
-            await supabaseAdmin
+            await db
                 .from('projects')
                 .update({
                     vercel_deployed_url: fetchedUrl,
@@ -442,7 +440,7 @@ router.post('/refresh-vercel-url', requireAuth, async (req, res) => {
 //  pick anything up (rare — e.g. user disabled Vercel's GitHub
 //  integration). Body: { projectId, url }, url='' to clear.
 // ═══════════════════════════════════════════════════════════════
-router.post('/vercel-url', requireAuth, async (req, res) => {
+router.post('/vercel-url', async (req, res) => {
     const { projectId, url } = req.body || {};
     if (!projectId) {
         return res.status(400).json({ success: false, error: 'projectId is required' });
@@ -466,7 +464,7 @@ router.post('/vercel-url', requireAuth, async (req, res) => {
     }
 
     try {
-        const { error } = await supabaseAdmin
+        const { error } = await db
             .from('projects')
             .update({
                 vercel_deployed_url: cleanUrl,
@@ -487,7 +485,7 @@ router.post('/vercel-url', requireAuth, async (req, res) => {
 //  Body: { projectId, sandboxId?, repoName, visibility?, isUpdate? }
 //  Returns: { repoUrl, vercelImportUrl, commitSha, branch, owner, repo }
 // ═══════════════════════════════════════════════════════════════
-router.post('/push-project', requireAuth, async (req, res) => {
+router.post('/push-project', async (req, res) => {
     if (!ensureConfigured(res)) return;
     const { projectId, sandboxId, repoName, visibility = 'private', isUpdate = false } = req.body || {};
 
@@ -618,7 +616,7 @@ router.post('/push-project', requireAuth, async (req, res) => {
             `&owner=${encodeURIComponent(owner)}` +
             `&project-name=${encodeURIComponent(repoName)}`;
 
-        await supabaseAdmin
+        await db
             .from('projects')
             .update({
                 github_repo_owner: owner,

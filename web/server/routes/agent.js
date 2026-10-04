@@ -16,7 +16,6 @@
 
 import express from 'express';
 import { runAgentLoop, undoLastTurn } from '../shared/agent-loop.js';
-import { supabaseAdmin } from '../lib/supabase-admin.js';
 import {
   buildInitialComponentPrompt,
   isLikelyMutatingEditPrompt,
@@ -26,7 +25,7 @@ import { buildAgentContextEnvelope } from '../lib/agent/context-assembler.js';
 import { createAgentDebugTimeline, logAgentDebugEvent } from '../lib/agent/debug-timeline.js';
 import { persistTurnMemories } from '../lib/agent/memory-manager.js';
 import { resolveSandboxProvider } from '../lib/sandbox/provider-resolver.js';
-import { buildTemplateCodeAsync, resolveComponentRefs } from '../lib/registry/registry.js';
+import { buildTemplateCodeAsync, hasRegistryComponents, resolveComponentRefs } from '../lib/registry/registry.js';
 import { isProtectedFile, replaceFile } from '../shared/sandbox-fs.js';
 import { deriveDesignBrief } from '../lib/design/derive-design-system.js';
 import { normalizeProvidedDesignBrief } from '../lib/design/design-intake.js';
@@ -52,11 +51,16 @@ import {
 
 const router = express.Router();
 
-// ─── Premium mode (community catalog posture) ────────────────
-// UI exposes free/hybrid/premium which the landing page maps to off/hybrid/strict.
+// ─── Registry mode ───────────────────────────────────────────
+// How much the agent leans on registry components:
+//   off     write everything from scratch
+//   hybrid  use registry components where they fit (default)
+//   strict  build mainly from registry components
 const PREMIUM_MODE_VALUES = new Set(['off', 'hybrid', 'strict']);
 
 function normalizePremiumMode(value) {
+  // With an empty registry there is nothing to browse, so skip the catalog tools.
+  if (!hasRegistryComponents()) return 'off';
   const mode = String(value || '').toLowerCase().trim();
   if (mode === 'free') return 'off';
   if (mode === 'premium') return 'strict';
@@ -154,7 +158,7 @@ async function resolveTurnImages({ session, durableSessionId, images = [] }) {
 }
 
 // In-memory session store (per sandbox session)
-// In production, this should be persisted to Supabase
+// The durable copy lives in the session store; this is the hot cache.
 const agentSessions = new Map();
 
 function getSession(sandboxId) {
@@ -177,18 +181,8 @@ function persistLater(operation, label) {
   });
 }
 
-async function resolveAuthUserId(req) {
-  const token = req.headers.authorization?.split(' ')[1];
-  if (!token || !supabaseAdmin) return req.user?.id || null;
-
-  try {
-    const { data: { user }, error } = await supabaseAdmin.auth.getUser(token);
-    if (error) throw error;
-    return user?.id || req.user?.id || null;
-  } catch (error) {
-    console.warn('[agent] Auth resolve skipped:', error.message);
-    return req.user?.id || null;
-  }
+async function resolveUserId(req) {
+  return req.user?.id || null;
 }
 
 // ─── POST /api/agent/message ─────────────────────────────────
@@ -276,43 +270,8 @@ router.post('/message', async (req, res) => {
       : enableCatalogTools ? 'component_section_or_page_intent' : 'ordinary_edit_prompt'
   });
 
-  // ─── Credit Deduction (same pattern as apply-ai-code-stream) ────
-  const token = req.headers.authorization?.split(' ')[1];
-  let authUserId = req.user?.id || null;
-  if (token && supabaseAdmin) {
-    try {
-      const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token);
-      if (user && !authError) {
-        authUserId = user.id;
-        const { data: deductData, error: deductError } = await supabaseAdmin.rpc('deduct_credits_safe', {
-          p_user_id: user.id,
-          p_amount: 1,
-          p_description: 'Agent Mode Edit',
-          p_project_id: activeProjectId
-        });
-
-        if (deductError || !deductData || !deductData.success) {
-          console.warn(`[agent] Credit deduction failed for user ${user.id}: ${deductError?.message || deductData?.error}`);
-          debugTimeline.event('credit_check_failed', {
-            userId: user.id,
-            error: deductError?.message || deductData?.error || 'credit deduction failed'
-          });
-          return res.status(402).json({ success: false, error: 'Creative Energy Depleted. Please recharge your credits.' });
-        }
-        debugTimeline.setContext({ userId: user.id });
-        debugTimeline.event('credit_deducted', { userId: user.id, amount: 1 });
-        console.log(`[agent] Successfully deducted 1 credit for user ${user.id}`);
-      }
-    } catch (e) {
-      debugTimeline.error('credit_check_error', e);
-      console.warn('[agent] Credit check error (non-fatal):', e.message);
-    }
-  } else {
-    debugTimeline.event('credit_check_skipped', {
-      reason: token ? 'supabase_admin_unavailable' : 'no_auth_token'
-    });
-    console.log('[agent] No auth token provided, skipping credit check (Guest mode/Local).');
-  }
+  const authUserId = req.user?.id || null;
+  debugTimeline.setContext({ userId: authUserId });
 
   const session = getSession(activeSandboxId || 'default');
   const durableSession = await getOrCreateAgentSession({
@@ -654,7 +613,7 @@ router.get('/session', async (req, res) => {
   };
 
   if (shouldHydrate) {
-    const authUserId = await resolveAuthUserId(req);
+    const authUserId = await resolveUserId(req);
     const hydration = await loadAgentSessionHydration({
       userId: authUserId,
       projectId,
@@ -769,7 +728,7 @@ router.post('/initial-build', async (req, res) => {
     return res.status(400).json({ success: false, error: 'Prompt is required' });
   }
 
-  // Resolve sandbox before deducting credits so missing/paused workspaces fail cleanly.
+  // Resolve the sandbox first so a missing or paused workspace fails before any model call.
   let activeSandboxId = sandboxId || global.sandboxData?.sandboxId;
   const sandboxPreflight = await resolveSandboxProvider({
     sandboxId: activeSandboxId,
@@ -787,7 +746,6 @@ router.post('/initial-build', async (req, res) => {
   }
   activeSandboxId = sandboxPreflight.sandboxId || activeSandboxId;
 
-  const token = req.headers.authorization?.split(' ')[1];
   const activeProjectId = requestProjectId || buildId || null;
   const premiumMode = normalizePremiumMode(requestedPremiumMode);
   const normalizedProvidedDesignBrief = normalizeProvidedDesignBrief(providedDesignBrief);
@@ -816,40 +774,8 @@ router.post('/initial-build', async (req, res) => {
     requestedModel,
     effectiveModel
   });
-  let authUserId = req.user?.id || null;
-  if (token && supabaseAdmin) {
-    try {
-      const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token);
-      if (user && !authError) {
-        authUserId = user.id;
-        const { data: deductData, error: deductError } = await supabaseAdmin.rpc('deduct_credits_safe', {
-          p_user_id: user.id,
-          p_amount: 1,
-          p_description: 'Agent Mode Initial Build',
-          p_project_id: activeProjectId
-        });
-
-        if (deductError || !deductData || !deductData.success) {
-          console.warn(`[agent-initial] Credit deduction failed for user ${user.id}: ${deductError?.message || deductData?.error}`);
-          debugTimeline.event('credit_check_failed', {
-            userId: user.id,
-            error: deductError?.message || deductData?.error || 'credit deduction failed'
-          });
-          return res.status(402).json({ success: false, error: 'Creative Energy Depleted. Please recharge your credits.' });
-        }
-        debugTimeline.setContext({ userId: user.id });
-        debugTimeline.event('credit_deducted', { userId: user.id, amount: 1 });
-        console.log(`[agent-initial] Successfully deducted 1 credit for user ${user.id}`);
-      }
-    } catch (e) {
-      debugTimeline.error('credit_check_error', e);
-      console.warn('[agent-initial] Credit check error (non-fatal):', e.message);
-    }
-  } else {
-    debugTimeline.event('credit_check_skipped', {
-      reason: token ? 'supabase_admin_unavailable' : 'no_auth_token'
-    });
-  }
+  const authUserId = req.user?.id || null;
+  debugTimeline.setContext({ userId: authUserId });
 
   // Agentic builder turns are bound to the preflighted sandbox id.
   debugTimeline.setContext({ sandboxId: activeSandboxId });

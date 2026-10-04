@@ -1,34 +1,31 @@
 {
-  "name": "volturiano-builder-server",
-  "version": "1.0.0",
+  "name": "@volturiano-agent/server",
+  "private": true,
+  "version": "0.1.0",
   "type": "module",
   "scripts": {
     "start": "node index.js",
     "dev": "node --watch index.js",
     "check:syntax": "node --check index.js",
-    "regression:harness": "node -r dotenv/config scripts/agent-harness-regression.js",
-    "eval:design": "node -r dotenv/config scripts/design-eval.js",
-    "eval:design:full": "node -r dotenv/config scripts/design-eval.js --all",
-    "embeddings:backfill": "node -r dotenv/config scripts/backfill-component-embeddings.js"
+    "test:harness": "node scripts/agent-harness-regression.js",
+    "eval:design": "node scripts/design-eval.js",
+    "eval:design:full": "node scripts/design-eval.js --all"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^1.1.0",
     "@ai-sdk/google": "^1.2.22",
-    "@ai-sdk/groq": "^1.1.0",
     "@ai-sdk/openai": "^1.1.0",
-    "@anthropic-ai/sdk": "^0.78.0",
     "@e2b/code-interpreter": "^2.3.3",
     "@google/genai": "^1.44.0",
-    "@supabase/supabase-js": "^2.97.0",
     "ai": "^4.1.0",
     "cors": "^2.8.5",
     "dotenv": "^16.6.1",
     "express": "^4.21.0",
     "express-rate-limit": "^8.3.1",
     "openai": "^6.22.0",
-    "puppeteer": "^24.37.5",
-    "stripe": "^20.4.1",
-    "tar": "^7.5.9",
     "zod": "^3.23.8"
+  },
+  "optionalDependencies": {
+    "puppeteer": "^24.37.5"
   }
 }

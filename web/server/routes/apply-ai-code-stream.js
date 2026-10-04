@@ -8,7 +8,6 @@ import { runPolishStep, PREMIUM_PATH_PREFIX, generateDesignSpec } from '../lib/p
 import { resolveDesignSpecModelId } from '../lib/llm-lightweight.js';
 import { runPolishFillers } from '../lib/polish-filler.js';
 import { runMiniPolishStep } from '../lib/mini-polish-refinement.js';
-import { supabaseAdmin } from '../lib/supabase-admin.js';
 import { validateAndFixIdentifiers } from '../lib/validate-identifiers.js';
 import { normalizePublicModelId, resolveModelRole } from '../shared/model-registry.js';
 
@@ -208,32 +207,6 @@ export default async function applyAiCodeStream(req, res) {
     const narrator = new AIBuildNarrator();
 
     log(buildId, `[apply] Start: ${generatedCode?.length || 0} bytes code, isEdit=${isEdit}`);
-
-    // 🚧 FINAL CREDIT CHECK: Gatekeeper (Backend)
-    const token = req.headers.authorization?.split(' ')[1];
-    if (token && !isResume) {
-      const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token);
-      if (user && !authError) {
-        // Attempt deduction atomically
-        const { data: deductData, error: deductError } = await supabaseAdmin.rpc('deduct_credits_safe', {
-          p_user_id: user.id,
-          p_amount: 1,
-          p_description: isEdit ? 'AI Edit / Polish' : 'AI Initial Build',
-          p_project_id: buildId || null
-        });
-
-        if (deductError || !deductData || !deductData.success) {
-          console.warn(`[apply] Credit deduction failed for user ${user.id}: ${deductError?.message || deductData?.error}`);
-          sse.send(SSE_EVENTS.ERROR, { message: '402 Payment Required: Creative Energy Depleted. Please recharge your credits.' });
-          return sse.end();
-        }
-        console.log(`[apply] Successfully deducted 1 credit for user ${user.id}`);
-      }
-    } else if (isResume) {
-      console.log('[apply] Resume operation detected, skipping credit deduction.');
-    } else {
-      console.log('[apply] No auth token provided, skipping credit check (Guest mode/Local).');
-    }
 
     if (!generatedCode && (!req.body.files || !Array.isArray(req.body.files) || req.body.files.length === 0)) {
       sse.send(SSE_EVENTS.ERROR, { message: 'No generated code or files provided' });

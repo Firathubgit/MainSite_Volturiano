@@ -1,6 +1,5 @@
 import crypto from 'node:crypto';
-import { supabaseAdmin } from '../supabase-admin.js';
-import { RETENTION_DAYS, retentionUntil } from '../retention.js';
+import { db, files } from '../store/index.js';
 
 const MAX_CONTENT_CHARS = 12000;
 const MAX_JSON_CHARS = 20000;
@@ -12,7 +11,6 @@ export function makeSessionKey({ userId = 'anon', projectId = 'none', sandboxId 
 }
 
 export async function getOrCreateAgentSession({ userId = null, projectId = null, sandboxId = null, model = null, metadata = {} } = {}) {
-  if (!supabaseAdmin) return null;
 
   const sessionKey = makeSessionKey({ userId, projectId, sandboxId });
   const now = new Date().toISOString();
@@ -21,7 +19,7 @@ export async function getOrCreateAgentSession({ userId = null, projectId = null,
     // Merge metadata with any existing session so durable fields set between
     // turns (e.g. referenceImages) survive the per-turn upsert.
     let existingMetadata = {};
-    const { data: existing } = await supabaseAdmin
+    const { data: existing } = await db
       .from('agent_sessions')
       .select('metadata')
       .eq('session_key', sessionKey)
@@ -42,7 +40,7 @@ export async function getOrCreateAgentSession({ userId = null, projectId = null,
       last_activity: now
     };
 
-    const { data, error } = await supabaseAdmin
+    const { data, error } = await db
       .from('agent_sessions')
       .upsert(payload, { onConflict: 'session_key' })
       .select('*')
@@ -58,73 +56,52 @@ export async function getOrCreateAgentSession({ userId = null, projectId = null,
 
 // ─── Durable reference images ────────────────────────────────
 // User-attached screenshots are the visual target for the whole session, not
-// just one turn. We upload them once to storage and keep public URLs in the
+// just one turn. They are written to the data directory once and listed in the
 // session metadata so later turns (and server restarts) can re-attach them.
 
-const REFERENCE_IMAGE_BUCKET = 'agent-reference-images';
+const REFERENCE_IMAGE_BUCKET = 'reference-images';
 const MAX_REFERENCE_IMAGES = 4;
 
 export async function persistSessionReferenceImages({ sessionId = null, images = [] } = {}) {
-  if (!supabaseAdmin || !sessionId || !Array.isArray(images) || images.length === 0) return [];
+  if (!sessionId || !Array.isArray(images) || images.length === 0) return [];
 
-  const urls = [];
+  const saved = [];
   try {
     for (const [index, image] of images.slice(0, MAX_REFERENCE_IMAGES).entries()) {
       const parsed = parseDataUrlImage(image);
       if (!parsed) continue;
-      const extension = parsed.mimeType.split('/')[1] || 'png';
-      const filename = `${sessionId}/${Date.now()}_${index}.${extension}`;
-
-      let { error } = await supabaseAdmin.storage
-        .from(REFERENCE_IMAGE_BUCKET)
-        .upload(filename, parsed.buffer, { contentType: parsed.mimeType, upsert: true });
-      if (error) {
-        await supabaseAdmin.storage.createBucket(REFERENCE_IMAGE_BUCKET, { public: true }).catch(() => {});
-        ({ error } = await supabaseAdmin.storage
-          .from(REFERENCE_IMAGE_BUCKET)
-          .upload(filename, parsed.buffer, { contentType: parsed.mimeType, upsert: true }));
-      }
-      if (error) continue;
-
-      const { data: publicUrlData } = supabaseAdmin.storage.from(REFERENCE_IMAGE_BUCKET).getPublicUrl(filename);
-      if (publicUrlData?.publicUrl) urls.push(publicUrlData.publicUrl);
+      const extension = (parsed.mimeType.split('/')[1] || 'png').replace(/[^a-z0-9]/gi, '');
+      const name = `${sessionId}/${Date.now()}_${index}.${extension}`;
+      files.write(REFERENCE_IMAGE_BUCKET, name, parsed.buffer);
+      saved.push({ name, mimeType: parsed.mimeType });
     }
 
-    if (urls.length > 0) {
-      await mergeSessionMetadata(sessionId, { referenceImages: urls, referenceImagesUpdatedAt: new Date().toISOString() });
+    if (saved.length > 0) {
+      await mergeSessionMetadata(sessionId, { referenceImages: saved, referenceImagesUpdatedAt: new Date().toISOString() });
     }
-    return urls;
   } catch (error) {
     logPersistWarning('persistSessionReferenceImages', error);
-    return urls;
   }
+  return saved.map((entry) => entry.name);
 }
 
 export async function loadSessionReferenceImages(sessionId = null) {
-  if (!supabaseAdmin || !sessionId) return [];
+  if (!sessionId) return [];
 
   try {
-    const { data, error } = await supabaseAdmin
+    const { data, error } = await db
       .from('agent_sessions')
       .select('metadata')
       .eq('id', sessionId)
       .maybeSingle();
     if (error) throw error;
 
-    const urls = Array.isArray(data?.metadata?.referenceImages) ? data.metadata.referenceImages : [];
-    const images = await Promise.all(urls.slice(0, MAX_REFERENCE_IMAGES).map(async (url) => {
-      try {
-        const response = await fetch(url, { signal: AbortSignal.timeout(8000) });
-        if (!response.ok) return null;
-        const contentType = (response.headers.get('content-type') || 'image/png').split(';')[0];
-        const buffer = Buffer.from(await response.arrayBuffer());
-        if (!buffer.length) return null;
-        return `data:${contentType};base64,${buffer.toString('base64')}`;
-      } catch {
-        return null;
-      }
-    }));
-    return images.filter(Boolean);
+    const entries = Array.isArray(data?.metadata?.referenceImages) ? data.metadata.referenceImages : [];
+    return entries.slice(0, MAX_REFERENCE_IMAGES).map((entry) => {
+      const buffer = entry?.name ? files.read(REFERENCE_IMAGE_BUCKET, entry.name) : null;
+      if (!buffer?.length) return null;
+      return `data:${entry.mimeType || 'image/png'};base64,${buffer.toString('base64')}`;
+    }).filter(Boolean);
   } catch (error) {
     logPersistWarning('loadSessionReferenceImages', error);
     return [];
@@ -132,13 +109,13 @@ export async function loadSessionReferenceImages(sessionId = null) {
 }
 
 async function mergeSessionMetadata(sessionId, patch = {}) {
-  const { data } = await supabaseAdmin
+  const { data } = await db
     .from('agent_sessions')
     .select('metadata')
     .eq('id', sessionId)
     .maybeSingle();
   const merged = { ...(data?.metadata && typeof data.metadata === 'object' ? data.metadata : {}), ...patch };
-  await supabaseAdmin
+  await db
     .from('agent_sessions')
     .update({ metadata: sanitizeJson(merged, {}) })
     .eq('id', sessionId);
@@ -169,10 +146,10 @@ function parseDataUrlImage(image) {
 }
 
 export async function startAgentTurn({ sessionId = null, userId = null, projectId = null, sandboxId = null, model = null, prompt = '', turnType = 'edit' } = {}) {
-  if (!supabaseAdmin || !sessionId) return null;
+  if (!sessionId) return null;
 
   try {
-    const { data, error } = await supabaseAdmin
+    const { data, error } = await db
       .from('agent_turns')
       .insert({
         session_id: sessionId,
@@ -204,10 +181,10 @@ export async function startAgentTurn({ sessionId = null, userId = null, projectI
 }
 
 export async function appendAgentMessage({ sessionId = null, turnId = null, role, content = '', blocks = [], tokenUsage = null } = {}) {
-  if (!supabaseAdmin || !sessionId || !role) return null;
+  if (!sessionId || !role) return null;
 
   try {
-    const { data, error } = await supabaseAdmin
+    const { data, error } = await db
       .from('agent_messages')
       .insert({
         session_id: sessionId,
@@ -215,8 +192,7 @@ export async function appendAgentMessage({ sessionId = null, turnId = null, role
         role,
         content: trimText(content),
         blocks: sanitizeJson(blocks, []),
-        token_usage: sanitizeJson(tokenUsage, null),
-        retention_until: retentionUntil(RETENTION_DAYS.agentMessages)
+        token_usage: sanitizeJson(tokenUsage, null)
       })
       .select('id')
       .single();
@@ -230,10 +206,10 @@ export async function appendAgentMessage({ sessionId = null, turnId = null, role
 }
 
 export async function appendAgentToolEvent({ sessionId = null, turnId = null, toolName, eventType = 'result', args = {}, result = null, success = null, durationMs = null } = {}) {
-  if (!supabaseAdmin || !sessionId || !turnId || !toolName) return null;
+  if (!sessionId || !turnId || !toolName) return null;
 
   try {
-    const { data, error } = await supabaseAdmin
+    const { data, error } = await db
       .from('agent_tool_events')
       .insert({
         session_id: sessionId,
@@ -243,8 +219,7 @@ export async function appendAgentToolEvent({ sessionId = null, turnId = null, to
         args: sanitizeJson(args, {}),
         result: sanitizeJson(result, null),
         success,
-        duration_ms: durationMs,
-        retention_until: retentionUntil(RETENTION_DAYS.agentToolEvents)
+        duration_ms: durationMs
       })
       .select('id')
       .single();
@@ -272,7 +247,7 @@ export async function finalizeAgentTurn({
   error = null,
   startedAt = null
 } = {}) {
-  if (!supabaseAdmin || !sessionId || !turnId) return null;
+  if (!sessionId || !turnId) return null;
 
   const completedAt = new Date();
   const durationMs = startedAt ? Math.max(0, completedAt.getTime() - new Date(startedAt).getTime()) : null;
@@ -293,7 +268,7 @@ export async function finalizeAgentTurn({
       completed_at: completedAt.toISOString()
     };
 
-    const { data, error: updateError } = await supabaseAdmin
+    const { data, error: updateError } = await db
       .from('agent_turns')
       .update(payload)
       .eq('id', turnId)
@@ -321,11 +296,11 @@ export async function finalizeAgentTurn({
 }
 
 export async function touchAgentSession({ sessionId = null, status = 'active' } = {}) {
-  if (!supabaseAdmin || !sessionId) return null;
+  if (!sessionId) return null;
 
   try {
     const now = new Date().toISOString();
-    const { data, error } = await supabaseAdmin
+    const { data, error } = await db
       .from('agent_sessions')
       .update({ status, updated_at: now, last_activity: now })
       .eq('id', sessionId)
@@ -346,7 +321,6 @@ export async function loadAgentSessionHydration({
   sandboxId = null,
   limit = DEFAULT_HYDRATION_TURN_LIMIT
 } = {}) {
-  if (!supabaseAdmin) return null;
 
   try {
     const session = await findAgentSession({ userId, projectId, sandboxId });
@@ -360,7 +334,7 @@ export async function loadAgentSessionHydration({
     }
 
     const turnLimit = clampLimit(limit, 1, 50, DEFAULT_HYDRATION_TURN_LIMIT);
-    const { data: turns, error: turnsError } = await supabaseAdmin
+    const { data: turns, error: turnsError } = await db
       .from('agent_turns')
       .select('id, turn_type, user_prompt, response_short, summary, changed_files, component_ids, build_status, tool_call_count, mutation_count, rounds, status, error, created_at, completed_at')
       .eq('session_id', session.id)
@@ -400,7 +374,6 @@ export async function loadRecentAgentContextBlock({
   excludeTurnId = null,
   limit = DEFAULT_CONTEXT_TURN_LIMIT
 } = {}) {
-  if (!supabaseAdmin) return '';
 
   try {
     let activeSessionId = sessionId;
@@ -440,7 +413,7 @@ export async function loadRecentAgentContextBlock({
 }
 
 async function queryRecentTurns({ sessionId = null, projectId = null, userId = null, excludeTurnId = null, limit }) {
-  let query = supabaseAdmin
+  let query = db
     .from('agent_turns')
     .select('id, turn_type, user_prompt, response_short, summary, changed_files, component_ids, build_status, tool_call_count, mutation_count, status, error, created_at')
     .in('status', ['completed', 'failed'])
@@ -515,10 +488,10 @@ export async function pushDurableUndoSnapshot({
   prompt = '',
   snapshot = null
 } = {}) {
-  if (!supabaseAdmin || !snapshot?.files || !sandboxId) return null;
+  if (!snapshot?.files || !sandboxId) return null;
 
   try {
-    const { data, error } = await supabaseAdmin
+    const { data, error } = await db
       .from('agent_undo_snapshots')
       .insert({
         session_id: sessionId,
@@ -533,14 +506,14 @@ export async function pushDurableUndoSnapshot({
     if (error) throw error;
 
     // Prune anything beyond the cap for this sandbox.
-    const { data: extras } = await supabaseAdmin
+    const { data: extras } = await db
       .from('agent_undo_snapshots')
       .select('id')
       .eq('sandbox_id', sandboxId)
       .order('created_at', { ascending: false })
       .range(MAX_DURABLE_UNDO_PER_SANDBOX, MAX_DURABLE_UNDO_PER_SANDBOX + 20);
     if (Array.isArray(extras) && extras.length > 0) {
-      await supabaseAdmin
+      await db
         .from('agent_undo_snapshots')
         .delete()
         .in('id', extras.map((row) => row.id));
@@ -558,10 +531,10 @@ export async function pushDurableUndoSnapshot({
  * Returns { snapshot: { id, timestamp, files }, prompt } or null.
  */
 export async function popDurableUndoSnapshot({ sandboxId = null } = {}) {
-  if (!supabaseAdmin || !sandboxId) return null;
+  if (!sandboxId) return null;
 
   try {
-    const { data, error } = await supabaseAdmin
+    const { data, error } = await db
       .from('agent_undo_snapshots')
       .select('id, prompt, files, created_at')
       .eq('sandbox_id', sandboxId)
@@ -571,7 +544,7 @@ export async function popDurableUndoSnapshot({ sandboxId = null } = {}) {
     if (error) throw error;
     if (!data) return null;
 
-    await supabaseAdmin.from('agent_undo_snapshots').delete().eq('id', data.id);
+    await db.from('agent_undo_snapshots').delete().eq('id', data.id);
 
     return {
       prompt: data.prompt || '',
@@ -591,7 +564,7 @@ async function findAgentSession({ userId = null, projectId = null, sandboxId = n
   const exactKey = makeSessionKey({ userId, projectId, sandboxId });
 
   if (sandboxId || projectId || userId) {
-    const { data: exactSession, error: exactError } = await supabaseAdmin
+    const { data: exactSession, error: exactError } = await db
       .from('agent_sessions')
       .select('*')
       .eq('session_key', exactKey)
@@ -601,7 +574,7 @@ async function findAgentSession({ userId = null, projectId = null, sandboxId = n
     if (exactSession) return exactSession;
   }
 
-  let query = supabaseAdmin
+  let query = db
     .from('agent_sessions')
     .select('*')
     .order('last_activity', { ascending: false })

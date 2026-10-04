@@ -68,7 +68,7 @@ export function buildGithubNoreplyEmail({ githubUserId, githubUsername }) {
     if (githubUsername) {
         return `${githubUsername}@users.noreply.github.com`;
     }
-    return 'publish@volturiano.com';
+    return 'volturiano-agent@users.noreply.github.com';
 }
 
 /**
@@ -86,9 +86,9 @@ export async function publishProjectToGithub({
     owner,
     repo,
     isUpdate = false,
-    commitAuthorEmail = 'publish@volturiano.com',
-    commitAuthorName = 'Volturiano Publisher',
-    commitMessage = 'Volturiano publish',
+    commitAuthorEmail = 'volturiano-agent@users.noreply.github.com',
+    commitAuthorName = 'Volturiano Agent',
+    commitMessage = 'Publish from Volturiano Agent',
 }) {
     if (!sandboxProvider) throw new Error('publish-flow: sandboxProvider is required');
     if (!token) throw new Error('publish-flow: token is required');

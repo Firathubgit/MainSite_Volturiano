@@ -1,150 +1,43 @@
-import { supabaseAdmin } from '../supabase-admin.js';
+import { db } from '../store/index.js';
 import { assertProjectOwner } from '../security/project-access.js';
-import { RETENTION_DAYS, retentionUntil } from '../retention.js';
-
-// checkGuestLimit removed - no longer supporting guest builds
-
-function shouldRetryWithoutCommitColumns(error) {
-    const message = `${error?.message || ''} ${error?.details || ''} ${error?.hint || ''}`;
-    return /is_committed|committed_at|schema cache/i.test(message);
-}
-
-function withoutCommitColumns(payload) {
-    const { is_committed, committed_at, ...rest } = payload || {};
-    return rest;
-}
 
 /**
- * Checks and deducts user credits.
- * @param {string} userId - Supabase user UUID.
- * @returns {Promise<{allowed: boolean, message?: string}>}
- */
-export async function checkAndDeductUserCredit(userId) {
-    if (!userId) return { allowed: false, message: 'Unauthorized' };
-    if (!supabaseAdmin) return { allowed: true }; // Fail open
-
-    try {
-        const isDev = process.env.NODE_ENV === 'development' || !process.env.NODE_ENV;
-        if (isDev) return { allowed: true };
-
-        // Use the V2 Credit System RPC if available
-        const { data: rpcResult, error: rpcErr } = await supabaseAdmin.rpc('deduct_credits_safe', {
-            p_user_id: userId,
-            p_amount: 1,
-            p_description: 'Site generation',
-            p_project_id: null
-        });
-
-        if (rpcErr) {
-            console.error('[DB] deduct_credits_safe RPC error:', rpcErr);
-            // Fallback: If RPC is missing/fails, we fail open for now so we don't block users
-            return { allowed: true };
-        }
-
-        if (rpcResult && rpcResult.success === false) {
-             return {
-                 allowed: false,
-                 message: rpcResult.error || 'You have exhausted your credits. Please upgrade or purchase more.',
-                 code: rpcResult.code
-             };
-        }
-
-        return { allowed: true };
-
-    } catch (err) {
-        console.error('[DB] checkAndDeductUserCredit exception:', err);
-        return { allowed: false, message: 'Internal server error while checking credits.' };
-    }
-}
-
-/**
- * Initializes a new project record.
+ * Create a project record. Returns the project id, or null when it could not be saved.
  */
 export async function createProject({ userId, prompt, buildId }) {
-    if (!supabaseAdmin) return buildId;
-    try {
-        const payload = {
+    const { data, error } = await db
+        .from('projects')
+        .insert({
             id: buildId,
-            name: prompt ? prompt.substring(0, 50) + '...' : 'Untitled Project',
+            name: prompt ? `${prompt.substring(0, 50)}...` : 'Untitled Project',
             prompt: prompt || '',
             build_status: 'generating',
-            is_committed: false,
-            committed_at: null,
             user_id: userId
-        };
+        })
+        .select('id')
+        .single();
 
-        let { data, error } = await supabaseAdmin
-            .from('projects')
-            .insert(payload)
-            .select('id')
-            .single();
-
-        if (error && shouldRetryWithoutCommitColumns(error)) {
-            // Allows local/staging to keep working before the visibility migration is applied.
-            ({ data, error } = await supabaseAdmin
-                .from('projects')
-                .insert(withoutCommitColumns(payload))
-                .select('id')
-                .single());
-        }
-
-        if (error) {
-            console.error('[DB] Failed to create project:', {
-                error,
-                userId,
-                buildId,
-                prompt: prompt?.substring(0, 50)
-            });
-            return null;
-        }
-
-        console.log('[DB] Project created successfully:', data.id);
-        return data.id;
-    } catch (err) {
-        console.error('[DB] createProject exception:', err);
+    if (error) {
+        console.error('[DB] Failed to create project:', error.message);
         return null;
     }
+    return data.id;
 }
 
 /**
- * Updates an ongoing project state.
+ * Update a project.
  */
 export async function updateProject(projectId, updates) {
-    if (!projectId || !supabaseAdmin) return;
-
-    try {
-        let { error } = await supabaseAdmin
-            .from('projects')
-            .update(updates)
-            .eq('id', projectId);
-
-        if (error && shouldRetryWithoutCommitColumns(error)) {
-            const legacyUpdates = withoutCommitColumns(updates);
-            if (Object.keys(legacyUpdates).length > 0) {
-                // Keep build/status updates working even if the migration has not landed yet.
-                ({ error } = await supabaseAdmin
-                    .from('projects')
-                    .update(legacyUpdates)
-                    .eq('id', projectId));
-            }
-        }
-
-        if (error) {
-            console.error('[DB] updateProject err:', {
-                error,
-                projectId,
-                updateKeys: Object.keys(updates)
-            });
-        } else {
-            console.log('[DB] Project updated successfully:', projectId);
-        }
-    } catch (err) {
-        console.error('[DB] updateProject exception:', err);
-    }
+    if (!projectId) return;
+    const { error } = await db
+        .from('projects')
+        .update({ ...updates, updated_at: new Date().toISOString() })
+        .eq('id', projectId);
+    if (error) console.error('[DB] updateProject failed:', error.message);
 }
 
 /**
- * Updates a project only after verifying that the authenticated user owns it.
+ * Update a project after checking that it belongs to the caller.
  */
 export async function updateProjectForUser(projectId, userId, updates) {
     await assertProjectOwner(projectId, userId);
@@ -152,44 +45,29 @@ export async function updateProjectForUser(projectId, userId, updates) {
 }
 
 /**
- * Saves a chat history checkpoint snapshot.
+ * Save a snapshot: the full file map of a project at one point in the chat.
  */
 export async function createSnapshot({ projectId, userId, chatIndex, text, files, packages, designSystem, componentPlan }) {
-    if (!projectId || !supabaseAdmin) return;
+    if (!projectId) return;
 
-    try {
-        const payload = {
-            project_id: projectId,
-            chat_message_index: chatIndex || 0,
-            chat_message_text: text || '',
-            files: files || {},
-            packages: packages || [],
-            design_system: designSystem || null,
-            component_plan: componentPlan || null,
-            user_id: userId,
-            retention_until: retentionUntil(RETENTION_DAYS.snapshots)
-        };
+    const payload = {
+        project_id: projectId,
+        chat_message_index: chatIndex || 0,
+        chat_message_text: text || '',
+        files: files || {},
+        packages: packages || [],
+        design_system: designSystem || null,
+        component_plan: componentPlan || null,
+        user_id: userId
+    };
+    payload.snapshot_size_bytes = Buffer.byteLength(JSON.stringify(payload));
 
-        // Convert string size roughly to bytes (2 bytes per char generally, simplified)
-        const jsonStr = JSON.stringify(payload);
-        payload.snapshot_size_bytes = new TextEncoder().encode(jsonStr).length;
-
-        const { error } = await supabaseAdmin
-            .from('snapshots')
-            .insert(payload);
-
-        if (error) {
-            console.error('[DB] createSnapshot err:', error);
-        } else {
-            console.log(`[DB] Snapshot created successfully for project: ${projectId}, Chat Index: ${chatIndex}, Files: ${Object.keys(files || {}).length}`);
-        }
-    } catch (err) {
-        console.error('[DB] createSnapshot exception:', err);
-    }
+    const { error } = await db.from('snapshots').insert(payload);
+    if (error) console.error('[DB] createSnapshot failed:', error.message);
 }
 
 /**
- * Saves a snapshot only after verifying that the authenticated user owns the project.
+ * Save a snapshot after checking that the project belongs to the caller.
  */
 export async function createSnapshotForUser(snapshot) {
     await assertProjectOwner(snapshot?.projectId, snapshot?.userId);

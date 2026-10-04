@@ -16,7 +16,7 @@
  * per-prompt scores and a run summary. Requires E2B_API_KEY + model keys.
  */
 
-import 'dotenv/config';
+import '../lib/load-env.js';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';

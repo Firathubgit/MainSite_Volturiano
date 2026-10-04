@@ -52,7 +52,7 @@ async function ghFetch(url, { method = 'GET', token, body, headers = {} } = {}) 
 
 /**
  * Exchange an OAuth `code` for an access token.
- * Uses our publishing client id/secret (separate from Supabase login OAuth).
+ * Uses the publishing OAuth app client id and secret.
  */
 export async function exchangeOAuthCode({ code, redirectUri, clientId, clientSecret }) {
     const res = await fetch(`${GITHUB_OAUTH}/access_token`, {

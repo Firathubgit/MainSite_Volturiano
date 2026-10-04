@@ -15,7 +15,7 @@
 
 import { generateText } from 'ai';
 import { GoogleGenAI } from '@google/genai';
-import { getModel } from '../lib/provider-helpers.js';
+import { getModel, resolveAvailableModelId } from '../lib/provider-helpers.js';
 import {
   listFiles, createSnapshot, restoreSnapshot, replaceFile
 } from './sandbox-fs.js';
@@ -57,10 +57,12 @@ const GEMINI_3X_MODELS = new Set([
   MODEL_IDS.GEMINI_31_FLASH_LITE,
 ]);
 
-// Native Google GenAI SDK client (for Gemini 3.x)
-const nativeGoogleAI = new GoogleGenAI({
-  apiKey: process.env.GEMINI_API_KEY
-});
+// Native Google GenAI SDK client (for Gemini 3.x), created on first use.
+let nativeGoogleClient = null;
+function getNativeGoogleAI() {
+  if (!nativeGoogleClient) nativeGoogleClient = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+  return nativeGoogleClient;
+}
 
 export const bundleToFiles = runtimeBundleToFiles;
 
@@ -291,7 +293,7 @@ function createGeminiAdapter({ modelId, systemPrompt, messages, runtime, debugTi
     parts: toGeminiPartsFromContent(m.content)
   }));
 
-  const chat = nativeGoogleAI.chats.create({
+  const chat = getNativeGoogleAI().chats.create({
     model: modelId.replace('google/', ''),
     config: {
       systemInstruction: systemPrompt,
@@ -665,7 +667,8 @@ export async function runAgentLoop(options) {
     debugTimeline = null
   } = options;
 
-  const effectiveModelId = normalizeModelId(modelId);
+  // Falls back to another provider when the requested one has no API key.
+  const effectiveModelId = resolveAvailableModelId(modelId);
   const effectiveMaxSteps = maxStepsOverride || MAX_STEPS;
   const effectiveSystemPrompt = systemPromptOverride || AGENT_SYSTEM_PROMPT;
   const expectsMutation = expectedMutation ?? isLikelyMutatingEditPrompt(prompt);

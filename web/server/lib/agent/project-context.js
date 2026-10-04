@@ -1,4 +1,4 @@
-import { supabaseAdmin } from '../supabase-admin.js';
+import { db } from '../store/index.js';
 import { designBriefToContextBlock } from '../design/derive-design-system.js';
 
 const MAX_CHAT_MESSAGES = 8;
@@ -7,10 +7,10 @@ const MAX_JSON = 1400;
 const MAX_DESIGN_BRIEF = 2400;
 
 export async function loadProjectContextBlock({ projectId, userId = null } = {}) {
-  if (!projectId || !supabaseAdmin) return '';
+  if (!projectId) return '';
 
   try {
-    const { data: project, error: projectError } = await supabaseAdmin
+    const { data: project, error: projectError } = await db
       .from('projects')
       .select('id,user_id,name,prompt,build_status,design_system,component_plan,selected_components,chat_history,sandbox_id,build_mode,total_components,updated_at')
       .eq('id', projectId)
@@ -26,7 +26,7 @@ export async function loadProjectContextBlock({ projectId, userId = null } = {})
       return '';
     }
 
-    const { data: snapshots, error: snapshotError } = await supabaseAdmin
+    const { data: snapshots, error: snapshotError } = await db
       .from('snapshots')
       .select('id,chat_message_index,chat_message_text,build_status,build_logs,snapshot_size_bytes,created_at')
       .eq('project_id', projectId)

@@ -1,7 +1,7 @@
 /**
  * AES-256-GCM helper for encrypting third-party access tokens at rest.
  *
- * Used for the GitHub publishing OAuth flow (web/server/routes/integrations/github.js).
+ * Used for the GitHub publishing OAuth flow (routes/integrations/github.js).
  * The encryption key lives in GITHUB_TOKEN_ENCRYPTION_KEY (64 hex chars / 32 bytes).
  *
  * On-disk format (single base64 string):

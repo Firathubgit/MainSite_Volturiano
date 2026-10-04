@@ -16,7 +16,6 @@ import {
 import { verifySandboxBuild } from '../verify-sandbox-build.js';
 import { getProviderCapabilities } from '../sandbox/provider-resolver.js';
 import { getCatalogForPromptAsync, getBundleAsync, bundleToFileBlocks } from '../registry/registry.js';
-import { recordComponentInstall } from '../community/usage-flywheel.js';
 import {
   AgentToolPolicyError,
   TOOL_CATEGORIES,
@@ -145,7 +144,7 @@ const PREVIEW_IMAGE_MAX_BYTES = 350_000; // skip oversized thumbnails to protect
 const PREVIEW_IMAGE_FETCH_TIMEOUT_MS = 6000;
 
 /**
- * Download component preview thumbnails (Supabase storage URLs) as base64 so
+ * Download component preview thumbnails as base64 so
  * the harness can attach them as image parts. Failures are silently skipped —
  * previews are an enhancement, never a blocker.
  */
@@ -1214,15 +1213,6 @@ function buildToolDefinitions() {
               guidance: 'The component files were written directly to the sandbox. Import the installed paths instead of asking for the full shader/source text.'
             }
           };
-
-          // Flywheel: every agent install counts as a real usage so catalog
-          // ranking, survival stats, and author rewards learn from agent builds.
-          recordComponentInstall({
-            componentRef: args.component_id,
-            projectId,
-            sessionId,
-            installedPaths: installedFiles.map((file) => file.path)
-          }).catch(() => {});
 
           return {
             result,

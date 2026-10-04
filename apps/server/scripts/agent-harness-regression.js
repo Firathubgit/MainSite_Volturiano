@@ -341,7 +341,7 @@ function testTurnMemoryDerivationContract() {
   const block = formatAgentMemoryBlock(memories);
   assert.match(block, /\[Agent memory\]/);
   assert.match(block, /Design Preference/);
-  assert.match(block, /Community components used/);
+  assert.match(block, /Registry components used/);
 }
 
 function testContextEnvelopeContract() {

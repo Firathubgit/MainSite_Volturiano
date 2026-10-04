@@ -251,9 +251,9 @@ export function finalizeDesignIntake({ prompt, intake, draft } = {}) {
     `- Color direction: ${palette.label} (${palette.palette.mode}; primary ${palette.palette.primary}, accent ${palette.palette.accent})`,
   ];
   if (selectedComponents.length > 0) {
-    confirmedLines.push(`- Community components to prioritize: ${selectedComponents.map((component) => `${component.name} [${component.id}]`).join(', ')}`);
+    confirmedLines.push(`- Registry components to prioritize: ${selectedComponents.map((component) => `${component.name} [${component.id}]`).join(', ')}`);
   } else {
-    confirmedLines.push('- Community components: none preselected; create only what the brief requires.');
+    confirmedLines.push('- Registry components: none preselected; create only what the brief requires.');
   }
 
   const cleanPrompt = String(prompt || '').trim() || 'Build a polished website from the confirmed brief.';
@@ -271,7 +271,7 @@ export function finalizeDesignIntake({ prompt, intake, draft } = {}) {
     `${palette.label} palette`,
     typography.label,
     selectedComponents.length > 0
-      ? `${selectedComponents.length} community ${selectedComponents.length === 1 ? 'component' : 'components'}`
+      ? `${selectedComponents.length} registry ${selectedComponents.length === 1 ? 'component' : 'components'}`
       : 'custom sections',
   ].join(' · ');
 

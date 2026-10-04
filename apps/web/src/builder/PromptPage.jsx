@@ -309,8 +309,17 @@ export default function PromptPage() {
                                 {templates.map((tmpl) => (
                                     <div key={tmpl.templateId} className={styles.templateGridCard}>
                                         <div className={styles.templateGridThumb}>
-                                            {tmpl.thumbnailUrl && (
+                                            {tmpl.thumbnailUrl ? (
                                                 <img src={tmpl.thumbnailUrl} alt={tmpl.name} className={styles.templateGridImage} />
+                                            ) : (
+                                                <div
+                                                    style={{
+                                                        position: 'absolute', inset: 0, display: 'grid', placeItems: 'center',
+                                                        color: '#71717a', fontSize: '0.95rem', letterSpacing: '0.08em', textTransform: 'uppercase',
+                                                    }}
+                                                >
+                                                    {tmpl.componentCount} sections
+                                                </div>
                                             )}
                                             <div className={styles.templateGridOverlay} />
                                             <div className={styles.templateCardActions}>

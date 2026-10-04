@@ -135,6 +135,9 @@ app.use('/api/files', express.static(FILES_DIR, { fallthrough: false, index: fal
 
 app.get('/api/health', (req, res) => res.json({ status: 'ok', timestamp: new Date().toISOString() }));
 
+// This port only serves the API. The UI runs on the Vite dev server.
+app.get('/', (req, res) => res.json({ name: 'volturiano-agent API', health: '/api/health', ui: 'http://localhost:5173' }));
+
 app.use((err, req, res, next) => {
   if (err?.type === 'entity.too.large') {
     return res.status(413).json({

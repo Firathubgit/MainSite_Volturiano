@@ -4,9 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import { FiFile, FiChevronRight, FiChevronDown, FiPlus, FiDownload, FiMonitor, FiTablet, FiSmartphone, FiExternalLink, FiRotateCw, FiRotateCcw, FiRefreshCw, FiZap, FiSlash, FiLayers, FiGlobe, FiCheckCircle, FiEdit2, FiSettings, FiMessageSquare } from 'react-icons/fi';
-import { BsSend, BsCodeSlash, BsLayoutSidebarInset, BsPhone, BsLaptop, BsTablet, BsFileEarmarkCode, BsFolder2Open, BsFolderFill, BsTerminal } from 'react-icons/bs';
-import { SiJavascript, SiReact } from 'react-icons/si';
-import { FaCss3Alt } from 'react-icons/fa';
+import { BsSend, BsCodeSlash, BsLayoutSidebarInset, BsPhone, BsLaptop, BsTablet, BsFileEarmarkCode, BsFolder2Open, BsFolderFill, BsTerminal, BsFiletypeJsx, BsFiletypeJs, BsFiletypeCss } from 'react-icons/bs';
 import { SparklesIcon } from 'lucide-react';
 import { AIThinkingIndicator, AIMessage, PlanningRevolver } from './SSEEventHandler';
 import ComponentSelector from './ComponentSelector';
@@ -155,9 +153,9 @@ function mergeGeneratedFiles(primaryFiles = [], incomingFiles = [], { authoritat
 }
 
 function getFileIcon(fileName) {
-  if (fileName.endsWith('.jsx') || fileName.endsWith('.tsx')) return <SiReact size={14} />;
-  if (fileName.endsWith('.js') || fileName.endsWith('.ts')) return <SiJavascript size={14} />;
-  if (fileName.endsWith('.css')) return <FaCss3Alt size={14} />;
+  if (fileName.endsWith('.jsx') || fileName.endsWith('.tsx')) return <BsFiletypeJsx size={14} />;
+  if (fileName.endsWith('.js') || fileName.endsWith('.ts')) return <BsFiletypeJs size={14} />;
+  if (fileName.endsWith('.css')) return <BsFiletypeCss size={14} />;
   return <FiFile size={14} />;
 }
 
@@ -1657,8 +1655,7 @@ export default function Generation() {
                   lastGeneratedCode: generatedCode
                 }));
 
-                // Phase S2: Sync Generated Files to Supabase Project
-                // Phase S2 & S13: Sync Generated Files to Supabase Project
+                // Save the generated files with the project
                 if (!isResume) {
                   saveProjectUpdates({
                     buildId: buildId,
@@ -1667,7 +1664,7 @@ export default function Generation() {
                     build_status: 'preview'
                   });
 
-                  // Phase S2: Save Snapshot to Supabase
+                  // Save a snapshot of the project files
                   try {
                     // Fetch the raw, EXACT files directly from the sandbox (including polish passes)
                     apiFetch(`/api/get-sandbox-files?sandboxId=${activeSandboxId}`)
@@ -1796,7 +1793,7 @@ export default function Generation() {
       // If this was an undo or no mutations occurred, skip persistence
       if (isUndo || !hadMutations) return;
 
-      // 2. Persist project metadata to Supabase
+      // 2. Persist project metadata
       saveProjectUpdates({
         buildId: currentProjectId,
         build_status: 'preview',
@@ -2127,7 +2124,7 @@ export default function Generation() {
 
 
         // Trigger sandbox creation and file application (resumes build env)
-        // Pass isResume = true to skip chat logs & credit deduction
+        // Pass isResume = true to skip chat logs
         await applyGeneratedCode(null, false, projectId, filesArray, true, null, true);
 
         // Ensure chat is at bottom after sandbox restoration completes
@@ -2300,7 +2297,7 @@ export default function Generation() {
           setGenerationProgress(prev => ({ ...prev, isGenerating: true, status: 'Initializing project...' }));
 
           try {
-            // First initialize the project so it exists in DB for credit deduction FK
+            // First initialize the project so later saves have a row to attach to
             await apiFetch('/api/projects/init', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },

@@ -3,7 +3,7 @@ import { getCatalogAsync, getCatalogForPromptAsync } from '../lib/registry/regis
 /**
  * GET /api/component-catalog
  *
- * Returns the premium component catalog metadata.
+ * Returns the component registry catalog (metadata only, no source).
  * Query params:
  *   - compact=true  → returns only fields needed for LLM prompt injection
  *   - keywords=a,b  → pre-filter components by keywords

@@ -382,35 +382,15 @@ with open('/home/user/app/vite.config.js', 'w') as f:
     f.write(vite_config)
 print('OK: vite.config.js')
 
-tailwind_config = """import flattenColorPalette from 'tailwindcss/lib/util/flattenColorPalette';
-
-/** @type {import('tailwindcss').Config} */
+tailwind_config = """/** @type {import('tailwindcss').Config} */
 export default {
   content: ["./index.html", "./src/**/*.{js,ts,jsx,tsx}"],
   darkMode: "class",
   theme: {
-    extend: {
-      animation: {
-        aurora: "aurora 60s linear infinite",
-      },
-      keyframes: {
-        aurora: {
-          from: { backgroundPosition: "50% 50%, 50% 50%" },
-          to: { backgroundPosition: "350% 50%, 350% 50%" },
-        },
-      },
-    },
+    extend: {},
   },
-  plugins: [addVariablesForColors],
-};
-
-function addVariablesForColors({ addBase, theme }) {
-  let allColors = flattenColorPalette(theme("colors"));
-  let newVars = Object.fromEntries(
-    Object.entries(allColors).map(([key, val]) => ["--" + key.replace(/([a-z])([A-Z])/g, '$1-$2').toLowerCase(), val])
-  );
-  addBase({ ":root": newVars });
-}"""
+  plugins: [],
+};"""
 with open('/home/user/app/tailwind.config.js', 'w') as f:
     f.write(tailwind_config)
 print('OK: tailwind.config.js')

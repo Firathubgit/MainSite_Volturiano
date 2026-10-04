@@ -282,12 +282,6 @@
 .liveUrlRefresh:disabled { opacity: 0.4; cursor: not-allowed; }
 
 /* ── Body text & banners ── */
-.bodyText {
-  color: rgba(255, 255, 255, 0.65);
-  font-size: 13px;
-  line-height: 1.5;
-  margin: 0;
-}
 
 .consentBanner {
   background: rgba(255, 255, 255, 0.04);

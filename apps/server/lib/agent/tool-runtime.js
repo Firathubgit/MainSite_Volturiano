@@ -994,7 +994,7 @@ function buildToolDefinitions() {
           category: TOOL_CATEGORIES.CATALOG,
           requiresFeature: 'catalog'
         }),
-        description: 'Browse the community component library. Returns rich design metadata (visual description, mood, colors, suitability, quality) per component, and attaches preview screenshots of the top matches so you can judge them visually.',
+        description: 'Browse the component registry. Returns rich design metadata (visual description, mood, colors, suitability, quality) per component, and attaches preview screenshots of the top matches so you can judge them visually.',
         parameters: z.object({
           keywords: z.string().nullable().describe('Optional keywords to filter components. Use null if no keywords.')
         }),
@@ -1071,7 +1071,7 @@ function buildToolDefinitions() {
           category: TOOL_CATEGORIES.CATALOG,
           requiresFeature: 'catalog'
         }),
-        description: 'Fetch source code for a community component by ID. Large shader/WebGL files may be summarized instead of returned; use install_component_bundle to write large bundles directly without context overload.',
+        description: 'Fetch source code for a registry component by ID. Large shader/WebGL files may be summarized instead of returned; use install_component_bundle to write large bundles directly without context overload.',
         parameters: z.object({
           component_id: z.string().describe('Component ID from browse_components.')
         }),
@@ -1113,7 +1113,7 @@ function buildToolDefinitions() {
           sideEffect: true,
           requiresFeature: 'catalog'
         }),
-        description: 'Install a community component bundle directly into the sandbox without returning full source code to the model. Prefer this for large shader/WebGL components or pre-selected bundles you want to use as-is.',
+        description: 'Install a registry component bundle directly into the sandbox without returning full source code to the model. Prefer this for large shader/WebGL components or pre-selected bundles you want to use as-is.',
         parameters: z.object({
           component_id: z.string().describe('Component ID from browse_components.'),
           reason: z.string().nullable().describe('Short reason this component should be installed.')
@@ -1173,7 +1173,7 @@ function buildToolDefinitions() {
           }), { linesAdded: 0, linesRemoved: 0 });
 
           // Honor the bundle's declared npm dependencies: auto-install
-          // allowlisted packages so community components don't silently break.
+          // allowlisted packages so registry components don't silently break.
           const requiredPackages = extractRequiredPackages(bundle.requires)
             .filter((packageName) => !SANDBOX_BASE_PACKAGES.has(packageName));
           const installablePackages = requiredPackages.filter((packageName) => isAllowlistedPackage(packageName));

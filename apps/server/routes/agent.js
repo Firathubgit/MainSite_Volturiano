@@ -69,10 +69,10 @@ function normalizePremiumMode(value) {
 
 function buildModeContextNote(premiumMode) {
   if (premiumMode === 'strict') {
-    return '\n\n[Build mode] PREMIUM (strict): Assemble the site primarily from community catalog components (browse_components / install_component_bundle). Custom-code only gaps the catalog cannot fill, and always customize installed components to the user\'s brief.';
+    return '\n\n[Build mode] PREMIUM (strict): Assemble the site primarily from registry components (browse_components / install_component_bundle). Custom-code only gaps the catalog cannot fill, and always customize installed components to the user\'s brief.';
   }
   if (premiumMode === 'off') {
-    return '\n\n[Build mode] FREE: The community component catalog is disabled for this build. Write all components from scratch.';
+    return '\n\n[Build mode] FREE: The component registry is disabled for this build. Write all components from scratch.';
   }
   return '';
 }
@@ -658,7 +658,7 @@ Your goal is to build a complete, high-end, TAILORED website from scratch based 
 
 CAPABILITIES:
 0. Page Architecture: For sites that need multiple routes (shops, restaurants, multi-service businesses), call 'plan_pages' FIRST to get a page graph, then implement it with react-router-dom (src/pages/<Name>.jsx per page, shared Nav, <Routes> in App.jsx). Simple landing pages can skip this and stay single-page multi-section.
-1. Browse Community Components: Use 'browse_components' to find existing premium components that match the user's industry/style.
+1. Browse registry components: Use 'browse_components' to find existing components that match the user's industry/style.
 2. Fetch Component Code: Use 'fetch_component_bundle' for small components when you need to inspect/adapt source. Large shader/WebGL files may be summarized to protect context.
 3. Install Component Bundles: Use 'install_component_bundle' for large visual/shader components or pre-selected components you want to use mostly as-is. It writes files directly into the sandbox without loading huge source into your context.
 4. File Management: Use 'create_file', 'edit_file', and 'replace_file' to build the project structure (src/App.jsx, src/components, etc.).

@@ -222,7 +222,7 @@ describe('guided design intake', () => {
 
     expect(result.selectedComponents).toEqual([]);
     expect(result.manualSelectionIds).toEqual([]);
-    expect(result.generationPrompt).toContain('Community components: none preselected');
+    expect(result.generationPrompt).toContain('Registry components: none preselected');
     expect(result.designBrief.intake?.answers[0].answer).toBe(
       intake.questions[0].options.find((option) => option.recommended)?.label,
     );

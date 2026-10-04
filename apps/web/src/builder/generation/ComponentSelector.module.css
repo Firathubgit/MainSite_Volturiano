@@ -238,10 +238,6 @@
     transition: all 0.2s;
 }
 
-.group:hover .checkCircle {
-    border-color: rgba(255, 255, 255, 0.4);
-}
-
 .checkCircleSelected {
     background: #4f46e5;
     border-color: #4f46e5;

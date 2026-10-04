@@ -222,7 +222,7 @@ export function deriveTurnMemories({
   if (normalizedComponents.length) {
     memories.push(makeMemory({
       memoryType: 'component_choice',
-      content: `Community components used: ${normalizedComponents.join(', ')}.`,
+      content: `Registry components used: ${normalizedComponents.join(', ')}.`,
       importance: 3,
       metadata: { componentIds: normalizedComponents }
     }));

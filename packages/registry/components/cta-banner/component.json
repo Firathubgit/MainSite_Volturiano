@@ -1,0 +1,21 @@
+{
+  "id": "cta.banner.v1",
+  "name": "CTA Banner",
+  "category": "CTA",
+  "description": "A closing call to action: one line, one supporting sentence and one button inside a rounded panel.",
+  "visualDescription": "Wide rounded panel with a soft gradient and thin border. Headline on the left, a white pill button with an arrow on the right. Stacks vertically on small screens.",
+  "tags": ["cta", "contact", "banner", "conversion", "responsive"],
+  "keywords": ["call to action", "contact", "signup", "get started"],
+  "suitableFor": ["landing_page", "saas", "startup", "agency", "portfolio", "restaurant"],
+  "notSuitableFor": [],
+  "moodTone": "minimal, professional",
+  "colorProfile": { "mode": "dark", "primary": null, "warmth": "neutral" },
+  "qualityScore": 6,
+  "license": "MIT",
+  "source": "Written for Volturiano Agent",
+  "usage": { "importName": "CtaBanner" },
+  "requires": ["lucide-react"],
+  "files": [
+    { "path": "src/components/CtaBanner.jsx", "source": "CtaBanner.jsx" }
+  ]
+}

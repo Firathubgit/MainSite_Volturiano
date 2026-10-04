@@ -1,0 +1,21 @@
+{
+  "id": "navbar.simple.v1",
+  "name": "Simple Navbar",
+  "category": "Header",
+  "description": "Sticky top navigation with a text brand, three links, a call to action and a mobile menu.",
+  "visualDescription": "Thin dark bar with a blurred background. Brand on the left, quiet grey links and a white pill button on the right. Collapses to a menu icon on small screens.",
+  "tags": ["header", "navbar", "navigation", "sticky", "responsive"],
+  "keywords": ["nav", "menu", "topbar", "links", "mobile menu"],
+  "suitableFor": ["landing_page", "portfolio", "restaurant", "saas"],
+  "notSuitableFor": ["dashboard"],
+  "moodTone": "minimal, professional",
+  "colorProfile": { "mode": "dark", "primary": null, "warmth": "neutral" },
+  "qualityScore": 7,
+  "license": "MIT",
+  "source": "Written for Volturiano Agent",
+  "usage": { "importName": "NavbarSimple" },
+  "requires": ["lucide-react"],
+  "files": [
+    { "path": "src/components/NavbarSimple.jsx", "source": "NavbarSimple.jsx" }
+  ]
+}

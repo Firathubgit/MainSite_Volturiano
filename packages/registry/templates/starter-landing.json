@@ -1,0 +1,19 @@
+{
+  "templateId": "starter-landing",
+  "name": "Starter Landing Page",
+  "description": "Navbar, hero, features, pricing, call to action and footer. A plain dark starting point for the agent to restyle.",
+  "priority": 1,
+  "appWrapperClass": "min-h-screen bg-black text-white",
+  "agentPrompt": "Start from the Starter Landing Page template. Keep the section order unless the user asks otherwise. Rewrite all placeholder text for the user's business and restyle colors, type and spacing to match the brief.",
+  "components": [
+    { "componentId": "navbar.simple.v1" },
+    { "componentId": "hero.split.v1" },
+    { "componentId": "features.grid.v1" },
+    { "componentId": "pricing.tiers.v1" },
+    { "componentId": "cta.banner.v1" },
+    { "componentId": "footer.columns.v1" }
+  ],
+  "theme": {
+    "tokens": { "accent": "#ffffff", "radius": "16px" }
+  }
+}

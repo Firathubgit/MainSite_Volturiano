@@ -1,0 +1,21 @@
+{
+  "id": "hero.split.v1",
+  "name": "Split Hero",
+  "category": "Hero",
+  "description": "Two-column hero. Headline, supporting text and two buttons on the left, a stats panel on the right.",
+  "visualDescription": "Large left-aligned headline on a dark background with a small outlined label above it. A white primary button and an outlined secondary button. On the right, a soft glass card listing three key numbers.",
+  "tags": ["hero", "landing", "headline", "stats", "responsive"],
+  "keywords": ["above the fold", "intro", "cta", "headline", "metrics"],
+  "suitableFor": ["landing_page", "saas", "startup", "agency"],
+  "notSuitableFor": ["dashboard"],
+  "moodTone": "professional, minimal",
+  "colorProfile": { "mode": "dark", "primary": null, "warmth": "neutral" },
+  "qualityScore": 7,
+  "license": "MIT",
+  "source": "Written for Volturiano Agent",
+  "usage": { "importName": "HeroSplit" },
+  "requires": ["lucide-react"],
+  "files": [
+    { "path": "src/components/HeroSplit.jsx", "source": "HeroSplit.jsx" }
+  ]
+}

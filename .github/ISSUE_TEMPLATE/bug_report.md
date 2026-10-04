@@ -1,18 +1,25 @@
 ---
 name: Bug report
-about: Something broke or regressed
+about: Something broke or behaves differently from the docs
 labels: bug
 ---
 
-### Summary
+### What happened
 
-### Steps to Reproduce
+### Steps to reproduce
 
-### Expected vs Actual
+1.
+2.
+
+### What you expected
 
 ### Environment
-- Browser/device:
-- Route:
 
-### Screens / Logs
+- OS:
+- Node version (`node --version`):
+- Model provider and model:
+- Commit or version:
 
+### Logs
+
+Paste the relevant server output. Remove API keys and anything private first.

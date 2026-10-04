@@ -1,0 +1,21 @@
+{
+  "id": "features.grid.v1",
+  "name": "Features Grid",
+  "category": "Features",
+  "description": "Section heading followed by a responsive grid of six feature cards, each with an icon, title and one line of text.",
+  "visualDescription": "Left-aligned section title, then three columns of dark outlined cards with a small rounded icon tile in each. Borders brighten on hover.",
+  "tags": ["features", "grid", "cards", "icons", "responsive"],
+  "keywords": ["benefits", "services", "capabilities", "feature list"],
+  "suitableFor": ["landing_page", "saas", "startup", "agency", "portfolio"],
+  "notSuitableFor": [],
+  "moodTone": "minimal, professional",
+  "colorProfile": { "mode": "dark", "primary": null, "warmth": "neutral" },
+  "qualityScore": 7,
+  "license": "MIT",
+  "source": "Written for Volturiano Agent",
+  "usage": { "importName": "FeaturesGrid" },
+  "requires": ["lucide-react"],
+  "files": [
+    { "path": "src/components/FeaturesGrid.jsx", "source": "FeaturesGrid.jsx" }
+  ]
+}

@@ -1,0 +1,21 @@
+{
+  "id": "pricing.tiers.v1",
+  "name": "Pricing Tiers",
+  "category": "Pricing",
+  "description": "Three pricing plans side by side with a price, a feature list and a button. One plan can be highlighted.",
+  "visualDescription": "Centered section title above three tall rounded cards. The middle card is inverted (white with black text) to stand out. Each card lists features with small check icons and ends with a pill button.",
+  "tags": ["pricing", "plans", "cards", "comparison", "responsive"],
+  "keywords": ["tiers", "subscription", "plans", "price table"],
+  "suitableFor": ["landing_page", "saas", "startup"],
+  "notSuitableFor": ["portfolio", "restaurant"],
+  "moodTone": "minimal, professional",
+  "colorProfile": { "mode": "dark", "primary": null, "warmth": "neutral" },
+  "qualityScore": 7,
+  "license": "MIT",
+  "source": "Written for Volturiano Agent",
+  "usage": { "importName": "PricingTiers" },
+  "requires": ["lucide-react"],
+  "files": [
+    { "path": "src/components/PricingTiers.jsx", "source": "PricingTiers.jsx" }
+  ]
+}

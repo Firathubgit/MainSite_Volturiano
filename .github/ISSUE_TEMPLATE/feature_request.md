@@ -1,15 +1,15 @@
 ---
 name: Feature request
-about: Propose a feature or enhancement
+about: Suggest an improvement
 labels: enhancement
 ---
 
-### Problem / Opportunity
+### The problem
 
-### Proposal
+What are you trying to do, and what gets in the way today?
 
-### Acceptance Criteria
-- [ ]
+### Proposed change
 
-### Notes / References
+### Alternatives you considered
 
+### Anything else

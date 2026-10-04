@@ -1,50 +1,32 @@
-# Node / build artifacts
+# Dependencies and build output
 node_modules/
-**/node_modules/
 dist/
-**/dist/
 build/
 .vite/
 .cache/
-*.log
-logs/
-npm-debug.log*
-yarn-debug.log*
-pnpm-debug.log*
 
-# Environment files (keep examples only)
+# Environment files (only the example is committed)
 .env
 .env.*
-!*.env.example
-!*.env.sample
-web/.env
-web/.env.*
-!web/.env.example
+!.env.example
+*.local
 
-# Supabase local state
-supabase/.temp/
-supabase/.branches/
-supabase/functions/node_modules/
-supabase/.env
+# Local data written by the server (projects, snapshots, agent history)
+.data/
 
-# Coverage / lint caches
+# Logs, scratch and test output
+*.log
+logs/
+tmp/
+screenshots/
 coverage/
-.nyc_output/
-**/.eslintcache
+test-results/
+playwright-report/
+.eslintcache
 
-# OS / IDE
+# OS and editor files
 .DS_Store
 Thumbs.db
 .idea/
-.vscode/*
-!.vscode/extensions.json
-
-# Local-only assets (keep production assets in Supabase Storage)
-assets-local/
-
-# Volturiano Builder runtime artifacts
-web/server/pub_sites/
-web/server/temp_extract/
-web/server/error.txt
-web/server/query_results.json
-
+.vscode/
+*.code-workspace

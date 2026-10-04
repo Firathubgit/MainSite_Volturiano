@@ -1,12 +1,10 @@
-## Summary
+## What changed and why
 
-Describe the change and why.
-
-## Screenshots / Demos (if UI)
+## How to test it
 
 ## Checklist
-- [ ] Builds locally (web)
-- [ ] No secrets in code or logs
-- [ ] Docs updated if behavior changes (docs/ or .cursor/rules/)
-- [ ] Performance sanity for viewer interactions
 
+- [ ] `npm run lint`, `npm run build` and `npm test` pass
+- [ ] No keys, tokens or personal data in code, logs or fixtures
+- [ ] Docs updated if behavior changed
+- [ ] New third-party code is listed in `THIRD_PARTY_NOTICES.md` with its license

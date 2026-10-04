@@ -1,0 +1,21 @@
+{
+  "id": "footer.columns.v1",
+  "name": "Footer Columns",
+  "category": "Footer",
+  "description": "Footer with a brand block, three link columns and a copyright line.",
+  "visualDescription": "Dark footer separated by a thin top border. Brand name and tagline on the left, three small link lists on the right, and a centered copyright line underneath.",
+  "tags": ["footer", "links", "columns", "responsive"],
+  "keywords": ["bottom", "sitemap", "copyright", "links"],
+  "suitableFor": ["landing_page", "saas", "startup", "agency", "portfolio", "restaurant"],
+  "notSuitableFor": ["dashboard"],
+  "moodTone": "minimal",
+  "colorProfile": { "mode": "dark", "primary": null, "warmth": "neutral" },
+  "qualityScore": 6,
+  "license": "MIT",
+  "source": "Written for Volturiano Agent",
+  "usage": { "importName": "FooterColumns" },
+  "requires": [],
+  "files": [
+    { "path": "src/components/FooterColumns.jsx", "source": "FooterColumns.jsx" }
+  ]
+}

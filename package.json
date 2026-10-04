@@ -1,0 +1,34 @@
+{
+  "name": "volturiano-agent",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Describe a website and watch an AI agent plan it, write it, repair it and hand you a real React app.",
+  "license": "MIT",
+  "author": "Firat Kaya (https://github.com/Firathubgit)",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Firathubgit/volturiano-agent.git"
+  },
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "workspaces": [
+    "apps/*"
+  ],
+  "scripts": {
+    "dev": "concurrently -n server,web -c blue,green \"npm run dev -w @volturiano-agent/server\" \"npm run dev -w @volturiano-agent/web\"",
+    "build": "npm run build -w @volturiano-agent/web",
+    "start": "npm run start -w @volturiano-agent/server",
+    "test": "npm run test -w @volturiano-agent/server",
+    "lint": "eslint ."
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.17.0",
+    "concurrently": "^9.1.0",
+    "eslint": "^9.17.0",
+    "eslint-plugin-react": "^7.37.2",
+    "eslint-plugin-react-hooks": "^5.1.0",
+    "globals": "^15.14.0"
+  }
+}

@@ -5,7 +5,7 @@ import './styles/reset.css';
 import './styles/variables.css';
 import './styles/base.css';
 import './styles/utilities.css';
-import App from './app/App';
+import App from './App';
 
 createRoot(document.getElementById('root')).render(
   <React.StrictMode>

@@ -8,8 +8,6 @@ import {
     Send,
 } from 'lucide-react';
 import { useRouteTransition } from '../../contexts/RouteTransitionContext';
-import { useCredits } from '../../hooks/useCredits';
-import CreditLimitModal from '../Modals/CreditLimitModal';
 import styles from './GuidedDesignIntake.module.css';
 
 function AssistantMessage({ children, muted = false, current = false }) {
@@ -62,7 +60,6 @@ export function GuidedDesignIntake() {
         continueWithDefaults,
         cancelTransition,
     } = useRouteTransition();
-    const { isOut: outOfCredits, isUnlimited } = useCredits();
     const intake = transitionData?.intake;
     const status = transitionData?.intakeStatus;
     const [stage, setStage] = useState('questions');
@@ -73,7 +70,6 @@ export function GuidedDesignIntake() {
     const [componentIds, setComponentIds] = useState([]);
     const [customQuestionId, setCustomQuestionId] = useState(null);
     const [customValue, setCustomValue] = useState('');
-    const [showCreditModal, setShowCreditModal] = useState(false);
     const scrollRef = useRef(null);
     const rootRef = useRef(null);
     const previousFocusRef = useRef(null);
@@ -138,10 +134,6 @@ export function GuidedDesignIntake() {
         const handleKeyDown = (event) => {
             if (event.key === 'Escape') {
                 event.preventDefault();
-                if (showCreditModal) {
-                    setShowCreditModal(false);
-                    return;
-                }
                 cancelTransition();
                 return;
             }
@@ -178,7 +170,7 @@ export function GuidedDesignIntake() {
                 previousFocus.focus({ preventScroll: true });
             }
         };
-    }, [cancelTransition, showCreditModal]);
+    }, [cancelTransition]);
 
     useEffect(() => {
         const frame = requestAnimationFrame(() => {
@@ -284,10 +276,6 @@ export function GuidedDesignIntake() {
     };
 
     const startBuild = () => {
-        if (outOfCredits && !isUnlimited) {
-            setShowCreditModal(true);
-            return;
-        }
         finishIntake({
             answers,
             typographyId,
@@ -551,7 +539,7 @@ export function GuidedDesignIntake() {
                                     </section>
                                     <section
                                         className={styles.componentPanel}
-                                        aria-label="Matching community components"
+                                        aria-label="Matching registry components"
                                         aria-describedby="component-selection-count"
                                     >
                                         <span id="component-selection-count" className={styles.srOnly}>
@@ -704,10 +692,6 @@ export function GuidedDesignIntake() {
                     )}
                 </div>
             </main>
-            <CreditLimitModal
-                isOpen={showCreditModal}
-                onClose={() => setShowCreditModal(false)}
-            />
         </div>
     );
 }

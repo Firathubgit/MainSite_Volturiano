@@ -34,8 +34,8 @@ import { compactConsoleEntries } from '../lib/screenshot.js';
 import { sandboxManager } from '../lib/sandbox/sandbox-manager.js';
 import { resolveSandboxProvider } from '../lib/sandbox/provider-resolver.js';
 import { isDeleteProtectedFile, normalizePath } from '../shared/sandbox-fs.js';
-import { consumeAgentEventStream } from '../../src/pages/Agency/pages/Builder/Generation/useAgentMode.js';
-import { mergeHydratedAgentMessages } from '../../src/pages/Agency/pages/Builder/Generation/agentChatHydration.js';
+import { consumeAgentEventStream } from '../../src/builder/generation/useAgentMode.js';
+import { mergeHydratedAgentMessages } from '../../src/builder/generation/agentChatHydration.js';
 
 const encoder = new TextEncoder();
 

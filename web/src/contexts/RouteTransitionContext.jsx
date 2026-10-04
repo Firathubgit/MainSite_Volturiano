@@ -7,8 +7,7 @@ import React, {
     useState,
 } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { useBuilderAuth } from './BuilderAuthContext';
-import { MODEL_IDS } from '../pages/Agency/pages/Builder/model-registry.client.js';
+import { MODEL_IDS } from '../builder/model-registry.client.js';
 
 const RouteTransitionContext = createContext(null);
 const INTAKE_TIMEOUT_MS = 28000;
@@ -53,14 +52,13 @@ export const RouteTransitionProvider = ({ children }) => {
     const [transitionData, setTransitionData] = useState(null);
     const navigate = useNavigate();
     const location = useLocation();
-    const { getAccessToken } = useBuilderAuth();
     const runRef = useRef(0);
     const controllerRef = useRef(null);
     const componentControllerRef = useRef(null);
     const finalizingRef = useRef(false);
 
     useEffect(() => {
-        if (phase !== 'idle' && !location.pathname.includes('/builder')) {
+        if (phase !== 'idle' && location.pathname.startsWith('/projects')) {
             controllerRef.current?.abort();
             componentControllerRef.current?.abort();
             runRef.current += 1;
@@ -88,12 +86,10 @@ export const RouteTransitionProvider = ({ children }) => {
         }));
 
         try {
-            const token = getAccessToken();
             const response = await fetch('/api/design-intake/prepare', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    ...(token ? { Authorization: `Bearer ${token}` } : {}),
                 },
                 body: JSON.stringify({
                     prompt: data.prompt,
@@ -127,7 +123,7 @@ export const RouteTransitionProvider = ({ children }) => {
             clearTimeout(timeout);
             if (controllerRef.current === controller) controllerRef.current = null;
         }
-    }, [getAccessToken]);
+    }, []);
 
     const runLegacyTransition = useCallback(async (runId, targetRoute, stateToPass) => {
         const fetchStartTime = Date.now();
@@ -140,12 +136,10 @@ export const RouteTransitionProvider = ({ children }) => {
             let cineModel = MODEL_IDS.GEMINI_25_FLASH;
             if (stateToPass.model?.includes('openai/')) cineModel = MODEL_IDS.GPT_55_MINI;
             if (stateToPass.model?.includes('anthropic/')) cineModel = MODEL_IDS.CLAUDE_HAIKU_45;
-            const token = getAccessToken();
             cinematicPromise = fetch('/api/cinematic-response', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    ...(token ? { Authorization: `Bearer ${token}` } : {}),
                 },
                 body: JSON.stringify({ prompt: stateToPass.prompt, model: cineModel }),
                 signal: cinematicController.signal,
@@ -174,13 +168,13 @@ export const RouteTransitionProvider = ({ children }) => {
             if (elapsed < 2500) await wait(2500 - elapsed);
             const payload = response?.ok ? await response.json().catch(() => null) : null;
             cinematicResponse = payload?.response
-                || 'Architecting a premium experience with precise visuals.';
+                || 'Planning the layout and visual direction.';
         }
 
         clearTimeout(abortTimer);
         if (runRef.current !== runId) return;
         setTransitionData((previous) => ({ ...previous, cinematicResponse }));
-    }, [getAccessToken, navigate]);
+    }, [navigate]);
 
     const refreshIntakeComponents = useCallback(async (answers) => {
         if (!transitionData?.guidedIntake || !transitionData?.intake) return;
@@ -211,12 +205,10 @@ export const RouteTransitionProvider = ({ children }) => {
         }));
 
         try {
-            const token = getAccessToken();
             const response = await fetch('/api/design-intake/components', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    ...(token ? { Authorization: `Bearer ${token}` } : {}),
                 },
                 body: JSON.stringify({
                     prompt: transitionData.prompt,
@@ -252,7 +244,7 @@ export const RouteTransitionProvider = ({ children }) => {
                 componentControllerRef.current = null;
             }
         }
-    }, [getAccessToken, transitionData]);
+    }, [transitionData]);
 
     const startTransition = useCallback(async (targetRoute, stateToPass = {}) => {
         controllerRef.current?.abort();
@@ -314,12 +306,10 @@ export const RouteTransitionProvider = ({ children }) => {
         }));
 
         try {
-            const token = getAccessToken();
             const response = await fetch('/api/design-intake/finalize', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    ...(token ? { Authorization: `Bearer ${token}` } : {}),
                 },
                 body: JSON.stringify({
                     prompt: transitionData.prompt,
@@ -336,7 +326,6 @@ export const RouteTransitionProvider = ({ children }) => {
                 initialComponents: result.selectedComponents,
                 manualSelectionIds: result.manualSelectionIds,
                 confirmedBriefSummary: result.briefSummary,
-                optimisticCreditDeduction: true,
             });
             setTransitionData((previous) => ({
                 ...previous,
@@ -362,14 +351,12 @@ export const RouteTransitionProvider = ({ children }) => {
                 intakeError: error.message,
             }));
         }
-    }, [getAccessToken, navigate, transitionData]);
+    }, [navigate, transitionData]);
 
     const continueWithDefaults = useCallback(async () => {
         if (!transitionData?.targetRoute) return;
         const runId = runRef.current;
-        const state = navigationState(transitionData, {
-            optimisticCreditDeduction: true,
-        });
+        const state = navigationState(transitionData);
         setTransitionData((previous) => ({
             ...previous,
             intakeStatus: 'complete',

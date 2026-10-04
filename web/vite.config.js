@@ -1,48 +1,22 @@
 import { defineConfig } from 'vite';
-import path from 'path';
+
+// In development the UI proxies API calls to the Express server.
+const apiTarget = process.env.VITE_API_TARGET || 'http://127.0.0.1:3001';
 
 export default defineConfig({
-  plugins: [],
-  resolve: {
-    alias: {
-      '@': path.resolve(__dirname, 'src')
-    }
-  },
   server: {
-    host: '0.0.0.0', // Allow access from network
-    port: 5173, // Default Vite port
-    strictPort: false, // Try next available port if 5173 is taken
+    port: 5173,
     proxy: {
       '/api': {
-        target: 'http://127.0.0.1:3001',
+        target: apiTarget,
         changeOrigin: true,
+        // Agent turns stream for minutes; keep the proxy from cutting them off.
         timeout: 300000,
         proxyTimeout: 300000,
       },
-      '/sites': {
-        target: 'http://127.0.0.1:3001',
-        changeOrigin: true
-      }
-    }
+    },
   },
   build: {
-    // Security: Production build optimizations
-    minify: 'esbuild',
-    sourcemap: false, // Don't expose source maps in production (security)
-    rollupOptions: {
-      output: {
-        // Obfuscate chunk names to make reverse engineering harder
-        chunkFileNames: 'assets/[hash].js',
-        entryFileNames: 'assets/[hash].js',
-        assetFileNames: 'assets/[hash].[ext]'
-      }
-    }
-    // Note: Console logs should be replaced with logger utility
-    // See: src/utils/logger.js for production-safe logging
+    chunkSizeWarningLimit: 900,
   },
-  // Security headers (handled by Vercel, but good to document)
-  define: {
-    // Remove debug flags in production
-    'import.meta.env.DEV': JSON.stringify(process.env.NODE_ENV === 'development')
-  }
 });
